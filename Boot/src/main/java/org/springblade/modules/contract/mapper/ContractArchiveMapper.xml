@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.contract.mapper.ContractArchiveMapper">
+
+    <resultMap id="archiveResultMap" type="org.springblade.modules.contract.pojo.vo.ContractArchiveVO">
+        <id column="contract_id" property="contractId"/>
+        <result column="contract_no" property="contractNo"/>
+        <result column="contract_name" property="contractName"/>
+        <result column="project_id" property="projectId"/>
+        <result column="customer_id" property="customerId"/>
+        <result column="customer_name" property="customerName"/>
+        <result column="room_id" property="roomId"/>
+        <result column="room_name" property="roomName"/>
+        <result column="building_id" property="buildingId"/>
+        <result column="building_name" property="buildingName"/>
+        <result column="rent_price" property="rentPrice"/>
+        <result column="rent_area" property="rentArea"/>
+        <result column="monthly_rent" property="monthlyRent"/>
+        <result column="property_fee" property="propertyFee"/>
+        <result column="deposit" property="deposit"/>
+        <result column="follow_user" property="followUser"/>
+        <result column="rent_increase_node" property="rentIncreaseNode"/>
+        <result column="rent_increase_rate" property="rentIncreaseRate"/>
+        <result column="rent_increase_unit" property="rentIncreaseUnit"/>
+        <result column="late_fee_ratio" property="lateFeeRatio"/>
+        <result column="late_fee_unit" property="lateFeeUnit"/>
+        <result column="late_fee_cap" property="lateFeeCap"/>
+        <result column="management_fee" property="managementFee"/>
+        <result column="public_fee" property="publicFee"/>
+        <result column="start_date" property="startDate"/>
+        <result column="end_date" property="endDate"/>
+        <result column="sign_date" property="signDate"/>
+        <result column="contract_status" property="contractStatus"/>
+        <result column="contract_status_name" property="contractStatusName"/>
+        <result column="payment_cycle" property="paymentCycle"/>
+        <result column="contract_file_url" property="contractFileUrl"/>
+        <result column="remark" property="remark"/>
+        <result column="park_id" property="parkId"/>
+        <result column="park_name" property="parkName"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="approval_project_id" property="approvalProjectId"/>
+        <result column="approval_status" property="approvalStatus"/>
+        <result column="approval_current_node_name" property="approvalCurrentNodeName"/>
+    </resultMap>
+
+    <resultMap id="changeResultMap" type="org.springblade.modules.contract.pojo.vo.ContractChangeArchiveVO">
+        <id column="change_id" property="changeId"/>
+        <result column="change_no" property="changeNo"/>
+        <result column="contract_id" property="contractId"/>
+        <result column="contract_no" property="contractNo"/>
+        <result column="contract_name" property="contractName"/>
+        <result column="customer_name" property="customerName"/>
+        <result column="change_type" property="changeType"/>
+        <result column="old_rent_price" property="oldRentPrice"/>
+        <result column="new_rent_price" property="newRentPrice"/>
+        <result column="old_monthly_rent" property="oldMonthlyRent"/>
+        <result column="new_monthly_rent" property="newMonthlyRent"/>
+        <result column="old_end_date" property="oldEndDate"/>
+        <result column="new_end_date" property="newEndDate"/>
+        <result column="reason" property="reason"/>
+        <result column="approval_status" property="approvalStatus"/>
+        <result column="approval_opinion" property="approvalOpinion"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <resultMap id="terminationResultMap" type="org.springblade.modules.contract.pojo.vo.TerminationArchiveVO">
+        <id column="termination_id" property="terminationId"/>
+        <result column="termination_no" property="terminationNo"/>
+        <result column="contract_id" property="contractId"/>
+        <result column="contract_name" property="contractName"/>
+        <result column="customer_name" property="customerName"/>
+        <result column="room_id" property="roomId"/>
+        <result column="room_name" property="roomName"/>
+        <result column="receivable_amount" property="receivableAmount"/>
+        <result column="refundable_amount" property="refundableAmount"/>
+        <result column="total_amount" property="totalAmount"/>
+        <result column="termination_time" property="terminationTime"/>
+        <result column="reason" property="reason"/>
+        <result column="status" property="status"/>
+        <result column="approval_status" property="approvalStatus"/>
+        <result column="approval_opinion" property="approvalOpinion"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <sql id="selectArchiveVo">
+        SELECT
+            c.contract_id,
+            c.contract_no,
+            c.contract_name,
+            c.project_id,
+            c.customer_id,
+            COALESCE(NULLIF(c.customer_name, ''), cu.enterprise_name) AS customer_name,
+            c.room_id,
+            COALESCE(NULLIF(c.room_name, ''), r.name) AS room_name,
+            c.building_id,
+            COALESCE(NULLIF(c.building_name, ''), b.name) AS building_name,
+            c.rent_price,
+            c.rent_area,
+            c.monthly_rent,
+            c.property_fee,
+            c.deposit,
+            c.follow_user,
+            c.rent_increase_node,
+            c.rent_increase_rate,
+            c.rent_increase_unit,
+            c.late_fee_ratio,
+            c.late_fee_unit,
+            c.late_fee_cap,
+            c.management_fee,
+            c.public_fee,
+            c.start_date,
+            c.end_date,
+            c.sign_date,
+            c.contract_status,
+            CASE c.contract_status
+                WHEN '0' THEN '待签约'
+                WHEN '1' THEN '履约中'
+                WHEN '2' THEN '已到期'
+                WHEN '3' THEN '已续签'
+                WHEN '4' THEN '已终止'
+                ELSE '未知'
+            END AS contract_status_name,
+            c.payment_cycle,
+            c.contract_file_url,
+            c.remark,
+            c.park_id,
+            p.name AS park_name,
+            c.create_by,
+            c.create_time,
+            ap.project_id AS approval_project_id,
+            ap.process_status AS approval_status,
+            ap.current_node_name AS approval_current_node_name
+        FROM biz_contract c
+        LEFT JOIN ics_park p ON p.id = c.park_id
+        LEFT JOIN biz_customer cu ON cu.customer_id = c.customer_id
+        LEFT JOIN ics_room r ON r.id = c.room_id
+        LEFT JOIN ics_building b ON b.id = c.building_id
+        LEFT JOIN biz_approval_project ap
+          ON ap.business_id = c.contract_id
+         AND ap.business_type IN ('contract', 'contract_renewal')
+         AND ap.process_status != '9'
+    </sql>
+
+    <sql id="archiveWhere">
+        c.del_flag = '0'
+        <if test="contract.contractId != null">
+            AND c.contract_id = #{contract.contractId}
+        </if>
+        <if test="contract.contractNo != null and contract.contractNo != ''">
+            AND c.contract_no LIKE CONCAT('%', #{contract.contractNo}, '%')
+        </if>
+        <if test="contract.contractName != null and contract.contractName != ''">
+            AND c.contract_name LIKE CONCAT('%', #{contract.contractName}, '%')
+        </if>
+        <if test="contract.customerName != null and contract.customerName != ''">
+            AND COALESCE(NULLIF(c.customer_name, ''), cu.enterprise_name, '') LIKE CONCAT('%', #{contract.customerName}, '%')
+        </if>
+        <if test="contract.contractStatus != null and contract.contractStatus != ''">
+            AND c.contract_status = #{contract.contractStatus}
+        </if>
+        <if test="contract.parkId != null">
+            AND c.park_id = #{contract.parkId}
+        </if>
+    </sql>
+
+    <select id="selectArchivePage" resultMap="archiveResultMap">
+        <include refid="selectArchiveVo"/>
+        <where>
+            <include refid="archiveWhere"/>
+        </where>
+        ORDER BY c.create_time DESC, c.contract_id DESC
+    </select>
+
+    <select id="selectArchiveById" resultMap="archiveResultMap">
+        <include refid="selectArchiveVo"/>
+        WHERE c.contract_id = #{contractId}
+          AND c.del_flag = '0'
+    </select>
+
+    <select id="selectChangesByContractId" resultMap="changeResultMap">
+        SELECT
+            change_id,
+            change_no,
+            contract_id,
+            contract_no,
+            contract_name,
+            customer_name,
+            change_type,
+            old_rent_price,
+            new_rent_price,
+            old_monthly_rent,
+            new_monthly_rent,
+            old_end_date,
+            new_end_date,
+            reason,
+            approval_status,
+            approval_opinion,
+            create_time
+        FROM biz_contract_change
+        WHERE del_flag = '0'
+          AND contract_id = #{contractId}
+        ORDER BY create_time DESC, change_id DESC
+    </select>
+
+    <select id="selectTerminationsByContractId" resultMap="terminationResultMap">
+        SELECT
+            termination_id,
+            termination_no,
+            contract_id,
+            contract_name,
+            customer_name,
+            room_id,
+            room_name,
+            receivable_amount,
+            refundable_amount,
+            total_amount,
+            termination_time,
+            reason,
+            status,
+            approval_status,
+            approval_opinion,
+            create_time
+        FROM biz_termination
+        WHERE del_flag = '0'
+          AND contract_id = #{contractId}
+        ORDER BY create_time DESC, termination_id DESC
+    </select>
+
+</mapper>

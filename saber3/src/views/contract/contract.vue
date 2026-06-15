@@ -64,6 +64,7 @@
       <template #menu="{ row }">
         <el-button type="primary" text @click="handlePayment(row)">账单</el-button>
         <el-button type="primary" text @click="handleLogs(row)">日志</el-button>
+        <el-button type="primary" text @click="handleArchive(row)">归档</el-button>
         <el-button
           type="primary"
           text
@@ -309,6 +310,14 @@ export default {
       this.logBox = true;
       getLogs(row.contractId).then(res => {
         this.logData = res.data.data || [];
+      });
+    },
+    handleArchive(row) {
+      this.$router.push({
+        path: '/contract/archive',
+        query: {
+          contractId: row.contractId,
+        },
       });
     },
     handleExpiring() {
