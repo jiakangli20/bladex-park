@@ -23,54 +23,31 @@
  * <p>
  * Author: Chill Zhuang (bladejava@qq.com)
  */
-package org.springblade.modules.ics.service;
+package org.springblade.modules.ics.pojo.dto;
 
-import com.baomidou.mybatisplus.extension.service.IService;
-import org.springblade.modules.ics.pojo.entity.Floor;
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Data;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
 
 /**
- * 楼层服务类
+ * 建筑楼层面积配置
  *
  * @author Chill
  */
-public interface IFloorService extends IService<Floor> {
+@Data
+@Schema(description = "建筑楼层面积配置")
+public class BuildingFloorAreaDTO implements Serializable {
 
-	/**
-	 * 查询楼层列表
-	 *
-	 * @param floor 查询条件
-	 * @return 楼层集合
-	 */
-	List<Floor> selectFloorList(Floor floor);
+	@Serial
+	private static final long serialVersionUID = 1L;
 
-	/**
-	 * 查询建筑下指定楼层
-	 *
-	 * @param buildingId 建筑ID
-	 * @param floorNo 楼层号
-	 * @return 楼层
-	 */
-	Floor selectFloorByBuildingAndNo(Long buildingId, Integer floorNo);
+	@Schema(description = "楼层号")
+	private Integer floorNo;
 
-	/**
-	 * 同步建筑楼层
-	 *
-	 * @param buildingId 建筑ID
-	 * @param operator 操作人
-	 */
-	void syncBuildingFloors(Long buildingId, String operator);
-
-	/**
-	 * 更新建筑楼层面积
-	 *
-	 * @param buildingId 建筑ID
-	 * @param floorAreaMap 楼层面积
-	 * @param operator 操作人
-	 */
-	void updateBuildingFloorAreas(Long buildingId, Map<Integer, BigDecimal> floorAreaMap, String operator);
+	@Schema(description = "楼层面积")
+	private BigDecimal area;
 
 }

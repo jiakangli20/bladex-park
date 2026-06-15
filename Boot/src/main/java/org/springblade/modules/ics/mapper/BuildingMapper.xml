@@ -33,6 +33,11 @@
         <result column="room_count" property="roomCount"/>
         <result column="rent_rate" property="rentRate"/>
         <result column="rented_area" property="rentedArea"/>
+        <result column="active_contract_count" property="activeContractCount"/>
+    </resultMap>
+
+    <resultMap id="buildingVOResultMap" type="org.springblade.modules.ics.pojo.vo.BuildingVO" extends="buildingResultMap">
+        <result column="active_contract_count" property="activeContractCount"/>
     </resultMap>
 
     <sql id="buildingColumns">
@@ -43,18 +48,7 @@
         b.update_by, b.update_time
     </sql>
 
-    <select id="selectBuildingList" resultMap="buildingResultMap">
-        SELECT
-        <include refid="buildingColumns"/>,
-        COALESCE(fs.management_area, 0) AS management_area,
-        COALESCE(rs.room_count, 0) AS room_count,
-        CASE
-            WHEN COALESCE(rs.room_count, 0) = 0 THEN 0
-            ELSE ROUND(COALESCE(rs.rented_count, 0) * 100 / rs.room_count, 2)
-        END AS rent_rate,
-        COALESCE(rs.rented_area, 0) AS rented_area
-        FROM ics_building b
-        LEFT JOIN ics_park p ON p.id = b.park_id
+    <sql id="buildingStatisticJoins">
         LEFT JOIN (
             SELECT building_id, SUM(COALESCE(area, 0)) AS management_area
             FROM ics_floor
@@ -68,6 +62,9 @@
             FROM ics_room
             GROUP BY building_id
         ) rs ON rs.building_id = b.id
+    </sql>
+
+    <sql id="buildingWhere">
         <where>
             <if test="building.id != null">AND b.id = #{building.id}</if>
             <if test="building.parkId != null">AND b.park_id = #{building.parkId}</if>
@@ -75,6 +72,116 @@
             <if test="building.code != null and building.code != ''">AND b.code LIKE CONCAT('%', #{building.code}, '%')</if>
             <if test="building.status != null and building.status != ''">AND b.status = #{building.status}</if>
         </where>
+    </sql>
+
+    <sql id="buildingOrder">
         ORDER BY p.name ASC, b.park_id ASC, COALESCE(b.sort_num, 999999) ASC, b.name ASC, b.id ASC
+    </sql>
+
+    <select id="selectBuildingList" resultMap="buildingResultMap">
+        SELECT
+        <include refid="buildingColumns"/>,
+        COALESCE(fs.management_area, 0) AS management_area,
+        COALESCE(rs.room_count, 0) AS room_count,
+        CASE
+            WHEN COALESCE(rs.room_count, 0) = 0 THEN 0
+            ELSE ROUND(COALESCE(rs.rented_count, 0) * 100 / rs.room_count, 2)
+        END AS rent_rate,
+        COALESCE(rs.rented_area, 0) AS rented_area,
+        0 AS active_contract_count
+        FROM ics_building b
+        LEFT JOIN ics_park p ON p.id = b.park_id
+        <include refid="buildingStatisticJoins"/>
+        <include refid="buildingWhere"/>
+        <include refid="buildingOrder"/>
+    </select>
+
+    <select id="selectBuildingPage" resultMap="buildingVOResultMap">
+        SELECT
+        <include refid="buildingColumns"/>,
+        COALESCE(fs.management_area, 0) AS management_area,
+        COALESCE(rs.room_count, 0) AS room_count,
+        CASE
+            WHEN COALESCE(rs.room_count, 0) = 0 THEN 0
+            ELSE ROUND(COALESCE(rs.rented_count, 0) * 100 / rs.room_count, 2)
+        END AS rent_rate,
+        COALESCE(rs.rented_area, 0) AS rented_area,
+        0 AS active_contract_count
+        FROM ics_building b
+        LEFT JOIN ics_park p ON p.id = b.park_id
+        <include refid="buildingStatisticJoins"/>
+        <include refid="buildingWhere"/>
+        <include refid="buildingOrder"/>
+    </select>
+
+    <select id="selectBuildingById" resultMap="buildingVOResultMap">
+        SELECT
+        <include refid="buildingColumns"/>,
+        COALESCE(fs.management_area, 0) AS management_area,
+        COALESCE(rs.room_count, 0) AS room_count,
+        CASE
+            WHEN COALESCE(rs.room_count, 0) = 0 THEN 0
+            ELSE ROUND(COALESCE(rs.rented_count, 0) * 100 / rs.room_count, 2)
+        END AS rent_rate,
+        COALESCE(rs.rented_area, 0) AS rented_area,
+        0 AS active_contract_count
+        FROM ics_building b
+        LEFT JOIN ics_park p ON p.id = b.park_id
+        <include refid="buildingStatisticJoins"/>
+        WHERE b.id = #{id}
+    </select>
+
+    <select id="selectBuildingByParkAndName" resultMap="buildingResultMap">
+        SELECT
+        <include refid="buildingColumns"/>,
+        COALESCE(fs.management_area, 0) AS management_area,
+        COALESCE(rs.room_count, 0) AS room_count,
+        CASE
+            WHEN COALESCE(rs.room_count, 0) = 0 THEN 0
+            ELSE ROUND(COALESCE(rs.rented_count, 0) * 100 / rs.room_count, 2)
+        END AS rent_rate,
+        COALESCE(rs.rented_area, 0) AS rented_area,
+        0 AS active_contract_count
+        FROM ics_building b
+        LEFT JOIN ics_park p ON p.id = b.park_id
+        <include refid="buildingStatisticJoins"/>
+        WHERE b.park_id = #{parkId}
+          AND b.name = #{name}
+        LIMIT 1
+    </select>
+
+    <select id="selectMaxRoomFloor" resultType="java.lang.Integer">
+        SELECT MAX(floor)
+        FROM ics_room
+        WHERE building_id = #{buildingId}
+    </select>
+
+    <select id="countRoomsByBuildingId" resultType="int">
+        SELECT COUNT(1)
+        FROM ics_room
+        WHERE building_id = #{buildingId}
+    </select>
+
+    <select id="countFloorsByBuildingId" resultType="int">
+        SELECT COUNT(1)
+        FROM ics_floor
+        WHERE building_id = #{buildingId}
+    </select>
+
+    <select id="countContractRefs" resultType="int">
+        SELECT COUNT(1)
+        FROM biz_contract c
+        WHERE c.del_flag = '0'
+          AND (
+            c.building_id = #{buildingId}
+            OR FIND_IN_SET(#{buildingId}, REPLACE(COALESCE(c.building_ids, ''), 'building_', ''))
+          )
+    </select>
+
+    <select id="countTable" resultType="int">
+        SELECT COUNT(1)
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+          AND table_name = #{tableName}
     </select>
 </mapper>

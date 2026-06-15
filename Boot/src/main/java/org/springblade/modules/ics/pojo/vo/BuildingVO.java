@@ -23,54 +23,36 @@
  * <p>
  * Author: Chill Zhuang (bladejava@qq.com)
  */
-package org.springblade.modules.ics.service;
+package org.springblade.modules.ics.pojo.vo;
 
-import com.baomidou.mybatisplus.extension.service.IService;
-import org.springblade.modules.ics.pojo.entity.Floor;
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import org.springblade.modules.ics.pojo.dto.BuildingFloorAreaDTO;
+import org.springblade.modules.ics.pojo.entity.Building;
 
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 /**
- * 楼层服务类
+ * 建筑视图对象
  *
  * @author Chill
  */
-public interface IFloorService extends IService<Floor> {
+@Data
+@EqualsAndHashCode(callSuper = true)
+@Schema(description = "建筑视图对象")
+public class BuildingVO extends Building {
 
-	/**
-	 * 查询楼层列表
-	 *
-	 * @param floor 查询条件
-	 * @return 楼层集合
-	 */
-	List<Floor> selectFloorList(Floor floor);
+	@Schema(description = "在租合同数")
+	private Integer activeContractCount;
 
-	/**
-	 * 查询建筑下指定楼层
-	 *
-	 * @param buildingId 建筑ID
-	 * @param floorNo 楼层号
-	 * @return 楼层
-	 */
-	Floor selectFloorByBuildingAndNo(Long buildingId, Integer floorNo);
+	@Schema(description = "状态名称")
+	private String statusName;
 
-	/**
-	 * 同步建筑楼层
-	 *
-	 * @param buildingId 建筑ID
-	 * @param operator 操作人
-	 */
-	void syncBuildingFloors(Long buildingId, String operator);
+	@Schema(description = "建筑标签")
+	private String buildingTag;
 
-	/**
-	 * 更新建筑楼层面积
-	 *
-	 * @param buildingId 建筑ID
-	 * @param floorAreaMap 楼层面积
-	 * @param operator 操作人
-	 */
-	void updateBuildingFloorAreas(Long buildingId, Map<Integer, BigDecimal> floorAreaMap, String operator);
+	@Schema(description = "楼层面积配置")
+	private List<BuildingFloorAreaDTO> floorAreas;
 
 }
