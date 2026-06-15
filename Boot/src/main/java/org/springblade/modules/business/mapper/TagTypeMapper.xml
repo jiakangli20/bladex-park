@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.business.mapper.TagTypeMapper">
+
+	<resultMap id="TagTypeResult" type="org.springblade.modules.business.pojo.entity.TagType">
+		<id property="typeId" column="type_id"/>
+		<result property="typeName" column="type_name"/>
+		<result property="sortOrder" column="sort_order"/>
+		<result property="status" column="status"/>
+		<result property="delFlag" column="del_flag"/>
+		<result property="createBy" column="create_by"/>
+		<result property="createTime" column="create_time"/>
+		<result property="updateBy" column="update_by"/>
+		<result property="updateTime" column="update_time"/>
+		<result property="tagCount" column="tag_count"/>
+	</resultMap>
+
+	<sql id="selectColumns">
+		tt.type_id,
+		tt.type_name,
+		tt.sort_order,
+		tt.status,
+		tt.del_flag,
+		tt.create_by,
+		tt.create_time,
+		tt.update_by,
+		tt.update_time,
+		count(t.tag_id) as tag_count
+	</sql>
+
+	<select id="selectTagTypeList" resultMap="TagTypeResult">
+		select <include refid="selectColumns"/>
+		from biz_tag_type tt
+		left join biz_tag t on t.tag_type = tt.type_id and t.del_flag = '0'
+		<where>
+			tt.del_flag = '0'
+			<if test="tagType != null">
+				<if test="tagType.typeName != null and tagType.typeName != ''">and tt.type_name like concat('%', #{tagType.typeName}, '%')</if>
+				<if test="tagType.status != null and tagType.status != ''">and tt.status = #{tagType.status}</if>
+			</if>
+		</where>
+		group by tt.type_id, tt.type_name, tt.sort_order, tt.status, tt.del_flag, tt.create_by, tt.create_time, tt.update_by, tt.update_time
+		order by tt.sort_order asc, tt.type_id asc
+	</select>
+
+	<select id="selectTagTypeById" resultMap="TagTypeResult">
+		select <include refid="selectColumns"/>
+		from biz_tag_type tt
+		left join biz_tag t on t.tag_type = tt.type_id and t.del_flag = '0'
+		where tt.type_id = #{typeId}
+		  and tt.del_flag = '0'
+		group by tt.type_id, tt.type_name, tt.sort_order, tt.status, tt.del_flag, tt.create_by, tt.create_time, tt.update_by, tt.update_time
+	</select>
+
+	<select id="selectTagTypeByName" resultMap="TagTypeResult">
+		select <include refid="selectColumns"/>
+		from biz_tag_type tt
+		left join biz_tag t on t.tag_type = tt.type_id and t.del_flag = '0'
+		where tt.type_name = #{typeName}
+		  and tt.del_flag = '0'
+		group by tt.type_id, tt.type_name, tt.sort_order, tt.status, tt.del_flag, tt.create_by, tt.create_time, tt.update_by, tt.update_time
+		limit 1
+	</select>
+
+	<select id="countTagsByType" resultType="int">
+		select count(1)
+		from biz_tag
+		where del_flag = '0'
+		  and tag_type = #{typeId}
+	</select>
+
+	<insert id="insertTagType" parameterType="org.springblade.modules.business.pojo.entity.TagType" useGeneratedKeys="true" keyProperty="typeId">
+		insert into biz_tag_type
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="typeName != null">type_name,</if>
+			<if test="sortOrder != null">sort_order,</if>
+			<if test="status != null">status,</if>
+			<if test="delFlag != null">del_flag,</if>
+			<if test="createBy != null">create_by,</if>
+			<if test="createTime != null">create_time,</if>
+			<if test="updateBy != null">update_by,</if>
+			<if test="updateTime != null">update_time,</if>
+		</trim>
+		<trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="typeName != null">#{typeName},</if>
+			<if test="sortOrder != null">#{sortOrder},</if>
+			<if test="status != null">#{status},</if>
+			<if test="delFlag != null">#{delFlag},</if>
+			<if test="createBy != null">#{createBy},</if>
+			<if test="createTime != null">#{createTime},</if>
+			<if test="updateBy != null">#{updateBy},</if>
+			<if test="updateTime != null">#{updateTime},</if>
+		</trim>
+	</insert>
+
+	<update id="updateTagType" parameterType="org.springblade.modules.business.pojo.entity.TagType">
+		update biz_tag_type
+		<set>
+			<if test="typeName != null">type_name = #{typeName},</if>
+			<if test="sortOrder != null">sort_order = #{sortOrder},</if>
+			<if test="status != null">status = #{status},</if>
+			<if test="updateBy != null">update_by = #{updateBy},</if>
+			<if test="updateTime != null">update_time = #{updateTime},</if>
+		</set>
+		where type_id = #{typeId}
+	</update>
+
+	<update id="deleteTagTypeById">
+		update biz_tag_type
+		set del_flag = '1'
+		where type_id = #{typeId}
+	</update>
+
+</mapper>
