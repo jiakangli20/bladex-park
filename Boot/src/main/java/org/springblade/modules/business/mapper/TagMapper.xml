@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.business.mapper.TagMapper">
+
+	<resultMap id="TagResult" type="org.springblade.modules.business.pojo.entity.Tag">
+		<id property="tagId" column="tag_id"/>
+		<result property="tagName" column="tag_name"/>
+		<result property="tagType" column="tag_type"/>
+		<result property="tagColor" column="tag_color"/>
+		<result property="sortOrder" column="sort_order"/>
+		<result property="status" column="status"/>
+		<result property="delFlag" column="del_flag"/>
+		<result property="parkId" column="park_id"/>
+		<result property="createBy" column="create_by"/>
+		<result property="createTime" column="create_time"/>
+		<result property="updateTime" column="update_time"/>
+	</resultMap>
+
+	<sql id="selectTagColumns">
+		select tag_id,
+			   tag_name,
+			   tag_type,
+			   tag_color,
+			   sort_order,
+			   status,
+			   del_flag,
+			   park_id,
+			   create_by,
+			   create_time,
+			   update_time
+		from biz_tag
+	</sql>
+
+	<sql id="tagWhere">
+		<where>
+			del_flag = '0'
+			<if test="tag != null">
+				<if test="tag.parkId != null and tag.parkId != 0">and park_id = #{tag.parkId}</if>
+				<if test="tag.tagName != null and tag.tagName != ''">and tag_name like concat('%', #{tag.tagName}, '%')</if>
+				<if test="tag.tagType != null">and tag_type = #{tag.tagType}</if>
+				<if test="tag.status != null and tag.status != ''">and status = #{tag.status}</if>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTagById" resultMap="TagResult">
+		<include refid="selectTagColumns"/>
+		where tag_id = #{tagId}
+	</select>
+
+	<select id="selectTagList" resultMap="TagResult">
+		<include refid="selectTagColumns"/>
+		<include refid="tagWhere"/>
+		order by tag_type asc, sort_order asc, tag_id asc
+	</select>
+
+	<select id="selectTagPage" resultMap="TagResult">
+		<include refid="selectTagColumns"/>
+		<include refid="tagWhere"/>
+		order by tag_type asc, sort_order asc, tag_id asc
+	</select>
+
+	<select id="selectSameNameTag" resultMap="TagResult">
+		<include refid="selectTagColumns"/>
+		where tag_name = #{tagName}
+		  and tag_type = #{tagType}
+		  and del_flag = '0'
+		<if test="excludeTagId != null">and tag_id != #{excludeTagId}</if>
+		limit 1
+	</select>
+
+	<select id="countCustomerByTagId" resultType="int">
+		select count(1)
+		from biz_customer_tag
+		where tag_id = #{tagId}
+	</select>
+
+	<select id="countOpportunityByTagId" resultType="int">
+		select count(1)
+		from biz_business_opportunity_tag
+		where tag_id = #{tagId}
+	</select>
+
+	<select id="countTableRows" resultType="int">
+		select count(1)
+		from information_schema.tables
+		where table_schema = database()
+		  and table_name = #{tableName}
+	</select>
+
+	<select id="selectTagTypeById" resultType="org.springblade.modules.business.pojo.entity.TagType">
+		select type_id as typeId,
+			   type_name as typeName,
+			   sort_order as sortOrder,
+			   status,
+			   del_flag as delFlag
+		from biz_tag_type
+		where type_id = #{tagType}
+		  and status = '0'
+		  and del_flag = '0'
+		limit 1
+	</select>
+
+	<select id="selectTagByType" resultMap="TagResult">
+		<include refid="selectTagColumns"/>
+		where tag_type = #{tagType}
+		  and status = '0'
+		  and del_flag = '0'
+		<if test="parkId != null and parkId != 0">and park_id = #{parkId}</if>
+		order by sort_order asc, tag_id asc
+	</select>
+
+	<select id="selectTagsByCustomerId" resultMap="TagResult">
+		select t.tag_id,
+			   t.tag_name,
+			   t.tag_type,
+			   t.tag_color,
+			   t.sort_order,
+			   t.status,
+			   t.del_flag,
+			   t.park_id,
+			   t.create_by,
+			   t.create_time,
+			   t.update_by,
+			   t.update_time
+		from biz_tag t
+		inner join biz_customer_tag ct on t.tag_id = ct.tag_id
+		where ct.customer_id = #{customerId}
+		  and t.status = '0'
+		  and t.del_flag = '0'
+		order by t.tag_type asc, t.sort_order asc, t.tag_id asc
+	</select>
+
+	<select id="selectTagsByOpportunityId" resultMap="TagResult">
+		select t.tag_id,
+			   t.tag_name,
+			   t.tag_type,
+			   t.tag_color,
+			   t.sort_order,
+			   t.status,
+			   t.del_flag,
+			   t.park_id,
+			   t.create_by,
+			   t.create_time,
+			   t.update_by,
+			   t.update_time
+		from biz_tag t
+		inner join biz_business_opportunity_tag ot on t.tag_id = ot.tag_id
+		where ot.opportunity_id = #{opportunityId}
+		  and t.status = '0'
+		  and t.del_flag = '0'
+		order by t.tag_type asc, t.sort_order asc, t.tag_id asc
+	</select>
+
+	<insert id="insertTag" parameterType="org.springblade.modules.business.pojo.entity.Tag" useGeneratedKeys="true" keyProperty="tagId">
+		insert into biz_tag
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="tagName != null">tag_name,</if>
+			<if test="tagType != null">tag_type,</if>
+			<if test="tagColor != null">tag_color,</if>
+			<if test="sortOrder != null">sort_order,</if>
+			<if test="status != null">status,</if>
+			<if test="delFlag != null">del_flag,</if>
+			<if test="parkId != null">park_id,</if>
+			<if test="createBy != null">create_by,</if>
+			<if test="createTime != null">create_time,</if>
+			<if test="updateTime != null">update_time,</if>
+		</trim>
+		<trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="tagName != null">#{tagName},</if>
+			<if test="tagType != null">#{tagType},</if>
+			<if test="tagColor != null">#{tagColor},</if>
+			<if test="sortOrder != null">#{sortOrder},</if>
+			<if test="status != null">#{status},</if>
+			<if test="delFlag != null">#{delFlag},</if>
+			<if test="parkId != null">#{parkId},</if>
+			<if test="createBy != null">#{createBy},</if>
+			<if test="createTime != null">#{createTime},</if>
+			<if test="updateTime != null">#{updateTime},</if>
+		</trim>
+	</insert>
+
+	<update id="updateTag" parameterType="org.springblade.modules.business.pojo.entity.Tag">
+		update biz_tag
+		<set>
+			<if test="tagName != null">tag_name = #{tagName},</if>
+			<if test="tagType != null">tag_type = #{tagType},</if>
+			<if test="tagColor != null">tag_color = #{tagColor},</if>
+			<if test="parkId != null">park_id = #{parkId},</if>
+			<if test="sortOrder != null">sort_order = #{sortOrder},</if>
+			<if test="status != null">status = #{status},</if>
+			<if test="updateTime != null">update_time = #{updateTime},</if>
+		</set>
+		where tag_id = #{tagId}
+	</update>
+
+	<update id="deleteTagById">
+		update biz_tag set del_flag = '1' where tag_id = #{tagId}
+	</update>
+
+	<update id="deleteTagByIds">
+		update biz_tag set del_flag = '1'
+		where tag_id in
+		<foreach collection="tagIds" item="tagId" open="(" separator="," close=")">
+			#{tagId}
+		</foreach>
+	</update>
+
+	<insert id="batchInsertCustomerTag">
+		insert into biz_customer_tag (customer_id, tag_id, create_time) values
+		<foreach collection="tagIds" item="tagId" separator=",">
+			(#{customerId}, #{tagId}, now())
+		</foreach>
+	</insert>
+
+	<insert id="batchInsertOpportunityTag">
+		insert into biz_business_opportunity_tag (opportunity_id, tag_id, create_time) values
+		<foreach collection="tagIds" item="tagId" separator=",">
+			(#{opportunityId}, #{tagId}, now())
+		</foreach>
+	</insert>
+
+	<delete id="deleteCustomerTags">
+		delete from biz_customer_tag where customer_id = #{customerId}
+	</delete>
+
+	<delete id="deleteOpportunityTags">
+		delete from biz_business_opportunity_tag where opportunity_id = #{opportunityId}
+	</delete>
+
+</mapper>
