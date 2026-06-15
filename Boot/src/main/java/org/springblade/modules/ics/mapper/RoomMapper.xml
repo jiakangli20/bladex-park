@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.ics.mapper.RoomMapper">
+
+    <resultMap id="roomResultMap" type="org.springblade.modules.ics.pojo.entity.Room">
+        <id column="id" property="id"/>
+        <result column="park_id" property="parkId"/>
+        <result column="park_name" property="parkName"/>
+        <result column="building_id" property="buildingId"/>
+        <result column="building_name" property="buildingName"/>
+        <result column="name" property="name"/>
+        <result column="floor" property="floor"/>
+        <result column="area" property="area"/>
+        <result column="rent_price" property="rentPrice"/>
+        <result column="property_fee" property="propertyFee"/>
+        <result column="house_type" property="houseType"/>
+        <result column="orientation" property="orientation"/>
+        <result column="address" property="address"/>
+        <result column="facilities" property="facilities"/>
+        <result column="highlights" property="highlights"/>
+        <result column="scene_images" property="sceneImages"/>
+        <result column="floor_plan_images" property="floorPlanImages"/>
+        <result column="status" property="status"/>
+        <result column="sync_status" property="syncStatus"/>
+        <result column="sync_time" property="syncTime"/>
+        <result column="memo" property="memo"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <resultMap id="roomVOResultMap" type="org.springblade.modules.ics.pojo.vo.RoomVO" extends="roomResultMap"/>
+
+    <sql id="roomColumns">
+        r.id, r.park_id, p.name AS park_name, r.building_id, b.name AS building_name,
+        r.name, r.floor, r.area, r.rent_price, r.property_fee, r.house_type,
+        r.orientation, r.address, r.facilities, r.highlights, r.scene_images,
+        r.floor_plan_images, r.status, r.sync_status, r.sync_time, r.memo,
+        r.create_by, r.create_time, r.update_by, r.update_time
+    </sql>
+
+    <sql id="roomWhere">
+        <where>
+            <if test="room.id != null">AND r.id = #{room.id}</if>
+            <if test="room.parkId != null">AND r.park_id = #{room.parkId}</if>
+            <if test="room.buildingId != null">AND r.building_id = #{room.buildingId}</if>
+            <if test="room.name != null and room.name != ''">AND r.name LIKE CONCAT('%', #{room.name}, '%')</if>
+            <if test="room.floor != null">AND r.floor = #{room.floor}</if>
+            <if test="room.status != null and room.status != ''">AND r.status = #{room.status}</if>
+            <if test="room.orientation != null and room.orientation != ''">AND r.orientation = #{room.orientation}</if>
+            <if test="room.minArea != null">AND r.area <![CDATA[ >= ]]> #{room.minArea}</if>
+            <if test="room.maxArea != null">AND r.area <![CDATA[ <= ]]> #{room.maxArea}</if>
+            <if test="room.minRentPrice != null">AND r.rent_price <![CDATA[ >= ]]> #{room.minRentPrice}</if>
+            <if test="room.maxRentPrice != null">AND r.rent_price <![CDATA[ <= ]]> #{room.maxRentPrice}</if>
+        </where>
+    </sql>
+
+    <select id="selectRoomById" resultMap="roomVOResultMap">
+        SELECT
+        <include refid="roomColumns"/>
+        FROM ics_room r
+        LEFT JOIN ics_building b ON b.id = r.building_id
+        LEFT JOIN ics_park p ON p.id = r.park_id
+        WHERE r.id = #{id}
+    </select>
+
+    <select id="selectRoomList" resultMap="roomVOResultMap">
+        SELECT
+        <include refid="roomColumns"/>
+        FROM ics_room r
+        LEFT JOIN ics_building b ON b.id = r.building_id
+        LEFT JOIN ics_park p ON p.id = r.park_id
+        <include refid="roomWhere"/>
+        ORDER BY r.id DESC
+    </select>
+
+    <select id="selectRoomPage" resultMap="roomVOResultMap">
+        SELECT
+        <include refid="roomColumns"/>
+        FROM ics_room r
+        LEFT JOIN ics_building b ON b.id = r.building_id
+        LEFT JOIN ics_park p ON p.id = r.park_id
+        <include refid="roomWhere"/>
+        ORDER BY r.id DESC
+    </select>
+
+    <select id="sumRoomAreaByFloor" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(area), 0)
+        FROM ics_room
+        WHERE building_id = #{buildingId}
+          AND floor = #{floor}
+          <if test="excludeId != null">AND id != #{excludeId}</if>
+    </select>
+
+    <update id="updateRoomStatus">
+        UPDATE ics_room
+        SET status = #{status},
+            sync_status = '0',
+            update_by = #{updateBy},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="markSyncMini">
+        UPDATE ics_room
+        SET sync_status = '1',
+            sync_time = NOW(),
+            update_by = #{updateBy},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <select id="countTable" resultType="int">
+        SELECT COUNT(1)
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+          AND table_name = #{tableName}
+    </select>
+
+    <select id="countContractRefs" resultType="int">
+        SELECT COUNT(1)
+        FROM biz_contract c
+        WHERE c.del_flag = '0'
+          AND (
+            c.room_id = #{roomId}
+            OR FIND_IN_SET(#{roomId}, REPLACE(COALESCE(c.room_ids, ''), 'room_', ''))
+          )
+    </select>
+
+    <select id="countWorkorderRefs" resultType="int">
+        SELECT COUNT(1)
+        FROM biz_service_workorder w
+        WHERE FIND_IN_SET(#{roomId}, REPLACE(COALESCE(w.room_ids, ''), 'room_', ''))
+    </select>
+</mapper>

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.park.mapper.ParkMapper">
+
+    <resultMap id="parkResultMap" type="org.springblade.modules.park.pojo.entity.Park">
+        <id column="id" property="id"/>
+        <result column="park_id" property="parkId"/>
+        <result column="name" property="name"/>
+        <result column="code" property="code"/>
+        <result column="address" property="address"/>
+        <result column="area" property="area"/>
+        <result column="total_rooms" property="totalRooms"/>
+        <result column="parking_fee" property="parkingFee"/>
+        <result column="latitude" property="latitude"/>
+        <result column="longitude" property="longitude"/>
+        <result column="rent_min" property="rentMin"/>
+        <result column="rent_max" property="rentMax"/>
+        <result column="rent_unit" property="rentUnit"/>
+        <result column="region" property="region"/>
+        <result column="detail_address" property="detailAddress"/>
+        <result column="thumbnail_url" property="thumbnailUrl"/>
+        <result column="banner_url" property="bannerUrl"/>
+        <result column="summary" property="summary"/>
+        <result column="supporting_services" property="supportingServices"/>
+        <result column="traffic_info" property="trafficInfo"/>
+        <result column="content" property="content"/>
+        <result column="contact_name" property="contactName"/>
+        <result column="contact_phone" property="contactPhone"/>
+        <result column="status" property="status"/>
+        <result column="memo" property="memo"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="management_area" property="managementArea"/>
+        <result column="rentable_area" property="rentableArea"/>
+        <result column="total_room_count" property="totalRoomCount"/>
+        <result column="rentable_room_count" property="rentableRoomCount"/>
+    </resultMap>
+
+    <resultMap id="parkVOResultMap" type="org.springblade.modules.park.pojo.vo.ParkVO" extends="parkResultMap"/>
+
+    <sql id="parkColumns">
+        p.id, p.park_id, p.name, p.code, p.address, p.area, p.total_rooms, p.parking_fee,
+        p.latitude, p.longitude, p.rent_min, p.rent_max, p.rent_unit, p.region, p.detail_address,
+        p.thumbnail_url, p.banner_url, p.summary, p.supporting_services, p.traffic_info, p.content,
+        p.contact_name, p.contact_phone, p.status, p.memo, p.create_by, p.create_time,
+        p.update_by, p.update_time
+    </sql>
+
+    <select id="selectParkPage" resultMap="parkVOResultMap">
+        SELECT
+        <include refid="parkColumns"/>,
+        COALESCE(fs.management_area, 0) AS management_area,
+        COALESCE(rs.rentable_area, 0) AS rentable_area,
+        COALESCE(rs.total_room_count, 0) AS total_room_count,
+        COALESCE(rs.rentable_room_count, 0) AS rentable_room_count
+        FROM ics_park p
+        LEFT JOIN (
+            SELECT park_id, SUM(COALESCE(area, 0)) AS management_area
+            FROM ics_floor
+            GROUP BY park_id
+        ) fs ON fs.park_id = p.id
+        LEFT JOIN (
+            SELECT park_id,
+                   COUNT(1) AS total_room_count,
+                   SUM(CASE WHEN status = '0' THEN 1 ELSE 0 END) AS rentable_room_count,
+                   SUM(CASE WHEN status = '0' THEN COALESCE(area, 0) ELSE 0 END) AS rentable_area
+            FROM ics_room
+            GROUP BY park_id
+        ) rs ON rs.park_id = p.id
+        <where>
+            <if test="park.id != null">AND p.id = #{park.id}</if>
+            <if test="park.name != null and park.name != ''">AND p.name LIKE CONCAT('%', #{park.name}, '%')</if>
+            <if test="park.code != null and park.code != ''">AND p.code LIKE CONCAT('%', #{park.code}, '%')</if>
+            <if test="park.status != null and park.status != ''">AND p.status = #{park.status}</if>
+        </where>
+        ORDER BY p.id DESC
+    </select>
+
+    <select id="selectParkStatistics" resultType="java.util.Map">
+        SELECT
+            COALESCE((SELECT SUM(area) FROM ics_floor <where><if test="parkId != null">park_id = #{parkId}</if></where>), 0) AS managementArea,
+            COALESCE((SELECT SUM(area) FROM ics_room <where><if test="parkId != null">park_id = #{parkId} AND</if> status = '0'</where>), 0) AS rentableArea,
+            COALESCE((SELECT COUNT(1) FROM ics_room <where><if test="parkId != null">park_id = #{parkId}</if></where>), 0) AS totalRoomCount,
+            COALESCE((SELECT COUNT(1) FROM ics_room <where><if test="parkId != null">park_id = #{parkId} AND</if> status = '0'</where>), 0) AS rentableRoomCount
+    </select>
+</mapper>
