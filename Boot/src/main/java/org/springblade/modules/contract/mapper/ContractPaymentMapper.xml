@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.contract.mapper.ContractPaymentMapper">
+
+    <resultMap id="paymentResultMap" type="org.springblade.modules.contract.pojo.entity.ContractPayment">
+        <id column="payment_id" property="paymentId"/>
+        <result column="contract_id" property="contractId"/>
+        <result column="fee_type" property="feeType"/>
+        <result column="fee_name" property="feeName"/>
+        <result column="period_start" property="periodStart"/>
+        <result column="period_end" property="periodEnd"/>
+        <result column="amount_due" property="amountDue"/>
+        <result column="amount_paid" property="amountPaid"/>
+        <result column="pay_deadline" property="payDeadline"/>
+        <result column="pay_time" property="payTime"/>
+        <result column="pay_status" property="payStatus"/>
+        <result column="remind_status" property="remindStatus"/>
+        <result column="remind_time" property="remindTime"/>
+        <result column="remark" property="remark"/>
+        <result column="park_id" property="parkId"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="contract_no" property="contractNo"/>
+        <result column="customer_name" property="customerName"/>
+    </resultMap>
+
+    <sql id="selectPaymentVo">
+        SELECT
+            p.payment_id,
+            p.contract_id,
+            p.fee_type,
+            p.fee_name,
+            p.period_start,
+            p.period_end,
+            p.amount_due,
+            p.amount_paid,
+            p.pay_deadline,
+            p.pay_time,
+            p.pay_status,
+            p.remind_status,
+            p.remind_time,
+            p.remark,
+            p.park_id,
+            p.create_by,
+            p.create_time,
+            p.update_by,
+            p.update_time,
+            c.contract_no,
+            c.customer_name
+        FROM biz_contract_payment p
+        LEFT JOIN biz_contract c ON c.contract_id = p.contract_id
+    </sql>
+
+    <select id="selectPaymentPage" resultMap="paymentResultMap">
+        <include refid="selectPaymentVo"/>
+        <where>
+            <if test="payment.contractId != null">
+                AND p.contract_id = #{payment.contractId}
+            </if>
+            <if test="payment.feeType != null and payment.feeType != ''">
+                AND p.fee_type = #{payment.feeType}
+            </if>
+            <if test="payment.payStatus != null and payment.payStatus != ''">
+                AND p.pay_status = #{payment.payStatus}
+            </if>
+            <if test="payment.parkId != null">
+                AND p.park_id = #{payment.parkId}
+            </if>
+        </where>
+        ORDER BY p.pay_deadline ASC, p.payment_id DESC
+    </select>
+
+    <select id="selectByContractId" resultMap="paymentResultMap">
+        <include refid="selectPaymentVo"/>
+        WHERE p.contract_id = #{contractId}
+        ORDER BY p.period_start ASC, p.payment_id ASC
+    </select>
+
+</mapper>
