@@ -1,0 +1,390 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.business.mapper.BusinessOpportunityMapper">
+
+	<resultMap id="BusinessOpportunityResult" type="org.springblade.modules.business.pojo.entity.BusinessOpportunity">
+		<id property="opportunityId" column="opportunity_id"/>
+		<result property="parkId" column="park_id"/>
+		<result property="customerId" column="customer_id"/>
+		<result property="opportunityNo" column="opportunity_no"/>
+		<result property="enterpriseName" column="enterprise_name"/>
+		<result property="creditCode" column="credit_code"/>
+		<result property="establishDate" column="establish_date"/>
+		<result property="registeredCapital" column="registered_capital"/>
+		<result property="enterpriseType" column="enterprise_type"/>
+		<result property="industryType" column="industry_type"/>
+		<result property="businessScope" column="business_scope"/>
+		<result property="registeredAddress" column="registered_address"/>
+		<result property="equityStructure" column="equity_structure"/>
+		<result property="organizationStructure" column="organization_structure"/>
+		<result property="mainBusiness" column="main_business"/>
+		<result property="lastYearRevenue" column="last_year_revenue"/>
+		<result property="majorClients" column="major_clients"/>
+		<result property="majorIllegalFlag" column="major_illegal_flag"/>
+		<result property="dishonestFlag" column="dishonest_flag"/>
+		<result property="industryPenaltyFlag" column="industry_penalty_flag"/>
+		<result property="carrierTypes" column="carrier_types"/>
+		<result property="intentArea" column="intent_area"/>
+		<result property="usagePurpose" column="usage_purpose"/>
+		<result property="leaseTermYears" column="lease_term_years"/>
+		<result property="leaseTermLabel" column="lease_term_label"/>
+		<result property="decorationRequirement" column="decoration_requirement"/>
+		<result property="supportingNeeds" column="supporting_needs"/>
+		<result property="contactName" column="contact_name"/>
+		<result property="contactPhone" column="contact_phone"/>
+		<result property="contactEmail" column="contact_email"/>
+		<result property="contactPosition" column="contact_position"/>
+		<result property="channel" column="channel"/>
+		<result property="thirdPartyChannelName" column="third_party_channel_name"/>
+		<result property="followUser" column="follow_user"/>
+		<result property="opportunityStatus" column="opportunity_status"/>
+		<result property="remark" column="remark"/>
+		<result property="approvalProjectId" column="approval_project_id"/>
+		<result property="submittedAuditFlag" column="submitted_audit_flag"/>
+		<result property="lastFollowTime" column="last_follow_time"/>
+		<result property="nextFollowTime" column="next_follow_time"/>
+		<result property="delFlag" column="del_flag"/>
+		<result property="createBy" column="create_by"/>
+		<result property="createTime" column="create_time"/>
+		<result property="updateBy" column="update_by"/>
+		<result property="updateTime" column="update_time"/>
+	</resultMap>
+
+	<resultMap id="BusinessOpportunityFollowResult" type="org.springblade.modules.business.pojo.entity.BusinessOpportunityFollow">
+		<id property="followId" column="follow_id"/>
+		<result property="opportunityId" column="opportunity_id"/>
+		<result property="followTime" column="follow_time"/>
+		<result property="followUser" column="follow_user"/>
+		<result property="opportunityStatus" column="opportunity_status"/>
+		<result property="followContent" column="follow_content"/>
+		<result property="nextFollowTime" column="next_follow_time"/>
+		<result property="createBy" column="create_by"/>
+		<result property="createTime" column="create_time"/>
+	</resultMap>
+
+	<resultMap id="BusinessOpportunityFileResult" type="org.springblade.modules.business.pojo.entity.BusinessOpportunityFile">
+		<id property="fileId" column="file_id"/>
+		<result property="opportunityId" column="opportunity_id"/>
+		<result property="fileName" column="file_name"/>
+		<result property="fileUrl" column="file_url"/>
+		<result property="fileSuffix" column="file_suffix"/>
+		<result property="fileSize" column="file_size"/>
+		<result property="createBy" column="create_by"/>
+		<result property="createTime" column="create_time"/>
+	</resultMap>
+
+	<sql id="selectOpportunityColumns">
+		select opportunity_id,
+			   park_id,
+			   customer_id,
+			   opportunity_no,
+			   enterprise_name,
+			   credit_code,
+			   establish_date,
+			   registered_capital,
+			   enterprise_type,
+			   industry_type,
+			   business_scope,
+			   registered_address,
+			   equity_structure,
+			   organization_structure,
+			   main_business,
+			   last_year_revenue,
+			   major_clients,
+			   major_illegal_flag,
+			   dishonest_flag,
+			   industry_penalty_flag,
+			   carrier_types,
+			   intent_area,
+			   usage_purpose,
+			   lease_term_years,
+			   lease_term_label,
+			   decoration_requirement,
+			   supporting_needs,
+			   contact_name,
+			   contact_phone,
+			   contact_email,
+			   contact_position,
+			   channel,
+			   third_party_channel_name,
+			   follow_user,
+			   opportunity_status,
+			   remark,
+			   approval_project_id,
+			   submitted_audit_flag,
+			   last_follow_time,
+			   next_follow_time,
+			   del_flag,
+			   create_by,
+			   create_time,
+			   update_by,
+			   update_time
+		from biz_business_opportunity
+	</sql>
+
+	<sql id="opportunityWhere">
+		<where>
+			del_flag = '0'
+			<if test="opportunity != null">
+				<if test="opportunity.parkId != null">and park_id = #{opportunity.parkId}</if>
+				<if test="opportunity.customerId != null">and customer_id = #{opportunity.customerId}</if>
+				<if test="opportunity.opportunityStatus != null and opportunity.opportunityStatus != ''">and opportunity_status = #{opportunity.opportunityStatus}</if>
+				<if test="opportunity.submittedAuditFlag != null and opportunity.submittedAuditFlag != ''">and submitted_audit_flag = #{opportunity.submittedAuditFlag}</if>
+				<if test="opportunity.channel != null and opportunity.channel != ''">and channel = #{opportunity.channel}</if>
+				<if test="opportunity.followUser != null and opportunity.followUser != ''">and follow_user = #{opportunity.followUser}</if>
+				<if test="opportunity.leaseTermLabel != null and opportunity.leaseTermLabel != ''">and lease_term_label = #{opportunity.leaseTermLabel}</if>
+				<if test="opportunity.intentAreaMin != null">and intent_area &gt;= #{opportunity.intentAreaMin}</if>
+				<if test="opportunity.intentAreaMax != null">and intent_area &lt;= #{opportunity.intentAreaMax}</if>
+				<if test="opportunity.beginTime != null and opportunity.beginTime != ''">and create_time &gt;= #{opportunity.beginTime}</if>
+				<if test="opportunity.endTime != null and opportunity.endTime != ''">and create_time &lt;= #{opportunity.endTime}</if>
+				<if test="opportunity.keyword != null and opportunity.keyword != ''">
+					and (enterprise_name like concat('%', #{opportunity.keyword}, '%') or contact_name like concat('%', #{opportunity.keyword}, '%'))
+				</if>
+				<if test="opportunity.contactKeyword != null and opportunity.contactKeyword != ''">
+					and (contact_name like concat('%', #{opportunity.contactKeyword}, '%') or contact_phone like concat('%', #{opportunity.contactKeyword}, '%'))
+				</if>
+				<if test="opportunity.carrierTypeArray != null and opportunity.carrierTypeArray.length &gt; 0">
+					<foreach collection="opportunity.carrierTypeArray" item="carrier" open="and (" separator=" or " close=")">
+						find_in_set(#{carrier}, carrier_types)
+					</foreach>
+				</if>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectBusinessOpportunityById" resultMap="BusinessOpportunityResult">
+		<include refid="selectOpportunityColumns"/>
+		where opportunity_id = #{opportunityId} and del_flag = '0'
+	</select>
+
+	<select id="selectBusinessOpportunityList" resultMap="BusinessOpportunityResult">
+		<include refid="selectOpportunityColumns"/>
+		<include refid="opportunityWhere"/>
+		order by create_time desc, opportunity_id desc
+	</select>
+
+	<select id="selectBusinessOpportunityPage" resultMap="BusinessOpportunityResult">
+		<include refid="selectOpportunityColumns"/>
+		<include refid="opportunityWhere"/>
+		order by create_time desc, opportunity_id desc
+	</select>
+
+	<select id="selectOpportunityStatistics" resultType="java.util.HashMap">
+		select count(1) as totalCount,
+			   sum(case when opportunity_status in ('DRAFT', 'AUDIT', 'LEAD', 'INITIAL', 'DEEP') then 1 else 0 end) as followCount,
+			   sum(case when opportunity_status = 'DEAL' then 1 else 0 end) as dealCount,
+			   sum(case when opportunity_status = 'LOST' then 1 else 0 end) as lostCount
+		from biz_business_opportunity
+		where del_flag = '0'
+	</select>
+
+	<insert id="insertBusinessOpportunity" parameterType="org.springblade.modules.business.pojo.entity.BusinessOpportunity" useGeneratedKeys="true" keyProperty="opportunityId">
+		insert into biz_business_opportunity (
+			park_id, customer_id, opportunity_no, enterprise_name, credit_code, establish_date, registered_capital,
+			enterprise_type, industry_type, business_scope, registered_address, equity_structure, organization_structure,
+			main_business, last_year_revenue, major_clients, major_illegal_flag, dishonest_flag, industry_penalty_flag,
+			carrier_types, intent_area, usage_purpose, lease_term_years, lease_term_label, decoration_requirement,
+			supporting_needs, contact_name, contact_phone, contact_email, contact_position, channel,
+			third_party_channel_name, follow_user, opportunity_status, remark, approval_project_id, submitted_audit_flag,
+			last_follow_time, next_follow_time, del_flag, create_by, create_time, update_by, update_time
+		) values (
+			#{parkId}, #{customerId}, #{opportunityNo}, #{enterpriseName}, #{creditCode}, #{establishDate}, #{registeredCapital},
+			#{enterpriseType}, #{industryType}, #{businessScope}, #{registeredAddress}, #{equityStructure}, #{organizationStructure},
+			#{mainBusiness}, #{lastYearRevenue}, #{majorClients}, #{majorIllegalFlag}, #{dishonestFlag}, #{industryPenaltyFlag},
+			#{carrierTypes}, #{intentArea}, #{usagePurpose}, #{leaseTermYears}, #{leaseTermLabel}, #{decorationRequirement},
+			#{supportingNeeds}, #{contactName}, #{contactPhone}, #{contactEmail}, #{contactPosition}, #{channel},
+			#{thirdPartyChannelName}, #{followUser}, #{opportunityStatus}, #{remark}, #{approvalProjectId}, #{submittedAuditFlag},
+			#{lastFollowTime}, #{nextFollowTime}, #{delFlag}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime}
+		)
+	</insert>
+
+	<update id="updateBusinessOpportunity" parameterType="org.springblade.modules.business.pojo.entity.BusinessOpportunity">
+		update biz_business_opportunity
+		<set>
+			<if test="parkId != null">park_id = #{parkId},</if>
+			<if test="customerId != null">customer_id = #{customerId},</if>
+			<if test="enterpriseName != null">enterprise_name = #{enterpriseName},</if>
+			<if test="creditCode != null">credit_code = #{creditCode},</if>
+			<if test="establishDate != null">establish_date = #{establishDate},</if>
+			<if test="registeredCapital != null">registered_capital = #{registeredCapital},</if>
+			<if test="enterpriseType != null">enterprise_type = #{enterpriseType},</if>
+			<if test="industryType != null">industry_type = #{industryType},</if>
+			<if test="businessScope != null">business_scope = #{businessScope},</if>
+			<if test="registeredAddress != null">registered_address = #{registeredAddress},</if>
+			<if test="equityStructure != null">equity_structure = #{equityStructure},</if>
+			<if test="organizationStructure != null">organization_structure = #{organizationStructure},</if>
+			<if test="mainBusiness != null">main_business = #{mainBusiness},</if>
+			<if test="lastYearRevenue != null">last_year_revenue = #{lastYearRevenue},</if>
+			<if test="majorClients != null">major_clients = #{majorClients},</if>
+			<if test="majorIllegalFlag != null">major_illegal_flag = #{majorIllegalFlag},</if>
+			<if test="dishonestFlag != null">dishonest_flag = #{dishonestFlag},</if>
+			<if test="industryPenaltyFlag != null">industry_penalty_flag = #{industryPenaltyFlag},</if>
+			<if test="carrierTypes != null">carrier_types = #{carrierTypes},</if>
+			<if test="intentArea != null">intent_area = #{intentArea},</if>
+			<if test="usagePurpose != null">usage_purpose = #{usagePurpose},</if>
+			<if test="leaseTermYears != null">lease_term_years = #{leaseTermYears},</if>
+			<if test="leaseTermLabel != null">lease_term_label = #{leaseTermLabel},</if>
+			<if test="decorationRequirement != null">decoration_requirement = #{decorationRequirement},</if>
+			<if test="supportingNeeds != null">supporting_needs = #{supportingNeeds},</if>
+			<if test="contactName != null">contact_name = #{contactName},</if>
+			<if test="contactPhone != null">contact_phone = #{contactPhone},</if>
+			<if test="contactEmail != null">contact_email = #{contactEmail},</if>
+			<if test="contactPosition != null">contact_position = #{contactPosition},</if>
+			<if test="channel != null">channel = #{channel},</if>
+			<if test="thirdPartyChannelName != null">third_party_channel_name = #{thirdPartyChannelName},</if>
+			<if test="followUser != null">follow_user = #{followUser},</if>
+			<if test="opportunityStatus != null">opportunity_status = #{opportunityStatus},</if>
+			<if test="remark != null">remark = #{remark},</if>
+			<if test="approvalProjectId != null">approval_project_id = #{approvalProjectId},</if>
+			<if test="submittedAuditFlag != null">submitted_audit_flag = #{submittedAuditFlag},</if>
+			<if test="lastFollowTime != null">last_follow_time = #{lastFollowTime},</if>
+			<if test="nextFollowTime != null and opportunityStatus != 'DEAL'">next_follow_time = #{nextFollowTime},</if>
+			<if test="opportunityStatus != null and opportunityStatus == 'DEAL'">next_follow_time = null,</if>
+			<if test="updateBy != null">update_by = #{updateBy},</if>
+			update_time = now()
+		</set>
+		where opportunity_id = #{opportunityId}
+	</update>
+
+	<update id="deleteBusinessOpportunityByIds">
+		update biz_business_opportunity set del_flag = '1' where opportunity_id in
+		<foreach collection="ids" item="id" open="(" separator="," close=")">
+			#{id}
+		</foreach>
+	</update>
+
+	<select id="selectLastOpportunityNoByDate" resultType="string">
+		select opportunity_no
+		from biz_business_opportunity
+		where opportunity_no like concat('SJ-', #{datePrefix}, '-%')
+		order by opportunity_no desc limit 1
+	</select>
+
+	<select id="selectFollowList" resultMap="BusinessOpportunityFollowResult">
+		select follow_id,
+			   opportunity_id,
+			   follow_time,
+			   follow_user,
+			   opportunity_status,
+			   follow_content,
+			   next_follow_time,
+			   create_by,
+			   create_time
+		from biz_business_opportunity_follow
+		where opportunity_id = #{opportunityId}
+		order by follow_time desc, follow_id desc
+	</select>
+
+	<insert id="insertFollow" parameterType="org.springblade.modules.business.pojo.entity.BusinessOpportunityFollow" useGeneratedKeys="true" keyProperty="followId">
+		insert into biz_business_opportunity_follow (
+			opportunity_id, follow_time, follow_user, opportunity_status, follow_content, next_follow_time, create_by, create_time
+		) values (
+			#{opportunityId}, #{followTime}, #{followUser}, #{opportunityStatus}, #{followContent}, #{nextFollowTime}, #{createBy}, #{createTime}
+		)
+	</insert>
+
+	<select id="selectFileList" resultMap="BusinessOpportunityFileResult">
+		select file_id,
+			   opportunity_id,
+			   file_name,
+			   file_url,
+			   file_suffix,
+			   file_size,
+			   create_by,
+			   create_time
+		from biz_business_opportunity_file
+		where opportunity_id = #{opportunityId}
+		order by file_id desc
+	</select>
+
+	<insert id="insertFile" parameterType="org.springblade.modules.business.pojo.entity.BusinessOpportunityFile" useGeneratedKeys="true" keyProperty="fileId">
+		insert into biz_business_opportunity_file (
+			opportunity_id, file_name, file_url, file_suffix, file_size, create_by, create_time
+		) values (
+			#{opportunityId}, #{fileName}, #{fileUrl}, #{fileSuffix}, #{fileSize}, #{createBy}, #{createTime}
+		)
+	</insert>
+
+	<select id="selectCustomerIdById" resultType="long">
+		select customer_id
+		from biz_customer
+		where customer_id = #{customerId}
+		  and del_flag = '0'
+		limit 1
+	</select>
+
+	<select id="selectCustomerIdByCreditCode" resultType="long">
+		select customer_id
+		from biz_customer
+		where credit_code = #{creditCode}
+		  and del_flag = '0'
+		order by customer_id asc limit 1
+	</select>
+
+	<select id="countTableRows" resultType="int">
+		select count(1)
+		from information_schema.tables
+		where table_schema = database()
+		  and table_name = #{tableName}
+	</select>
+
+	<select id="selectApprovalFlowId" resultType="long">
+		select flow_id
+		from biz_approval_flow
+		where business_type = 'tenant_entry'
+		  and status = '1'
+		<if test="flowId != null">and flow_id = #{flowId}</if>
+		<if test="flowId == null">
+			and (park_id = #{parkId} or park_id is null or park_id = 0)
+		</if>
+		order by case when park_id = #{parkId} then 0 else 1 end,
+				 flow_version desc,
+				 flow_id desc
+		limit 1
+	</select>
+
+	<select id="selectExistingApprovalProjectId" resultType="long">
+		select project_id
+		from biz_approval_project
+		where business_type = 'tenant_entry'
+		  and business_id = #{opportunityId}
+		  and del_flag = '0'
+		order by case when process_status = '1' then 0 else 1 end, project_id desc
+		limit 1
+	</select>
+
+	<insert id="insertApprovalProject" useGeneratedKeys="true" keyProperty="opportunity.approvalProjectId">
+		insert into biz_approval_project (
+			park_id, customer_id, flow_id, business_type, business_id, project_name, enterprise_name, credit_code,
+			applicant, applicant_time, lease_area, rent_price, summary, process_status, create_by, create_time
+		) values (
+			#{opportunity.parkId}, #{opportunity.customerId}, #{flowId}, 'tenant_entry', #{opportunity.opportunityId},
+			concat(#{opportunity.enterpriseName}, ' 入驻审核'), #{opportunity.enterpriseName}, #{opportunity.creditCode},
+			#{loginName}, now(), #{opportunity.intentArea}, #{opportunity.intentArea},
+			coalesce(#{opportunity.remark}, #{opportunity.businessScope}), '0', #{loginName}, now()
+		)
+	</insert>
+
+	<update id="updateApprovalProjectStatus">
+		update biz_approval_project
+		set process_status = '1',
+			current_node = #{loginName},
+			current_node_name = '经办人提交',
+			update_by = #{loginName},
+			update_time = now()
+		where project_id = #{projectId}
+	</update>
+
+	<insert id="insertApprovalLog">
+		insert into biz_approval_log (
+			park_id, project_id, flow_id, node_name, node_type, action_type, operator_name,
+			opinion, result_status, operate_time, create_by, create_time
+		) values (
+			#{opportunity.parkId}, #{projectId}, #{flowId}, '经办人提交', 'submit', 'SUBMIT', #{loginName},
+			'提交审批', '已提交', now(), #{loginName}, now()
+		)
+	</insert>
+
+</mapper>
