@@ -23,54 +23,27 @@
  * <p>
  * Author: Chill Zhuang (bladejava@qq.com)
  */
-package org.springblade.modules.ics.service;
+package org.springblade.modules.ics.excel;
 
-import com.baomidou.mybatisplus.extension.service.IService;
-import org.springblade.modules.ics.pojo.entity.Floor;
+import lombok.RequiredArgsConstructor;
+import org.springblade.core.excel.support.ExcelImporter;
+import org.springblade.modules.ics.service.IBuildingService;
 
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 /**
- * 楼层服务类
+ * 建筑数据导入类
  *
  * @author Chill
  */
-public interface IFloorService extends IService<Floor> {
+@RequiredArgsConstructor
+public class BuildingImporter implements ExcelImporter<BuildingExcel> {
 
-	/**
-	 * 查询楼层列表
-	 *
-	 * @param floor 查询条件
-	 * @return 楼层集合
-	 */
-	List<Floor> selectFloorList(Floor floor);
+	private final IBuildingService service;
 
-	/**
-	 * 查询建筑下指定楼层
-	 *
-	 * @param buildingId 建筑ID
-	 * @param floorNo 楼层号
-	 * @return 楼层
-	 */
-	Floor selectFloorByBuildingAndNo(Long buildingId, Integer floorNo);
-
-	/**
-	 * 同步建筑楼层
-	 *
-	 * @param buildingId 建筑ID
-	 * @param operator 操作人
-	 */
-	void syncBuildingFloors(Long buildingId, String operator);
-
-	/**
-	 * 更新建筑楼层面积
-	 *
-	 * @param buildingId 建筑ID
-	 * @param floorAreaMap 楼层面积
-	 * @param operator 操作人
-	 */
-	void updateBuildingFloorAreas(Long buildingId, Map<Integer, BigDecimal> floorAreaMap, String operator);
+	@Override
+	public void save(List<BuildingExcel> data) {
+		service.importBuilding(data);
+	}
 
 }

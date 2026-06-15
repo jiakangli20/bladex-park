@@ -157,4 +157,8 @@ public class Building implements Serializable {
 	@Schema(description = "在租面积")
 	private BigDecimal rentedArea;
 
+	@TableField(exist = false)
+	@Schema(description = "在租合同数")
+	private Integer activeContractCount;
+
 }

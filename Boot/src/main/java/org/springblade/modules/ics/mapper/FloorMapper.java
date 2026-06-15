@@ -27,6 +27,7 @@ package org.springblade.modules.ics.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Param;
+import org.springblade.modules.ics.pojo.dto.BuildingFloorAreaDTO;
 import org.springblade.modules.ics.pojo.entity.Floor;
 
 import java.util.List;
@@ -54,5 +55,22 @@ public interface FloorMapper extends BaseMapper<Floor> {
 	 * @return 楼层
 	 */
 	Floor selectFloorByBuildingAndNo(@Param("buildingId") Long buildingId, @Param("floorNo") Integer floorNo);
+
+	/**
+	 * 查询建筑楼层面积配置
+	 *
+	 * @param buildingId 建筑ID
+	 * @return 楼层面积集合
+	 */
+	List<BuildingFloorAreaDTO> selectFloorAreaListByBuildingId(@Param("buildingId") Long buildingId);
+
+	/**
+	 * 查询指定楼层房源数量
+	 *
+	 * @param buildingId 建筑ID
+	 * @param floorNo 楼层号
+	 * @return 房源数量
+	 */
+	int countRoomsByFloor(@Param("buildingId") Long buildingId, @Param("floorNo") Integer floorNo);
 
 }

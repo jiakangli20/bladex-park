@@ -82,4 +82,18 @@
         ORDER BY f.id ASC
         LIMIT 1
     </select>
+
+    <select id="selectFloorAreaListByBuildingId" resultType="org.springblade.modules.ics.pojo.dto.BuildingFloorAreaDTO">
+        SELECT f.floor_no AS floorNo, f.area
+        FROM ics_floor f
+        WHERE f.building_id = #{buildingId}
+        ORDER BY f.floor_no ASC
+    </select>
+
+    <select id="countRoomsByFloor" resultType="int">
+        SELECT COUNT(1)
+        FROM ics_room
+        WHERE building_id = #{buildingId}
+          AND floor = #{floorNo}
+    </select>
 </mapper>

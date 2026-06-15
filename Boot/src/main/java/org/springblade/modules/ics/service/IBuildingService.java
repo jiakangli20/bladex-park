@@ -25,8 +25,12 @@
  */
 package org.springblade.modules.ics.service;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
+import org.springblade.modules.ics.excel.BuildingExcel;
+import org.springblade.modules.ics.pojo.dto.BuildingDTO;
 import org.springblade.modules.ics.pojo.entity.Building;
+import org.springblade.modules.ics.pojo.vo.BuildingVO;
 
 import java.util.List;
 
@@ -44,5 +48,53 @@ public interface IBuildingService extends IService<Building> {
 	 * @return 建筑集合
 	 */
 	List<Building> selectBuildingList(Building building);
+
+	/**
+	 * 查询建筑分页
+	 *
+	 * @param page 分页
+	 * @param building 查询条件
+	 * @return 建筑分页
+	 */
+	IPage<BuildingVO> selectBuildingPage(IPage<BuildingVO> page, Building building);
+
+	/**
+	 * 查询建筑详情
+	 *
+	 * @param id 建筑ID
+	 * @return 建筑
+	 */
+	BuildingVO selectBuildingById(Long id);
+
+	/**
+	 * 新增或修改建筑
+	 *
+	 * @param buildingDTO 建筑
+	 * @return 是否成功
+	 */
+	boolean submit(BuildingDTO buildingDTO);
+
+	/**
+	 * 删除建筑
+	 *
+	 * @param ids 主键集合
+	 * @return 是否成功
+	 */
+	boolean removeBuilding(String ids);
+
+	/**
+	 * 导出建筑
+	 *
+	 * @param building 查询条件
+	 * @return 建筑导出集合
+	 */
+	List<BuildingExcel> exportBuilding(Building building);
+
+	/**
+	 * 导入建筑
+	 *
+	 * @param data 导入数据
+	 */
+	void importBuilding(List<BuildingExcel> data);
 
 }
