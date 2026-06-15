@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.contract.mapper.ContractLogMapper">
+
+    <resultMap id="logResultMap" type="org.springblade.modules.contract.pojo.entity.ContractLog">
+        <id column="log_id" property="logId"/>
+        <result column="contract_id" property="contractId"/>
+        <result column="action" property="action"/>
+        <result column="action_desc" property="actionDesc"/>
+        <result column="operator" property="operator"/>
+        <result column="operate_time" property="operateTime"/>
+    </resultMap>
+
+    <select id="selectByContractId" resultMap="logResultMap">
+        SELECT log_id, contract_id, action, action_desc, operator, operate_time
+        FROM biz_contract_log
+        WHERE contract_id = #{contractId}
+        ORDER BY operate_time DESC, log_id DESC
+    </select>
+
+</mapper>

@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.contract.mapper.ContractMapper">
+
+    <resultMap id="contractResultMap" type="org.springblade.modules.contract.pojo.entity.Contract">
+        <id column="contract_id" property="contractId"/>
+        <result column="contract_no" property="contractNo"/>
+        <result column="contract_name" property="contractName"/>
+        <result column="project_id" property="projectId"/>
+        <result column="customer_id" property="customerId"/>
+        <result column="customer_name" property="customerName"/>
+        <result column="room_id" property="roomId"/>
+        <result column="room_ids" property="roomIds"/>
+        <result column="room_name" property="roomName"/>
+        <result column="building_id" property="buildingId"/>
+        <result column="building_ids" property="buildingIds"/>
+        <result column="building_name" property="buildingName"/>
+        <result column="rent_price" property="rentPrice"/>
+        <result column="rent_area" property="rentArea"/>
+        <result column="monthly_rent" property="monthlyRent"/>
+        <result column="property_fee" property="propertyFee"/>
+        <result column="deposit" property="deposit"/>
+        <result column="follow_user" property="followUser"/>
+        <result column="rent_increase_node" property="rentIncreaseNode"/>
+        <result column="rent_increase_rate" property="rentIncreaseRate"/>
+        <result column="rent_increase_unit" property="rentIncreaseUnit"/>
+        <result column="late_fee_ratio" property="lateFeeRatio"/>
+        <result column="late_fee_unit" property="lateFeeUnit"/>
+        <result column="late_fee_cap" property="lateFeeCap"/>
+        <result column="management_fee" property="managementFee"/>
+        <result column="public_fee" property="publicFee"/>
+        <result column="start_date" property="startDate"/>
+        <result column="end_date" property="endDate"/>
+        <result column="sign_date" property="signDate"/>
+        <result column="renewal_remind_days" property="renewalRemindDays"/>
+        <result column="contract_status" property="contractStatus"/>
+        <result column="payment_cycle" property="paymentCycle"/>
+        <result column="contract_file_url" property="contractFileUrl"/>
+        <result column="remark" property="remark"/>
+        <result column="parent_contract_id" property="parentContractId"/>
+        <result column="del_flag" property="delFlag"/>
+        <result column="park_id" property="parkId"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="park_name" property="parkName"/>
+        <result column="contract_status_name" property="contractStatusName"/>
+    </resultMap>
+
+    <resultMap id="contractStatsResultMap" type="org.springblade.modules.contract.pojo.vo.ContractStatsVO">
+        <result column="total_count" property="totalCount"/>
+        <result column="pending_count" property="pendingCount"/>
+        <result column="active_count" property="activeCount"/>
+        <result column="expired_count" property="expiredCount"/>
+        <result column="renewed_count" property="renewedCount"/>
+        <result column="terminated_count" property="terminatedCount"/>
+        <result column="monthly_rent_total" property="monthlyRentTotal"/>
+        <result column="deposit_total" property="depositTotal"/>
+    </resultMap>
+
+    <sql id="selectContractVo">
+        SELECT
+            c.contract_id,
+            c.contract_no,
+            c.contract_name,
+            c.project_id,
+            c.customer_id,
+            c.customer_name,
+            c.room_id,
+            c.room_ids,
+            c.room_name,
+            c.building_id,
+            c.building_ids,
+            c.building_name,
+            c.rent_price,
+            c.rent_area,
+            c.monthly_rent,
+            c.property_fee,
+            c.deposit,
+            c.follow_user,
+            c.rent_increase_node,
+            c.rent_increase_rate,
+            c.rent_increase_unit,
+            c.late_fee_ratio,
+            c.late_fee_unit,
+            c.late_fee_cap,
+            c.management_fee,
+            c.public_fee,
+            c.start_date,
+            c.end_date,
+            c.sign_date,
+            c.renewal_remind_days,
+            c.contract_status,
+            CASE c.contract_status
+                WHEN '0' THEN '待签约'
+                WHEN '1' THEN '履约中'
+                WHEN '2' THEN '已到期'
+                WHEN '3' THEN '已续签'
+                WHEN '4' THEN '已终止'
+                ELSE '未知'
+            END AS contract_status_name,
+            c.payment_cycle,
+            c.contract_file_url,
+            c.remark,
+            c.parent_contract_id,
+            c.del_flag,
+            c.park_id,
+            c.create_by,
+            c.create_time,
+            c.update_by,
+            c.update_time,
+            p.name AS park_name
+        FROM biz_contract c
+        LEFT JOIN ics_park p ON p.id = c.park_id
+    </sql>
+
+    <sql id="contractWhere">
+        c.del_flag = '0'
+        <if test="contract.contractId != null">
+            AND c.contract_id = #{contract.contractId}
+        </if>
+        <if test="contract.projectId != null">
+            AND c.project_id = #{contract.projectId}
+        </if>
+        <if test="contract.customerId != null">
+            AND c.customer_id = #{contract.customerId}
+        </if>
+        <if test="contract.contractNo != null and contract.contractNo != ''">
+            AND c.contract_no LIKE CONCAT('%', #{contract.contractNo}, '%')
+        </if>
+        <if test="contract.contractName != null and contract.contractName != ''">
+            AND c.contract_name LIKE CONCAT('%', #{contract.contractName}, '%')
+        </if>
+        <if test="contract.customerName != null and contract.customerName != ''">
+            AND c.customer_name LIKE CONCAT('%', #{contract.customerName}, '%')
+        </if>
+        <if test="contract.contractStatus != null and contract.contractStatus != ''">
+            AND c.contract_status = #{contract.contractStatus}
+        </if>
+        <if test="contract.roomName != null and contract.roomName != ''">
+            AND c.room_name LIKE CONCAT('%', #{contract.roomName}, '%')
+        </if>
+        <if test="contract.parkId != null">
+            AND c.park_id = #{contract.parkId}
+        </if>
+    </sql>
+
+    <select id="selectContractPage" resultMap="contractResultMap">
+        <include refid="selectContractVo"/>
+        <where>
+            <include refid="contractWhere"/>
+        </where>
+        ORDER BY c.create_time DESC, c.contract_id DESC
+    </select>
+
+    <select id="selectContractById" resultMap="contractResultMap">
+        <include refid="selectContractVo"/>
+        WHERE c.contract_id = #{contractId}
+          AND c.del_flag = '0'
+    </select>
+
+    <select id="selectExpiringPage" resultMap="contractResultMap">
+        <include refid="selectContractVo"/>
+        <where>
+            c.del_flag = '0'
+            AND c.contract_status = '1'
+            AND c.end_date &lt;= DATE_ADD(CURDATE(), INTERVAL IFNULL(c.renewal_remind_days, 30) DAY)
+            AND c.end_date &gt;= CURDATE()
+            <if test="contract.parkId != null">
+                AND c.park_id = #{contract.parkId}
+            </if>
+            <if test="contract.contractNo != null and contract.contractNo != ''">
+                AND c.contract_no LIKE CONCAT('%', #{contract.contractNo}, '%')
+            </if>
+            <if test="contract.contractName != null and contract.contractName != ''">
+                AND c.contract_name LIKE CONCAT('%', #{contract.contractName}, '%')
+            </if>
+            <if test="contract.customerName != null and contract.customerName != ''">
+                AND c.customer_name LIKE CONCAT('%', #{contract.customerName}, '%')
+            </if>
+        </where>
+        ORDER BY c.end_date ASC, c.contract_id DESC
+    </select>
+
+    <select id="selectStats" resultMap="contractStatsResultMap">
+        SELECT
+            COUNT(1) AS total_count,
+            SUM(CASE WHEN contract_status = '0' THEN 1 ELSE 0 END) AS pending_count,
+            SUM(CASE WHEN contract_status = '1' THEN 1 ELSE 0 END) AS active_count,
+            SUM(CASE WHEN contract_status = '2' THEN 1 ELSE 0 END) AS expired_count,
+            SUM(CASE WHEN contract_status = '3' THEN 1 ELSE 0 END) AS renewed_count,
+            SUM(CASE WHEN contract_status = '4' THEN 1 ELSE 0 END) AS terminated_count,
+            IFNULL(SUM(monthly_rent), 0) AS monthly_rent_total,
+            IFNULL(SUM(deposit), 0) AS deposit_total
+        FROM biz_contract
+        WHERE del_flag = '0'
+        <if test="parkId != null">
+            AND park_id = #{parkId}
+        </if>
+    </select>
+
+    <update id="deleteContractByIds">
+        UPDATE biz_contract
+        SET del_flag = '1',
+            update_time = NOW()
+        WHERE contract_id IN
+        <foreach item="id" collection="ids" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <select id="existsPark" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM ics_park
+        WHERE id = #{parkId}
+    </select>
+
+    <select id="existsBuilding" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM ics_building
+        WHERE id = #{buildingId}
+    </select>
+
+    <select id="existsRoom" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM ics_room
+        WHERE id = #{roomId}
+    </select>
+
+    <select id="existsSettledCustomer" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM biz_customer
+        WHERE customer_id = #{customerId}
+          AND del_flag = '0'
+          AND settlement_status = 3
+          AND status = '0'
+    </select>
+
+</mapper>
