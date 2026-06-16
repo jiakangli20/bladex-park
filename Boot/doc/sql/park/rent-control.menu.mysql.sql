@@ -32,7 +32,7 @@ WHERE `id` IN (
 
 INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `sort`, `category`, `action`, `is_open`, `component`, `remark`, `is_deleted`)
 VALUES
-  (1963598815738675501, 1963598815738675401, 'rent_control', '租赁管理', 'menu', '/ics/rent-control', 'iconfont icon-caidanguanli', 2, 1, 0, 1, '', NULL, 0),
+  (1963598815738675501, 1963598815738675401, 'rent_control', '租赁管理', 'menu', '/ics/rent-control', 'iconfont icon-caidanguanli', 4, 1, 0, 1, '', NULL, 0),
   (1963598815738675502, 1963598815738675501, 'rent_control_list', '看板查询', 'list', '/api/blade-ics/rent-control/board', 'search', 1, 2, 1, 1, '', NULL, 0),
   (1963598815738675503, 1963598815738675501, 'rent_control_detail', '房源详情', 'detail', '/api/blade-ics/room/detail', 'file-text', 2, 2, 2, 1, '', NULL, 0),
   (1963598815738675504, 1963598815738675501, 'rent_control_room_add', '新增房间', 'add', '/api/blade-ics/room/submit', 'plus', 3, 2, 1, 1, '', NULL, 0),

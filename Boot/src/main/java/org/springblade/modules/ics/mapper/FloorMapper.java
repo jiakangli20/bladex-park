@@ -26,10 +26,13 @@
 package org.springblade.modules.ics.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.apache.ibatis.annotations.Param;
 import org.springblade.modules.ics.pojo.dto.BuildingFloorAreaDTO;
 import org.springblade.modules.ics.pojo.entity.Floor;
+import org.springblade.modules.ics.pojo.entity.Room;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -46,6 +49,23 @@ public interface FloorMapper extends BaseMapper<Floor> {
 	 * @return 楼层集合
 	 */
 	List<Floor> selectFloorList(@Param("floor") Floor floor);
+
+	/**
+	 * 查询楼层分页
+	 *
+	 * @param page 分页
+	 * @param floor 查询条件
+	 * @return 楼层集合
+	 */
+	List<Floor> selectFloorPage(IPage<Floor> page, @Param("floor") Floor floor);
+
+	/**
+	 * 查询楼层详情
+	 *
+	 * @param id 楼层ID
+	 * @return 楼层
+	 */
+	Floor selectFloorById(@Param("id") Long id);
 
 	/**
 	 * 查询建筑下指定楼层
@@ -72,5 +92,24 @@ public interface FloorMapper extends BaseMapper<Floor> {
 	 * @return 房源数量
 	 */
 	int countRoomsByFloor(@Param("buildingId") Long buildingId, @Param("floorNo") Integer floorNo);
+
+	/**
+	 * 查询楼层房间列表
+	 *
+	 * @param buildingId 建筑ID
+	 * @param floorNo 楼层号
+	 * @param roomStatus 房间状态
+	 * @return 房间集合
+	 */
+	List<Room> selectRoomsByFloor(@Param("buildingId") Long buildingId, @Param("floorNo") Integer floorNo, @Param("roomStatus") String roomStatus);
+
+	/**
+	 * 汇总指定楼层房间面积
+	 *
+	 * @param buildingId 建筑ID
+	 * @param floorNo 楼层号
+	 * @return 房间面积
+	 */
+	BigDecimal sumRoomAreaByFloor(@Param("buildingId") Long buildingId, @Param("floorNo") Integer floorNo);
 
 }
