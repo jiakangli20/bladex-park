@@ -60,7 +60,7 @@ export default {
     registerMode: true,
     // 使用后端工程 @org.springblade.test.Sm2KeyGenerator 获取
     publicKey:
-      '041b7e274f7d5617afa4ecc26c154cd2f4b6ef40823224cd411a452715441d4e75b0cfb099e91a44fe5e5640d94db24330f168467d156aace66d4577361a9f0329',
+      '047e484091da95e0109aa7436b6b33b057829367f4417770aaae1895e3e5b001e6a00157d9f6f7165c8d903273179b80991411512095fb8fb172745499ef16709d',
     // 第三方系统授权地址
     authUrl: 'http://localhost:8080/blade-auth/oauth/render',
     // 单点登录系统认证

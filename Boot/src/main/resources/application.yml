@@ -1,6 +1,6 @@
 #服务器配置
 server:
-  port: 80
+  port: 8080
   undertow:
     threads:
       # 设置IO线程数, 它主要执行非阻塞的任务,它们会负责多个连接, 默认设置每个CPU核心一个线程
@@ -170,9 +170,9 @@ blade:
     #启用 oauth2
     enabled: true
     #使用 @org.springblade.test.Sm2KeyGenerator 获取,用于国密sm2验签,需和前端保持一致
-    public-key: ${BLADE_OAUTH2_PUBLIC_KEY}
+    public-key: 047e484091da95e0109aa7436b6b33b057829367f4417770aaae1895e3e5b001e6a00157d9f6f7165c8d903273179b80991411512095fb8fb172745499ef16709d
     #使用 @org.springblade.test.Sm2KeyGenerator 获取,用于国密sm2解密,前端无需配置
-    private-key: ${BLADE_OAUTH2_PRIVATE_KEY}
+    private-key: 00b53e64bf95023db52c524d6f202f5213f5a392d64d34d598ec59638494065a03
   #token配置
   token:
     #是否有状态
@@ -182,15 +182,15 @@ blade:
     #单用户登录范围
     single-level: all
     #token签名 使用 @org.springblade.test.SignKeyGenerator 获取
-    sign-key: 82f35bcb16b8d5b02f0575a9bc9522af5deb78c1
+    sign-key: 7P1W43mRO8mHplNdyN7DNRpsMvizwCGU
     #token加密 使用 @org.springblade.test.CryptoKeyGenerator 获取
-    crypto-key: ${BLADE_TOKEN_CRYPTO_KEY}
+    crypto-key: CvvQR11uZ0Wz6ZfG21Ey1jtMiGfWXA59
   #超级密钥配置
   key:
     #启用超级密钥
     enabled: false
     #密钥加密 使用 @org.springblade.test.CryptoKeyGenerator 获取
-    crypto-key: ${BLADE_KEY_CRYPTO_KEY}
+    crypto-key: CvvQR11uZ0Wz6ZfG21Ey1jtMiGfWXA59
   #接口配置
   api:
     #报文加密配置
@@ -198,9 +198,9 @@ blade:
       #启用报文加密配置
       enabled: false
       #使用 @org.springblade.test.CryptoKeyGenerator 获取,需和前端保持一致
-      aes-key: ${BLADE_API_CRYPTO_AES_KEY}
+      aes-key: qRih3yZcCM3NrwX99s5VrSZbV8qNkUnw
       #使用 @org.springblade.test.CryptoKeyGenerator 获取,需和前端保持一致
-      des-key: ${BLADE_API_CRYPTO_DES_KEY}
+      des-key: qwKUILGdHzoNoxr9
   #jackson配置
   jackson:
     #null自动转空值

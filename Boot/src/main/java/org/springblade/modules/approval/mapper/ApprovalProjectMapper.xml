@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.approval.mapper.ApprovalProjectMapper">
+
+	<resultMap id="approvalProjectResultMap" type="org.springblade.modules.approval.pojo.entity.ApprovalProject">
+		<id column="project_id" property="projectId"/>
+		<result column="park_id" property="parkId"/>
+		<result column="customer_id" property="customerId"/>
+		<result column="flow_id" property="flowId"/>
+		<result column="business_id" property="businessId"/>
+		<result column="business_type" property="businessType"/>
+		<result column="project_name" property="projectName"/>
+		<result column="enterprise_name" property="enterpriseName"/>
+		<result column="credit_code" property="creditCode"/>
+		<result column="applicant" property="applicant"/>
+		<result column="applicant_dept" property="applicantDept"/>
+		<result column="applicant_time" property="applicantTime"/>
+		<result column="shareholder_info" property="shareholderInfo"/>
+		<result column="business_scope" property="businessScope"/>
+		<result column="responsible_person" property="responsiblePerson"/>
+		<result column="contact_phone" property="contactPhone"/>
+		<result column="lease_floor" property="leaseFloor"/>
+		<result column="lease_area" property="leaseArea"/>
+		<result column="rent_price" property="rentPrice"/>
+		<result column="deposit" property="deposit"/>
+		<result column="rent_free_period" property="rentFreePeriod"/>
+		<result column="lease_start_date" property="leaseStartDate"/>
+		<result column="lease_end_date" property="leaseEndDate"/>
+		<result column="current_node" property="currentNode"/>
+		<result column="current_node_name" property="currentNodeName"/>
+		<result column="process_status" property="processStatus"/>
+		<result column="approval_result" property="approvalResult"/>
+		<result column="summary" property="summary"/>
+		<result column="approval_matter" property="approvalMatter"/>
+		<result column="approval_form_json" property="approvalFormJson"/>
+		<result column="approval_form_url" property="approvalFormUrl"/>
+		<result column="archive_time" property="archiveTime"/>
+		<result column="del_flag" property="delFlag"/>
+		<result column="create_by" property="createBy"/>
+		<result column="create_time" property="createTime"/>
+		<result column="update_by" property="updateBy"/>
+		<result column="update_time" property="updateTime"/>
+		<result column="material_count" property="materialCount"/>
+		<result column="log_count" property="logCount"/>
+	</resultMap>
+
+	<sql id="selectApprovalProjectColumns">
+		select p.project_id,
+			   p.park_id,
+			   p.customer_id,
+			   p.flow_id,
+			   p.business_id,
+			   p.business_type,
+			   p.project_name,
+			   p.enterprise_name,
+			   p.credit_code,
+			   p.applicant,
+			   p.applicant_dept,
+			   p.applicant_time,
+			   p.shareholder_info,
+			   p.business_scope,
+			   p.responsible_person,
+			   p.contact_phone,
+			   p.lease_floor,
+			   p.lease_area,
+			   p.rent_price,
+			   p.deposit,
+			   p.rent_free_period,
+			   p.lease_start_date,
+			   p.lease_end_date,
+			   p.current_node,
+			   p.current_node_name,
+			   p.process_status,
+			   p.approval_result,
+			   p.summary,
+			   p.approval_matter,
+			   p.approval_form_json,
+			   p.approval_form_url,
+			   p.archive_time,
+			   p.del_flag,
+			   p.create_by,
+			   p.create_time,
+			   p.update_by,
+			   p.update_time,
+			   coalesce(m.material_count, 0) as material_count,
+			   coalesce(l.log_count, 0) as log_count
+		from biz_approval_project p
+		left join (
+			select project_id, count(*) as material_count
+			from biz_approval_material
+			group by project_id
+		) m on m.project_id = p.project_id
+		left join (
+			select project_id, count(*) as log_count
+			from biz_approval_log
+			group by project_id
+		) l on l.project_id = p.project_id
+	</sql>
+
+	<sql id="approvalProjectWhere">
+		<where>
+			coalesce(p.del_flag, '0') = '0'
+			and p.process_status != '9'
+			<if test="project != null">
+				<if test="project.parkId != null">and p.park_id = #{project.parkId}</if>
+				<if test="project.customerId != null">and p.customer_id = #{project.customerId}</if>
+				<if test="project.flowId != null">and p.flow_id = #{project.flowId}</if>
+				<if test="project.businessId != null">and p.business_id = #{project.businessId}</if>
+				<if test="project.businessType != null and project.businessType != ''">and p.business_type = #{project.businessType}</if>
+				<if test="project.projectName != null and project.projectName != ''">and p.project_name like concat('%', #{project.projectName}, '%')</if>
+				<if test="project.enterpriseName != null and project.enterpriseName != ''">and p.enterprise_name like concat('%', #{project.enterpriseName}, '%')</if>
+				<if test="project.processStatus != null and project.processStatus != ''">and p.process_status = #{project.processStatus}</if>
+				<if test="project.excludeProcessStatus != null and project.excludeProcessStatus != ''">and p.process_status != #{project.excludeProcessStatus}</if>
+				<if test="project.scope != null and 'mine'.equals(project.scope) and project.currentUser != null and project.currentUser != ''">
+					and (p.applicant = #{project.currentUser} or p.create_by = #{project.currentUser})
+				</if>
+				<if test="project.scope != null and 'todo'.equals(project.scope)">
+					and p.process_status = '1'
+					<if test="project.admin == null or project.admin == false">
+						and find_in_set(#{project.currentUser}, replace(coalesce(p.current_node, ''), ' ', '')) &gt; 0
+					</if>
+				</if>
+				<if test="project.scope != null and 'done'.equals(project.scope) and project.currentUser != null and project.currentUser != ''">
+					and exists (
+						select 1
+						from biz_approval_log al_done
+						where al_done.project_id = p.project_id
+						  and al_done.operator_name = #{project.currentUser}
+						  and al_done.action_type in ('APPROVE', 'REJECT', 'TRANSFER')
+					)
+				</if>
+				<if test="project.scope != null and 'cc'.equals(project.scope) and project.currentUser != null and project.currentUser != ''">
+					and (
+						exists (
+							select 1
+							from biz_approval_node an_cc
+							where an_cc.flow_id = p.flow_id
+							  and find_in_set(#{project.currentUser}, replace(coalesce(an_cc.cc_users, ''), ' ', '')) &gt; 0
+						)
+						or exists (
+							select 1
+							from biz_approval_log al_cc
+							where al_cc.project_id = p.project_id
+							  and find_in_set(#{project.currentUser}, replace(coalesce(al_cc.cc_users, ''), ' ', '')) &gt; 0
+						)
+					)
+				</if>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectApprovalProjectById" resultMap="approvalProjectResultMap">
+		<include refid="selectApprovalProjectColumns"/>
+		where p.project_id = #{projectId}
+	</select>
+
+	<select id="selectApprovalProjectList" resultMap="approvalProjectResultMap">
+		<include refid="selectApprovalProjectColumns"/>
+		<include refid="approvalProjectWhere"/>
+		order by p.create_time desc, p.project_id desc
+	</select>
+
+	<select id="selectApprovalProjectPage" resultMap="approvalProjectResultMap">
+		<include refid="selectApprovalProjectColumns"/>
+		<include refid="approvalProjectWhere"/>
+		order by p.create_time desc, p.project_id desc
+	</select>
+
+	<select id="selectApprovalProjectStatistics" resultType="java.util.HashMap">
+		select p.process_status as processStatus, count(1) as total
+		from biz_approval_project p
+		<include refid="approvalProjectWhere"/>
+		group by p.process_status
+	</select>
+
+	<insert id="insertApprovalProject" parameterType="org.springblade.modules.approval.pojo.entity.ApprovalProject" useGeneratedKeys="true" keyProperty="projectId">
+		insert into biz_approval_project
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="parkId != null">park_id,</if>
+			<if test="customerId != null">customer_id,</if>
+			<if test="flowId != null">flow_id,</if>
+			<if test="businessId != null">business_id,</if>
+			<if test="businessType != null">business_type,</if>
+			<if test="projectName != null">project_name,</if>
+			<if test="enterpriseName != null">enterprise_name,</if>
+			<if test="creditCode != null">credit_code,</if>
+			<if test="applicant != null">applicant,</if>
+			<if test="applicantDept != null">applicant_dept,</if>
+			<if test="applicantTime != null">applicant_time,</if>
+			<if test="shareholderInfo != null">shareholder_info,</if>
+			<if test="businessScope != null">business_scope,</if>
+			<if test="responsiblePerson != null">responsible_person,</if>
+			<if test="contactPhone != null">contact_phone,</if>
+			<if test="leaseFloor != null">lease_floor,</if>
+			<if test="leaseArea != null">lease_area,</if>
+			<if test="rentPrice != null">rent_price,</if>
+			<if test="deposit != null">deposit,</if>
+			<if test="rentFreePeriod != null">rent_free_period,</if>
+			<if test="leaseStartDate != null">lease_start_date,</if>
+			<if test="leaseEndDate != null">lease_end_date,</if>
+			<if test="currentNode != null">current_node,</if>
+			<if test="currentNodeName != null">current_node_name,</if>
+			<if test="processStatus != null">process_status,</if>
+			<if test="approvalResult != null">approval_result,</if>
+			<if test="summary != null">summary,</if>
+			<if test="approvalMatter != null">approval_matter,</if>
+			<if test="approvalFormJson != null">approval_form_json,</if>
+			<if test="approvalFormUrl != null">approval_form_url,</if>
+			<if test="archiveTime != null">archive_time,</if>
+			<if test="delFlag != null">del_flag,</if>
+			<if test="createBy != null">create_by,</if>
+			<if test="createTime != null">create_time,</if>
+		</trim>
+		<trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="parkId != null">#{parkId},</if>
+			<if test="customerId != null">#{customerId},</if>
+			<if test="flowId != null">#{flowId},</if>
+			<if test="businessId != null">#{businessId},</if>
+			<if test="businessType != null">#{businessType},</if>
+			<if test="projectName != null">#{projectName},</if>
+			<if test="enterpriseName != null">#{enterpriseName},</if>
+			<if test="creditCode != null">#{creditCode},</if>
+			<if test="applicant != null">#{applicant},</if>
+			<if test="applicantDept != null">#{applicantDept},</if>
+			<if test="applicantTime != null">#{applicantTime},</if>
+			<if test="shareholderInfo != null">#{shareholderInfo},</if>
+			<if test="businessScope != null">#{businessScope},</if>
+			<if test="responsiblePerson != null">#{responsiblePerson},</if>
+			<if test="contactPhone != null">#{contactPhone},</if>
+			<if test="leaseFloor != null">#{leaseFloor},</if>
+			<if test="leaseArea != null">#{leaseArea},</if>
+			<if test="rentPrice != null">#{rentPrice},</if>
+			<if test="deposit != null">#{deposit},</if>
+			<if test="rentFreePeriod != null">#{rentFreePeriod},</if>
+			<if test="leaseStartDate != null">#{leaseStartDate},</if>
+			<if test="leaseEndDate != null">#{leaseEndDate},</if>
+			<if test="currentNode != null">#{currentNode},</if>
+			<if test="currentNodeName != null">#{currentNodeName},</if>
+			<if test="processStatus != null">#{processStatus},</if>
+			<if test="approvalResult != null">#{approvalResult},</if>
+			<if test="summary != null">#{summary},</if>
+			<if test="approvalMatter != null">#{approvalMatter},</if>
+			<if test="approvalFormJson != null">#{approvalFormJson},</if>
+			<if test="approvalFormUrl != null">#{approvalFormUrl},</if>
+			<if test="archiveTime != null">#{archiveTime},</if>
+			<if test="delFlag != null">#{delFlag},</if>
+			<if test="createBy != null">#{createBy},</if>
+			<if test="createTime != null">#{createTime},</if>
+		</trim>
+	</insert>
+
+	<update id="updateApprovalProject" parameterType="org.springblade.modules.approval.pojo.entity.ApprovalProject">
+		update biz_approval_project
+		<set>
+			<if test="customerId != null">customer_id = #{customerId},</if>
+			<if test="flowId != null">flow_id = #{flowId},</if>
+			<if test="businessId != null">business_id = #{businessId},</if>
+			<if test="businessType != null">business_type = #{businessType},</if>
+			<if test="projectName != null">project_name = #{projectName},</if>
+			<if test="enterpriseName != null">enterprise_name = #{enterpriseName},</if>
+			<if test="creditCode != null">credit_code = #{creditCode},</if>
+			<if test="applicant != null">applicant = #{applicant},</if>
+			<if test="applicantDept != null">applicant_dept = #{applicantDept},</if>
+			<if test="applicantTime != null">applicant_time = #{applicantTime},</if>
+			<if test="shareholderInfo != null">shareholder_info = #{shareholderInfo},</if>
+			<if test="businessScope != null">business_scope = #{businessScope},</if>
+			<if test="responsiblePerson != null">responsible_person = #{responsiblePerson},</if>
+			<if test="contactPhone != null">contact_phone = #{contactPhone},</if>
+			<if test="leaseFloor != null">lease_floor = #{leaseFloor},</if>
+			<if test="leaseArea != null">lease_area = #{leaseArea},</if>
+			<if test="rentPrice != null">rent_price = #{rentPrice},</if>
+			<if test="deposit != null">deposit = #{deposit},</if>
+			<if test="rentFreePeriod != null">rent_free_period = #{rentFreePeriod},</if>
+			<if test="leaseStartDate != null">lease_start_date = #{leaseStartDate},</if>
+			<if test="leaseEndDate != null">lease_end_date = #{leaseEndDate},</if>
+			<if test="currentNode != null">current_node = #{currentNode},</if>
+			<if test="currentNodeName != null">current_node_name = #{currentNodeName},</if>
+			<if test="processStatus != null">process_status = #{processStatus},</if>
+			<if test="approvalResult != null">approval_result = #{approvalResult},</if>
+			<if test="summary != null">summary = #{summary},</if>
+			<if test="approvalMatter != null">approval_matter = #{approvalMatter},</if>
+			<if test="approvalFormJson != null">approval_form_json = #{approvalFormJson},</if>
+			<if test="approvalFormUrl != null">approval_form_url = #{approvalFormUrl},</if>
+			<if test="archiveTime != null">archive_time = #{archiveTime},</if>
+			<if test="delFlag != null">del_flag = #{delFlag},</if>
+			<if test="updateBy != null">update_by = #{updateBy},</if>
+			<if test="updateTime != null">update_time = #{updateTime},</if>
+		</set>
+		where project_id = #{projectId}
+		  and park_id = #{parkId}
+	</update>
+
+	<update id="updateProcessStatus">
+		update biz_approval_project
+		set process_status = #{processStatus},
+			current_node = #{currentNode},
+			current_node_name = #{currentNodeName},
+			approval_result = #{approvalResult},
+			update_by = #{updateBy},
+			update_time = now()
+		where project_id = #{projectId}
+		  and park_id = #{parkId}
+	</update>
+
+	<update id="archiveProject">
+		update biz_approval_project
+		set process_status = '5',
+			archive_time = now(),
+			update_by = #{updateBy},
+			update_time = now()
+		where project_id = #{projectId}
+		  and park_id = #{parkId}
+	</update>
+
+	<update id="deleteApprovalProjectByIds">
+		update biz_approval_project
+		set process_status = '9',
+			del_flag = '1',
+			update_by = #{updateBy},
+			update_time = now()
+		where project_id in
+		<foreach collection="ids" item="id" open="(" separator="," close=")">
+			#{id}
+		</foreach>
+		<if test="parkId != null">
+			and park_id = #{parkId}
+		</if>
+	</update>
+
+</mapper>

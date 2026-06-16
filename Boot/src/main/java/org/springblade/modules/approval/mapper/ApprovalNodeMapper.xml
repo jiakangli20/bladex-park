@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.approval.mapper.ApprovalNodeMapper">
+
+	<resultMap id="approvalNodeResultMap" type="org.springblade.modules.approval.pojo.entity.ApprovalNode">
+		<id column="node_id" property="nodeId"/>
+		<result column="flow_id" property="flowId"/>
+		<result column="node_name" property="nodeName"/>
+		<result column="node_order" property="nodeOrder"/>
+		<result column="node_type" property="nodeType"/>
+		<result column="approver_login" property="approverLogin"/>
+		<result column="approver_name" property="approverName"/>
+		<result column="complete_condition" property="completeCondition"/>
+		<result column="time_limit" property="timeLimit"/>
+		<result column="cc_users" property="ccUsers"/>
+		<result column="park_id" property="parkId"/>
+	</resultMap>
+
+	<select id="selectNodesByFlowId" resultMap="approvalNodeResultMap">
+		select node_id,
+			   flow_id,
+			   node_name,
+			   node_order,
+			   node_type,
+			   approver_login,
+			   approver_name,
+			   complete_condition,
+			   time_limit,
+			   cc_users,
+			   park_id
+		from biz_approval_node
+		where flow_id = #{flowId}
+		order by node_order asc, node_id asc
+	</select>
+
+	<insert id="insertNode" parameterType="org.springblade.modules.approval.pojo.entity.ApprovalNode" useGeneratedKeys="true" keyProperty="nodeId">
+		insert into biz_approval_node (
+			flow_id, node_name, node_order, node_type, approver_login, approver_name,
+			complete_condition, time_limit, cc_users, park_id
+		) values (
+			#{flowId}, #{nodeName}, #{nodeOrder}, #{nodeType}, #{approverLogin}, #{approverName},
+			#{completeCondition}, #{timeLimit}, #{ccUsers}, #{parkId}
+		)
+	</insert>
+
+	<delete id="deleteNodesByFlowId">
+		delete from biz_approval_node where flow_id = #{flowId}
+	</delete>
+
+</mapper>

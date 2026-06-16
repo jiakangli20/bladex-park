@@ -97,17 +97,17 @@ ON DUPLICATE KEY UPDATE
 -- SELECT `opportunity_id`, `tag_id`, `create_time`
 -- FROM `ry_ics`.`biz_business_opportunity_tag`;
 
--- 菜单：招商管理 / 客户标签
+-- 菜单：入驻管理 / 客户标签
 INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `component`, `sort`, `category`, `action`, `is_open`, `remark`, `is_deleted`)
 VALUES
-  (1890000000001000000, 0, 'business', '招商管理', 'menu', '/business', 'iconfont iconicon_work', '', 20, 1, 0, 1, '招商入驻业务', 0),
-  (1890000000001000100, 1890000000001000000, 'customer_tag', '客户标签', 'menu', '/business/tag', 'iconfont iconicon_label', 'views/business/tag', 1, 1, 0, 1, '客户标签管理', 0),
-  (1890000000001000101, 1890000000001000100, 'customer_tag_add', '新增', 'add', '/business/tag/add', 'plus', '', 1, 2, 1, 1, NULL, 0),
-  (1890000000001000102, 1890000000001000100, 'customer_tag_edit', '修改', 'edit', '/business/tag/edit', 'form', '', 2, 2, 2, 1, NULL, 0),
+  (1890000000003000000, 0, 'settlement', '入驻管理', 'menu', '/settlement', 'iconfont iconicon_compile', '', 30, 1, 0, 1, '入驻管理', 0),
+  (1890000000001000100, 1890000000003000000, 'customer_tag', '客户标签', 'menu', '/settlement/tag', 'iconfont iconicon_label', 'views/settlement/tag', 1, 1, 0, 1, '客户标签管理', 0),
+  (1890000000001000101, 1890000000001000100, 'customer_tag_add', '新增', 'add', '/settlement/tag/add', 'plus', '', 1, 2, 1, 1, NULL, 0),
+  (1890000000001000102, 1890000000001000100, 'customer_tag_edit', '修改', 'edit', '/settlement/tag/edit', 'form', '', 2, 2, 2, 1, NULL, 0),
   (1890000000001000103, 1890000000001000100, 'customer_tag_delete', '删除', 'delete', '/api/blade-park/tag/remove', 'delete', '', 3, 2, 3, 1, NULL, 0),
-  (1890000000001000104, 1890000000001000100, 'customer_tag_view', '查看', 'view', '/business/tag/view', 'file-text', '', 4, 2, 2, 1, NULL, 0),
-  (1890000000001000105, 1890000000001000100, 'customer_tag_type_add', '新增类型', 'add', '/business/tag/type/add', 'plus', '', 5, 2, 1, 1, NULL, 0),
-  (1890000000001000106, 1890000000001000100, 'customer_tag_type_edit', '修改类型', 'edit', '/business/tag/type/edit', 'form', '', 6, 2, 2, 1, NULL, 0),
+  (1890000000001000104, 1890000000001000100, 'customer_tag_view', '查看', 'view', '/settlement/tag/view', 'file-text', '', 4, 2, 2, 1, NULL, 0),
+  (1890000000001000105, 1890000000001000100, 'customer_tag_type_add', '新增类型', 'add', '/settlement/tag/type/add', 'plus', '', 5, 2, 1, 1, NULL, 0),
+  (1890000000001000106, 1890000000001000100, 'customer_tag_type_edit', '修改类型', 'edit', '/settlement/tag/type/edit', 'form', '', 6, 2, 2, 1, NULL, 0),
   (1890000000001000107, 1890000000001000100, 'customer_tag_type_delete', '删除类型', 'delete', '/api/blade-park/tag-type/remove', 'delete', '', 7, 2, 3, 1, NULL, 0)
 ON DUPLICATE KEY UPDATE
   `parent_id` = VALUES(`parent_id`),
@@ -126,7 +126,7 @@ ON DUPLICATE KEY UPDATE
 -- 默认给超级管理员角色绑定菜单，其他角色请在 BladeX 菜单授权界面按需分配。
 INSERT IGNORE INTO `blade_role_menu` (`id`, `role_id`, `menu_id`)
 VALUES
-  (1890000000002000001, 1123598816738675201, 1890000000001000000),
+  (1890000000002000001, 1123598816738675201, 1890000000003000000),
   (1890000000002000002, 1123598816738675201, 1890000000001000100),
   (1890000000002000003, 1123598816738675201, 1890000000001000101),
   (1890000000002000004, 1123598816738675201, 1890000000001000102),

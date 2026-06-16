@@ -5,17 +5,17 @@ export default class crypto {
    * token加密key 使用@org.springblade.test.CryptoKeyGenerator获取,需和后端配置保持一致
    * @type {string}
    */
-  static cryptoKey = '7VyFYDUDVhVu7SvCcuu1wBnrKc43985Z';
+  static cryptoKey = 'CvvQR11uZ0Wz6ZfG21Ey1jtMiGfWXA59';
   /**
    * 报文加密key 使用@org.springblade.test.CryptoKeyGenerator获取,需和后端配置保持一致
    * @type {string}
    */
-  static aesKey = 'vCEGcwjEl1qr3q6oYPVS1irYJMZSUfJI';
+  static aesKey = 'qRih3yZcCM3NrwX99s5VrSZbV8qNkUnw';
   /**
    * 报文加密key 使用@org.springblade.test.CryptoKeyGenerator获取,需和后端配置保持一致
    * @type {string}
    */
-  static desKey = 'EiKp1StYzeUZFINV';
+  static desKey = 'qwKUILGdHzoNoxr9';
 
   /**
    * aes 加密方法
