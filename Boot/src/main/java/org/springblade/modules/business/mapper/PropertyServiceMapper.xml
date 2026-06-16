@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.business.mapper.PropertyServiceMapper">
+
+	<resultMap id="PropertyServiceResult" type="org.springblade.modules.business.pojo.entity.PropertyService">
+		<id property="serviceId" column="service_id"/>
+		<result property="parkId" column="park_id"/>
+		<result property="serviceName" column="service_name"/>
+		<result property="serviceType" column="service_type"/>
+		<result property="serviceDesc" column="service_desc"/>
+		<result property="requiredMaterials" column="required_materials"/>
+		<result property="serviceFlow" column="service_flow"/>
+		<result property="chargeStandard" column="charge_standard"/>
+		<result property="timeLimit" column="time_limit"/>
+		<result property="status" column="status"/>
+		<result property="sortOrder" column="sort_order"/>
+		<result property="delFlag" column="del_flag"/>
+		<result property="createBy" column="create_by"/>
+		<result property="createTime" column="create_time"/>
+		<result property="updateBy" column="update_by"/>
+		<result property="updateTime" column="update_time"/>
+	</resultMap>
+
+	<sql id="selectServiceColumns">
+		select service_id,
+			   park_id,
+			   service_name,
+			   service_type,
+			   service_desc,
+			   required_materials,
+			   service_flow,
+			   charge_standard,
+			   time_limit,
+			   status,
+			   sort_order,
+			   del_flag,
+			   create_by,
+			   create_time,
+			   update_by,
+			   update_time
+		from biz_property_service
+	</sql>
+
+	<sql id="serviceWhere">
+		<where>
+			del_flag = '0'
+			<if test="service != null">
+				<if test="service.parkId != null">and park_id = #{service.parkId}</if>
+				<if test="service.serviceName != null and service.serviceName != ''">and service_name like concat('%', #{service.serviceName}, '%')</if>
+				<if test="service.serviceType != null and service.serviceType != ''">and service_type = #{service.serviceType}</if>
+				<if test="service.status != null and service.status != ''">and status = #{service.status}</if>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectPropertyServiceById" resultMap="PropertyServiceResult">
+		<include refid="selectServiceColumns"/>
+		where service_id = #{serviceId} and del_flag = '0'
+	</select>
+
+	<select id="selectPropertyServiceList" resultMap="PropertyServiceResult">
+		<include refid="selectServiceColumns"/>
+		<include refid="serviceWhere"/>
+		order by sort_order asc, service_id desc
+	</select>
+
+	<select id="selectPropertyServicePage" resultMap="PropertyServiceResult">
+		<include refid="selectServiceColumns"/>
+		<include refid="serviceWhere"/>
+		order by sort_order asc, service_id desc
+	</select>
+
+	<insert id="insertPropertyService" parameterType="org.springblade.modules.business.pojo.entity.PropertyService" useGeneratedKeys="true" keyProperty="serviceId">
+		insert into biz_property_service (
+			park_id, service_name, service_type, service_desc, required_materials, service_flow,
+			charge_standard, time_limit, status, sort_order, del_flag, create_by, create_time,
+			update_by, update_time
+		) values (
+			#{parkId}, #{serviceName}, #{serviceType}, #{serviceDesc}, #{requiredMaterials}, #{serviceFlow},
+			#{chargeStandard}, #{timeLimit}, #{status}, #{sortOrder}, #{delFlag}, #{createBy}, #{createTime},
+			#{updateBy}, #{updateTime}
+		)
+	</insert>
+
+	<update id="updatePropertyService" parameterType="org.springblade.modules.business.pojo.entity.PropertyService">
+		update biz_property_service
+		<set>
+			<if test="parkId != null">park_id = #{parkId},</if>
+			<if test="serviceName != null">service_name = #{serviceName},</if>
+			<if test="serviceType != null">service_type = #{serviceType},</if>
+			<if test="serviceDesc != null">service_desc = #{serviceDesc},</if>
+			<if test="requiredMaterials != null">required_materials = #{requiredMaterials},</if>
+			<if test="serviceFlow != null">service_flow = #{serviceFlow},</if>
+			<if test="chargeStandard != null">charge_standard = #{chargeStandard},</if>
+			<if test="timeLimit != null">time_limit = #{timeLimit},</if>
+			<if test="status != null">status = #{status},</if>
+			<if test="sortOrder != null">sort_order = #{sortOrder},</if>
+			<if test="updateBy != null">update_by = #{updateBy},</if>
+			update_time = now()
+		</set>
+		where service_id = #{serviceId}
+	</update>
+
+	<update id="deletePropertyServiceByIds">
+		update biz_property_service
+		set del_flag = '1',
+			update_time = now()
+		where service_id in
+		<foreach collection="ids" item="id" open="(" separator="," close=")">
+			#{id}
+		</foreach>
+		<if test="parkId != null">and park_id = #{parkId}</if>
+	</update>
+
+</mapper>

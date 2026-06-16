@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.business.mapper.PropertyWorkorderMapper">
+
+	<resultMap id="WorkorderResult" type="org.springblade.modules.business.pojo.entity.ServiceWorkorder">
+		<id property="orderId" column="order_id"/>
+		<result property="orderNo" column="order_no"/>
+		<result property="parkId" column="park_id"/>
+		<result property="serviceId" column="service_id"/>
+		<result property="customerId" column="customer_id"/>
+		<result property="customerName" column="customer_name"/>
+		<result property="contactName" column="contact_name"/>
+		<result property="contactPhone" column="contact_phone"/>
+		<result property="roomIds" column="room_ids"/>
+		<result property="roomInfo" column="room_info"/>
+		<result property="demandDesc" column="demand_desc"/>
+		<result property="demandImages" column="demand_images"/>
+		<result property="orderStatus" column="order_status"/>
+		<result property="priority" column="priority"/>
+		<result property="assignTo" column="assign_to"/>
+		<result property="assignTime" column="assign_time"/>
+		<result property="disposalContent" column="disposal_content"/>
+		<result property="finishTime" column="finish_time"/>
+		<result property="rating" column="rating"/>
+		<result property="ratingContent" column="rating_content"/>
+		<result property="ratingTime" column="rating_time"/>
+		<result property="processor" column="processor"/>
+		<result property="processRemark" column="process_remark"/>
+		<result property="nextFollowTime" column="next_follow_time"/>
+		<result property="remark" column="remark"/>
+		<result property="delFlag" column="del_flag"/>
+		<result property="createBy" column="create_by"/>
+		<result property="createTime" column="create_time"/>
+		<result property="updateBy" column="update_by"/>
+		<result property="updateTime" column="update_time"/>
+		<result property="serviceName" column="service_name"/>
+		<result property="serviceType" column="service_type"/>
+		<result property="parkName" column="park_name"/>
+	</resultMap>
+
+	<resultMap id="LogResult" type="org.springblade.modules.business.pojo.entity.WorkorderLog">
+		<id property="logId" column="log_id"/>
+		<result property="orderId" column="order_id"/>
+		<result property="action" column="action"/>
+		<result property="actionDesc" column="action_desc"/>
+		<result property="operator" column="operator"/>
+		<result property="operateTime" column="operate_time"/>
+	</resultMap>
+
+	<sql id="selectWorkorderColumns">
+		select w.order_id,
+			   w.order_no,
+			   w.park_id,
+			   w.service_id,
+			   w.customer_id,
+			   w.customer_name,
+			   w.contact_name,
+			   w.contact_phone,
+			   w.room_ids,
+			   w.room_info,
+			   w.demand_desc,
+			   w.demand_images,
+			   w.order_status,
+			   w.priority,
+			   w.assign_to,
+			   w.assign_time,
+			   w.disposal_content,
+			   w.finish_time,
+			   w.rating,
+			   w.rating_content,
+			   w.rating_time,
+			   w.processor,
+			   w.process_remark,
+			   w.next_follow_time,
+			   w.remark,
+			   w.del_flag,
+			   w.create_by,
+			   w.create_time,
+			   w.update_by,
+			   w.update_time,
+			   s.service_name,
+			   s.service_type,
+			   p.name as park_name
+		from biz_service_workorder w
+		left join biz_property_service s on w.service_id = s.service_id
+		left join ics_park p on w.park_id = p.id
+	</sql>
+
+	<sql id="workorderWhere">
+		<where>
+			w.del_flag = '0'
+			<if test="workorder != null">
+				<if test="workorder.parkId != null">and w.park_id = #{workorder.parkId}</if>
+				<if test="workorder.orderNo != null and workorder.orderNo != ''">and w.order_no like concat('%', #{workorder.orderNo}, '%')</if>
+				<if test="workorder.customerName != null and workorder.customerName != ''">and w.customer_name like concat('%', #{workorder.customerName}, '%')</if>
+				<if test="workorder.orderStatus != null and workorder.orderStatus != ''">and w.order_status = #{workorder.orderStatus}</if>
+				<if test="workorder.serviceId != null">and w.service_id = #{workorder.serviceId}</if>
+				<if test="workorder.serviceName != null and workorder.serviceName != ''">and s.service_name like concat('%', #{workorder.serviceName}, '%')</if>
+				<if test="workorder.priority != null and workorder.priority != ''">and w.priority = #{workorder.priority}</if>
+				<if test="workorder.assignTo != null and workorder.assignTo != ''">and w.assign_to = #{workorder.assignTo}</if>
+				<if test="workorder.mine != null and workorder.mine and workorder.currentUser != null and workorder.currentUser != ''">
+					and (w.create_by = #{workorder.currentUser} or w.assign_to = #{workorder.currentUser})
+				</if>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectWorkorderById" resultMap="WorkorderResult">
+		<include refid="selectWorkorderColumns"/>
+		where w.order_id = #{orderId} and w.del_flag = '0'
+	</select>
+
+	<select id="selectWorkorderList" resultMap="WorkorderResult">
+		<include refid="selectWorkorderColumns"/>
+		<include refid="workorderWhere"/>
+		order by w.create_time desc, w.order_id desc
+	</select>
+
+	<select id="selectWorkorderPage" resultMap="WorkorderResult">
+		<include refid="selectWorkorderColumns"/>
+		<include refid="workorderWhere"/>
+		order by w.create_time desc, w.order_id desc
+	</select>
+
+	<select id="selectWorkorderStatistics" resultType="java.util.HashMap">
+		select count(1) as totalCount,
+			   sum(case when w.order_status = '0' then 1 else 0 end) as pendingCount,
+			   sum(case when w.order_status = '1' then 1 else 0 end) as processingCount,
+			   sum(case when w.order_status = '2' then 1 else 0 end) as finishedCount,
+			   sum(case when w.order_status = '3' then 1 else 0 end) as ratedCount,
+			   sum(case when w.order_status = '4' then 1 else 0 end) as closedCount
+		from biz_service_workorder w
+		left join biz_property_service s on w.service_id = s.service_id
+		<include refid="workorderWhere"/>
+	</select>
+
+	<insert id="insertWorkorder" parameterType="org.springblade.modules.business.pojo.entity.ServiceWorkorder" useGeneratedKeys="true" keyProperty="orderId">
+		insert into biz_service_workorder (
+			order_no, park_id, service_id, customer_id, customer_name, contact_name, contact_phone,
+			room_ids, room_info, demand_desc, demand_images, order_status, priority, assign_to,
+			assign_time, disposal_content, finish_time, rating, rating_content, rating_time,
+			processor, process_remark, next_follow_time, remark, del_flag, create_by, create_time,
+			update_by, update_time
+		) values (
+			#{orderNo}, #{parkId}, #{serviceId}, #{customerId}, #{customerName}, #{contactName}, #{contactPhone},
+			#{roomIds}, #{roomInfo}, #{demandDesc}, #{demandImages}, #{orderStatus}, #{priority}, #{assignTo},
+			#{assignTime}, #{disposalContent}, #{finishTime}, #{rating}, #{ratingContent}, #{ratingTime},
+			#{processor}, #{processRemark}, #{nextFollowTime}, #{remark}, #{delFlag}, #{createBy}, #{createTime},
+			#{updateBy}, #{updateTime}
+		)
+	</insert>
+
+	<update id="updateWorkorder" parameterType="org.springblade.modules.business.pojo.entity.ServiceWorkorder">
+		update biz_service_workorder
+		<set>
+			<if test="parkId != null">park_id = #{parkId},</if>
+			<if test="serviceId != null">service_id = #{serviceId},</if>
+			<if test="customerId != null">customer_id = #{customerId},</if>
+			<if test="customerName != null">customer_name = #{customerName},</if>
+			<if test="contactName != null">contact_name = #{contactName},</if>
+			<if test="contactPhone != null">contact_phone = #{contactPhone},</if>
+			<if test="roomIds != null">room_ids = #{roomIds},</if>
+			<if test="roomInfo != null">room_info = #{roomInfo},</if>
+			<if test="demandDesc != null">demand_desc = #{demandDesc},</if>
+			<if test="demandImages != null">demand_images = #{demandImages},</if>
+			<if test="orderStatus != null">order_status = #{orderStatus},</if>
+			<if test="priority != null">priority = #{priority},</if>
+			<if test="assignTo != null">assign_to = #{assignTo},</if>
+			<if test="assignTime != null">assign_time = #{assignTime},</if>
+			<if test="disposalContent != null">disposal_content = #{disposalContent},</if>
+			<if test="finishTime != null">finish_time = #{finishTime},</if>
+			<if test="rating != null">rating = #{rating},</if>
+			<if test="ratingContent != null">rating_content = #{ratingContent},</if>
+			<if test="ratingTime != null">rating_time = #{ratingTime},</if>
+			<if test="processor != null">processor = #{processor},</if>
+			<if test="processRemark != null">process_remark = #{processRemark},</if>
+			<if test="nextFollowTime != null">next_follow_time = #{nextFollowTime},</if>
+			<if test="remark != null">remark = #{remark},</if>
+			<if test="updateBy != null">update_by = #{updateBy},</if>
+			update_time = now()
+		</set>
+		where order_id = #{orderId}
+	</update>
+
+	<update id="deleteWorkorderByIds">
+		update biz_service_workorder
+		set del_flag = '1',
+			update_time = now()
+		where order_id in
+		<foreach collection="ids" item="id" open="(" separator="," close=")">
+			#{id}
+		</foreach>
+		<if test="parkId != null">and park_id = #{parkId}</if>
+	</update>
+
+	<insert id="insertLog" parameterType="org.springblade.modules.business.pojo.entity.WorkorderLog" useGeneratedKeys="true" keyProperty="logId">
+		insert into biz_workorder_log (order_id, action, action_desc, operator, operate_time)
+		values (#{orderId}, #{action}, #{actionDesc}, #{operator}, #{operateTime})
+	</insert>
+
+	<select id="selectLogByOrderId" resultMap="LogResult">
+		select log_id,
+			   order_id,
+			   action,
+			   action_desc,
+			   operator,
+			   operate_time
+		from biz_workorder_log
+		where order_id = #{orderId}
+		order by operate_time desc, log_id desc
+	</select>
+
+	<select id="selectLastOrderNoByDate" resultType="string">
+		select order_no
+		from biz_service_workorder
+		where order_no like concat('WO', #{datePrefix}, '%')
+		order by order_no desc limit 1
+	</select>
+
+</mapper>
