@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.approval.mapper.ApprovalMaterialMapper">
+
+	<resultMap id="approvalMaterialResultMap" type="org.springblade.modules.approval.pojo.entity.ApprovalMaterial">
+		<id column="material_id" property="materialId"/>
+		<result column="park_id" property="parkId"/>
+		<result column="project_id" property="projectId"/>
+		<result column="material_type" property="materialType"/>
+		<result column="file_name" property="fileName"/>
+		<result column="file_url" property="fileUrl"/>
+		<result column="file_suffix" property="fileSuffix"/>
+		<result column="file_size" property="fileSize"/>
+		<result column="sort_order" property="sortOrder"/>
+		<result column="remark" property="remark"/>
+		<result column="create_by" property="createBy"/>
+		<result column="create_time" property="createTime"/>
+	</resultMap>
+
+	<select id="selectApprovalMaterialList" resultMap="approvalMaterialResultMap">
+		select material_id,
+			   park_id,
+			   project_id,
+			   material_type,
+			   file_name,
+			   file_url,
+			   file_suffix,
+			   file_size,
+			   sort_order,
+			   remark,
+			   create_by,
+			   create_time
+		from biz_approval_material
+		<where>
+			<if test="material != null">
+				<if test="material.parkId != null">and park_id = #{material.parkId}</if>
+				<if test="material.projectId != null">and project_id = #{material.projectId}</if>
+				<if test="material.materialType != null and material.materialType != ''">and material_type = #{material.materialType}</if>
+			</if>
+		</where>
+		order by sort_order asc, material_id asc
+	</select>
+
+	<insert id="insertApprovalMaterial" parameterType="org.springblade.modules.approval.pojo.entity.ApprovalMaterial" useGeneratedKeys="true" keyProperty="materialId">
+		insert into biz_approval_material (
+			park_id, project_id, material_type, file_name, file_url, file_suffix, file_size, sort_order,
+			remark, create_by, create_time
+		) values (
+			#{parkId}, #{projectId}, #{materialType}, #{fileName}, #{fileUrl}, #{fileSuffix}, #{fileSize}, #{sortOrder},
+			#{remark}, #{createBy}, #{createTime}
+		)
+	</insert>
+
+	<delete id="deleteApprovalMaterialByIds">
+		delete from biz_approval_material
+		where material_id in
+		<foreach collection="ids" item="id" open="(" separator="," close=")">
+			#{id}
+		</foreach>
+		<if test="parkId != null">
+			and park_id = #{parkId}
+		</if>
+	</delete>
+
+</mapper>

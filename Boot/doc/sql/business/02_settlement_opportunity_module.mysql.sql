@@ -163,7 +163,7 @@ WHERE o.`customer_id` IS NOT NULL
 INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `component`, `sort`, `category`, `action`, `is_open`, `remark`, `is_deleted`)
 VALUES
   (1890000000003000000, 0, 'settlement', '入驻管理', 'menu', '/settlement', 'iconfont iconicon_compile', '', 30, 1, 0, 1, '入驻管理', 0),
-  (1890000000003000100, 1890000000003000000, 'business_opportunity', '商机管理', 'menu', '/settlement/opportunity', 'iconfont iconicon_doc', 'views/business/opportunity', 1, 1, 0, 1, '商机管理', 0),
+  (1890000000003000100, 1890000000003000000, 'business_opportunity', '商机管理', 'menu', '/settlement/opportunity', 'iconfont iconicon_doc', 'views/settlement/opportunity', 1, 1, 0, 1, '商机管理', 0),
   (1890000000003000101, 1890000000003000100, 'business_opportunity_add', '新增', 'add', '/settlement/opportunity/add', 'plus', '', 1, 2, 1, 1, NULL, 0),
   (1890000000003000102, 1890000000003000100, 'business_opportunity_edit', '修改', 'edit', '/settlement/opportunity/edit', 'form', '', 2, 2, 2, 1, NULL, 0),
   (1890000000003000103, 1890000000003000100, 'business_opportunity_delete', '删除', 'delete', '/api/blade-park/opportunity/remove', 'delete', '', 3, 2, 3, 1, NULL, 0),

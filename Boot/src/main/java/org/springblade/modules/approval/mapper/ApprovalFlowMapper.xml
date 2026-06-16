@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.approval.mapper.ApprovalFlowMapper">
+
+	<resultMap id="approvalFlowResultMap" type="org.springblade.modules.approval.pojo.entity.ApprovalFlow">
+		<id column="flow_id" property="flowId"/>
+		<result column="park_id" property="parkId"/>
+		<result column="flow_name" property="flowName"/>
+		<result column="business_type" property="businessType"/>
+		<result column="flow_version" property="flowVersion"/>
+		<result column="node_config" property="nodeConfig"/>
+		<result column="status" property="status"/>
+		<result column="remark" property="remark"/>
+		<result column="create_by" property="createBy"/>
+		<result column="create_time" property="createTime"/>
+		<result column="update_by" property="updateBy"/>
+		<result column="update_time" property="updateTime"/>
+	</resultMap>
+
+	<sql id="selectApprovalFlowColumns">
+		select flow_id,
+			   park_id,
+			   flow_name,
+			   business_type,
+			   flow_version,
+			   node_config,
+			   status,
+			   remark,
+			   create_by,
+			   create_time,
+			   update_by,
+			   update_time
+		from biz_approval_flow
+	</sql>
+
+	<sql id="approvalFlowWhere">
+		<where>
+			status != '9'
+			<if test="flow != null">
+				<choose>
+					<when test="flow.includeGlobal != null and flow.includeGlobal and flow.parkId != null">
+						and (park_id = #{flow.parkId} or park_id = 0 or park_id is null)
+					</when>
+					<when test="flow.parkId != null and flow.parkId > 0">
+						and park_id = #{flow.parkId}
+					</when>
+				</choose>
+				<if test="flow.flowName != null and flow.flowName != ''">and flow_name like concat('%', #{flow.flowName}, '%')</if>
+				<if test="flow.businessType != null and flow.businessType != ''">and business_type = #{flow.businessType}</if>
+				<if test="flow.status != null and flow.status != ''">and status = #{flow.status}</if>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectApprovalFlowById" resultMap="approvalFlowResultMap">
+		<include refid="selectApprovalFlowColumns"/>
+		where flow_id = #{flowId}
+	</select>
+
+	<select id="selectApprovalFlowList" resultMap="approvalFlowResultMap">
+		<include refid="selectApprovalFlowColumns"/>
+		<include refid="approvalFlowWhere"/>
+		order by
+		<if test="flow != null and flow.includeGlobal != null and flow.includeGlobal and flow.parkId != null">
+			case when park_id = #{flow.parkId} then 0 else 1 end,
+		</if>
+		flow_version desc, flow_id desc
+	</select>
+
+	<select id="selectApprovalFlowPage" resultMap="approvalFlowResultMap">
+		<include refid="selectApprovalFlowColumns"/>
+		<include refid="approvalFlowWhere"/>
+		order by
+		<if test="flow != null and flow.includeGlobal != null and flow.includeGlobal and flow.parkId != null">
+			case when park_id = #{flow.parkId} then 0 else 1 end,
+		</if>
+		flow_version desc, flow_id desc
+	</select>
+
+	<insert id="insertApprovalFlow" parameterType="org.springblade.modules.approval.pojo.entity.ApprovalFlow" useGeneratedKeys="true" keyProperty="flowId">
+		insert into biz_approval_flow
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="parkId != null">park_id,</if>
+			<if test="flowName != null">flow_name,</if>
+			<if test="businessType != null">business_type,</if>
+			<if test="flowVersion != null">flow_version,</if>
+			<if test="nodeConfig != null">node_config,</if>
+			<if test="status != null">status,</if>
+			<if test="remark != null">remark,</if>
+			<if test="createBy != null">create_by,</if>
+			<if test="createTime != null">create_time,</if>
+		</trim>
+		<trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="parkId != null">#{parkId},</if>
+			<if test="flowName != null">#{flowName},</if>
+			<if test="businessType != null">#{businessType},</if>
+			<if test="flowVersion != null">#{flowVersion},</if>
+			<if test="nodeConfig != null">#{nodeConfig},</if>
+			<if test="status != null">#{status},</if>
+			<if test="remark != null">#{remark},</if>
+			<if test="createBy != null">#{createBy},</if>
+			<if test="createTime != null">#{createTime},</if>
+		</trim>
+	</insert>
+
+	<update id="updateApprovalFlow" parameterType="org.springblade.modules.approval.pojo.entity.ApprovalFlow">
+		update biz_approval_flow
+		<set>
+			<if test="parkId != null">park_id = #{parkId},</if>
+			<if test="flowName != null">flow_name = #{flowName},</if>
+			<if test="businessType != null">business_type = #{businessType},</if>
+			<if test="flowVersion != null">flow_version = #{flowVersion},</if>
+			<if test="nodeConfig != null">node_config = #{nodeConfig},</if>
+			<if test="status != null">status = #{status},</if>
+			<if test="remark != null">remark = #{remark},</if>
+			<if test="updateBy != null">update_by = #{updateBy},</if>
+			<if test="updateTime != null">update_time = #{updateTime},</if>
+		</set>
+		where flow_id = #{flowId}
+	</update>
+
+	<update id="deleteApprovalFlowByIds">
+		update biz_approval_flow
+		set status = '9',
+			update_by = #{updateBy},
+			update_time = now()
+		where flow_id in
+		<foreach collection="ids" item="id" open="(" separator="," close=")">
+			#{id}
+		</foreach>
+		<if test="parkId != null">
+			and park_id = #{parkId}
+		</if>
+	</update>
+
+</mapper>

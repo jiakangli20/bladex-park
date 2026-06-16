@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.approval.mapper.ApprovalLogMapper">
+
+	<resultMap id="approvalLogResultMap" type="org.springblade.modules.approval.pojo.entity.ApprovalLog">
+		<id column="log_id" property="logId"/>
+		<result column="park_id" property="parkId"/>
+		<result column="project_id" property="projectId"/>
+		<result column="flow_id" property="flowId"/>
+		<result column="node_name" property="nodeName"/>
+		<result column="node_type" property="nodeType"/>
+		<result column="action_type" property="actionType"/>
+		<result column="operator_name" property="operatorName"/>
+		<result column="opinion" property="opinion"/>
+		<result column="result_status" property="resultStatus"/>
+		<result column="transfer_to" property="transferTo"/>
+		<result column="cc_users" property="ccUsers"/>
+		<result column="attachment_url" property="attachmentUrl"/>
+		<result column="operate_time" property="operateTime"/>
+		<result column="create_by" property="createBy"/>
+		<result column="create_time" property="createTime"/>
+	</resultMap>
+
+	<select id="selectApprovalLogList" resultMap="approvalLogResultMap">
+		select log_id,
+			   park_id,
+			   project_id,
+			   flow_id,
+			   node_name,
+			   node_type,
+			   action_type,
+			   operator_name,
+			   opinion,
+			   result_status,
+			   transfer_to,
+			   cc_users,
+			   attachment_url,
+			   operate_time,
+			   create_by,
+			   create_time
+		from biz_approval_log
+		<where>
+			<if test="log != null">
+				<if test="log.parkId != null">and park_id = #{log.parkId}</if>
+				<if test="log.projectId != null">and project_id = #{log.projectId}</if>
+				<if test="log.flowId != null">and flow_id = #{log.flowId}</if>
+				<if test="log.actionType != null and log.actionType != ''">and action_type = #{log.actionType}</if>
+				<if test="log.operatorName != null and log.operatorName != ''">and operator_name = #{log.operatorName}</if>
+			</if>
+		</where>
+		order by operate_time asc, log_id asc
+	</select>
+
+	<insert id="insertApprovalLog" parameterType="org.springblade.modules.approval.pojo.entity.ApprovalLog" useGeneratedKeys="true" keyProperty="logId">
+		insert into biz_approval_log (
+			park_id, project_id, flow_id, node_name, node_type, action_type, operator_name,
+			opinion, result_status, transfer_to, cc_users, attachment_url, operate_time, create_by, create_time
+		) values (
+			#{parkId}, #{projectId}, #{flowId}, #{nodeName}, #{nodeType}, #{actionType}, #{operatorName},
+			#{opinion}, #{resultStatus}, #{transferTo}, #{ccUsers}, #{attachmentUrl}, #{operateTime}, #{createBy}, #{createTime}
+		)
+	</insert>
+
+</mapper>
