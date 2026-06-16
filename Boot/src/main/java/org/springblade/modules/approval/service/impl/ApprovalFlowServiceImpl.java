@@ -281,11 +281,11 @@ public class ApprovalFlowServiceImpl extends ServiceImpl<ApprovalFlowMapper, App
 			node.setNodeName(source.getNodeName().trim());
 			node.setNodeOrder(normalized.size() + 1);
 			node.setNodeType(StringUtil.isBlank(source.getNodeType()) ? NODE_TYPE_APPROVE : source.getNodeType());
-			node.setApproverLogin(trim(source.getApproverLogin()));
-			node.setApproverName(trim(source.getApproverName()));
+			node.setApproverLogin(trimToNull(source.getApproverLogin()));
+			node.setApproverName(trimToNull(source.getApproverName()));
 			node.setCompleteCondition(StringUtil.isBlank(source.getCompleteCondition()) ? DEFAULT_COMPLETE_CONDITION : source.getCompleteCondition());
 			node.setTimeLimit(source.getTimeLimit());
-			node.setCcUsers(trim(source.getCcUsers()));
+			node.setCcUsers(trimToNull(source.getCcUsers()));
 			normalized.add(node);
 		}
 		return normalized;
@@ -348,7 +348,7 @@ public class ApprovalFlowServiceImpl extends ServiceImpl<ApprovalFlowMapper, App
 				node.setApproverLogin(firstNotBlank(Func.toStr(item.get("approverLogin")), Func.toStr(item.get("approverLoginName"))));
 				node.setApproverName(Func.toStr(item.get("approverName")));
 				node.setCompleteCondition(Func.toStr(item.get("completeCondition"), DEFAULT_COMPLETE_CONDITION));
-				node.setTimeLimit(toInteger(item.get("timeLimit")));
+				node.setTimeLimit(parseInteger(item.get("timeLimit")));
 				node.setCcUsers(Func.toStr(item.get("ccUsers")));
 				nodes.add(node);
 			}
@@ -371,12 +371,15 @@ public class ApprovalFlowServiceImpl extends ServiceImpl<ApprovalFlowMapper, App
 		return StringUtil.isNotBlank(first) ? first : second;
 	}
 
-	private String trim(String value) {
+	private String trimToNull(String value) {
 		return value == null ? null : value.trim();
 	}
 
-	private Integer toInteger(Object value) {
-		return value == null ? null : Func.toInt(value);
+	private Integer parseInteger(Object value) {
+		if (value == null || StringUtil.isBlank(Func.toStr(value))) {
+			return null;
+		}
+		return Func.toInt(value);
 	}
 
 }

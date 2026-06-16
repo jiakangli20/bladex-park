@@ -41,6 +41,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 /**
  * 楼层实体类
@@ -131,5 +132,17 @@ public class Floor implements Serializable {
 	@TableField(exist = false)
 	@Schema(description = "停用数量")
 	private Integer disabledCount;
+
+	@TableField(exist = false)
+	@Schema(description = "出租率")
+	private BigDecimal occupancyRate;
+
+	@TableField(exist = false)
+	@Schema(description = "房间状态查询")
+	private String roomStatus;
+
+	@TableField(exist = false)
+	@Schema(description = "楼层房间列表")
+	private List<Room> rooms;
 
 }

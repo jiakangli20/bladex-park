@@ -25,6 +25,7 @@
  */
 package org.springblade.modules.ics.service;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import org.springblade.modules.ics.pojo.entity.Floor;
 
@@ -48,6 +49,24 @@ public interface IFloorService extends IService<Floor> {
 	List<Floor> selectFloorList(Floor floor);
 
 	/**
+	 * 查询楼层分页
+	 *
+	 * @param page 分页
+	 * @param floor 查询条件
+	 * @return 楼层分页
+	 */
+	IPage<Floor> selectFloorPage(IPage<Floor> page, Floor floor);
+
+	/**
+	 * 查询楼层详情
+	 *
+	 * @param id 楼层ID
+	 * @param roomStatus 房间状态
+	 * @return 楼层
+	 */
+	Floor selectFloorById(Long id, String roomStatus);
+
+	/**
 	 * 查询建筑下指定楼层
 	 *
 	 * @param buildingId 建筑ID
@@ -63,6 +82,37 @@ public interface IFloorService extends IService<Floor> {
 	 * @param operator 操作人
 	 */
 	void syncBuildingFloors(Long buildingId, String operator);
+
+	/**
+	 * 同步全部建筑楼层
+	 *
+	 * @param operator 操作人
+	 */
+	void syncAllBuildingFloors(String operator);
+
+	/**
+	 * 新增或修改楼层
+	 *
+	 * @param floor 楼层
+	 * @return 是否成功
+	 */
+	boolean submit(Floor floor);
+
+	/**
+	 * 删除楼层
+	 *
+	 * @param ids 主键集合
+	 * @return 是否成功
+	 */
+	boolean removeFloor(String ids);
+
+	/**
+	 * 楼层统计
+	 *
+	 * @param floor 查询条件
+	 * @return 统计信息
+	 */
+	Map<String, Object> selectFloorStatistics(Floor floor);
 
 	/**
 	 * 更新建筑楼层面积
