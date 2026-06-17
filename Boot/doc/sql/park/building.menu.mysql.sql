@@ -28,14 +28,14 @@ WHERE `id` IN (
 
 INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `sort`, `category`, `action`, `is_open`, `component`, `remark`, `is_deleted`)
 VALUES
-  (1963598815738675601, 1963598815738675401, 'building', '建筑管理', 'menu', '/ics/building', 'iconfont icon-caidanguanli', 2, 1, 0, 1, '', NULL, 0),
-  (1963598815738675602, 1963598815738675601, 'building_view', '查看', 'view', '/api/blade-ics/building/detail', 'file-text', 1, 2, 2, 1, '', NULL, 0),
-  (1963598815738675603, 1963598815738675601, 'building_add', '新增', 'add', '/api/blade-ics/building/submit', 'plus', 2, 2, 1, 1, '', NULL, 0),
-  (1963598815738675604, 1963598815738675601, 'building_edit', '修改', 'edit', '/api/blade-ics/building/submit', 'form', 3, 2, 2, 1, '', NULL, 0),
-  (1963598815738675605, 1963598815738675601, 'building_delete', '删除', 'delete', '/api/blade-ics/building/remove', 'delete', 4, 2, 3, 1, '', NULL, 0),
-  (1963598815738675606, 1963598815738675601, 'building_import', '导入', 'import', '/api/blade-ics/building/import', 'upload', 5, 2, 1, 1, '', NULL, 0),
-  (1963598815738675607, 1963598815738675601, 'building_export', '导出', 'export', '/api/blade-ics/building/export', 'download', 6, 2, 1, 1, '', NULL, 0),
-  (1963598815738675608, 1963598815738675601, 'building_template', '模板下载', 'template', '/api/blade-ics/building/export-template', 'download', 7, 2, 1, 1, '', NULL, 0);
+  (1963598815738675601, 1963598815738675401, 'building', '建筑管理', 'menu', '/park/building', 'iconfont icon-caidanguanli', 2, 1, 0, 1, '', NULL, 0),
+  (1963598815738675602, 1963598815738675601, 'building_view', '查看', 'view', '/api/blade-park/building/detail', 'file-text', 1, 2, 2, 1, '', NULL, 0),
+  (1963598815738675603, 1963598815738675601, 'building_add', '新增', 'add', '/api/blade-park/building/submit', 'plus', 2, 2, 1, 1, '', NULL, 0),
+  (1963598815738675604, 1963598815738675601, 'building_edit', '修改', 'edit', '/api/blade-park/building/submit', 'form', 3, 2, 2, 1, '', NULL, 0),
+  (1963598815738675605, 1963598815738675601, 'building_delete', '删除', 'delete', '/api/blade-park/building/remove', 'delete', 4, 2, 3, 1, '', NULL, 0),
+  (1963598815738675606, 1963598815738675601, 'building_import', '导入', 'import', '/api/blade-park/building/import', 'upload', 5, 2, 1, 1, '', NULL, 0),
+  (1963598815738675607, 1963598815738675601, 'building_export', '导出', 'export', '/api/blade-park/building/export', 'download', 6, 2, 1, 1, '', NULL, 0),
+  (1963598815738675608, 1963598815738675601, 'building_template', '模板下载', 'template', '/api/blade-park/building/export-template', 'download', 7, 2, 1, 1, '', NULL, 0);
 
 INSERT INTO `blade_role_menu` (`id`, `menu_id`, `role_id`)
 VALUES

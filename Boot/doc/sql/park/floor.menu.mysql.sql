@@ -26,13 +26,13 @@ WHERE `id` IN (
 
 INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `sort`, `category`, `action`, `is_open`, `component`, `remark`, `is_deleted`)
 VALUES
-  (1963598815738675701, 1963598815738675401, 'floor', '楼层管理', 'menu', '/ics/floor', 'iconfont icon-caidanguanli', 3, 1, 0, 1, '', NULL, 0),
-  (1963598815738675702, 1963598815738675701, 'floor_view', '查看', 'view', '/api/blade-ics/floor/detail', 'file-text', 1, 2, 2, 1, '', NULL, 0),
-  (1963598815738675703, 1963598815738675701, 'floor_add', '新增', 'add', '/api/blade-ics/floor/submit', 'plus', 2, 2, 1, 1, '', NULL, 0),
-  (1963598815738675704, 1963598815738675701, 'floor_edit', '修改', 'edit', '/api/blade-ics/floor/submit', 'form', 3, 2, 2, 1, '', NULL, 0),
-  (1963598815738675705, 1963598815738675701, 'floor_delete', '删除', 'delete', '/api/blade-ics/floor/remove', 'delete', 4, 2, 3, 1, '', NULL, 0),
-  (1963598815738675706, 1963598815738675701, 'floor_sync', '同步', 'sync', '/api/blade-ics/floor/sync-all', 'reload', 5, 2, 2, 1, '', NULL, 0),
-  (1963598815738675707, 1963598815738675701, 'floor_room_view', '查看房间', 'room-view', '/api/blade-ics/floor/list', 'eye', 6, 2, 1, 1, '', NULL, 0);
+  (1963598815738675701, 1963598815738675401, 'floor', '楼层管理', 'menu', '/park/floor', 'iconfont icon-caidanguanli', 3, 1, 0, 1, '', NULL, 0),
+  (1963598815738675702, 1963598815738675701, 'floor_view', '查看', 'view', '/api/blade-park/floor/detail', 'file-text', 1, 2, 2, 1, '', NULL, 0),
+  (1963598815738675703, 1963598815738675701, 'floor_add', '新增', 'add', '/api/blade-park/floor/submit', 'plus', 2, 2, 1, 1, '', NULL, 0),
+  (1963598815738675704, 1963598815738675701, 'floor_edit', '修改', 'edit', '/api/blade-park/floor/submit', 'form', 3, 2, 2, 1, '', NULL, 0),
+  (1963598815738675705, 1963598815738675701, 'floor_delete', '删除', 'delete', '/api/blade-park/floor/remove', 'delete', 4, 2, 3, 1, '', NULL, 0),
+  (1963598815738675706, 1963598815738675701, 'floor_sync', '同步', 'sync', '/api/blade-park/floor/sync-all', 'reload', 5, 2, 2, 1, '', NULL, 0),
+  (1963598815738675707, 1963598815738675701, 'floor_room_view', '查看房间', 'room-view', '/api/blade-park/floor/list', 'eye', 6, 2, 1, 1, '', NULL, 0);
 
 INSERT INTO `blade_role_menu` (`id`, `menu_id`, `role_id`)
 VALUES

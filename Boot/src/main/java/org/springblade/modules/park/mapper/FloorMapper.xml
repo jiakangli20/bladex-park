@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.park.mapper.FloorMapper">
+
+    <resultMap id="floorResultMap" type="org.springblade.modules.park.pojo.entity.Floor">
+        <id column="id" property="id"/>
+        <result column="park_id" property="parkId"/>
+        <result column="park_name" property="parkName"/>
+        <result column="building_id" property="buildingId"/>
+        <result column="building_name" property="buildingName"/>
+        <result column="floor_no" property="floorNo"/>
+        <result column="area" property="area"/>
+        <result column="status" property="status"/>
+        <result column="memo" property="memo"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="used_area" property="usedArea"/>
+        <result column="total_count" property="totalCount"/>
+        <result column="rented_count" property="rentedCount"/>
+        <result column="vacant_count" property="vacantCount"/>
+        <result column="reserved_count" property="reservedCount"/>
+        <result column="renovating_count" property="renovatingCount"/>
+        <result column="disabled_count" property="disabledCount"/>
+    </resultMap>
+
+    <resultMap id="roomResultMap" type="org.springblade.modules.park.pojo.entity.Room">
+        <id column="id" property="id"/>
+        <result column="park_id" property="parkId"/>
+        <result column="park_name" property="parkName"/>
+        <result column="building_id" property="buildingId"/>
+        <result column="building_name" property="buildingName"/>
+        <result column="name" property="name"/>
+        <result column="floor" property="floor"/>
+        <result column="area" property="area"/>
+        <result column="rent_price" property="rentPrice"/>
+        <result column="property_fee" property="propertyFee"/>
+        <result column="house_type" property="houseType"/>
+        <result column="orientation" property="orientation"/>
+        <result column="address" property="address"/>
+        <result column="facilities" property="facilities"/>
+        <result column="highlights" property="highlights"/>
+        <result column="scene_images" property="sceneImages"/>
+        <result column="floor_plan_images" property="floorPlanImages"/>
+        <result column="status" property="status"/>
+        <result column="sync_status" property="syncStatus"/>
+        <result column="sync_time" property="syncTime"/>
+        <result column="memo" property="memo"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="floorColumns">
+        f.id, f.park_id, p.name AS park_name, f.building_id, b.name AS building_name,
+        f.floor_no, f.area, f.status, f.memo, f.create_by, f.create_time, f.update_by, f.update_time
+    </sql>
+
+    <sql id="floorStatisticColumns">
+        COALESCE(rs.used_area, 0) AS used_area,
+        COALESCE(rs.total_count, 0) AS total_count,
+        COALESCE(rs.rented_count, 0) AS rented_count,
+        COALESCE(rs.vacant_count, 0) AS vacant_count,
+        COALESCE(rs.reserved_count, 0) AS reserved_count,
+        COALESCE(rs.renovating_count, 0) AS renovating_count,
+        COALESCE(rs.disabled_count, 0) AS disabled_count
+    </sql>
+
+    <sql id="floorStatisticJoin">
+        LEFT JOIN (
+            SELECT building_id, floor,
+                   COUNT(1) AS total_count,
+                   SUM(COALESCE(area, 0)) AS used_area,
+                   SUM(CASE WHEN status = '1' THEN 1 ELSE 0 END) AS rented_count,
+                   SUM(CASE WHEN status = '0' THEN 1 ELSE 0 END) AS vacant_count,
+                   SUM(CASE WHEN status = '2' THEN 1 ELSE 0 END) AS reserved_count,
+                   SUM(CASE WHEN status = '3' THEN 1 ELSE 0 END) AS renovating_count,
+                   SUM(CASE WHEN status = '4' THEN 1 ELSE 0 END) AS disabled_count
+            FROM ics_room
+            GROUP BY building_id, floor
+        ) rs ON rs.building_id = f.building_id AND rs.floor = f.floor_no
+    </sql>
+
+    <sql id="floorWhere">
+        <where>
+            <if test="floor.id != null">AND f.id = #{floor.id}</if>
+            <if test="floor.parkId != null">AND f.park_id = #{floor.parkId}</if>
+            <if test="floor.buildingId != null">AND f.building_id = #{floor.buildingId}</if>
+            <if test="floor.floorNo != null">AND f.floor_no = #{floor.floorNo}</if>
+            <if test="floor.status != null and floor.status != ''">AND f.status = #{floor.status}</if>
+        </where>
+    </sql>
+
+    <sql id="floorOrder">
+        ORDER BY p.name ASC, b.name ASC, f.floor_no DESC
+    </sql>
+
+    <select id="selectFloorList" resultMap="floorResultMap">
+        SELECT
+        <include refid="floorColumns"/>,
+        <include refid="floorStatisticColumns"/>
+        FROM ics_floor f
+        LEFT JOIN ics_building b ON b.id = f.building_id
+        LEFT JOIN ics_park p ON p.id = f.park_id
+        <include refid="floorStatisticJoin"/>
+        <include refid="floorWhere"/>
+        <include refid="floorOrder"/>
+    </select>
+
+    <select id="selectFloorPage" resultMap="floorResultMap">
+        SELECT
+        <include refid="floorColumns"/>,
+        <include refid="floorStatisticColumns"/>
+        FROM ics_floor f
+        LEFT JOIN ics_building b ON b.id = f.building_id
+        LEFT JOIN ics_park p ON p.id = f.park_id
+        <include refid="floorStatisticJoin"/>
+        <include refid="floorWhere"/>
+        <include refid="floorOrder"/>
+    </select>
+
+    <select id="selectFloorById" resultMap="floorResultMap">
+        SELECT
+        <include refid="floorColumns"/>,
+        <include refid="floorStatisticColumns"/>
+        FROM ics_floor f
+        LEFT JOIN ics_building b ON b.id = f.building_id
+        LEFT JOIN ics_park p ON p.id = f.park_id
+        <include refid="floorStatisticJoin"/>
+        WHERE f.id = #{id}
+    </select>
+
+    <select id="selectFloorByBuildingAndNo" resultMap="floorResultMap">
+        SELECT
+        <include refid="floorColumns"/>,
+        <include refid="floorStatisticColumns"/>
+        FROM ics_floor f
+        LEFT JOIN ics_building b ON b.id = f.building_id
+        LEFT JOIN ics_park p ON p.id = f.park_id
+        <include refid="floorStatisticJoin"/>
+        WHERE f.building_id = #{buildingId}
+          AND f.floor_no = #{floorNo}
+        ORDER BY f.id ASC
+        LIMIT 1
+    </select>
+
+    <select id="selectFloorAreaListByBuildingId" resultType="org.springblade.modules.park.pojo.dto.BuildingFloorAreaDTO">
+        SELECT f.floor_no AS floorNo, f.area
+        FROM ics_floor f
+        WHERE f.building_id = #{buildingId}
+        ORDER BY f.floor_no ASC
+    </select>
+
+    <select id="countRoomsByFloor" resultType="int">
+        SELECT COUNT(1)
+        FROM ics_room
+        WHERE building_id = #{buildingId}
+          AND floor = #{floorNo}
+    </select>
+
+    <select id="selectRoomsByFloor" resultMap="roomResultMap">
+        SELECT
+        r.id, r.park_id, p.name AS park_name, r.building_id, b.name AS building_name,
+        r.name, r.floor, r.area, r.rent_price, r.property_fee, r.house_type,
+        r.orientation, r.address, r.facilities, r.highlights, r.scene_images,
+        r.floor_plan_images, r.status, r.sync_status, r.sync_time, r.memo,
+        r.create_by, r.create_time, r.update_by, r.update_time
+        FROM ics_room r
+        LEFT JOIN ics_building b ON b.id = r.building_id
+        LEFT JOIN ics_park p ON p.id = r.park_id
+        WHERE r.building_id = #{buildingId}
+          AND r.floor = #{floorNo}
+          <if test="roomStatus != null and roomStatus != ''">AND r.status = #{roomStatus}</if>
+        ORDER BY r.name ASC, r.id ASC
+    </select>
+
+    <select id="sumRoomAreaByFloor" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(area), 0)
+        FROM ics_room
+        WHERE building_id = #{buildingId}
+          AND floor = #{floorNo}
+    </select>
+</mapper>

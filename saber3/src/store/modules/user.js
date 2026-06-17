@@ -19,7 +19,7 @@ import {
   getButtons,
   registerUser,
 } from '@/api/user';
-import { getRoutes, getTopMenu } from '@/api/system/menu';
+import { getRoutes, getTopMenu, getMainMenu } from '@/api/system/menu';
 import { formatPath } from '@/router/avue-router';
 import { ElMessage } from 'element-plus';
 import { encrypt } from '@/utils/sm2';
@@ -263,17 +263,32 @@ const user = {
         });
       });
     },
+    GetMainMenu() {
+      return new Promise(resolve => {
+        getMainMenu()
+          .then(res => {
+            resolve(res.data.data || {});
+          })
+          .catch(() => {
+            resolve({});
+          });
+      });
+    },
     GetMenu({ commit, dispatch }, topMenuId) {
       return new Promise(resolve => {
-        getRoutes(topMenuId).then(res => {
-          const data = res.data.data;
-          let menu = deepClone(data);
-          menu.forEach(ele => formatPath(ele, true));
-          commit('SET_MENU', menu);
-          commit('SET_MENU_ALL', menu);
-          dispatch('GetButtons');
-          resolve(menu);
-        });
+        getRoutes(topMenuId)
+          .then(res => {
+            const data = res.data.data || [];
+            let menu = deepClone(data);
+            menu.forEach(ele => formatPath(ele, true));
+            commit('SET_MENU', menu);
+            commit('SET_MENU_ALL', menu);
+            dispatch('GetButtons');
+            resolve(menu);
+          })
+          .catch(() => {
+            resolve([]);
+          });
       });
     },
     GetButtons({ commit }) {

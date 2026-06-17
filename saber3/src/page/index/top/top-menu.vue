@@ -45,7 +45,6 @@ export default {
       this.index.openMenu(item);
     },
     openHome() {
-      this.index.openMenu();
       this.$router.push(this.tagWel);
     },
     getMenu() {

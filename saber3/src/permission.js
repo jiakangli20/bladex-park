@@ -5,6 +5,28 @@ import NProgress from 'nprogress'; // progress bar
 import 'nprogress/nprogress.css'; // progress bar style
 NProgress.configure({ showSpinner: false });
 const lockPage = '/lock'; //锁屏页
+let dynamicRouteReady = false;
+
+const loadDynamicRoutes = async () => {
+  try {
+    const mainMenu = await store.dispatch('GetMainMenu');
+    const data = await store.dispatch(
+      'GetMenu',
+      mainMenu && mainMenu.id ? mainMenu.id : undefined
+    );
+    if (data && data.length !== 0) {
+      router.$avueRouter.formatRoutes(data, true);
+      dynamicRouteReady = true;
+      return true;
+    }
+  } catch {
+    dynamicRouteReady = true;
+    return false;
+  }
+  dynamicRouteReady = true;
+  return false;
+};
+
 router.beforeEach(async (to, from, next) => {
   // 获取匹配的路由数组，预加载组件并设置name以确保keep-alive首次即可匹配
   const matchedRoutes = to.matched;
@@ -24,6 +46,13 @@ router.beforeEach(async (to, from, next) => {
       //如果登录成功访问登录页跳转到主页
       next({ path: '/' });
     } else {
+      if (to.matched.length === 0 && !dynamicRouteReady) {
+        const loaded = await loadDynamicRoutes();
+        if (loaded) {
+          next({ ...to, replace: true });
+          return;
+        }
+      }
       if (store.getters.token.length === 0) {
         store.dispatch('FedLogOut').then(() => {
           next({ path: '/login' });

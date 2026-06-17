@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.home.mapper.HomeMapper">
+
+	<select id="countRooms" resultType="java.lang.Long">
+		SELECT COUNT(1)
+		FROM ics_room r
+		WHERE 1 = 1
+		<if test="parkId != null">
+			AND r.park_id = #{parkId}
+		</if>
+	</select>
+
+	<select id="countCustomers" resultType="java.lang.Long">
+		SELECT COUNT(1)
+		FROM biz_customer c
+		WHERE c.del_flag = '0'
+		  AND c.status = '0'
+		<if test="parkId != null">
+			AND c.park_id = #{parkId}
+		</if>
+	</select>
+
+	<select id="countExpiringContracts" resultType="java.lang.Long">
+		SELECT COUNT(1)
+		FROM biz_contract c
+		WHERE COALESCE(c.del_flag, '0') = '0'
+		  AND c.contract_status = '1'
+		  AND c.end_date &gt;= CURDATE()
+		  AND c.end_date &lt;= DATE_ADD(CURDATE(), INTERVAL IFNULL(c.renewal_remind_days, 30) DAY)
+		<if test="parkId != null">
+			AND c.park_id = #{parkId}
+		</if>
+	</select>
+
+	<select id="countApprovalTodos" resultType="java.lang.Long">
+		SELECT COUNT(1)
+		FROM biz_approval_project p
+		WHERE COALESCE(p.del_flag, '0') = '0'
+		  AND p.process_status = '1'
+		<if test="parkId != null">
+			AND p.park_id = #{parkId}
+		</if>
+		<if test="admin == null or admin == false">
+			AND FIND_IN_SET(#{currentUser}, REPLACE(COALESCE(p.current_node, ''), ' ', '')) &gt; 0
+		</if>
+	</select>
+
+	<select id="countTimeoutApprovals" resultType="java.lang.Long">
+		SELECT COUNT(1)
+		FROM biz_approval_project p
+		WHERE COALESCE(p.del_flag, '0') = '0'
+		  AND p.process_status = '1'
+		  AND COALESCE(p.update_time, p.applicant_time, p.create_time) &lt; DATE_SUB(NOW(), INTERVAL 12 HOUR)
+		<if test="parkId != null">
+			AND p.park_id = #{parkId}
+		</if>
+		<if test="admin == null or admin == false">
+			AND FIND_IN_SET(#{currentUser}, REPLACE(COALESCE(p.current_node, ''), ' ', '')) &gt; 0
+		</if>
+	</select>
+
+	<select id="countWorkorderTodos" resultType="java.lang.Long">
+		SELECT COUNT(1)
+		FROM biz_service_workorder w
+		WHERE COALESCE(w.del_flag, '0') = '0'
+		  AND w.order_status = '0'
+		<if test="parkId != null">
+			AND w.park_id = #{parkId}
+		</if>
+		<if test="admin == null or admin == false">
+			AND (w.create_by = #{currentUser} OR w.assign_to = #{currentUser})
+		</if>
+	</select>
+
+	<select id="selectEnterprises" resultType="org.springblade.modules.home.pojo.vo.HomeEnterpriseVO">
+		SELECT
+			c.customer_id AS customerId,
+			c.enterprise_name AS enterpriseName,
+			c.industry,
+			LEFT(c.enterprise_name, 1) AS shortName
+		FROM biz_customer c
+		WHERE c.del_flag = '0'
+		  AND c.status = '0'
+		<if test="parkId != null">
+			AND c.park_id = #{parkId}
+		</if>
+		ORDER BY c.create_time DESC, c.customer_id DESC
+		LIMIT 12
+	</select>
+
+</mapper>

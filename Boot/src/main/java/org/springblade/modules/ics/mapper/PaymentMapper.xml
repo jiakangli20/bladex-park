@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.ics.mapper.PaymentMapper">
+
+	<resultMap id="paymentResultMap" type="org.springblade.modules.contract.pojo.entity.ContractPayment">
+		<id column="payment_id" property="paymentId"/>
+		<result column="contract_id" property="contractId"/>
+		<result column="fee_type" property="feeType"/>
+		<result column="fee_name" property="feeName"/>
+		<result column="period_start" property="periodStart"/>
+		<result column="period_end" property="periodEnd"/>
+		<result column="amount_due" property="amountDue"/>
+		<result column="amount_paid" property="amountPaid"/>
+		<result column="pay_deadline" property="payDeadline"/>
+		<result column="pay_time" property="payTime"/>
+		<result column="pay_status" property="payStatus"/>
+		<result column="remind_status" property="remindStatus"/>
+		<result column="remind_time" property="remindTime"/>
+		<result column="remark" property="remark"/>
+		<result column="park_id" property="parkId"/>
+		<result column="create_by" property="createBy"/>
+		<result column="create_time" property="createTime"/>
+		<result column="update_by" property="updateBy"/>
+		<result column="update_time" property="updateTime"/>
+		<result column="contract_no" property="contractNo"/>
+		<result column="customer_name" property="customerName"/>
+	</resultMap>
+
+	<resultMap id="summaryResultMap" type="org.springblade.modules.ics.pojo.vo.PaymentSummaryVO">
+		<result column="total_count" property="totalCount"/>
+		<result column="unpaid_count" property="unpaidCount"/>
+		<result column="paid_count" property="paidCount"/>
+		<result column="overdue_count" property="overdueCount"/>
+		<result column="partial_count" property="partialCount"/>
+		<result column="reminded_count" property="remindedCount"/>
+		<result column="amount_due" property="amountDue"/>
+		<result column="amount_paid" property="amountPaid"/>
+		<result column="amount_pending" property="amountPending"/>
+	</resultMap>
+
+	<sql id="selectPaymentVo">
+		SELECT
+			p.payment_id,
+			p.contract_id,
+			p.fee_type,
+			p.fee_name,
+			p.period_start,
+			p.period_end,
+			p.amount_due,
+			p.amount_paid,
+			p.pay_deadline,
+			p.pay_time,
+			CASE
+				WHEN p.pay_status = '1' THEN '1'
+				WHEN p.pay_status = '3' THEN '3'
+				WHEN p.pay_deadline &lt; CURDATE() THEN '2'
+				ELSE COALESCE(p.pay_status, '0')
+			END AS pay_status,
+			p.remind_status,
+			p.remind_time,
+			p.remark,
+			p.park_id,
+			p.create_by,
+			p.create_time,
+			p.update_by,
+			p.update_time,
+			c.contract_no,
+			c.customer_name
+		FROM biz_contract_payment p
+		LEFT JOIN biz_contract c ON c.contract_id = p.contract_id
+	</sql>
+
+	<sql id="paymentConditions">
+		<if test="payment != null and payment.contractId != null">
+			AND p.contract_id = #{payment.contractId}
+		</if>
+		<if test="payment != null and payment.feeType != null and payment.feeType != ''">
+			AND p.fee_type = #{payment.feeType}
+		</if>
+		<if test="payment != null and payment.payStatus != null and payment.payStatus != ''">
+			<choose>
+				<when test='payment.payStatus == "2"'>
+					AND p.pay_status != '1'
+					AND p.pay_deadline &lt; CURDATE()
+				</when>
+				<otherwise>
+					AND p.pay_status = #{payment.payStatus}
+				</otherwise>
+			</choose>
+		</if>
+		<if test="payment != null and payment.parkId != null">
+			AND p.park_id = #{payment.parkId}
+		</if>
+		<if test="payment != null and payment.contractNo != null and payment.contractNo != ''">
+			AND c.contract_no LIKE CONCAT('%', #{payment.contractNo}, '%')
+		</if>
+		<if test="payment != null and payment.customerName != null and payment.customerName != ''">
+			AND c.customer_name LIKE CONCAT('%', #{payment.customerName}, '%')
+		</if>
+	</sql>
+
+	<select id="selectPaymentPage" resultMap="paymentResultMap">
+		<include refid="selectPaymentVo"/>
+		<where>
+			<include refid="paymentConditions"/>
+			<if test="overdue != null and overdue">
+				AND p.pay_status != '1'
+				AND p.pay_deadline &lt; CURDATE()
+			</if>
+		</where>
+		ORDER BY p.pay_deadline ASC, p.payment_id DESC
+	</select>
+
+	<select id="selectSummary" resultMap="summaryResultMap">
+		SELECT
+			COUNT(1) AS total_count,
+			SUM(CASE WHEN COALESCE(p.pay_status, '0') = '0' AND p.pay_deadline &gt;= CURDATE() THEN 1 ELSE 0 END) AS unpaid_count,
+			SUM(CASE WHEN p.pay_status = '1' THEN 1 ELSE 0 END) AS paid_count,
+			SUM(CASE WHEN p.pay_status != '1' AND p.pay_deadline &lt; CURDATE() THEN 1 ELSE 0 END) AS overdue_count,
+			SUM(CASE WHEN p.pay_status = '3' THEN 1 ELSE 0 END) AS partial_count,
+			SUM(CASE WHEN p.remind_status = '1' THEN 1 ELSE 0 END) AS reminded_count,
+			COALESCE(SUM(p.amount_due), 0) AS amount_due,
+			COALESCE(SUM(p.amount_paid), 0) AS amount_paid,
+			COALESCE(SUM(p.amount_due), 0) - COALESCE(SUM(p.amount_paid), 0) AS amount_pending
+		FROM biz_contract_payment p
+		LEFT JOIN biz_contract c ON c.contract_id = p.contract_id
+		<where>
+			<include refid="paymentConditions"/>
+		</where>
+	</select>
+
+	<select id="selectPaymentById" resultMap="paymentResultMap">
+		<include refid="selectPaymentVo"/>
+		WHERE p.payment_id = #{paymentId}
+	</select>
+
+</mapper>

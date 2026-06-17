@@ -30,6 +30,7 @@ import basicContainer from './components/basic-container/main.vue';
 import thirdRegister from './components/third-register/main.vue';
 import flowDesign from './components/flow-design/main.vue';
 import flowDesignStep from './components/flow-design-step/main.vue';
+import statCards from './components/stat-cards/main.vue';
 // 业务组件
 import codeSetting from './views/tool/codesetting.vue';
 import formSetting from './views/tool/formsetting.vue';
@@ -51,6 +52,7 @@ app.component('cronEditor', cronEditor);
 app.component('thirdRegister', thirdRegister);
 app.component('flowDesign', flowDesign);
 app.component('flowDesignStep', flowDesignStep);
+app.component('statCards', statCards);
 app.component('codeSetting', codeSetting);
 app.component('formSetting', formSetting);
 app.component('tenantPackage', tenantPackage);

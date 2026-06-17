@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.business.mapper.CustomerMapper">
+
+	<resultMap id="customerResultMap" type="org.springblade.modules.business.pojo.entity.Customer">
+		<id column="customer_id" property="customerId"/>
+		<result column="enterprise_name" property="enterpriseName"/>
+		<result column="credit_code" property="creditCode"/>
+		<result column="establish_date" property="establishDate"/>
+		<result column="registered_capital" property="registeredCapital"/>
+		<result column="enterprise_type" property="enterpriseType"/>
+		<result column="industry" property="industry"/>
+		<result column="business_scope" property="businessScope"/>
+		<result column="registered_address" property="registeredAddress"/>
+		<result column="equity_structure" property="equityStructure"/>
+		<result column="organization_structure" property="organizationStructure"/>
+		<result column="main_business" property="mainBusiness"/>
+		<result column="last_year_revenue" property="lastYearRevenue"/>
+		<result column="major_clients" property="majorClients"/>
+		<result column="major_illegal_flag" property="majorIllegalFlag"/>
+		<result column="dishonest_flag" property="dishonestFlag"/>
+		<result column="industry_penalty_flag" property="industryPenaltyFlag"/>
+		<result column="carrier_types" property="carrierTypes"/>
+		<result column="intent_area" property="intentArea"/>
+		<result column="usage_purpose" property="usagePurpose"/>
+		<result column="lease_term_years" property="leaseTermYears"/>
+		<result column="lease_term_label" property="leaseTermLabel"/>
+		<result column="decoration_requirement" property="decorationRequirement"/>
+		<result column="supporting_needs" property="supportingNeeds"/>
+		<result column="scale" property="scale"/>
+		<result column="migration_place" property="migrationPlace"/>
+		<result column="migration_reason" property="migrationReason"/>
+		<result column="contact_name" property="contactName"/>
+		<result column="contact_phone" property="contactPhone"/>
+		<result column="contact_email" property="contactEmail"/>
+		<result column="contact_position" property="contactPosition"/>
+		<result column="channel" property="channel"/>
+		<result column="third_party_channel_name" property="thirdPartyChannelName"/>
+		<result column="address" property="address"/>
+		<result column="cooperation_level" property="cooperationLevel"/>
+		<result column="settlement_status" property="settlementStatus"/>
+		<result column="status" property="status"/>
+		<result column="wx_openid" property="wxOpenid"/>
+		<result column="wx_unionid" property="wxUnionid"/>
+		<result column="remark" property="remark"/>
+		<result column="verify_status" property="verifyStatus"/>
+		<result column="verify_message" property="verifyMessage"/>
+		<result column="verify_time" property="verifyTime"/>
+		<result column="industry_access_result" property="industryAccessResult"/>
+		<result column="industry_access_reason" property="industryAccessReason"/>
+		<result column="risk_level" property="riskLevel"/>
+		<result column="risk_summary" property="riskSummary"/>
+		<result column="legal_risk_flag" property="legalRiskFlag"/>
+		<result column="executive_risk_flag" property="executiveRiskFlag"/>
+		<result column="shareholder_risk_flag" property="shareholderRiskFlag"/>
+		<result column="del_flag" property="delFlag"/>
+		<result column="park_id" property="parkId"/>
+		<result column="create_by" property="createBy"/>
+		<result column="update_by" property="updateBy"/>
+		<result column="create_time" property="createTime"/>
+		<result column="update_time" property="updateTime"/>
+	</resultMap>
+
+	<sql id="selectCustomerColumns">
+		select customer_id,
+			   enterprise_name,
+			   credit_code,
+			   establish_date,
+			   registered_capital,
+			   enterprise_type,
+			   industry,
+			   business_scope,
+			   registered_address,
+			   equity_structure,
+			   organization_structure,
+			   main_business,
+			   last_year_revenue,
+			   major_clients,
+			   major_illegal_flag,
+			   dishonest_flag,
+			   industry_penalty_flag,
+			   carrier_types,
+			   intent_area,
+			   usage_purpose,
+			   lease_term_years,
+			   lease_term_label,
+			   decoration_requirement,
+			   supporting_needs,
+			   scale,
+			   migration_place,
+			   migration_reason,
+			   contact_name,
+			   contact_phone,
+			   contact_email,
+			   contact_position,
+			   channel,
+			   third_party_channel_name,
+			   address,
+			   cooperation_level,
+			   settlement_status,
+			   status,
+			   wx_openid,
+			   wx_unionid,
+			   remark,
+			   verify_status,
+			   verify_message,
+			   verify_time,
+			   industry_access_result,
+			   industry_access_reason,
+			   risk_level,
+			   risk_summary,
+			   legal_risk_flag,
+			   executive_risk_flag,
+			   shareholder_risk_flag,
+			   del_flag,
+			   park_id,
+			   create_by,
+			   update_by,
+			   create_time,
+			   update_time
+		from biz_customer
+	</sql>
+
+	<sql id="customerWhere">
+		<where>
+			del_flag = '0'
+			<if test="customer != null">
+				<if test="customer.customerId != null">and customer_id = #{customer.customerId}</if>
+				<if test="customer.parkId != null">and park_id = #{customer.parkId}</if>
+				<if test="customer.enterpriseName != null and customer.enterpriseName != ''">and enterprise_name like concat('%', #{customer.enterpriseName}, '%')</if>
+				<if test="customer.creditCode != null and customer.creditCode != ''">and credit_code = #{customer.creditCode}</if>
+				<if test="customer.industry != null and customer.industry != ''">and industry = #{customer.industry}</if>
+				<if test="customer.scale != null and customer.scale != ''">and scale = #{customer.scale}</if>
+				<if test="customer.cooperationLevel != null">and cooperation_level = #{customer.cooperationLevel}</if>
+				<if test="customer.settlementStatus != null">and settlement_status = #{customer.settlementStatus}</if>
+				<if test="customer.status != null and customer.status != ''">and status = #{customer.status}</if>
+				<if test="customer.riskLevel != null and customer.riskLevel != ''">and risk_level = #{customer.riskLevel}</if>
+				<if test="customer.contactName != null and customer.contactName != ''">and contact_name like concat('%', #{customer.contactName}, '%')</if>
+				<if test="customer.contactPhone != null and customer.contactPhone != ''">and contact_phone = #{customer.contactPhone}</if>
+				<if test="customer.beginTime != null and customer.beginTime != ''">and create_time &gt;= #{customer.beginTime}</if>
+				<if test="customer.endTime != null and customer.endTime != ''">and create_time &lt;= #{customer.endTime}</if>
+				<if test="customer.keyword != null and customer.keyword != ''">
+					and (
+						enterprise_name like concat('%', #{customer.keyword}, '%')
+						or contact_name like concat('%', #{customer.keyword}, '%')
+						or contact_phone like concat('%', #{customer.keyword}, '%')
+						or credit_code like concat('%', #{customer.keyword}, '%')
+					)
+				</if>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectCustomerById" resultMap="customerResultMap">
+		<include refid="selectCustomerColumns"/>
+		where customer_id = #{customerId}
+		  and del_flag = '0'
+	</select>
+
+	<select id="selectCustomerList" resultMap="customerResultMap">
+		<include refid="selectCustomerColumns"/>
+		<include refid="customerWhere"/>
+		order by create_time desc, customer_id desc
+	</select>
+
+	<select id="selectCustomerPage" resultMap="customerResultMap">
+		<include refid="selectCustomerColumns"/>
+		<include refid="customerWhere"/>
+		order by create_time desc, customer_id desc
+	</select>
+
+	<select id="selectCustomerStatistics" resultType="java.util.HashMap">
+		select count(1) as totalCount,
+			   sum(case when settlement_status = 3 then 1 else 0 end) as settledCount,
+			   sum(case when status = '0' then 1 else 0 end) as normalCount,
+			   sum(case when create_time &gt;= date_format(now(), '%Y-%m-01') then 1 else 0 end) as monthNewCount
+		from biz_customer
+		<include refid="customerWhere"/>
+	</select>
+
+	<select id="selectCustomerIdByCreditCode" resultType="long">
+		select customer_id
+		from biz_customer
+		where credit_code = #{creditCode}
+		  and del_flag = '0'
+		order by customer_id asc
+		limit 1
+	</select>
+
+	<select id="selectCustomerIdByEnterpriseAndPark" resultType="long">
+		select customer_id
+		from biz_customer
+		where enterprise_name = #{enterpriseName}
+		  and del_flag = '0'
+		<if test="parkId != null">and park_id = #{parkId}</if>
+		<if test="excludeCustomerId != null">and customer_id != #{excludeCustomerId}</if>
+		order by customer_id asc
+		limit 1
+	</select>
+
+	<select id="countTableRows" resultType="int">
+		select count(1)
+		from information_schema.tables
+		where table_schema = database()
+		  and table_name = #{tableName}
+	</select>
+
+	<select id="countOpportunityByCustomerId" resultType="int">
+		select count(1)
+		from biz_business_opportunity
+		where customer_id = #{customerId}
+		  and del_flag = '0'
+	</select>
+
+	<select id="countApprovalProjectByCustomerId" resultType="int">
+		select count(1)
+		from biz_approval_project
+		where customer_id = #{customerId}
+		  and coalesce(del_flag, '0') = '0'
+		  and process_status != '9'
+	</select>
+
+	<select id="countContractByCustomerId" resultType="int">
+		select count(1)
+		from biz_contract
+		where customer_id = #{customerId}
+		  and coalesce(del_flag, '0') = '0'
+	</select>
+
+	<insert id="insertCustomer" parameterType="org.springblade.modules.business.pojo.entity.Customer" useGeneratedKeys="true" keyProperty="customerId">
+		insert into biz_customer (
+			enterprise_name, credit_code, establish_date, registered_capital, enterprise_type, industry,
+			business_scope, registered_address, equity_structure, organization_structure, main_business,
+			last_year_revenue, major_clients, major_illegal_flag, dishonest_flag, industry_penalty_flag,
+			carrier_types, intent_area, usage_purpose, lease_term_years, lease_term_label, decoration_requirement,
+			supporting_needs, scale, migration_place, migration_reason, contact_name, contact_phone,
+			contact_email, contact_position, channel, third_party_channel_name, address, cooperation_level,
+			settlement_status, status, wx_openid, wx_unionid, remark, verify_status, verify_message,
+			verify_time, industry_access_result, industry_access_reason, risk_level, risk_summary,
+			legal_risk_flag, executive_risk_flag, shareholder_risk_flag, del_flag, park_id, create_by, update_by,
+			create_time, update_time
+		) values (
+			#{enterpriseName}, #{creditCode}, #{establishDate}, #{registeredCapital}, #{enterpriseType}, #{industry},
+			#{businessScope}, #{registeredAddress}, #{equityStructure}, #{organizationStructure}, #{mainBusiness},
+			#{lastYearRevenue}, #{majorClients}, #{majorIllegalFlag}, #{dishonestFlag}, #{industryPenaltyFlag},
+			#{carrierTypes}, #{intentArea}, #{usagePurpose}, #{leaseTermYears}, #{leaseTermLabel}, #{decorationRequirement},
+			#{supportingNeeds}, #{scale}, #{migrationPlace}, #{migrationReason}, #{contactName}, #{contactPhone},
+			#{contactEmail}, #{contactPosition}, #{channel}, #{thirdPartyChannelName}, #{address}, #{cooperationLevel},
+			#{settlementStatus}, #{status}, #{wxOpenid}, #{wxUnionid}, #{remark}, #{verifyStatus}, #{verifyMessage},
+			#{verifyTime}, #{industryAccessResult}, #{industryAccessReason}, #{riskLevel}, #{riskSummary},
+			#{legalRiskFlag}, #{executiveRiskFlag}, #{shareholderRiskFlag}, #{delFlag}, #{parkId}, #{createBy}, #{updateBy},
+			#{createTime}, #{updateTime}
+		)
+	</insert>
+
+	<update id="updateCustomer" parameterType="org.springblade.modules.business.pojo.entity.Customer">
+		update biz_customer
+		<set>
+			<if test="enterpriseName != null">enterprise_name = #{enterpriseName},</if>
+			<if test="creditCode != null">credit_code = #{creditCode},</if>
+			<if test="establishDate != null">establish_date = #{establishDate},</if>
+			<if test="registeredCapital != null">registered_capital = #{registeredCapital},</if>
+			<if test="enterpriseType != null">enterprise_type = #{enterpriseType},</if>
+			<if test="industry != null">industry = #{industry},</if>
+			<if test="businessScope != null">business_scope = #{businessScope},</if>
+			<if test="registeredAddress != null">registered_address = #{registeredAddress},</if>
+			<if test="equityStructure != null">equity_structure = #{equityStructure},</if>
+			<if test="organizationStructure != null">organization_structure = #{organizationStructure},</if>
+			<if test="mainBusiness != null">main_business = #{mainBusiness},</if>
+			<if test="lastYearRevenue != null">last_year_revenue = #{lastYearRevenue},</if>
+			<if test="majorClients != null">major_clients = #{majorClients},</if>
+			<if test="majorIllegalFlag != null">major_illegal_flag = #{majorIllegalFlag},</if>
+			<if test="dishonestFlag != null">dishonest_flag = #{dishonestFlag},</if>
+			<if test="industryPenaltyFlag != null">industry_penalty_flag = #{industryPenaltyFlag},</if>
+			<if test="carrierTypes != null">carrier_types = #{carrierTypes},</if>
+			<if test="intentArea != null">intent_area = #{intentArea},</if>
+			<if test="usagePurpose != null">usage_purpose = #{usagePurpose},</if>
+			<if test="leaseTermYears != null">lease_term_years = #{leaseTermYears},</if>
+			<if test="leaseTermLabel != null">lease_term_label = #{leaseTermLabel},</if>
+			<if test="decorationRequirement != null">decoration_requirement = #{decorationRequirement},</if>
+			<if test="supportingNeeds != null">supporting_needs = #{supportingNeeds},</if>
+			<if test="scale != null">scale = #{scale},</if>
+			<if test="migrationPlace != null">migration_place = #{migrationPlace},</if>
+			<if test="migrationReason != null">migration_reason = #{migrationReason},</if>
+			<if test="contactName != null">contact_name = #{contactName},</if>
+			<if test="contactPhone != null">contact_phone = #{contactPhone},</if>
+			<if test="contactEmail != null">contact_email = #{contactEmail},</if>
+			<if test="contactPosition != null">contact_position = #{contactPosition},</if>
+			<if test="channel != null">channel = #{channel},</if>
+			<if test="thirdPartyChannelName != null">third_party_channel_name = #{thirdPartyChannelName},</if>
+			<if test="address != null">address = #{address},</if>
+			<if test="cooperationLevel != null">cooperation_level = #{cooperationLevel},</if>
+			<if test="settlementStatus != null">settlement_status = #{settlementStatus},</if>
+			<if test="status != null">status = #{status},</if>
+			<if test="wxOpenid != null">wx_openid = #{wxOpenid},</if>
+			<if test="wxUnionid != null">wx_unionid = #{wxUnionid},</if>
+			<if test="remark != null">remark = #{remark},</if>
+			<if test="verifyStatus != null">verify_status = #{verifyStatus},</if>
+			<if test="verifyMessage != null">verify_message = #{verifyMessage},</if>
+			<if test="verifyTime != null">verify_time = #{verifyTime},</if>
+			<if test="industryAccessResult != null">industry_access_result = #{industryAccessResult},</if>
+			<if test="industryAccessReason != null">industry_access_reason = #{industryAccessReason},</if>
+			<if test="riskLevel != null">risk_level = #{riskLevel},</if>
+			<if test="riskSummary != null">risk_summary = #{riskSummary},</if>
+			<if test="legalRiskFlag != null">legal_risk_flag = #{legalRiskFlag},</if>
+			<if test="executiveRiskFlag != null">executive_risk_flag = #{executiveRiskFlag},</if>
+			<if test="shareholderRiskFlag != null">shareholder_risk_flag = #{shareholderRiskFlag},</if>
+			<if test="parkId != null">park_id = #{parkId},</if>
+			<if test="updateBy != null">update_by = #{updateBy},</if>
+			update_time = now()
+		</set>
+		where customer_id = #{customerId}
+	</update>
+
+	<update id="updateCustomerStatus">
+		update biz_customer
+		set status = #{status},
+			update_by = #{updateBy},
+			update_time = now()
+		where customer_id = #{customerId}
+		  and del_flag = '0'
+	</update>
+
+	<update id="updateCustomerCheckResult" parameterType="org.springblade.modules.business.pojo.entity.Customer">
+		update biz_customer
+		set verify_status = #{verifyStatus},
+			verify_message = #{verifyMessage},
+			verify_time = #{verifyTime},
+			industry_access_result = #{industryAccessResult},
+			industry_access_reason = #{industryAccessReason},
+			risk_level = #{riskLevel},
+			risk_summary = #{riskSummary},
+			legal_risk_flag = #{legalRiskFlag},
+			executive_risk_flag = #{executiveRiskFlag},
+			shareholder_risk_flag = #{shareholderRiskFlag},
+			update_by = #{updateBy},
+			update_time = now()
+		where customer_id = #{customerId}
+		  and del_flag = '0'
+	</update>
+
+	<update id="deleteCustomerByIds">
+		update biz_customer
+		set del_flag = '1',
+			update_by = #{updateBy},
+			update_time = now()
+		where customer_id in
+		<foreach collection="ids" item="id" open="(" separator="," close=")">
+			#{id}
+		</foreach>
+	</update>
+
+	<update id="updateApprovalProjectCustomerId">
+		update biz_approval_project
+		set customer_id = #{customerId},
+			update_by = #{updateBy},
+			update_time = now()
+		where project_id = #{projectId}
+		  and coalesce(del_flag, '0') = '0'
+	</update>
+
+</mapper>

@@ -16,7 +16,7 @@
           <el-form-item label="企业名称">
             <el-input v-model="query.enterpriseName" clearable placeholder="请输入企业名称" @keyup.enter="searchChange" />
           </el-form-item>
-          <el-form-item label="审批类型">
+          <el-form-item v-if="!isSettlementMode" label="审批类型">
             <el-select v-model="query.businessType" clearable placeholder="全部类型">
               <el-option v-for="item in businessTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
@@ -34,7 +34,7 @@
       </section>
 
       <section class="approval-toolbar">
-        <span>我的审批流程</span>
+        <span>{{ pageTitle }}</span>
         <el-tooltip content="刷新" placement="top">
           <el-button icon="el-icon-refresh" circle @click="reload" />
         </el-tooltip>
@@ -261,15 +261,19 @@ const businessTypeOptions = [
 
 export default {
   name: 'ApprovalMyFlow',
+  props: {
+    mode: {
+      type: String,
+      default: '',
+    },
+  },
   data() {
     return {
       loading: false,
       detailLoading: false,
       actionLoading: false,
       data: [],
-      query: {
-        scope: 'mine',
-      },
+      query: {},
       page: {
         pageSize: 10,
         currentPage: 1,
@@ -302,15 +306,45 @@ export default {
   },
   computed: {
     ...mapGetters(['permission', 'userInfo']),
+    isSettlementMode() {
+      return this.mode === 'settlement' || this.$route.path === '/settlement/project-approval';
+    },
+    approvalMode() {
+      if (this.isSettlementMode) return 'settlement';
+      if (['todo', 'done', 'cc'].includes(this.mode)) return this.mode;
+      if (this.$route.path === '/approval/todo') return 'todo';
+      if (this.$route.path === '/approval/done') return 'done';
+      if (this.$route.path === '/approval/cc') return 'cc';
+      return 'mine';
+    },
+    pageTitle() {
+      const titles = {
+        settlement: '项目审核',
+        mine: '我的审批',
+        todo: '待办任务',
+        done: '已办任务',
+        cc: '抄送我的',
+      };
+      return titles[this.approvalMode] || '我的审批';
+    },
     permissionList() {
+      const prefixMap = {
+        settlement: 'settlement_project_approval',
+        mine: 'approval_my_flow',
+        todo: 'approval_todo_task',
+        done: 'approval_done_task',
+        cc: 'approval_cc_task',
+      };
+      const prefix = prefixMap[this.approvalMode] || 'approval_my_flow';
+      const fallback = key => this.validData(this.permission[`${prefix}_${key}`], this.permission[`approval_my_flow_${key}`]);
       return {
-        viewBtn: this.validData(this.permission.approval_my_flow_view, false),
-        formBtn: this.validData(this.permission.approval_my_flow_form, false),
-        approveBtn: this.validData(this.permission.approval_my_flow_approve, false),
-        rejectBtn: this.validData(this.permission.approval_my_flow_reject, false),
-        transferBtn: this.validData(this.permission.approval_my_flow_transfer, false),
-        archiveBtn: this.validData(this.permission.approval_my_flow_archive, false),
-        resubmitBtn: this.validData(this.permission.approval_my_flow_resubmit, false),
+        viewBtn: this.validData(fallback('view'), false),
+        formBtn: this.validData(fallback('form'), false),
+        approveBtn: this.validData(fallback('approve'), false),
+        rejectBtn: this.validData(fallback('reject'), false),
+        transferBtn: this.validData(fallback('transfer'), false),
+        archiveBtn: this.validData(fallback('archive'), false),
+        resubmitBtn: this.validData(fallback('resubmit'), false),
       };
     },
     detailTitle() {
@@ -333,6 +367,7 @@ export default {
     },
   },
   created() {
+    this.query = this.defaultQuery();
     this.loadStatistics();
     this.onLoad(this.page);
   },
@@ -340,8 +375,35 @@ export default {
     validData(value, defaultValue) {
       return value === undefined || value === null ? defaultValue : value;
     },
+    defaultQuery() {
+      if (this.approvalMode === 'settlement') {
+        return {
+          scope: 'settlement',
+          businessType: 'tenant_entry',
+          excludeProcessStatus: '0',
+        };
+      }
+      if (this.approvalMode === 'todo') {
+        return {
+          scope: 'todo',
+        };
+      }
+      if (this.approvalMode === 'done') {
+        return {
+          scope: 'done',
+        };
+      }
+      if (this.approvalMode === 'cc') {
+        return {
+          scope: 'cc',
+        };
+      }
+      return {
+        scope: 'mine',
+      };
+    },
     loadStatistics() {
-      getApprovalProjectStatistics({ ...this.query, scope: 'mine' }).then(res => {
+      getApprovalProjectStatistics({ ...this.query }).then(res => {
         const stats = res.data.data || {};
         this.summaryCards = this.summaryCards.map(item => ({
           ...item,
@@ -354,7 +416,6 @@ export default {
       getApprovalProjectList(page.currentPage, page.pageSize, {
         ...this.query,
         ...params,
-        scope: 'mine',
       })
         .then(res => {
           const result = res.data.data || {};
@@ -374,7 +435,7 @@ export default {
       this.reload();
     },
     searchReset() {
-      this.query = { scope: 'mine' };
+      this.query = this.defaultQuery();
       this.page.currentPage = 1;
       this.reload();
     },

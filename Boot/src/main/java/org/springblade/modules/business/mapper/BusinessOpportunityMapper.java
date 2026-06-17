@@ -56,12 +56,18 @@ public interface BusinessOpportunityMapper extends BaseMapper<BusinessOpportunit
 
 	Long selectExistingApprovalProjectId(@Param("opportunityId") Long opportunityId);
 
+	List<Map<String, Object>> selectApprovalNodeCandidates(@Param("flowId") Long flowId);
+
+	String selectApprovalFlowNodeConfig(@Param("flowId") Long flowId);
+
 	int insertApprovalProject(@Param("opportunity") BusinessOpportunity opportunity,
 							  @Param("flowId") Long flowId,
 							  @Param("loginName") String loginName);
 
 	int updateApprovalProjectStatus(@Param("projectId") Long projectId,
-									@Param("loginName") String loginName);
+									@Param("loginName") String loginName,
+									@Param("currentNode") String currentNode,
+									@Param("currentNodeName") String currentNodeName);
 
 	int insertApprovalLog(@Param("opportunity") BusinessOpportunity opportunity,
 						  @Param("projectId") Long projectId,

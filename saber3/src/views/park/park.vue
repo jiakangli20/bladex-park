@@ -1,23 +1,6 @@
 <template>
   <basic-container>
-    <div class="park-stats">
-      <div class="park-stats-item">
-        <div class="park-stats-label">管理面积</div>
-        <div class="park-stats-value">{{ formatArea(statistics.managementArea) }} ㎡</div>
-      </div>
-      <div class="park-stats-item">
-        <div class="park-stats-label">可招商面积</div>
-        <div class="park-stats-value">{{ formatArea(statistics.rentableArea) }} ㎡</div>
-      </div>
-      <div class="park-stats-item">
-        <div class="park-stats-label">总房源数</div>
-        <div class="park-stats-value">{{ statistics.totalRoomCount || 0 }} 间</div>
-      </div>
-      <div class="park-stats-item">
-        <div class="park-stats-label">可招商房源</div>
-        <div class="park-stats-value">{{ statistics.rentableRoomCount || 0 }} 间</div>
-      </div>
-    </div>
+    <stat-cards :items="statCards" compact />
 
     <avue-crud
       ref="crud"
@@ -90,6 +73,26 @@ export default {
   },
   computed: {
     ...mapGetters(['permission']),
+    statCards() {
+      return [
+        {
+          label: '管理面积',
+          value: `${this.formatArea(this.statistics.managementArea)} ㎡`,
+        },
+        {
+          label: '可招商面积',
+          value: `${this.formatArea(this.statistics.rentableArea)} ㎡`,
+        },
+        {
+          label: '总房源数',
+          value: `${this.statistics.totalRoomCount || 0} 间`,
+        },
+        {
+          label: '可招商房源',
+          value: `${this.statistics.rentableRoomCount || 0} 间`,
+        },
+      ];
+    },
     permissionList() {
       return {
         addBtn: this.validData(this.permission.park_add, false),
@@ -228,45 +231,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-.park-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.park-stats-item {
-  padding: 14px 16px;
-  border: 1px solid #ebeef5;
-  border-radius: 6px;
-  background: #fff;
-}
-
-.park-stats-label {
-  color: #909399;
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.park-stats-value {
-  margin-top: 6px;
-  color: #303133;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-@media (max-width: 1200px) {
-  .park-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  .park-stats {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

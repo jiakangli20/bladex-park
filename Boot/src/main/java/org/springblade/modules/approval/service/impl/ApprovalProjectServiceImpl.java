@@ -26,6 +26,7 @@ import org.springblade.modules.approval.pojo.entity.ApprovalMaterial;
 import org.springblade.modules.approval.pojo.entity.ApprovalNode;
 import org.springblade.modules.approval.pojo.entity.ApprovalProject;
 import org.springblade.modules.approval.service.IApprovalProjectService;
+import org.springblade.modules.business.service.ICustomerService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,6 +63,7 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 	private final ApprovalNodeMapper approvalNodeMapper;
 	private final ApprovalMaterialMapper approvalMaterialMapper;
 	private final ApprovalLogMapper approvalLogMapper;
+	private final ICustomerService customerService;
 
 	@Override
 	public ApprovalProject selectApprovalProjectById(Long projectId) {
@@ -158,7 +160,9 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 		ApprovalNode firstNode = firstApproveNode(nodes);
 		insertLog(project, nodeName(firstNode, "经办人提交"), nodeType(firstNode, NODE_TYPE_SUBMIT), "SUBMIT", "提交审批", currentUserName(), "已提交", null, ccUsers(firstNode));
 		if (Func.isEmpty(firstNode)) {
-			return baseMapper.updateProcessStatus(projectId, project.getParkId(), STATUS_APPROVED, null, null, "通过", currentUserName()) > 0;
+			boolean updated = baseMapper.updateProcessStatus(projectId, project.getParkId(), STATUS_APPROVED, null, null, "通过", currentUserName()) > 0;
+			completeTenantEntryIfApproved(project, updated);
+			return updated;
 		}
 		return baseMapper.updateProcessStatus(projectId, project.getParkId(), STATUS_PROCESSING, firstNode.getApproverLogin(), firstNode.getNodeName(), null, currentUserName()) > 0;
 	}
@@ -174,7 +178,11 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 			throw new ServiceException("当前状态不允许撤回");
 		}
 		insertLog(project, firstNotBlank(project.getCurrentNodeName(), "撤回审批"), NODE_TYPE_SUBMIT, "WITHDRAW", "撤回审批", currentUserName(), "撤回", null, null);
-		return baseMapper.updateProcessStatus(projectId, project.getParkId(), STATUS_WITHDRAWN, null, null, "撤回", currentUserName()) > 0;
+		boolean updated = baseMapper.updateProcessStatus(projectId, project.getParkId(), STATUS_WITHDRAWN, null, null, "撤回", currentUserName()) > 0;
+		if (updated) {
+			customerService.resetTenantEntryApproval(project);
+		}
+		return updated;
 	}
 
 	@Override
@@ -186,7 +194,9 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 		ApprovalNode nextNode = nextApproveNode(nodes, currentNode);
 		insertLog(project, nodeName(currentNode, firstNotBlank(project.getCurrentNodeName(), "审批")), nodeType(currentNode, NODE_TYPE_APPROVE), "APPROVE", opinion(log, "同意"), currentUserName(), "通过", null, ccUsers(currentNode));
 		if (Func.isEmpty(nextNode)) {
-			return baseMapper.updateProcessStatus(projectId, project.getParkId(), STATUS_APPROVED, null, null, "通过", currentUserName()) > 0;
+			boolean updated = baseMapper.updateProcessStatus(projectId, project.getParkId(), STATUS_APPROVED, null, null, "通过", currentUserName()) > 0;
+			completeTenantEntryIfApproved(project, updated);
+			return updated;
 		}
 		return baseMapper.updateProcessStatus(projectId, project.getParkId(), STATUS_PROCESSING, nextNode.getApproverLogin(), nextNode.getNodeName(), null, currentUserName()) > 0;
 	}
@@ -225,7 +235,9 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 		ApprovalNode firstNode = firstApproveNode(nodes);
 		insertLog(project, "重新提交", NODE_TYPE_SUBMIT, "RESUBMIT", opinion(log, "重新提交审批"), currentUserName(), "重新提交", null, ccUsers(firstNode));
 		if (Func.isEmpty(firstNode)) {
-			return baseMapper.updateProcessStatus(projectId, project.getParkId(), STATUS_APPROVED, null, null, "通过", currentUserName()) > 0;
+			boolean updated = baseMapper.updateProcessStatus(projectId, project.getParkId(), STATUS_APPROVED, null, null, "通过", currentUserName()) > 0;
+			completeTenantEntryIfApproved(project, updated);
+			return updated;
 		}
 		return baseMapper.updateProcessStatus(projectId, project.getParkId(), STATUS_PROCESSING, firstNode.getApproverLogin(), firstNode.getNodeName(), null, currentUserName()) > 0;
 	}
@@ -422,6 +434,12 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 		log.setCreateBy(operatorName);
 		log.setCreateTime(DateUtil.now());
 		approvalLogMapper.insertApprovalLog(log);
+	}
+
+	private void completeTenantEntryIfApproved(ApprovalProject project, boolean updated) {
+		if (updated) {
+			customerService.completeTenantEntryApproval(project);
+		}
 	}
 
 	private Long resolveWriteParkId(Long parkId) {

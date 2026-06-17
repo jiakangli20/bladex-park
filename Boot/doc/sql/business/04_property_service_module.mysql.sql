@@ -1,4 +1,4 @@
--- 企业服务-我的物业服务迁移脚本
+-- 企业服务-物业服务迁移脚本
 -- 来源库：ry_ics
 -- 目标库：bladex_boot
 -- 说明：保留 RuoYi 业务表结构，不引入 BladeX 标准审计/租户字段。
@@ -162,25 +162,27 @@ WHERE `park_id` = 2
   AND NOT EXISTS (SELECT 1 FROM `ics_park` WHERE `id` = 2)
   AND EXISTS (SELECT 1 FROM `ics_park` WHERE `id` = 1);
 
--- 菜单：企业服务 / 我的物业服务
+-- 菜单：企业服务 / 物业服务 / 物业服务配置、工单处理
 INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `component`, `sort`, `category`, `action`, `is_open`, `remark`, `is_deleted`)
 VALUES
   (1890000000007000000, 0, 'enterprise_service', '企业服务', 'menu', '/enterprise', 'iconfont iconicon_subordinate', '', 40, 1, 0, 1, '企业服务', 0),
-  (1890000000007000100, 1890000000007000000, 'property_service', '我的物业服务', 'menu', '/enterprise/property-service', 'iconfont iconicon_work', 'views/enterprise/property-service', 1, 1, 0, 1, '我的物业服务', 0),
-  (1890000000007000101, 1890000000007000100, 'property_service_list', '服务列表', 'list', '/api/blade-ics/property-service/page', 'list', '', 1, 2, 0, 1, NULL, 0),
-  (1890000000007000102, 1890000000007000100, 'property_service_add', '新增服务', 'add', '/api/blade-ics/property-service/submit', 'plus', '', 2, 2, 1, 1, NULL, 0),
-  (1890000000007000103, 1890000000007000100, 'property_service_edit', '修改服务', 'edit', '/api/blade-ics/property-service/update', 'form', '', 3, 2, 2, 1, NULL, 0),
-  (1890000000007000104, 1890000000007000100, 'property_service_delete', '删除服务', 'delete', '/api/blade-ics/property-service/remove', 'delete', '', 4, 2, 3, 1, NULL, 0),
-  (1890000000007000105, 1890000000007000100, 'property_service_view', '查看服务', 'view', '/api/blade-ics/property-service/detail', 'file-text', '', 5, 2, 2, 1, NULL, 0),
-  (1890000000007000106, 1890000000007000100, 'property_workorder_list', '工单列表', 'list', '/api/blade-ics/property-workorder/page', 'list', '', 6, 2, 0, 1, NULL, 0),
-  (1890000000007000107, 1890000000007000100, 'property_workorder_add', '新增工单', 'add', '/api/blade-ics/property-workorder/submit', 'plus', '', 7, 2, 1, 1, NULL, 0),
-  (1890000000007000108, 1890000000007000100, 'property_workorder_edit', '处置工单', 'edit', '/api/blade-ics/property-workorder/update', 'form', '', 8, 2, 2, 1, NULL, 0),
-  (1890000000007000109, 1890000000007000100, 'property_workorder_delete', '删除工单', 'delete', '/api/blade-ics/property-workorder/remove', 'delete', '', 9, 2, 3, 1, NULL, 0),
-  (1890000000007000110, 1890000000007000100, 'property_workorder_view', '查看工单', 'view', '/api/blade-ics/property-workorder/detail', 'file-text', '', 10, 2, 2, 1, NULL, 0),
-  (1890000000007000111, 1890000000007000100, 'property_workorder_assign', '指派工单', 'assign', '/api/blade-ics/property-workorder/assign', 'user', '', 11, 2, 2, 1, NULL, 0),
-  (1890000000007000112, 1890000000007000100, 'property_workorder_finish', '完成工单', 'finish', '/api/blade-ics/property-workorder/finish', 'circle-check', '', 12, 2, 2, 1, NULL, 0),
-  (1890000000007000113, 1890000000007000100, 'property_workorder_close', '关闭工单', 'close', '/api/blade-ics/property-workorder/close', 'circle-close', '', 13, 2, 2, 1, NULL, 0),
-  (1890000000007000114, 1890000000007000100, 'property_workorder_rate', '评价工单', 'rate', '/api/blade-ics/property-workorder/rate', 'star', '', 14, 2, 2, 1, NULL, 0)
+  (1890000000007000100, 1890000000007000000, 'property_service', '物业服务', 'menu', '/enterprise/property-service', 'iconfont iconicon_work', 'views/enterprise/property-service', 1, 1, 0, 1, '物业服务', 0),
+  (1890000000007000150, 1890000000007000100, 'property_service_config', '物业服务配置', 'menu', '/enterprise/property-service-config', 'iconfont iconicon_setting', 'views/enterprise/property-service-config', 1, 1, 0, 1, '物业服务配置', 0),
+  (1890000000007000101, 1890000000007000150, 'property_service_list', '服务列表', 'list', '/api/blade-ics/property-service/page', 'list', '', 1, 2, 0, 1, NULL, 0),
+  (1890000000007000102, 1890000000007000150, 'property_service_add', '新增服务', 'add', '/api/blade-ics/property-service/submit', 'plus', '', 2, 2, 1, 1, NULL, 0),
+  (1890000000007000103, 1890000000007000150, 'property_service_edit', '修改服务', 'edit', '/api/blade-ics/property-service/update', 'form', '', 3, 2, 2, 1, NULL, 0),
+  (1890000000007000104, 1890000000007000150, 'property_service_delete', '删除服务', 'delete', '/api/blade-ics/property-service/remove', 'delete', '', 4, 2, 3, 1, NULL, 0),
+  (1890000000007000105, 1890000000007000150, 'property_service_view', '查看服务', 'view', '/api/blade-ics/property-service/detail', 'file-text', '', 5, 2, 2, 1, NULL, 0),
+  (1890000000007000160, 1890000000007000100, 'property_workorder_process', '工单处理', 'menu', '/enterprise/property-workorder', 'iconfont iconicon_task', 'views/enterprise/property-workorder', 2, 1, 0, 1, '工单处理', 0),
+  (1890000000007000106, 1890000000007000160, 'property_workorder_list', '工单列表', 'list', '/api/blade-ics/property-workorder/page', 'list', '', 1, 2, 0, 1, NULL, 0),
+  (1890000000007000107, 1890000000007000160, 'property_workorder_add', '新增工单', 'add', '/api/blade-ics/property-workorder/submit', 'plus', '', 2, 2, 1, 1, NULL, 0),
+  (1890000000007000108, 1890000000007000160, 'property_workorder_edit', '处置工单', 'edit', '/api/blade-ics/property-workorder/update', 'form', '', 3, 2, 2, 1, NULL, 0),
+  (1890000000007000109, 1890000000007000160, 'property_workorder_delete', '删除工单', 'delete', '/api/blade-ics/property-workorder/remove', 'delete', '', 4, 2, 3, 1, NULL, 0),
+  (1890000000007000110, 1890000000007000160, 'property_workorder_view', '查看工单', 'view', '/api/blade-ics/property-workorder/detail', 'file-text', '', 5, 2, 2, 1, NULL, 0),
+  (1890000000007000111, 1890000000007000160, 'property_workorder_assign', '指派工单', 'assign', '/api/blade-ics/property-workorder/assign', 'user', '', 6, 2, 2, 1, NULL, 0),
+  (1890000000007000112, 1890000000007000160, 'property_workorder_finish', '完成工单', 'finish', '/api/blade-ics/property-workorder/finish', 'circle-check', '', 7, 2, 2, 1, NULL, 0),
+  (1890000000007000113, 1890000000007000160, 'property_workorder_close', '关闭工单', 'close', '/api/blade-ics/property-workorder/close', 'circle-close', '', 8, 2, 2, 1, NULL, 0),
+  (1890000000007000114, 1890000000007000160, 'property_workorder_rate', '评价工单', 'rate', '/api/blade-ics/property-workorder/rate', 'star', '', 9, 2, 2, 1, NULL, 0)
 ON DUPLICATE KEY UPDATE
   `parent_id` = VALUES(`parent_id`),
   `name` = VALUES(`name`),
@@ -199,6 +201,8 @@ INSERT IGNORE INTO `blade_role_menu` (`id`, `role_id`, `menu_id`)
 VALUES
   (1890000000008000001, 1123598816738675201, 1890000000007000000),
   (1890000000008000002, 1123598816738675201, 1890000000007000100),
+  (1890000000008000017, 1123598816738675201, 1890000000007000150),
+  (1890000000008000018, 1123598816738675201, 1890000000007000160),
   (1890000000008000003, 1123598816738675201, 1890000000007000101),
   (1890000000008000004, 1123598816738675201, 1890000000007000102),
   (1890000000008000005, 1123598816738675201, 1890000000007000103),

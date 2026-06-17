@@ -1,14 +1,5 @@
 <template>
   <div>
-    <div class="workorder-stats">
-      <div class="stat-card stat-total"><span>全部</span><strong>{{ statistics.totalCount || 0 }}</strong></div>
-      <div class="stat-card stat-pending"><span>待受理</span><strong>{{ statistics.pendingCount || 0 }}</strong></div>
-      <div class="stat-card stat-processing"><span>处理中</span><strong>{{ statistics.processingCount || 0 }}</strong></div>
-      <div class="stat-card stat-finished"><span>已完成</span><strong>{{ statistics.finishedCount || 0 }}</strong></div>
-      <div class="stat-card stat-rated"><span>已评价</span><strong>{{ statistics.ratedCount || 0 }}</strong></div>
-      <div class="stat-card stat-closed"><span>已关闭</span><strong>{{ statistics.closedCount || 0 }}</strong></div>
-    </div>
-
     <section class="toolbar-row">
       <el-form :inline="true" :model="query" class="query-form">
         <el-form-item label="工单号">
@@ -17,12 +8,12 @@
         <el-form-item label="客户">
           <el-input v-model="query.customerName" clearable placeholder="请输入客户名称" @keyup.enter="$emit('search')" />
         </el-form-item>
-        <el-form-item label="服务项">
+        <el-form-item v-if="showServiceFilter" label="服务项">
           <el-select v-model="query.serviceId" clearable filterable placeholder="全部服务">
             <el-option v-for="item in serviceOptions" :key="item.serviceId" :label="item.serviceName" :value="item.serviceId" />
           </el-select>
         </el-form-item>
-        <el-form-item label="状态">
+        <el-form-item label="工单状态">
           <el-select v-model="query.orderStatus" clearable placeholder="全部状态">
             <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
@@ -37,13 +28,23 @@
           <el-button icon="el-icon-delete" @click="$emit('reset')">清空</el-button>
         </el-form-item>
       </el-form>
-      <div class="toolbar-actions">
-        <el-button v-if="permissionList.workorderAddBtn" type="primary" icon="el-icon-plus" @click="$emit('create')">创建工单</el-button>
-        <el-tooltip content="刷新" placement="top">
-          <el-button icon="el-icon-refresh" circle @click="$emit('reload')" />
-        </el-tooltip>
-      </div>
     </section>
+
+    <div class="workorder-stats" :class="{ 'workorder-stats--compact': !showTotalStat }">
+      <div v-if="showTotalStat" class="stat-card stat-total"><span>全部</span><strong>{{ statistics.totalCount || 0 }}</strong></div>
+      <div class="stat-card stat-pending"><span>待受理</span><strong>{{ statistics.pendingCount || 0 }}</strong></div>
+      <div class="stat-card stat-processing"><span>处理中</span><strong>{{ statistics.processingCount || 0 }}</strong></div>
+      <div class="stat-card stat-finished"><span>已完成</span><strong>{{ statistics.finishedCount || 0 }}</strong></div>
+      <div class="stat-card stat-rated"><span>已评价</span><strong>{{ statistics.ratedCount || 0 }}</strong></div>
+      <div class="stat-card stat-closed"><span>已关闭</span><strong>{{ statistics.closedCount || 0 }}</strong></div>
+    </div>
+
+    <div class="action-row">
+      <el-button v-if="permissionList.workorderAddBtn" type="primary" icon="el-icon-plus" @click="$emit('create')">{{ createLabel }}</el-button>
+      <el-tooltip v-if="showReload" content="刷新" placement="top">
+        <el-button icon="el-icon-refresh" circle @click="$emit('reload')" />
+      </el-tooltip>
+    </div>
 
     <el-table v-loading="loading" :data="data" border row-key="orderId">
       <el-table-column prop="orderNo" label="工单编号" width="180" />
@@ -102,6 +103,10 @@ export default {
     priorityOptions: { type: Array, required: true },
     permissionList: { type: Object, required: true },
     mine: { type: Boolean, default: false },
+    showTotalStat: { type: Boolean, default: true },
+    showServiceFilter: { type: Boolean, default: true },
+    createLabel: { type: String, default: '创建工单' },
+    showReload: { type: Boolean, default: true },
   },
   emits: ['search', 'reset', 'reload', 'size-change', 'current-change', 'create', 'view', 'dispose', 'rate', 'remove'],
   methods: {
@@ -135,7 +140,7 @@ export default {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .query-form {
@@ -143,11 +148,11 @@ export default {
   min-width: 0;
 }
 
-.toolbar-actions {
+.action-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
+  margin-bottom: 14px;
 }
 
 .pagination-row {
@@ -160,7 +165,11 @@ export default {
   display: grid;
   grid-template-columns: repeat(6, minmax(110px, 1fr));
   gap: 12px;
-  margin: 4px 0 14px;
+  margin-bottom: 14px;
+}
+
+.workorder-stats--compact {
+  grid-template-columns: repeat(5, minmax(110px, 1fr));
 }
 
 .stat-card {
@@ -214,7 +223,7 @@ export default {
     display: block;
   }
 
-  .toolbar-actions {
+  .action-row {
     justify-content: flex-end;
     margin-top: 8px;
   }

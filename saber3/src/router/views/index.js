@@ -3,10 +3,14 @@ import Store from '@/store/';
 
 export default [
   {
+    path: '/ics/home',
+    redirect: '/home',
+  },
+  {
     path: '/wel',
     component: () =>
       Store.getters.isMacOs ? import('@/mac/index.vue') : import('@/page/index/index.vue'),
-    redirect: '/wel/index',
+    redirect: '/home',
     children: [
       {
         path: 'index',
@@ -14,7 +18,7 @@ export default [
         meta: {
           i18n: 'dashboard',
         },
-        component: () => import(/* webpackChunkName: "views" */ '@/views/wel/index.vue'),
+        redirect: '/home',
       },
       {
         path: 'dashboard',

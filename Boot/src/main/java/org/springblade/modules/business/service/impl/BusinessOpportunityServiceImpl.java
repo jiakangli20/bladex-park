@@ -6,11 +6,13 @@ package org.springblade.modules.business.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.oss.model.BladeFile;
 import org.springblade.core.secure.utils.AuthUtil;
+import org.springblade.core.tool.jackson.JsonUtil;
 import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.FileUtil;
 import org.springblade.core.tool.utils.Func;
@@ -294,7 +296,8 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 			projectId = baseMapper.selectExistingApprovalProjectId(opportunityId);
 		}
 		baseMapper.insertApprovalLog(opportunity, projectId, selectedFlowId, currentUserName());
-		baseMapper.updateApprovalProjectStatus(projectId, currentUserName());
+		Map<String, String> firstNode = selectFirstApprovalNode(selectedFlowId);
+		baseMapper.updateApprovalProjectStatus(projectId, currentUserName(), firstNode.get("approverLogin"), firstNode.get("nodeName"));
 
 		BusinessOpportunity patch = new BusinessOpportunity();
 		patch.setOpportunityId(opportunityId);
@@ -385,6 +388,47 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 
 	private boolean hasFollowContent(BusinessOpportunity opportunity) {
 		return StringUtil.isNotBlank(opportunity.getRemark()) && Func.isNotEmpty(opportunity.getOpportunityId());
+	}
+
+	private Map<String, String> selectFirstApprovalNode(Long flowId) {
+		List<Map<String, Object>> nodes = baseMapper.selectApprovalNodeCandidates(flowId);
+		if (Func.isNotEmpty(nodes)) {
+			Map<String, Object> node = nodes.get(0);
+			return Map.of(
+				"nodeName", Func.toStr(firstValue(node, "nodeName", "node_name")),
+				"approverLogin", Func.toStr(firstValue(node, "approverLogin", "approver_login"))
+			);
+		}
+		String nodeConfig = baseMapper.selectApprovalFlowNodeConfig(flowId);
+		if (StringUtil.isBlank(nodeConfig)) {
+			return Collections.emptyMap();
+		}
+		try {
+			List<Map<String, Object>> configNodes = JsonUtil.getInstance().readValue(nodeConfig, new TypeReference<List<Map<String, Object>>>() {
+			});
+			for (Map<String, Object> item : configNodes) {
+				String nodeType = Func.toStr(item.get("nodeType"), "approve");
+				String approverLogin = firstNotBlank(Func.toStr(item.get("approverLogin")), Func.toStr(item.get("approverLoginName")));
+				if (!"submit".equals(nodeType) && !"cc".equals(nodeType) && StringUtil.isNotBlank(approverLogin)) {
+					return Map.of(
+						"nodeName", Func.toStr(item.get("nodeName")),
+						"approverLogin", approverLogin
+					);
+				}
+			}
+		} catch (Exception ignored) {
+			return Collections.emptyMap();
+		}
+		return Collections.emptyMap();
+	}
+
+	private Object firstValue(Map<String, Object> row, String first, String second) {
+		Object value = row.get(first);
+		return value == null ? row.get(second) : value;
+	}
+
+	private String firstNotBlank(String first, String second) {
+		return StringUtil.isNotBlank(first) ? first : second;
 	}
 
 	private String currentUserName() {
