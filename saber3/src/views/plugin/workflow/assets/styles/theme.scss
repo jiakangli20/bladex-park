@@ -1,0 +1,84 @@
+.nf-theme-custom {
+  //google chrome explore
+  -webkit-print-color-adjust: exact;
+  //firefox  explore
+  -moz-print-color-adjust: exact;
+  color-adjust: exact;
+
+  .nf-form--detail {
+    .el-row {
+      border-top: var(--borderWidth) solid var(--borderColor);
+      border-left: var(--borderWidth) solid var(--borderColor);
+    }
+
+    .el-col {
+      border-bottom: var(--borderWidth) solid var(--borderColor);
+      border-right: var(--borderWidth) solid var(--borderColor);
+    }
+
+    .el-form-item__label {
+      // width: var(--labelWidth);
+      padding: 0 10px;
+      color: var(--labelColor);
+      font-size: var(--labelFontSize, 14px);
+      border-right: var(--borderWidth) solid var(--borderColor);
+      background-color: var(--labelBg);
+      box-sizing: border-box;
+    }
+
+    .el-form-item__content {
+      box-sizing: border-box;
+      background-color: #fff;
+    }
+
+    .hover-row td {
+      background-color: #fff !important;
+    }
+
+    .el-input.is-disabled .el-input__inner,
+    .el-select__wrapper.is-disabled,
+    .el-textarea.is-disabled .el-textarea__inner,
+    .el-range-editor.is-disabled,
+    .el-range-editor.is-disabled input {
+      color: var(--valueColor) !important;
+      -webkit-text-fill-color: var(--valueColor) !important;
+      font-size: var(--valueFontSize);
+      background-color: #fff;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    .nf-checkbox__all,
+    .el-input__suffix,
+    .el-input-number__decrease,
+    .el-input-number__increase,
+    .el-form-item.is-required:not(.is-no-asterisk) .el-form-item__label-wrap>.el-form-item__label:before,
+    .el-form-item.is-required:not(.is-no-asterisk)>.el-form-item__label:before {
+      display: none;
+    }
+
+    .el-input-group__append,
+    .el-input-group__prepend {
+      background-color: transparent;
+      border: none;
+    }
+
+    .el-input__inner,
+    .el-textarea__inner {
+      border: none;
+
+      &::-moz-placeholder,
+      &::-moz-placeholder,
+      &::-ms-input-placeholder,
+      &::-webkit-input-placeholder,
+      &::-ms-input-placeholder {
+        color: transparent !important;
+      }
+    }
+
+    .el-tag {
+      margin-left: 0 !important;
+      margin-right: 6px !important;
+    }
+  }
+}

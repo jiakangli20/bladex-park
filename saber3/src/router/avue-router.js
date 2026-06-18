@@ -4,6 +4,17 @@ import store from '@/store';
 import { generateIframePath, processUrlForQuery, isURL } from './router';
 const modules = import.meta.glob('../**/**/*.vue');
 
+const MENU_CATEGORY = 1;
+
+function isMenuNode(menu) {
+  return menu && (menu.category === undefined || Number(menu.category) === MENU_CATEGORY);
+}
+
+function getMenuChildren(menu, propsDefault) {
+  const children = menu?.[propsDefault.children] || [];
+  return children.filter(child => isMenuNode(child));
+}
+
 // 将多级路由扁平化为二级路由，支持 keep-alive 跨层级缓存
 function flattenRouteChildren(children) {
   const result = [];
@@ -64,9 +75,9 @@ RouterPlugin.install = function (option = {}) {
           component = oMenu.component,
           name = oMenu[propsDefault.label] + ',' + oMenu.id,
           icon = oMenu[propsDefault.icon],
-          children = oMenu[propsDefault.children],
           query = oMenu[propsDefault.query],
           meta = oMenu[propsDefault.meta];
+        const children = getMenuChildren(oMenu, propsDefault);
 
         // 处理iframe场景，如果path是URL且是一级路由，需要生成一个内部路径
         const isUrlPath = isURL(path);
@@ -200,7 +211,8 @@ export const formatPath = (ele, first) => {
 
     return processedHref;
   };
-  const isChild = !!(ele[propsDefault.children] && ele[propsDefault.children].length !== 0);
+  ele[propsDefault.children] = getMenuChildren(ele, propsDefault);
+  const isChild = ele[propsDefault.children].length !== 0;
   if (!isChild && first) {
     ele.component = 'views' + ele[propsDefault.path];
     if (isURL(ele[propsDefault.href])) {

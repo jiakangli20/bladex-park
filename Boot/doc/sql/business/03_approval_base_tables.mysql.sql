@@ -230,24 +230,10 @@ ON DUPLICATE KEY UPDATE
   `attachment_url` = VALUES(`attachment_url`),
   `operate_time` = VALUES(`operate_time`);
 
--- 业务一级菜单：审批中心 / 财务管理；审批中心下含 我的审批流程 / 流程配置
+-- 业务一级菜单：财务管理。
+-- 审批中心已弃用，流程配置 / 待办 / 已办 / 抄送统一走协同办公 workflow 原生插件。
 INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `component`, `sort`, `category`, `action`, `is_open`, `remark`, `is_deleted`)
 VALUES
-  (1890000000005000000, 0, 'approval_center', '审批中心', 'menu', '/approval', 'iconfont icon-tianshenpi', '', 40, 1, 0, 1, '审批中心', 0),
-  (1890000000005000100, 1890000000005000000, 'approval_my_flow', '我的审批流程', 'menu', '/approval/my-flow', 'iconfont iconicon_compile', 'views/approval/my-flow', 1, 1, 0, 1, '我的审批流程', 0),
-  (1890000000005000101, 1890000000005000100, 'approval_my_flow_view', '查看', 'view', '/approval/my-flow/view', 'file-text', '', 1, 2, 2, 1, NULL, 0),
-  (1890000000005000102, 1890000000005000100, 'approval_my_flow_form', '审批表', 'form', '/approval/my-flow/form', 'file', '', 2, 2, 2, 1, NULL, 0),
-  (1890000000005000103, 1890000000005000100, 'approval_my_flow_approve', '通过', 'approve', '/api/blade-approval/project/approve', 'check', '', 3, 2, 2, 1, NULL, 0),
-  (1890000000005000104, 1890000000005000100, 'approval_my_flow_reject', '驳回', 'reject', '/api/blade-approval/project/reject', 'close', '', 4, 2, 2, 1, NULL, 0),
-  (1890000000005000105, 1890000000005000100, 'approval_my_flow_transfer', '转审', 'transfer', '/api/blade-approval/project/transfer', 'share', '', 5, 2, 2, 1, NULL, 0),
-  (1890000000005000106, 1890000000005000100, 'approval_my_flow_resubmit', '重新提交', 'resubmit', '/api/blade-approval/project/resubmit', 'refresh', '', 6, 2, 2, 1, NULL, 0),
-  (1890000000005000107, 1890000000005000100, 'approval_my_flow_archive', '归档', 'archive', '/api/blade-approval/project/archive', 'folder', '', 7, 2, 2, 1, NULL, 0),
-  (1890000000005000200, 1890000000005000000, 'approval_flow_config', '流程配置', 'menu', '/approval/flow-config', 'iconfont icon-guize', 'views/approval/flow-config', 2, 1, 0, 1, '审批流程配置', 0),
-  (1890000000005000201, 1890000000005000200, 'approval_flow_config_add', '新增', 'add', '/approval/flow-config/add', 'plus', '', 1, 2, 1, 1, NULL, 0),
-  (1890000000005000202, 1890000000005000200, 'approval_flow_config_edit', '修改', 'edit', '/approval/flow-config/edit', 'form', '', 2, 2, 2, 1, NULL, 0),
-  (1890000000005000203, 1890000000005000200, 'approval_flow_config_delete', '删除', 'delete', '/api/blade-approval/flow/remove', 'delete', '', 3, 2, 3, 1, NULL, 0),
-  (1890000000005000204, 1890000000005000200, 'approval_flow_config_publish', '发布', 'publish', '/api/blade-approval/flow/publish', 'upload', '', 4, 2, 2, 1, NULL, 0),
-  (1890000000005000205, 1890000000005000200, 'approval_flow_config_copy', '复制', 'copy', '/api/blade-approval/flow/copy', 'copy', '', 5, 2, 2, 1, NULL, 0),
   (1890000000006000000, 0, 'finance', '财务管理', 'menu', '/finance', 'iconfont icon-shujukanban', '', 45, 1, 0, 1, '财务管理', 0)
 ON DUPLICATE KEY UPDATE
   `parent_id` = VALUES(`parent_id`),
@@ -265,22 +251,12 @@ ON DUPLICATE KEY UPDATE
 
 INSERT IGNORE INTO `blade_role_menu` (`id`, `role_id`, `menu_id`)
 VALUES
-  (1890000000005100001, 1123598816738675201, 1890000000005000000),
-  (1890000000005100002, 1123598816738675201, 1890000000005000100),
-  (1890000000005100003, 1123598816738675201, 1890000000005000101),
-  (1890000000005100004, 1123598816738675201, 1890000000005000102),
-  (1890000000005100005, 1123598816738675201, 1890000000005000103),
-  (1890000000005100006, 1123598816738675201, 1890000000005000104),
-  (1890000000005100007, 1123598816738675201, 1890000000005000105),
-  (1890000000005100008, 1123598816738675201, 1890000000005000106),
-  (1890000000005100009, 1123598816738675201, 1890000000005000107),
-  (1890000000005100010, 1123598816738675201, 1890000000005000200),
-  (1890000000005100011, 1123598816738675201, 1890000000005000201),
-  (1890000000005100012, 1123598816738675201, 1890000000005000202),
-  (1890000000005100013, 1123598816738675201, 1890000000005000203),
-  (1890000000005100014, 1123598816738675201, 1890000000005000204),
-  (1890000000005100015, 1123598816738675201, 1890000000005000205),
   (1890000000006100001, 1123598816738675201, 1890000000006000000);
+
+UPDATE `blade_menu`
+SET `is_deleted` = 1
+WHERE `code` = 'approval_center'
+   OR LEFT(`code`, 9) = 'approval_';
 
 -- 审批模板清单（先整理为数据，再落到 biz_approval_flow / biz_approval_node / biz_approval_project / biz_approval_log）
 -- 1. 入驻审批 tenant_entry：商机提交入驻审核；建议节点：经办人提交 -> 部门审批 -> 分管领导审批；关联 biz_business_opportunity.approval_project_id。

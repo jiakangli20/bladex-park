@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.plugin.workflow.design.mapper.WfFormThemeMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="wfFormThemeResultMap" type="org.springblade.plugin.workflow.design.entity.WfFormTheme">
+        <result column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="theme_key" property="themeKey"/>
+        <result column="border_width" property="borderWidth"/>
+        <result column="border_color" property="borderColor"/>
+        <result column="label_color" property="labelColor"/>
+        <result column="label_bg" property="labelBg"/>
+        <result column="label_width" property="labelWidth"/>
+        <result column="label_font_size" property="labelFontSize"/>
+        <result column="value_color" property="valueColor"/>
+        <result column="value_bg" property="valueBg"/>
+        <result column="value_font_size" property="valueFontSize"/>
+        <result column="field0" property="field0"/>
+        <result column="field1" property="field1"/>
+        <result column="field2" property="field2"/>
+        <result column="field3" property="field3"/>
+        <result column="field4" property="field4"/>
+        <result column="field5" property="field5"/>
+        <result column="field6" property="field6"/>
+        <result column="field7" property="field7"/>
+        <result column="field8" property="field8"/>
+        <result column="field9" property="field9"/>
+        <result column="create_user" property="createUser"/>
+        <result column="create_dept" property="createDept"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_user" property="updateUser"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="status" property="status"/>
+        <result column="is_deleted" property="isDeleted"/>
+        <result column="tenant_id" property="tenantId"/>
+    </resultMap>
+
+
+    <select id="selectWfFormThemePage" resultMap="wfFormThemeResultMap">
+        select * from blade_wf_form_theme where is_deleted = 0
+    </select>
+
+</mapper>

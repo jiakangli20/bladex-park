@@ -127,4 +127,83 @@ export default [
       },
     ],
   },
+  {
+    path: '/plugin/workflow/pages/design/process',
+    component: Layout,
+    children: [
+      {
+        path: ':id',
+        name: '流程设计器',
+        meta: {
+          menu: false,
+        },
+        component: () =>
+          import(
+            /* webpackChunkName: "views" */ '@/views/plugin/workflow/pages/design/index.vue'
+          ),
+      },
+    ],
+  },
+  {
+    path: '/plugin/workflow/pages/design/model-history',
+    component: Layout,
+    children: [
+      {
+        path: ':id',
+        name: '模型历史',
+        meta: {
+          menu: false,
+        },
+        component: () =>
+          import(
+            /* webpackChunkName: "views" */ '@/views/plugin/workflow/pages/design/model-history.vue'
+          ),
+      },
+    ],
+  },
+  {
+    path: '/plugin/workflow/pages/design/form-history',
+    component: Layout,
+    children: [
+      {
+        path: ':id',
+        name: '表单历史',
+        meta: {
+          menu: false,
+        },
+        component: () =>
+          import(
+            /* webpackChunkName: "views" */ '@/views/plugin/workflow/pages/design/form-history.vue'
+          ),
+      },
+    ],
+  },
+  {
+    path: '/plugin/workflow/pages/process/form',
+    component: Layout,
+    children: [
+      {
+        path: 'start/:params',
+        name: '发起流程',
+        meta: {
+          menu: false,
+        },
+        component: () =>
+          import(
+            /* webpackChunkName: "views" */ '@/views/plugin/workflow/pages/process/form/start.vue'
+          ),
+      },
+      {
+        path: 'detail/:params',
+        name: '流程详情',
+        meta: {
+          menu: false,
+        },
+        component: () =>
+          import(
+            /* webpackChunkName: "views" */ '@/views/plugin/workflow/pages/process/form/detail.vue'
+          ),
+      },
+    ],
+  },
 ];
