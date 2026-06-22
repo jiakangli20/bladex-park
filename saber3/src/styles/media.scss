@@ -3,9 +3,10 @@
 @media screen and (max-width: 992px) {
   .avue-sidebar {
     position: fixed;
-    top: 0;
-    left: -265px;
+    top: variables.$top_height;
+    left: calc(-1 * #{variables.$sidebar_width} - 5px);
     z-index: 1024;
+    height: calc(100% - #{variables.$top_height});
   }
   .avue--collapse {
     .avue-sidebar {

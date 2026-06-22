@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.business.mapper.IndustryRuleMapper">
+
+	<resultMap id="IndustryRuleResult" type="org.springblade.modules.business.pojo.entity.IndustryRule">
+		<id property="ruleId" column="rule_id"/>
+		<result property="industryKeyword" column="industry_keyword"/>
+		<result property="accessType" column="access_type"/>
+		<result property="reason" column="reason"/>
+		<result property="status" column="status"/>
+		<result property="delFlag" column="del_flag"/>
+		<result property="createBy" column="create_by"/>
+		<result property="updateBy" column="update_by"/>
+		<result property="createTime" column="create_time"/>
+		<result property="updateTime" column="update_time"/>
+	</resultMap>
+
+	<sql id="selectIndustryRuleColumns">
+		select rule_id,
+			   industry_keyword,
+			   access_type,
+			   reason,
+			   status,
+			   del_flag,
+			   create_by,
+			   update_by,
+			   create_time,
+			   update_time
+		from biz_industry_rule
+	</sql>
+
+	<sql id="industryRuleWhere">
+		<where>
+			del_flag = '0'
+			<if test="rule != null">
+				<if test="rule.industryKeyword != null and rule.industryKeyword != ''">
+					and industry_keyword like concat('%', #{rule.industryKeyword}, '%')
+				</if>
+				<if test="rule.accessType != null and rule.accessType != ''">
+					and access_type = #{rule.accessType}
+				</if>
+				<if test="rule.status != null and rule.status != ''">
+					and status = #{rule.status}
+				</if>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectIndustryRuleById" resultMap="IndustryRuleResult">
+		<include refid="selectIndustryRuleColumns"/>
+		where rule_id = #{ruleId}
+	</select>
+
+	<select id="selectIndustryRuleList" resultMap="IndustryRuleResult">
+		<include refid="selectIndustryRuleColumns"/>
+		<include refid="industryRuleWhere"/>
+		order by access_type desc, update_time desc, rule_id desc
+	</select>
+
+	<select id="selectIndustryRulePage" resultMap="IndustryRuleResult">
+		<include refid="selectIndustryRuleColumns"/>
+		<include refid="industryRuleWhere"/>
+		order by access_type desc, update_time desc, rule_id desc
+	</select>
+
+	<select id="selectSameKeywordRule" resultMap="IndustryRuleResult">
+		<include refid="selectIndustryRuleColumns"/>
+		where industry_keyword = #{industryKeyword}
+		  and del_flag = '0'
+		<if test="excludeRuleId != null">and rule_id != #{excludeRuleId}</if>
+		limit 1
+	</select>
+
+	<insert id="insertIndustryRule" parameterType="org.springblade.modules.business.pojo.entity.IndustryRule" useGeneratedKeys="true" keyProperty="ruleId">
+		insert into biz_industry_rule
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="industryKeyword != null">industry_keyword,</if>
+			<if test="accessType != null">access_type,</if>
+			<if test="reason != null">reason,</if>
+			<if test="status != null">status,</if>
+			<if test="delFlag != null">del_flag,</if>
+			<if test="createBy != null">create_by,</if>
+			<if test="updateBy != null">update_by,</if>
+			<if test="createTime != null">create_time,</if>
+			<if test="updateTime != null">update_time,</if>
+		</trim>
+		<trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="industryKeyword != null">#{industryKeyword},</if>
+			<if test="accessType != null">#{accessType},</if>
+			<if test="reason != null">#{reason},</if>
+			<if test="status != null">#{status},</if>
+			<if test="delFlag != null">#{delFlag},</if>
+			<if test="createBy != null">#{createBy},</if>
+			<if test="updateBy != null">#{updateBy},</if>
+			<if test="createTime != null">#{createTime},</if>
+			<if test="updateTime != null">#{updateTime},</if>
+		</trim>
+	</insert>
+
+	<update id="updateIndustryRule" parameterType="org.springblade.modules.business.pojo.entity.IndustryRule">
+		update biz_industry_rule
+		<set>
+			<if test="industryKeyword != null">industry_keyword = #{industryKeyword},</if>
+			<if test="accessType != null">access_type = #{accessType},</if>
+			<if test="reason != null">reason = #{reason},</if>
+			<if test="status != null">status = #{status},</if>
+			<if test="updateBy != null">update_by = #{updateBy},</if>
+			<if test="updateTime != null">update_time = #{updateTime},</if>
+		</set>
+		where rule_id = #{ruleId}
+	</update>
+
+	<update id="deleteIndustryRuleByIds">
+		update biz_industry_rule set del_flag = '1'
+		where rule_id in
+		<foreach collection="ruleIds" item="ruleId" open="(" separator="," close=")">
+			#{ruleId}
+		</foreach>
+	</update>
+
+</mapper>

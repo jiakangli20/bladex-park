@@ -88,6 +88,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean insertBusinessOpportunity(BusinessOpportunity opportunity) {
+		validateUniqueEnterpriseName(opportunity);
 		opportunity.setCreateBy(currentUserName());
 		opportunity.setCreateTime(DateUtil.now());
 		opportunity.setDelFlag(DEL_FLAG_NORMAL);
@@ -124,6 +125,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (AUDIT_FLAG_YES.equals(old.getSubmittedAuditFlag())) {
 			throw new ServiceException("已提交审核的商机不可编辑");
 		}
+		validateUniqueEnterpriseName(opportunity);
 		opportunity.setUpdateBy(currentUserName());
 		opportunity.setUpdateTime(DateUtil.now());
 		opportunity.setOpportunityStatus(normalizeOpportunityStatus(StringUtil.isBlank(opportunity.getOpportunityStatus())
@@ -168,6 +170,12 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		follow.setCreateBy(currentUserName());
 		follow.setCreateTime(DateUtil.now());
 		if (StringUtil.isBlank(follow.getFollowUser())) {
+			follow.setFollowUser(opportunity.getFollowUser());
+		}
+		if (Func.isEmpty(follow.getFollowUserId())) {
+			follow.setFollowUserId(opportunity.getFollowUserId());
+		}
+		if (StringUtil.isBlank(follow.getFollowUser())) {
 			follow.setFollowUser(currentUserName());
 		}
 		follow.setOpportunityStatus(normalizeOpportunityStatus(follow.getOpportunityStatus()));
@@ -176,6 +184,8 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		BusinessOpportunity patch = new BusinessOpportunity();
 		patch.setOpportunityId(opportunityId);
 		patch.setOpportunityStatus(follow.getOpportunityStatus());
+		patch.setFollowUser(follow.getFollowUser());
+		patch.setFollowUserId(follow.getFollowUserId());
 		patch.setLastFollowTime(follow.getFollowTime());
 		patch.setNextFollowTime(follow.getNextFollowTime());
 		patch.setUpdateBy(currentUserName());
@@ -339,6 +349,18 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		}
 		if (StringUtil.isBlank(opportunity.getIndustryPenaltyFlag())) {
 			opportunity.setIndustryPenaltyFlag("0");
+		}
+	}
+
+	private void validateUniqueEnterpriseName(BusinessOpportunity opportunity) {
+		if (StringUtil.isBlank(opportunity.getEnterpriseName())) {
+			return;
+		}
+		String enterpriseName = opportunity.getEnterpriseName().trim();
+		opportunity.setEnterpriseName(enterpriseName);
+		Integer count = baseMapper.countByEnterpriseName(enterpriseName, opportunity.getOpportunityId());
+		if (Func.isNotEmpty(count) && count > 0) {
+			throw new ServiceException("企业名称已存在，请勿重复录入");
 		}
 	}
 

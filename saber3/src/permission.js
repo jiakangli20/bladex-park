@@ -9,11 +9,7 @@ let dynamicRouteReady = false;
 
 const loadDynamicRoutes = async () => {
   try {
-    const mainMenu = await store.dispatch('GetMainMenu');
-    const data = await store.dispatch(
-      'GetMenu',
-      mainMenu && mainMenu.id ? mainMenu.id : undefined
-    );
+    const data = await store.dispatch('GetMenu');
     if (data && data.length !== 0) {
       router.$avueRouter.formatRoutes(data, true);
       dynamicRouteReady = true;

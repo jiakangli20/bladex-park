@@ -9,7 +9,7 @@
         <i class="icon-navicon" @click="setCollapse"></i>
       </div>
     </div>
-    <div class="top-bar__title">
+    <div class="top-bar__menu">
       <top-menu ref="topMenu" v-if="setting.menu"></top-menu>
       <top-search class="top-bar__item" v-if="setting.search"></top-search>
     </div>
@@ -33,7 +33,7 @@
         <top-logs></top-logs>
       </div>
       <div class="top-user">
-        <img class="top-bar__img" :src="userInfo.avatar" />
+        <span class="top-user__avatar"></span>
         <el-dropdown :hide-on-click="false">
           <span class="el-dropdown-link">
             {{ userInfo.real_name }}
@@ -108,7 +108,7 @@
             </el-dropdown-menu>
           </template>
         </el-dropdown>
-        <top-setting></top-setting>
+        <top-setting v-if="setting.setting"></top-setting>
         <el-dialog title="请选择身份信息后切换" append-to-body v-model="userBox" width="400px">
           <avue-form :option="userOption" v-model="userForm" @submit="toAll" />
         </el-dialog>
@@ -338,6 +338,11 @@ export default {
     },
     setCollapse() {
       this.$store.commit('SET_COLLAPSE');
+    },
+    setActiveMenu(menuId) {
+      if (this.$refs.topMenu && this.$refs.topMenu.setActive) {
+        this.$refs.topMenu.setActive(menuId);
+      }
     },
     logout() {
       this.$confirm(this.$t('logoutTip'), this.$t('confirmTip'), {

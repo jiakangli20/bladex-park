@@ -36,6 +36,9 @@ public interface BusinessOpportunityMapper extends BaseMapper<BusinessOpportunit
 
 	String selectLastOpportunityNoByDate(@Param("datePrefix") String datePrefix);
 
+	Integer countByEnterpriseName(@Param("enterpriseName") String enterpriseName,
+								  @Param("excludeOpportunityId") Long excludeOpportunityId);
+
 	List<BusinessOpportunityFollow> selectFollowList(@Param("opportunityId") Long opportunityId);
 
 	int insertFollow(BusinessOpportunityFollow follow);

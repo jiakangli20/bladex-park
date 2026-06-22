@@ -121,20 +121,18 @@
         >
           <el-table-column type="selection" width="48" align="center" />
           <el-table-column type="index" label="#" width="56" align="center" />
-          <el-table-column prop="tagName" label="标签名称" min-width="160">
+          <el-table-column prop="tagName" label="标签名称" min-width="160" align="center">
             <template #default="{ row }">
-              <span class="tag-name">
-                <i :style="{ backgroundColor: row.tagColor || '#1059C6' }"></i>
-                {{ row.tagName }}
+              <span class="customer-tag-chip">
+                <span class="customer-tag-chip__text">{{ row.tagName }}</span>
               </span>
             </template>
           </el-table-column>
-          <el-table-column prop="tagType" label="标签类型" width="150">
+          <el-table-column prop="tagType" label="标签类型" width="150" align="center">
             <template #default="{ row }">
               <el-tag effect="plain">{{ tagTypeText[row.tagType] || '未知' }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="parkId" label="园区ID" width="120" />
           <el-table-column prop="sortOrder" label="排序" width="90" align="center" />
           <el-table-column prop="status" label="状态" width="110" align="center">
             <template #default="{ row }">
@@ -145,18 +143,9 @@
               />
             </template>
           </el-table-column>
-          <el-table-column prop="createTime" label="创建时间" width="180" />
-          <el-table-column label="操作" width="190" fixed="right" align="center">
+          <el-table-column prop="createTime" label="创建时间" width="180" align="center" />
+          <el-table-column label="操作" width="90" fixed="right" align="center">
             <template #default="{ row }">
-              <el-button
-                v-if="permissionList.viewBtn"
-                type="primary"
-                text
-                icon="el-icon-view"
-                @click="handleView(row)"
-              >
-                查看
-              </el-button>
               <el-button
                 v-if="permissionList.editBtn"
                 type="primary"
@@ -165,15 +154,6 @@
                 @click="handleEdit(row)"
               >
                 编辑
-              </el-button>
-              <el-button
-                v-if="permissionList.delBtn"
-                type="danger"
-                text
-                icon="el-icon-delete"
-                @click="rowDel(row)"
-              >
-                删除
               </el-button>
             </template>
           </el-table-column>
@@ -201,7 +181,7 @@
       append-to-body
       :before-close="closeTagDialog"
     >
-      <el-form ref="tagForm" :model="form" :rules="tagRules" :disabled="view" label-width="92px">
+      <el-form ref="tagForm" :model="form" :rules="tagRules" label-width="92px">
         <el-form-item label="标签名称" prop="tagName">
           <el-input v-model="form.tagName" maxlength="50" show-word-limit placeholder="请输入标签名称" />
         </el-form-item>
@@ -214,9 +194,6 @@
               :value="item.typeId"
             />
           </el-select>
-        </el-form-item>
-        <el-form-item label="园区ID" prop="parkId">
-          <el-input-number v-model="form.parkId" :min="0" :precision="0" controls-position="right" style="width: 100%" />
         </el-form-item>
         <el-form-item label="标签颜色" prop="tagColor">
           <div class="color-field">
@@ -232,7 +209,7 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <span v-if="!view" class="dialog-footer">
+        <span class="dialog-footer">
           <el-button type="primary" icon="el-icon-circle-check" @click="handleSubmit">提交</el-button>
           <el-button icon="el-icon-circle-close" @click="closeTagDialog">取消</el-button>
         </span>
@@ -314,7 +291,6 @@ export default {
       totalCount: 0,
       tagDialogVisible: false,
       tagDialogTitle: '',
-      view: false,
       form: defaultTagForm(),
       typeDialogVisible: false,
       typeDialogTitle: '',
@@ -335,7 +311,6 @@ export default {
     permissionList() {
       return {
         addBtn: this.validData(this.permission.customer_tag_add, false),
-        viewBtn: this.validData(this.permission.customer_tag_view, false),
         editBtn: this.validData(this.permission.customer_tag_edit, false),
         delBtn: this.validData(this.permission.customer_tag_delete, false),
         typeAddBtn: this.validData(this.permission.customer_tag_type_add, false),
@@ -391,7 +366,6 @@ export default {
         this.$message.warning('请先新增标签类型');
         return;
       }
-      this.view = false;
       this.tagDialogTitle = '新增标签';
       this.form = {
         ...defaultTagForm(),
@@ -401,13 +375,7 @@ export default {
       this.clearTagValidate();
     },
     handleEdit(row) {
-      this.view = false;
       this.tagDialogTitle = '编辑标签';
-      this.openTagDetail(row.tagId);
-    },
-    handleView(row) {
-      this.view = true;
-      this.tagDialogTitle = '查看标签';
       this.openTagDetail(row.tagId);
     },
     openTagDetail(tagId) {
@@ -452,9 +420,6 @@ export default {
         return;
       }
       this.confirmDeleteTag(this.ids, `确定删除选中的 ${this.selectionList.length} 个标签?`);
-    },
-    rowDel(row) {
-      this.confirmDeleteTag(row.tagId, '确定删除该标签?');
     },
     confirmDeleteTag(ids, message) {
       this.$confirm(message, {
@@ -531,7 +496,6 @@ export default {
     },
     closeTagDialog(done) {
       this.tagDialogVisible = false;
-      this.view = false;
       this.form = defaultTagForm();
       if (typeof done === 'function') done();
     },
@@ -681,18 +645,14 @@ export default {
   flex: 1;
 }
 
-.tag-name {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
+.tag-table :deep(.el-table__cell) {
+  text-align: center;
 }
 
-.tag-name i {
-  width: 10px;
-  height: 10px;
-  flex: 0 0 auto;
-  border-radius: 50%;
+.tag-table :deep(.cell) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .tag-pagination {

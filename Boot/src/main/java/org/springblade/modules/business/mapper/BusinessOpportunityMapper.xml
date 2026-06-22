@@ -35,10 +35,13 @@
 		<result property="contactName" column="contact_name"/>
 		<result property="contactPhone" column="contact_phone"/>
 		<result property="contactEmail" column="contact_email"/>
+		<result property="contactAddress" column="contact_address"/>
+		<result property="idCardFiles" column="id_card_files"/>
 		<result property="contactPosition" column="contact_position"/>
 		<result property="channel" column="channel"/>
 		<result property="thirdPartyChannelName" column="third_party_channel_name"/>
 		<result property="followUser" column="follow_user"/>
+		<result property="followUserId" column="follow_user_id"/>
 		<result property="opportunityStatus" column="opportunity_status"/>
 		<result property="remark" column="remark"/>
 		<result property="approvalProjectId" column="approval_project_id"/>
@@ -57,6 +60,7 @@
 		<result property="opportunityId" column="opportunity_id"/>
 		<result property="followTime" column="follow_time"/>
 		<result property="followUser" column="follow_user"/>
+		<result property="followUserId" column="follow_user_id"/>
 		<result property="opportunityStatus" column="opportunity_status"/>
 		<result property="followContent" column="follow_content"/>
 		<result property="nextFollowTime" column="next_follow_time"/>
@@ -106,10 +110,13 @@
 			   contact_name,
 			   contact_phone,
 			   contact_email,
+			   contact_address,
+			   id_card_files,
 			   contact_position,
 			   channel,
 			   third_party_channel_name,
 			   follow_user,
+			   follow_user_id,
 			   opportunity_status,
 			   remark,
 			   approval_project_id,
@@ -133,6 +140,7 @@
 				<if test="opportunity.opportunityStatus != null and opportunity.opportunityStatus != ''">and opportunity_status = #{opportunity.opportunityStatus}</if>
 				<if test="opportunity.submittedAuditFlag != null and opportunity.submittedAuditFlag != ''">and submitted_audit_flag = #{opportunity.submittedAuditFlag}</if>
 				<if test="opportunity.channel != null and opportunity.channel != ''">and channel = #{opportunity.channel}</if>
+				<if test="opportunity.followUserId != null">and follow_user_id = #{opportunity.followUserId}</if>
 				<if test="opportunity.followUser != null and opportunity.followUser != ''">and follow_user = #{opportunity.followUser}</if>
 				<if test="opportunity.leaseTermLabel != null and opportunity.leaseTermLabel != ''">and lease_term_label = #{opportunity.leaseTermLabel}</if>
 				<if test="opportunity.intentAreaMin != null">and intent_area &gt;= #{opportunity.intentAreaMin}</if>
@@ -186,16 +194,16 @@
 			enterprise_type, industry_type, business_scope, registered_address, equity_structure, organization_structure,
 			main_business, last_year_revenue, major_clients, major_illegal_flag, dishonest_flag, industry_penalty_flag,
 			carrier_types, intent_area, usage_purpose, lease_term_years, lease_term_label, decoration_requirement,
-			supporting_needs, contact_name, contact_phone, contact_email, contact_position, channel,
-			third_party_channel_name, follow_user, opportunity_status, remark, approval_project_id, submitted_audit_flag,
+			supporting_needs, contact_name, contact_phone, contact_email, contact_address, id_card_files, contact_position, channel,
+			third_party_channel_name, follow_user, follow_user_id, opportunity_status, remark, approval_project_id, submitted_audit_flag,
 			last_follow_time, next_follow_time, del_flag, create_by, create_time, update_by, update_time
 		) values (
 			#{parkId}, #{customerId}, #{opportunityNo}, #{enterpriseName}, #{creditCode}, #{establishDate}, #{registeredCapital},
 			#{enterpriseType}, #{industryType}, #{businessScope}, #{registeredAddress}, #{equityStructure}, #{organizationStructure},
 			#{mainBusiness}, #{lastYearRevenue}, #{majorClients}, #{majorIllegalFlag}, #{dishonestFlag}, #{industryPenaltyFlag},
 			#{carrierTypes}, #{intentArea}, #{usagePurpose}, #{leaseTermYears}, #{leaseTermLabel}, #{decorationRequirement},
-			#{supportingNeeds}, #{contactName}, #{contactPhone}, #{contactEmail}, #{contactPosition}, #{channel},
-			#{thirdPartyChannelName}, #{followUser}, #{opportunityStatus}, #{remark}, #{approvalProjectId}, #{submittedAuditFlag},
+			#{supportingNeeds}, #{contactName}, #{contactPhone}, #{contactEmail}, #{contactAddress}, #{idCardFiles}, #{contactPosition}, #{channel},
+			#{thirdPartyChannelName}, #{followUser}, #{followUserId}, #{opportunityStatus}, #{remark}, #{approvalProjectId}, #{submittedAuditFlag},
 			#{lastFollowTime}, #{nextFollowTime}, #{delFlag}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime}
 		)
 	</insert>
@@ -231,10 +239,13 @@
 			<if test="contactName != null">contact_name = #{contactName},</if>
 			<if test="contactPhone != null">contact_phone = #{contactPhone},</if>
 			<if test="contactEmail != null">contact_email = #{contactEmail},</if>
+			<if test="contactAddress != null">contact_address = #{contactAddress},</if>
+			<if test="idCardFiles != null">id_card_files = #{idCardFiles},</if>
 			<if test="contactPosition != null">contact_position = #{contactPosition},</if>
 			<if test="channel != null">channel = #{channel},</if>
 			<if test="thirdPartyChannelName != null">third_party_channel_name = #{thirdPartyChannelName},</if>
 			<if test="followUser != null">follow_user = #{followUser},</if>
+			<if test="followUserId != null">follow_user_id = #{followUserId},</if>
 			<if test="opportunityStatus != null">opportunity_status = #{opportunityStatus},</if>
 			<if test="remark != null">remark = #{remark},</if>
 			<if test="approvalProjectId != null">approval_project_id = #{approvalProjectId},</if>
@@ -262,11 +273,22 @@
 		order by opportunity_no desc limit 1
 	</select>
 
+	<select id="countByEnterpriseName" resultType="int">
+		select count(1)
+		from biz_business_opportunity
+		where del_flag = '0'
+		  and enterprise_name = #{enterpriseName}
+		<if test="excludeOpportunityId != null">
+		  and opportunity_id != #{excludeOpportunityId}
+		</if>
+	</select>
+
 	<select id="selectFollowList" resultMap="BusinessOpportunityFollowResult">
 		select follow_id,
 			   opportunity_id,
 			   follow_time,
 			   follow_user,
+			   follow_user_id,
 			   opportunity_status,
 			   follow_content,
 			   next_follow_time,
@@ -279,9 +301,9 @@
 
 	<insert id="insertFollow" parameterType="org.springblade.modules.business.pojo.entity.BusinessOpportunityFollow" useGeneratedKeys="true" keyProperty="followId">
 		insert into biz_business_opportunity_follow (
-			opportunity_id, follow_time, follow_user, opportunity_status, follow_content, next_follow_time, create_by, create_time
+			opportunity_id, follow_time, follow_user, follow_user_id, opportunity_status, follow_content, next_follow_time, create_by, create_time
 		) values (
-			#{opportunityId}, #{followTime}, #{followUser}, #{opportunityStatus}, #{followContent}, #{nextFollowTime}, #{createBy}, #{createTime}
+			#{opportunityId}, #{followTime}, #{followUser}, #{followUserId}, #{opportunityStatus}, #{followContent}, #{nextFollowTime}, #{createBy}, #{createTime}
 		)
 	</insert>
 

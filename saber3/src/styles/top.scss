@@ -2,18 +2,22 @@
 
 .avue-top {
   position: relative;
-  background-color: #fff;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.15);
-  color: rgba(0, 0, 0, .65);
-  font-size: 28px;
+  display: flex;
+  align-items: center;
+  background-color: #1059c6;
+  box-shadow: none;
+  color: #fff;
+  font-size: 16px;
   height: variables.$top_height;
   line-height: variables.$top_height;
   box-sizing: border-box;
   white-space: nowrap;
+  flex-shrink: 0;
+  overflow: hidden;
 
   .el-menu-item {
     i, span {
-      font-size: 13px;
+      font-size: 14px;
     }
   }
 }
@@ -31,16 +35,134 @@
 }
 
 .top-user {
-  margin-left: 20px;
+  margin-left: 12px;
   display: flex;
   align-items: center;
   cursor: pointer;
 }
 
 .top-menu {
+  height: variables.$top_height;
+  background: transparent !important;
+  border-bottom: none !important;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: 0;
+
   .el-menu-item {
-    padding: 0 10px;
+    height: variables.$top_height;
+    line-height: variables.$top_height;
+    padding: 0 24px;
+    flex: 0 0 auto;
     border: none;
+    color: rgba(255, 255, 255, .92) !important;
+    font-weight: 400;
+    transition: background-color .18s ease, color .18s ease;
+
+    i,
+    span {
+      font-size: 15px !important;
+      color: rgba(255, 255, 255, .92) !important;
+    }
+
+    i {
+      margin-right: 6px;
+    }
+
+    &:hover,
+    &:focus {
+      background: rgba(255, 255, 255, .12) !important;
+      color: #fff !important;
+
+      i,
+      span {
+        color: #fff !important;
+      }
+    }
+
+    &.is-active,
+    &.is-active:hover,
+    &.is-active:focus,
+    &.is-focus {
+      background: #fff !important;
+      color: #1059c6 !important;
+
+      i,
+      span {
+        color: #1059c6 !important;
+      }
+    }
+  }
+}
+
+.top-menu-shell {
+  display: flex;
+  align-items: center;
+  height: variables.$top_height;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.top-menu-shell__scroll {
+  flex: 1;
+  min-width: 0;
+  height: variables.$top_height;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.top-menu-shell__arrow {
+  width: 30px;
+  height: 30px;
+  margin: 0 3px;
+  border: 1px solid rgba(255, 255, 255, .28);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color .18s ease, opacity .18s ease;
+
+  span {
+    line-height: 1 !important;
+    font-size: 24px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, .2);
+  }
+
+  &.is-disabled {
+    opacity: .35;
+    cursor: default;
+    pointer-events: none;
+  }
+}
+
+.top-menu.el-menu--horizontal > .el-menu-item.is-active,
+.top-menu.el-menu--horizontal > .el-menu-item.is-active:hover,
+.top-menu.el-menu--horizontal > .el-menu-item.is-active:focus,
+.top-menu.el-menu--horizontal > .el-menu-item.is-focus {
+  background: #fff !important;
+  color: #1059c6 !important;
+
+  i,
+  span {
+    color: #1059c6 !important;
   }
 }
 
@@ -70,11 +192,20 @@
   vertical-align: middle;
 }
 
+.top-user__avatar {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .85);
+}
+
 .top-bar__left,
 .top-bar__right {
   height: variables.$top_height;
   position: absolute;
-  margin-top: 2px;
+  margin-top: 0;
   top: 0;
 
   i {
@@ -83,13 +214,25 @@
 }
 
 .top-bar__left {
-  left: 10px;
+  left: 0;
+  display: none;
 }
 
 .top-bar__right {
-  right: 10px;
+  position: relative;
+  top: auto;
+  right: auto;
   display: flex;
   align-items: center;
+  color: #fff;
+  flex: 0 0 auto;
+  margin-left: auto;
+  margin-right: 18px;
+
+  i,
+  .el-dropdown-link {
+    color: #fff;
+  }
 }
 
 .top-bar__item {
@@ -105,13 +248,14 @@
   }
 }
 
-.top-bar__title {
+.top-bar__menu {
+  flex: 1 1 auto;
+  min-width: 0;
   height: 100%;
-  padding-left: 50px;
+  padding-left: 0;
+  padding-right: 12px;
   box-sizing: border-box;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: inherit;
   font-weight: 400;
 }
@@ -119,12 +263,15 @@
 .avue-logo {
   height: variables.$top_height;
   line-height: variables.$top_height;
-  background-color: #031527;
+  background-color: #1059c6;
   font-size: 20px;
   overflow: hidden;
   box-sizing: border-box;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.15);
+  box-shadow: none;
   color: #fff;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
 
   &_title {
     display: block;
@@ -134,8 +281,9 @@
   }
 
   &_subtitle {
-    display: block;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 18px;
     font-weight: bold;
     color: #fff;

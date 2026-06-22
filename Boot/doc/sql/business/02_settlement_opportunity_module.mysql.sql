@@ -34,10 +34,13 @@ CREATE TABLE IF NOT EXISTS `biz_business_opportunity` (
   `contact_name` varchar(100) NOT NULL COMMENT '负责人姓名',
   `contact_phone` varchar(50) NOT NULL COMMENT '联系电话',
   `contact_email` varchar(100) DEFAULT NULL COMMENT '电子邮箱',
+  `contact_address` varchar(500) DEFAULT NULL COMMENT '联系地址',
+  `id_card_files` text COMMENT '身份证附件',
   `contact_position` varchar(100) DEFAULT NULL COMMENT '职务',
   `channel` varchar(50) NOT NULL COMMENT '招商渠道',
   `third_party_channel_name` varchar(200) DEFAULT NULL COMMENT '第三方渠道名称',
   `follow_user` varchar(64) DEFAULT NULL COMMENT '跟进人',
+  `follow_user_id` bigint DEFAULT NULL COMMENT '跟进人用户ID',
   `opportunity_status` varchar(32) DEFAULT 'DRAFT' COMMENT '商机状态',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   `approval_project_id` bigint DEFAULT NULL COMMENT '关联项目审核ID',
@@ -61,6 +64,7 @@ CREATE TABLE IF NOT EXISTS `biz_business_opportunity_follow` (
   `opportunity_id` bigint NOT NULL COMMENT '商机ID',
   `follow_time` datetime DEFAULT NULL COMMENT '跟进时间',
   `follow_user` varchar(64) DEFAULT NULL COMMENT '跟进人',
+  `follow_user_id` bigint DEFAULT NULL COMMENT '跟进人用户ID',
   `opportunity_status` varchar(32) DEFAULT NULL COMMENT '跟进后商机状态',
   `follow_content` text COMMENT '跟进内容',
   `next_follow_time` datetime DEFAULT NULL COMMENT '下次跟进时间',
@@ -91,13 +95,94 @@ CREATE TABLE IF NOT EXISTS `biz_business_opportunity_tag` (
   KEY `idx_opportunity_tag_tag` (`tag_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='商机客户标签关联表';
 
+SET @has_opportunity_contact_address := (
+  SELECT COUNT(1)
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'biz_business_opportunity'
+    AND COLUMN_NAME = 'contact_address'
+);
+SET @add_opportunity_contact_address_sql := IF(
+  @has_opportunity_contact_address = 0,
+  'ALTER TABLE `biz_business_opportunity` ADD COLUMN `contact_address` varchar(500) DEFAULT NULL COMMENT ''联系地址'' AFTER `contact_email`',
+  'SELECT 1'
+);
+PREPARE add_opportunity_contact_address_stmt FROM @add_opportunity_contact_address_sql;
+EXECUTE add_opportunity_contact_address_stmt;
+DEALLOCATE PREPARE add_opportunity_contact_address_stmt;
+
+SET @has_opportunity_id_card_files := (
+  SELECT COUNT(1)
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'biz_business_opportunity'
+    AND COLUMN_NAME = 'id_card_files'
+);
+SET @add_opportunity_id_card_files_sql := IF(
+  @has_opportunity_id_card_files = 0,
+  'ALTER TABLE `biz_business_opportunity` ADD COLUMN `id_card_files` text COMMENT ''身份证附件'' AFTER `contact_address`',
+  'SELECT 1'
+);
+PREPARE add_opportunity_id_card_files_stmt FROM @add_opportunity_id_card_files_sql;
+EXECUTE add_opportunity_id_card_files_stmt;
+DEALLOCATE PREPARE add_opportunity_id_card_files_stmt;
+
+SET @has_opportunity_follow_user_id := (
+  SELECT COUNT(1)
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'biz_business_opportunity'
+    AND COLUMN_NAME = 'follow_user_id'
+);
+SET @add_opportunity_follow_user_id_sql := IF(
+  @has_opportunity_follow_user_id = 0,
+  'ALTER TABLE `biz_business_opportunity` ADD COLUMN `follow_user_id` bigint DEFAULT NULL COMMENT ''跟进人用户ID'' AFTER `follow_user`',
+  'SELECT 1'
+);
+PREPARE add_opportunity_follow_user_id_stmt FROM @add_opportunity_follow_user_id_sql;
+EXECUTE add_opportunity_follow_user_id_stmt;
+DEALLOCATE PREPARE add_opportunity_follow_user_id_stmt;
+
+SET @has_opportunity_follow_record_user_id := (
+  SELECT COUNT(1)
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'biz_business_opportunity_follow'
+    AND COLUMN_NAME = 'follow_user_id'
+);
+SET @add_opportunity_follow_record_user_id_sql := IF(
+  @has_opportunity_follow_record_user_id = 0,
+  'ALTER TABLE `biz_business_opportunity_follow` ADD COLUMN `follow_user_id` bigint DEFAULT NULL COMMENT ''跟进人用户ID'' AFTER `follow_user`',
+  'SELECT 1'
+);
+PREPARE add_opportunity_follow_record_user_id_stmt FROM @add_opportunity_follow_record_user_id_sql;
+EXECUTE add_opportunity_follow_record_user_id_stmt;
+DEALLOCATE PREPARE add_opportunity_follow_record_user_id_stmt;
+
+CREATE TABLE IF NOT EXISTS `biz_industry_rule` (
+  `rule_id` bigint NOT NULL AUTO_INCREMENT COMMENT '规则ID',
+  `industry_keyword` varchar(100) NOT NULL COMMENT '行业关键词',
+  `access_type` char(1) NOT NULL DEFAULT '2' COMMENT '准入类型（2限制 3禁入）',
+  `reason` varchar(500) DEFAULT NULL COMMENT '规则说明',
+  `status` char(1) NOT NULL DEFAULT '0' COMMENT '状态（0启用 1停用）',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标志（0正常 1删除）',
+  `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
+  `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`rule_id`),
+  UNIQUE KEY `uk_industry_rule_keyword` (`industry_keyword`),
+  KEY `idx_industry_rule_access_type` (`access_type`),
+  KEY `idx_industry_rule_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='行业准入规则表';
+
 INSERT INTO `biz_business_opportunity` (
   `opportunity_id`, `park_id`, `customer_id`, `opportunity_no`, `enterprise_name`, `credit_code`, `establish_date`, `registered_capital`,
   `enterprise_type`, `industry_type`, `business_scope`, `registered_address`, `equity_structure`, `organization_structure`,
   `main_business`, `last_year_revenue`, `major_clients`, `major_illegal_flag`, `dishonest_flag`, `industry_penalty_flag`,
   `carrier_types`, `intent_area`, `usage_purpose`, `lease_term_years`, `lease_term_label`, `decoration_requirement`,
-  `supporting_needs`, `contact_name`, `contact_phone`, `contact_email`, `contact_position`, `channel`,
-  `third_party_channel_name`, `follow_user`, `opportunity_status`, `remark`, `approval_project_id`, `submitted_audit_flag`,
+  `supporting_needs`, `contact_name`, `contact_phone`, `contact_email`, `contact_address`, `id_card_files`, `contact_position`, `channel`,
+  `third_party_channel_name`, `follow_user`, `follow_user_id`, `opportunity_status`, `remark`, `approval_project_id`, `submitted_audit_flag`,
   `last_follow_time`, `next_follow_time`, `del_flag`, `create_by`, `create_time`, `update_by`, `update_time`
 )
 SELECT
@@ -105,8 +190,8 @@ SELECT
   `enterprise_type`, `industry_type`, `business_scope`, `registered_address`, `equity_structure`, `organization_structure`,
   `main_business`, `last_year_revenue`, `major_clients`, `major_illegal_flag`, `dishonest_flag`, `industry_penalty_flag`,
   `carrier_types`, `intent_area`, `usage_purpose`, `lease_term_years`, `lease_term_label`, `decoration_requirement`,
-  `supporting_needs`, `contact_name`, `contact_phone`, `contact_email`, `contact_position`, `channel`,
-  `third_party_channel_name`, `follow_user`,
+  `supporting_needs`, `contact_name`, `contact_phone`, `contact_email`, null, null, `contact_position`, `channel`,
+  `third_party_channel_name`, `follow_user`, null,
   case when `opportunity_status` in ('DRAFT', 'AUDIT') or `opportunity_status` is null or `opportunity_status` = '' then 'INITIAL' else `opportunity_status` end,
   `remark`, `approval_project_id`, `submitted_audit_flag`, `last_follow_time`, `next_follow_time`, `del_flag`, `create_by`, `create_time`, `update_by`, `update_time`
 FROM `ry_ics`.`biz_business_opportunity`
@@ -115,6 +200,11 @@ ON DUPLICATE KEY UPDATE
   `customer_id` = VALUES(`customer_id`),
   `enterprise_name` = VALUES(`enterprise_name`),
   `credit_code` = VALUES(`credit_code`),
+  `contact_email` = VALUES(`contact_email`),
+  `contact_address` = VALUES(`contact_address`),
+  `id_card_files` = VALUES(`id_card_files`),
+  `follow_user` = VALUES(`follow_user`),
+  `follow_user_id` = VALUES(`follow_user_id`),
   `opportunity_status` = VALUES(`opportunity_status`),
   `submitted_audit_flag` = VALUES(`submitted_audit_flag`),
   `last_follow_time` = VALUES(`last_follow_time`),
@@ -124,13 +214,15 @@ ON DUPLICATE KEY UPDATE
   `update_time` = VALUES(`update_time`);
 
 INSERT INTO `biz_business_opportunity_follow` (
-  `follow_id`, `opportunity_id`, `follow_time`, `follow_user`, `opportunity_status`, `follow_content`, `next_follow_time`, `create_by`, `create_time`
+  `follow_id`, `opportunity_id`, `follow_time`, `follow_user`, `follow_user_id`, `opportunity_status`, `follow_content`, `next_follow_time`, `create_by`, `create_time`
 )
-SELECT `follow_id`, `opportunity_id`, `follow_time`, `follow_user`,
+SELECT `follow_id`, `opportunity_id`, `follow_time`, `follow_user`, null,
        case when `opportunity_status` in ('DRAFT', 'AUDIT') or `opportunity_status` is null or `opportunity_status` = '' then 'INITIAL' else `opportunity_status` end,
        `follow_content`, `next_follow_time`, `create_by`, `create_time`
 FROM `ry_ics`.`biz_business_opportunity_follow`
 ON DUPLICATE KEY UPDATE
+  `follow_user` = VALUES(`follow_user`),
+  `follow_user_id` = VALUES(`follow_user_id`),
   `opportunity_status` = VALUES(`opportunity_status`),
   `follow_content` = VALUES(`follow_content`),
   `next_follow_time` = VALUES(`next_follow_time`);
@@ -159,6 +251,15 @@ SET o.`customer_id` = NULL
 WHERE o.`customer_id` IS NOT NULL
   AND c.`customer_id` IS NULL;
 
+-- 已关联客户的商机标签同步为客户标签，避免客户管理/客户标签页显示未设置。
+INSERT IGNORE INTO `biz_customer_tag` (`customer_id`, `tag_id`, `create_time`)
+SELECT DISTINCT o.`customer_id`, ot.`tag_id`, COALESCE(ot.`create_time`, now())
+FROM `biz_business_opportunity` o
+INNER JOIN `biz_business_opportunity_tag` ot ON ot.`opportunity_id` = o.`opportunity_id`
+INNER JOIN `biz_customer` c ON c.`customer_id` = o.`customer_id`
+INNER JOIN `biz_tag` t ON t.`tag_id` = ot.`tag_id`
+WHERE o.`customer_id` IS NOT NULL;
+
 -- 菜单：入驻管理 / 商机管理
 INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `component`, `sort`, `category`, `action`, `is_open`, `remark`, `is_deleted`)
 VALUES
@@ -170,7 +271,8 @@ VALUES
   (1890000000003000104, 1890000000003000100, 'business_opportunity_view', '查看', 'view', '/settlement/opportunity/view', 'file-text', '', 4, 2, 2, 1, NULL, 0),
   (1890000000003000105, 1890000000003000100, 'business_opportunity_follow', '跟进', 'follow', '/settlement/opportunity/follow', 'message', '', 5, 2, 2, 1, NULL, 0),
   (1890000000003000106, 1890000000003000100, 'business_opportunity_audit', '提交审核', 'audit', '/settlement/opportunity/audit', 'upload', '', 6, 2, 2, 1, NULL, 0),
-  (1890000000003000107, 1890000000003000100, 'business_opportunity_file_upload', '附件上传', 'upload', '/settlement/opportunity/file/upload', 'upload', '', 7, 2, 1, 1, NULL, 0)
+  (1890000000003000107, 1890000000003000100, 'business_opportunity_file_upload', '附件上传', 'upload', '/settlement/opportunity/file/upload', 'upload', '', 7, 2, 1, 1, NULL, 0),
+  (1890000000003000108, 1890000000003000100, 'business_opportunity_industry_rule', '行业规则', 'setting', '/settlement/opportunity/industry-rule', 'setting', '', 8, 2, 2, 1, NULL, 0)
 ON DUPLICATE KEY UPDATE
   `parent_id` = VALUES(`parent_id`),
   `name` = VALUES(`name`),
@@ -196,4 +298,5 @@ VALUES
   (1890000000004000006, 1123598816738675201, 1890000000003000104),
   (1890000000004000007, 1123598816738675201, 1890000000003000105),
   (1890000000004000008, 1123598816738675201, 1890000000003000106),
-  (1890000000004000009, 1123598816738675201, 1890000000003000107);
+  (1890000000004000009, 1123598816738675201, 1890000000003000107),
+  (1890000000004000010, 1123598816738675201, 1890000000003000108);

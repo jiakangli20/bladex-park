@@ -178,6 +178,15 @@
 		<include refid="customerWhere"/>
 	</select>
 
+	<select id="selectListPark" resultType="org.springblade.modules.park.pojo.entity.Park">
+		select id,
+			   park_id as parkId,
+			   name
+		from ics_park
+		where coalesce(status, '0') = '0'
+		order by id asc
+	</select>
+
 	<select id="selectCustomerIdByCreditCode" resultType="long">
 		select customer_id
 		from biz_customer
@@ -337,6 +346,28 @@
 			update_time = now()
 		where customer_id = #{customerId}
 		  and del_flag = '0'
+	</update>
+
+	<update id="updateOpportunityEnterpriseNameByCustomerId">
+		update biz_business_opportunity
+		set enterprise_name = #{enterpriseName},
+			update_by = #{updateBy},
+			update_time = now()
+		where customer_id = #{customerId}
+		  and del_flag = '0'
+	</update>
+
+	<update id="updateApprovalProjectEnterpriseNameByCustomerId">
+		update biz_approval_project
+		set enterprise_name = #{enterpriseName},
+			project_name = case
+				when business_type = 'tenant_entry' then concat(#{enterpriseName}, ' 入驻审核')
+				else project_name
+			end,
+			update_by = #{updateBy},
+			update_time = now()
+		where customer_id = #{customerId}
+		  and coalesce(del_flag, '0') = '0'
 	</update>
 
 	<update id="deleteCustomerByIds">

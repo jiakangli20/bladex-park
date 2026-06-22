@@ -3,6 +3,10 @@
   border: none !important;
 }
 
+.el-card {
+  border-radius: 10px;
+}
+
 .el-menu {
   border-right: none;
 }
@@ -66,4 +70,71 @@
 
 .avue--detail .el-form-item {
   background-color: #fafafa;
+}
+
+.avue-crud {
+  color: #1f2d3d;
+
+  .avue-crud__search,
+  .avue-crud__menu {
+    border-radius: 10px;
+    background: #fff;
+  }
+
+  .avue-crud__search {
+    padding: 16px 16px 4px;
+    margin-bottom: 16px;
+    border: 1px solid #e8edf3;
+  }
+
+  .avue-crud__menu {
+    min-height: 42px;
+    margin-bottom: 12px;
+  }
+
+  .el-form-item {
+    margin-bottom: 12px;
+  }
+
+  .el-input__wrapper,
+  .el-select__wrapper,
+  .el-textarea__inner {
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px #dfe5ee inset;
+  }
+
+  .el-input__wrapper:hover,
+  .el-select__wrapper:hover,
+  .el-textarea__inner:hover {
+    box-shadow: 0 0 0 1px #b9c6d8 inset;
+  }
+
+  .el-button {
+    border-radius: 2px;
+  }
+
+  .el-table {
+    border-radius: 10px 10px 0 0;
+    overflow: hidden;
+  }
+}
+
+.el-table {
+  --el-table-header-bg-color: #f8fafd;
+  --el-table-border-color: #e8edf3;
+  color: #1f2d3d;
+
+  th.el-table__cell {
+    background: #f8fafd !important;
+    color: #344054;
+    font-weight: 600;
+  }
+
+  td.el-table__cell {
+    color: #4d5b6c;
+  }
+}
+
+.el-pagination.is-background .el-pager li.is-active {
+  background-color: #1059c6;
 }

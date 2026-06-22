@@ -14,6 +14,7 @@ import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.Func;
 import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.approval.pojo.entity.ApprovalProject;
+import org.springblade.modules.business.excel.CustomerExcel;
 import org.springblade.modules.business.mapper.BusinessOpportunityMapper;
 import org.springblade.modules.business.mapper.CustomerMapper;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunity;
@@ -21,9 +22,11 @@ import org.springblade.modules.business.pojo.entity.Customer;
 import org.springblade.modules.business.pojo.entity.Tag;
 import org.springblade.modules.business.service.ICustomerService;
 import org.springblade.modules.business.service.ITagService;
+import org.springblade.modules.park.pojo.entity.Park;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -86,6 +89,43 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 	}
 
 	@Override
+	public List<CustomerExcel> exportCustomer(Customer customer) {
+		Map<Long, String> parkNameMap = parkNameMap();
+		return selectCustomerList(customer).stream()
+			.map(item -> toCustomerExcel(item, parkNameMap))
+			.collect(Collectors.toList());
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public void importCustomer(List<CustomerExcel> data) {
+		if (Func.isEmpty(data)) {
+			throw new ServiceException("导入数据不能为空");
+		}
+		Map<String, Long> parkIdMap = parkIdMap();
+		List<Customer> customers = new ArrayList<>(data.size());
+		for (int i = 0; i < data.size(); i++) {
+			CustomerExcel excel = data.get(i);
+			if (Func.isEmpty(excel) || isBlankRow(excel)) {
+				continue;
+			}
+			customers.add(fromCustomerExcel(excel, i + 2, parkIdMap));
+		}
+		if (customers.isEmpty()) {
+			throw new ServiceException("导入数据不能为空");
+		}
+		for (Customer customer : customers) {
+			Long customerId = resolveImportCustomerId(customer);
+			if (Func.isNotEmpty(customerId)) {
+				customer.setCustomerId(customerId);
+				updateCustomer(customer);
+			} else {
+				insertCustomer(customer);
+			}
+		}
+	}
+
+	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public Customer insertCustomer(Customer customer) {
 		if (Func.isEmpty(customer)) {
@@ -130,6 +170,9 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		customer.setUpdateTime(DateUtil.now());
 		applyLocalCheck(customer);
 		int rows = baseMapper.updateCustomer(customer);
+		if (rows > 0) {
+			syncRelatedEnterpriseName(old, customer);
+		}
 		if (customer.getTagIds() != null) {
 			tagService.setCustomerTags(customer.getCustomerId(), customer.getTagIds());
 		}
@@ -259,6 +302,90 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		return Func.isEmpty(customer) ? new Customer() : customer;
 	}
 
+	private CustomerExcel toCustomerExcel(Customer customer, Map<Long, String> parkNameMap) {
+		CustomerExcel excel = new CustomerExcel();
+		excel.setParkName(parkNameMap.getOrDefault(customer.getParkId(), Func.toStr(customer.getParkId(), "")));
+		excel.setEnterpriseName(customer.getEnterpriseName());
+		excel.setCreditCode(customer.getCreditCode());
+		excel.setContactName(customer.getContactName());
+		excel.setContactPhone(customer.getContactPhone());
+		excel.setContactEmail(customer.getContactEmail());
+		excel.setContactPosition(customer.getContactPosition());
+		excel.setEstablishDate(customer.getEstablishDate());
+		excel.setRegisteredCapital(customer.getRegisteredCapital());
+		excel.setEnterpriseType(customer.getEnterpriseType());
+		excel.setIndustry(customer.getIndustry());
+		excel.setScale(customer.getScale());
+		excel.setMainBusiness(customer.getMainBusiness());
+		excel.setLastYearRevenue(customer.getLastYearRevenue());
+		excel.setBusinessScope(customer.getBusinessScope());
+		excel.setRegisteredAddress(customer.getRegisteredAddress());
+		excel.setMajorClients(customer.getMajorClients());
+		excel.setCarrierTypes(customer.getCarrierTypes());
+		excel.setIntentArea(customer.getIntentArea());
+		excel.setUsagePurpose(customer.getUsagePurpose());
+		excel.setLeaseTermYears(customer.getLeaseTermYears());
+		excel.setDecorationRequirement(customer.getDecorationRequirement());
+		excel.setSupportingNeeds(customer.getSupportingNeeds());
+		excel.setChannel(customer.getChannel());
+		excel.setThirdPartyChannelName(customer.getThirdPartyChannelName());
+		excel.setSettlementStatusName(settlementStatusText(customer.getSettlementStatus()));
+		excel.setStatusName(statusText(customer.getStatus()));
+		excel.setCooperationLevelName(cooperationLevelText(customer.getCooperationLevel()));
+		excel.setRemark(customer.getRemark());
+		return excel;
+	}
+
+	private Customer fromCustomerExcel(CustomerExcel excel, int rowNumber, Map<String, Long> parkIdMap) {
+		if (Func.isEmpty(excel) || isBlankRow(excel)) {
+			throw new ServiceException("第" + rowNumber + "行导入数据为空");
+		}
+		Customer customer = new Customer();
+		customer.setEnterpriseName(required(excel.getEnterpriseName(), rowNumber, "企业名称"));
+		customer.setParkId(resolveParkId(excel.getParkName(), rowNumber, parkIdMap));
+		customer.setCreditCode(trimToNull(excel.getCreditCode()));
+		customer.setContactName(required(excel.getContactName(), rowNumber, "联系人"));
+		customer.setContactPhone(required(excel.getContactPhone(), rowNumber, "联系电话"));
+		customer.setContactEmail(trimToNull(excel.getContactEmail()));
+		customer.setContactPosition(trimToNull(excel.getContactPosition()));
+		customer.setEstablishDate(excel.getEstablishDate());
+		customer.setRegisteredCapital(excel.getRegisteredCapital());
+		customer.setEnterpriseType(trimToNull(excel.getEnterpriseType()));
+		customer.setIndustry(trimToNull(excel.getIndustry()));
+		customer.setScale(trimToNull(excel.getScale()));
+		customer.setMainBusiness(trimToNull(excel.getMainBusiness()));
+		customer.setLastYearRevenue(excel.getLastYearRevenue());
+		customer.setBusinessScope(trimToNull(excel.getBusinessScope()));
+		customer.setRegisteredAddress(trimToNull(excel.getRegisteredAddress()));
+		customer.setMajorClients(trimToNull(excel.getMajorClients()));
+		customer.setCarrierTypes(trimToNull(excel.getCarrierTypes()));
+		customer.setIntentArea(excel.getIntentArea());
+		customer.setUsagePurpose(trimToNull(excel.getUsagePurpose()));
+		customer.setLeaseTermYears(excel.getLeaseTermYears());
+		customer.setDecorationRequirement(trimToNull(excel.getDecorationRequirement()));
+		customer.setSupportingNeeds(trimToNull(excel.getSupportingNeeds()));
+		customer.setChannel(trimToNull(excel.getChannel()));
+		customer.setThirdPartyChannelName(trimToNull(excel.getThirdPartyChannelName()));
+		customer.setSettlementStatus(parseSettlementStatus(excel.getSettlementStatusName()));
+		customer.setStatus(parseStatus(excel.getStatusName()));
+		customer.setCooperationLevel(parseCooperationLevel(excel.getCooperationLevelName()));
+		customer.setRemark(trimToNull(excel.getRemark()));
+		customer.setMajorIllegalFlag("0");
+		customer.setDishonestFlag("0");
+		customer.setIndustryPenaltyFlag("0");
+		return customer;
+	}
+
+	private Long resolveImportCustomerId(Customer customer) {
+		if (StringUtil.isNotBlank(customer.getCreditCode())) {
+			Long customerId = baseMapper.selectCustomerIdByCreditCode(customer.getCreditCode());
+			if (Func.isNotEmpty(customerId)) {
+				return customerId;
+			}
+		}
+		return baseMapper.selectCustomerIdByEnterpriseAndPark(customer.getEnterpriseName(), customer.getParkId(), null);
+	}
+
 	private void fillTags(Customer customer) {
 		if (Func.isEmpty(customer) || Func.isEmpty(customer.getCustomerId())) {
 			return;
@@ -266,6 +393,20 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		List<Tag> tags = tagService.selectTagsByCustomerId(customer.getCustomerId());
 		customer.setTags(tags);
 		customer.setTagIds(tags.stream().map(Tag::getTagId).collect(Collectors.toList()));
+	}
+
+	private void syncRelatedEnterpriseName(Customer old, Customer customer) {
+		if (Func.isEmpty(old) || Func.isEmpty(customer) || Func.isEmpty(customer.getCustomerId())) {
+			return;
+		}
+		String enterpriseName = customer.getEnterpriseName();
+		if (StringUtil.isBlank(enterpriseName) || Objects.equals(old.getEnterpriseName(), enterpriseName)) {
+			return;
+		}
+		baseMapper.updateOpportunityEnterpriseNameByCustomerId(customer.getCustomerId(), enterpriseName, currentUserName());
+		if (tableExists("biz_approval_project")) {
+			baseMapper.updateApprovalProjectEnterpriseNameByCustomerId(customer.getCustomerId(), enterpriseName, currentUserName());
+		}
 	}
 
 	private void normalizeCustomer(Customer customer) {
@@ -287,6 +428,20 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		if (Func.isEmpty(customer.getCooperationLevel())) {
 			customer.setCooperationLevel(1);
 		}
+	}
+
+	private Map<Long, String> parkNameMap() {
+		return listPark().stream()
+			.collect(Collectors.toMap(Park::getId, Park::getName, (first, second) -> first));
+	}
+
+	private Map<String, Long> parkIdMap() {
+		return listPark().stream()
+			.collect(Collectors.toMap(park -> park.getName().trim(), Park::getId, (first, second) -> first));
+	}
+
+	private List<Park> listPark() {
+		return baseMapper.selectListPark();
 	}
 
 	private void validateCustomer(Customer customer, Long excludeCustomerId) {
@@ -432,6 +587,101 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 	private boolean tableExists(String tableName) {
 		Integer count = baseMapper.countTableRows(tableName);
 		return Func.isNotEmpty(count) && count > 0;
+	}
+
+	private boolean isBlankRow(CustomerExcel excel) {
+		return StringUtil.isBlank(excel.getEnterpriseName())
+			&& StringUtil.isBlank(excel.getCreditCode())
+			&& StringUtil.isBlank(excel.getContactName())
+			&& StringUtil.isBlank(excel.getContactPhone());
+	}
+
+	private String required(String value, int rowNumber, String label) {
+		String result = trimToNull(value);
+		if (StringUtil.isBlank(result)) {
+			throw new ServiceException("第" + rowNumber + "行" + label + "不能为空");
+		}
+		return result;
+	}
+
+	private Long resolveParkId(String parkName, int rowNumber, Map<String, Long> parkIdMap) {
+		String name = required(parkName, rowNumber, "所属园区");
+		Long parkId = parkIdMap.get(name);
+		if (Func.isEmpty(parkId)) {
+			throw new ServiceException("第" + rowNumber + "行所属园区不存在：" + name);
+		}
+		return parkId;
+	}
+
+	private Integer parseSettlementStatus(String value) {
+		String text = trimToNull(value);
+		if (StringUtil.isBlank(text)) {
+			return 0;
+		}
+		return switch (text) {
+			case "0", "未入驻" -> 0;
+			case "1", "意向" -> 1;
+			case "2", "签约" -> 2;
+			case "3", "入驻", "已入驻" -> 3;
+			default -> throw new ServiceException("入驻状态不正确：" + text);
+		};
+	}
+
+	private String parseStatus(String value) {
+		String text = trimToNull(value);
+		if (StringUtil.isBlank(text)) {
+			return STATUS_NORMAL;
+		}
+		return switch (text) {
+			case "0", "正常" -> "0";
+			case "1", "停用" -> "1";
+			case "2", "归档" -> "2";
+			default -> throw new ServiceException("客户状态不正确：" + text);
+		};
+	}
+
+	private Integer parseCooperationLevel(String value) {
+		String text = trimToNull(value);
+		if (StringUtil.isBlank(text)) {
+			return 1;
+		}
+		return switch (text) {
+			case "1", "普通" -> 1;
+			case "2", "VIP", "vip" -> 2;
+			case "3", "战略" -> 3;
+			default -> throw new ServiceException("合作等级不正确：" + text);
+		};
+	}
+
+	private String settlementStatusText(Integer status) {
+		if (status == null) {
+			return "未入驻";
+		}
+		return switch (status) {
+			case 1 -> "意向";
+			case 2 -> "签约";
+			case 3 -> "入驻";
+			default -> "未入驻";
+		};
+	}
+
+	private String statusText(String status) {
+		return switch (Func.toStr(status, STATUS_NORMAL)) {
+			case "1" -> "停用";
+			case "2" -> "归档";
+			default -> "正常";
+		};
+	}
+
+	private String cooperationLevelText(Integer level) {
+		if (level == null) {
+			return "普通";
+		}
+		return switch (level) {
+			case 2 -> "VIP";
+			case 3 -> "战略";
+			default -> "普通";
+		};
 	}
 
 	private String trimToNull(String value) {

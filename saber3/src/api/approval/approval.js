@@ -27,6 +27,31 @@ export const getApprovalProjectDetail = projectId => {
   });
 };
 
+export const saveApprovalProject = data => {
+  return request({
+    url: '/blade-approval/project/save',
+    method: 'post',
+    data,
+  });
+};
+
+export const removeApprovalProject = ids => {
+  return request({
+    url: '/blade-approval/project/remove',
+    method: 'post',
+    params: {
+      ids,
+    },
+  });
+};
+
+export const submitApprovalProject = projectId => {
+  return request({
+    url: `/blade-approval/project/submit/${projectId}`,
+    method: 'post',
+  });
+};
+
 export const getApprovalForm = projectId => {
   return request({
     url: `/blade-approval/project/form/${projectId}`,

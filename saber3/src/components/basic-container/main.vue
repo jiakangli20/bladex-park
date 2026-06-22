@@ -35,7 +35,7 @@ export default {
 
 <style lang="scss">
 .basic-container {
-  padding: 10px 6px;
+  padding: 0;
   box-sizing: border-box;
 
   &--block {
@@ -48,6 +48,12 @@ export default {
 
   &__card {
     width: 100%;
+    border-radius: 10px;
+    background: #fff;
+
+    > .el-card__body {
+      padding: 16px;
+    }
   }
 
   &:first-child {

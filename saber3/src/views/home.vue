@@ -1,119 +1,175 @@
 <template>
-  <basic-container>
+  <basic-container class="home-container">
     <div v-loading="loading" class="home-workbench">
-      <section class="hero-section">
-        <div class="hero-copy">
-          <span class="hero-eyebrow">智慧园区运营工作台</span>
-          <h1>{{ banner.name }}</h1>
-          <p>{{ banner.bannerDesc }}</p>
-        </div>
-        <div class="hero-actions">
-          <el-button type="primary" icon="el-icon-guide" @click="go('/settlement/opportunity')">商机管理</el-button>
-          <el-button icon="el-icon-s-check" @click="go('/approval/todo')">待办任务</el-button>
-        </div>
-      </section>
-
       <section class="metric-grid">
-        <button v-for="item in metrics" :key="item.label" type="button" class="metric-card" @click="go(item.path)">
-          <span class="metric-icon" :class="item.tone">{{ item.icon }}</span>
-          <span class="metric-title">{{ item.label }}</span>
-          <strong>{{ item.value }}</strong>
-          <em>{{ item.desc }}</em>
+        <button
+          v-for="item in metrics"
+          :key="item.label"
+          type="button"
+          class="metric-card"
+          :class="`metric-card--${item.tone}`"
+          @click="go(item.path)"
+        >
+          <span class="metric-icon">
+            <el-icon><component :is="item.icon" /></el-icon>
+          </span>
+          <span class="metric-copy">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+          </span>
+          <em>详情&gt;</em>
         </button>
       </section>
 
-      <section class="content-grid">
-        <div class="main-column">
-          <section class="panel">
+      <section class="home-layout">
+        <main class="home-main">
+          <section class="hero-section">
+            <div class="hero-copy">
+              <h1>{{ banner.name }}</h1>
+              <p>{{ banner.bannerDesc }}</p>
+            </div>
+            <div class="hero-visual" :style="heroStyle"></div>
+          </section>
+
+          <section class="panel investment-panel">
             <div class="panel-head">
-              <h2>招商闭环</h2>
-              <span>第一阶段仅保留入口</span>
+              <div>
+                <h2>招商闭环入口</h2>
+                <p>从商机到审核、风险、客户和收缴的关键业务入口</p>
+              </div>
+              <el-button text type="primary" @click="go('/settlement/opportunity')">商机管理</el-button>
             </div>
             <div class="entrance-grid">
-              <button v-for="item in lifecycleEntrances" :key="item.title" type="button" class="entrance-item" @click="go(item.path)">
-                <span>{{ item.icon }}</span>
-                <strong>{{ item.title }}</strong>
-                <em>{{ item.desc }}</em>
-              </button>
-            </div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-head">
-              <h2>快捷入口</h2>
-              <span>已迁模块可直接跳转</span>
-            </div>
-            <div class="shortcut-grid">
               <button
-                v-for="item in shortcuts"
+                v-for="item in lifecycleEntrances"
                 :key="item.title"
                 type="button"
-                class="shortcut-item"
-                :class="{ disabled: item.disabled }"
-                @click="go(item.path, item.disabled)"
+                class="entrance-item"
+                :class="`entrance-item--${item.tone}`"
+                @click="go(item.path)"
               >
-                <span>{{ item.icon }}</span>
+                <span>
+                  <el-icon><component :is="item.icon" /></el-icon>
+                </span>
                 <strong>{{ item.title }}</strong>
+                <em>{{ item.desc }}</em>
+                <i class="entry-arrow el-icon-arrow-right"></i>
               </button>
             </div>
           </section>
 
-          <section class="panel">
-            <div class="panel-head">
-              <h2>入驻企业展示</h2>
-              <span>{{ enterprises.length ? '来自客户档案数据' : '暂无入驻企业数据' }}</span>
-            </div>
-            <div class="enterprise-list">
-              <div v-for="item in enterprises" :key="item.customerId || item.name" class="enterprise-item">
-                <span>{{ item.shortName }}</span>
+          <section class="home-dual-row">
+            <section class="panel policy-panel">
+              <div class="panel-head">
                 <div>
-                  <strong>{{ item.name }}</strong>
-                  <em>{{ item.industry }}</em>
+                  <h2>园区政策通知</h2>
+                  <p>最新政策、服务通知与业务公告</p>
+                </div>
+                <el-button text type="primary" @click="go('/enterprise/policy-service')">政策</el-button>
+              </div>
+              <div class="policy-list">
+                <button
+                  v-for="item in policies"
+                  :key="item.title"
+                  type="button"
+                  class="policy-item"
+                  @click="go(item.path)"
+                >
+                  <span class="policy-icon">
+                    <el-icon><Bell /></el-icon>
+                  </span>
+                  <span>
+                    <strong>{{ item.title }}</strong>
+                    <em>{{ item.date }}</em>
+                  </span>
+                  <b>查看</b>
+                </button>
+              </div>
+            </section>
+
+            <section class="panel quick-panel">
+              <div class="panel-head">
+                <div>
+                  <h2>快捷入口</h2>
+                  <p>常用业务快速进入</p>
                 </div>
               </div>
+              <div class="shortcut-grid">
+                <button
+                  v-for="item in shortcuts"
+                  :key="item.title"
+                  type="button"
+                  class="shortcut-item"
+                  :class="{ disabled: item.disabled }"
+                  @click="go(item.path, item.disabled)"
+                >
+                  <span :class="`shortcut-icon shortcut-icon--${item.tone}`">
+                    <el-icon><component :is="item.icon" /></el-icon>
+                  </span>
+                  <strong>{{ item.title }}</strong>
+                </button>
+              </div>
+            </section>
+          </section>
+
+        </main>
+
+        <aside class="home-side">
+          <section class="panel calendar-panel">
+            <div class="panel-head">
+              <div>
+                <h2>
+                  <el-icon><Calendar /></el-icon>
+                  日程安排
+                </h2>
+              </div>
+            </div>
+            <div class="calendar-toolbar">
+              <span>{{ today.year }}</span>
+              <span>{{ today.monthName }}</span>
+              <strong>Month</strong>
+              <span>Year</span>
+            </div>
+            <div class="calendar-grid">
+              <span v-for="week in calendarWeeks" :key="week" class="calendar-week">{{ week }}</span>
+              <span
+                v-for="day in calendarDays"
+                :key="day.key"
+                class="calendar-day"
+                :class="{ muted: !day.current, active: day.current && day.day === today.day }"
+              >
+                {{ day.dayText }}
+              </span>
             </div>
           </section>
-        </div>
 
-        <aside class="side-column">
-          <section class="panel">
+          <section class="panel todo-panel">
             <div class="panel-head">
-              <h2>待办提醒</h2>
+              <div>
+                <h2>
+                  <el-icon><Tickets /></el-icon>
+                  待办任务
+                </h2>
+              </div>
               <el-button text type="primary" @click="go('/approval/todo')">更多</el-button>
             </div>
             <div class="todo-list">
-              <button v-for="item in todos" :key="item.title" type="button" class="todo-item" @click="go(item.path)">
-                <span>{{ item.count }}</span>
+              <button
+                v-for="item in todos"
+                :key="item.title"
+                type="button"
+                class="todo-item"
+                :class="`todo-item--${item.tone}`"
+                @click="go(item.path)"
+              >
+                <span>
+                  <el-icon><component :is="item.icon" /></el-icon>
+                </span>
                 <div>
                   <strong>{{ item.title }}</strong>
                   <em>{{ item.desc }}</em>
                 </div>
               </button>
-            </div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-head">
-              <h2>园区政策通知</h2>
-              <el-button text type="primary" @click="go('/enterprise/policy-service')">查看</el-button>
-            </div>
-            <div class="policy-list">
-              <button v-for="item in policies" :key="item.title" type="button" class="policy-item" @click="go(item.path)">
-                <strong>{{ item.title }}</strong>
-                <span>{{ item.date }}</span>
-              </button>
-            </div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-head">
-              <h2>日程安排</h2>
-              <span>本期不新增日程表</span>
-            </div>
-            <div class="schedule-card">
-              <strong>{{ today.day }}</strong>
-              <span>{{ today.month }}</span>
-              <em>暂无日程安排</em>
             </div>
           </section>
         </aside>
@@ -132,50 +188,172 @@ export default {
     return {
       loading: false,
       banner: {
-        name: '首页',
-        bannerDesc: '聚合房源、客户、合同、审批、物业工单和政策通知，后续将逐步接入真实业务数据。',
+        name: '智慧园区工作台',
+        bannerDesc: '聚合房源、客户、合同、审批与任务，助力园区高效运营',
         imageUrl: '/img/bg/bg1.jpg',
       },
       metrics: [
-        { label: '楼层管理', value: 0, desc: '房源与楼层概览', path: '/park/floor', icon: '楼', tone: 'blue' },
-        { label: '客户管理', value: 0, desc: '入驻客户总览', path: '/settlement/customer', icon: '客', tone: 'green' },
-        { label: '合同即将到期', value: 0, desc: '待关注合同', path: '/contract/expiring', icon: '合', tone: 'amber' },
-        { label: '审批待处理', value: 0, desc: '当前待办审批', path: '/approval/todo', icon: '审', tone: 'purple' },
-        { label: '待办任务', value: 0, desc: '物业工单待受理', path: '/enterprise/property-workorder', icon: '单', tone: 'red' },
+        {
+          label: '楼层管理',
+          value: 0,
+          path: '/park/floor',
+          icon: 'OfficeBuilding',
+          tone: 'blue',
+        },
+        {
+          label: '客户管理',
+          value: 0,
+          path: '/settlement/customer',
+          icon: 'User',
+          tone: 'cyan',
+        },
+        {
+          label: '合同即将到期',
+          value: 0,
+          path: '/contract/expiring',
+          icon: 'DocumentChecked',
+          tone: 'orange',
+        },
+        {
+          label: '审批待处理',
+          value: 0,
+          path: '/approval/todo',
+          icon: 'Finished',
+          tone: 'purple',
+        },
+        {
+          label: '待办任务',
+          value: 0,
+          path: '/enterprise/property-workorder',
+          icon: 'Calendar',
+          tone: 'green',
+        },
       ],
       lifecycleEntrances: [
-        { title: '租金收缴', desc: '账单、确认缴费、催缴闭环', path: '/finance/payment', icon: '收' },
-        { title: '企业风险', desc: '跳转客户管理并保留风险筛选入口', path: '/settlement/customer?riskLevel=3', icon: '险' },
-        { title: '项目审核', desc: '入驻服务项目审核', path: '/settlement/project-approval', icon: '审' },
-        { title: '客户管理', desc: '入驻客户档案', path: '/settlement/customer', icon: '客' },
+        {
+          title: '租金收缴',
+          desc: '账单、催缴、流水闭环',
+          path: '/finance/payment',
+          icon: 'Money',
+          tone: 'orange',
+        },
+        {
+          title: '企业风险',
+          desc: '高风险客户与背景排查',
+          path: '/settlement/customer?riskLevel=3',
+          icon: 'Warning',
+          tone: 'red',
+        },
+        {
+          title: '项目审核',
+          desc: '入驻项目发起与审批记录',
+          path: '/settlement/project-approval',
+          icon: 'Tickets',
+          tone: 'purple',
+        },
+        {
+          title: '客户管理',
+          desc: '客户档案、合同与账单',
+          path: '/settlement/customer',
+          icon: 'User',
+          tone: 'cyan',
+        },
       ],
       shortcuts: [
-        { title: '新增客户', path: '/settlement/customer', icon: '增' },
-        { title: '楼层管理', path: '/park/floor', icon: '楼' },
-        { title: '新建合同', path: '/contract/archive', icon: '合' },
-        { title: '我的审批', path: '/approval/my-flow', icon: '审' },
-        { title: '物业工单', path: '/enterprise/property-workorder', icon: '单' },
-        { title: '租控管理', path: '/park/rent-control', icon: '控' },
-      ],
-      enterprises: [
-        { shortName: '企', name: '入驻企业占位', industry: '等待客户数据接入' },
-        { shortName: '园', name: '园区企业画像', industry: '后续接入聚合接口' },
-        { shortName: '数', name: '在园企业数据', industry: '跳转企业服务入口' },
+        { title: '新增客户', path: '/settlement/customer', icon: 'UserFilled', tone: 'blue' },
+        { title: '楼层管理', path: '/park/floor', icon: 'OfficeBuilding', tone: 'cyan' },
+        { title: '新建合同', path: '/contract/archive', icon: 'DocumentAdd', tone: 'orange' },
+        { title: '我的审批', path: '/approval/my-flow', icon: 'Finished', tone: 'purple' },
+        { title: '物业工单', path: '/enterprise/property-workorder', icon: 'Tools', tone: 'green' },
+        { title: '租控管理', path: '/park/rent-control', icon: 'Tickets', tone: 'indigo' },
       ],
       todos: [
-        { title: '审批待处理', count: 0, desc: '暂无待处理审批', path: '/approval/todo' },
-        { title: '合同到期提醒', count: 0, desc: '暂无即将到期合同', path: '/contract/expiring' },
-        { title: '物业工单提醒', count: 0, desc: '暂无待受理工单', path: '/enterprise/property-workorder' },
-        { title: '审批超时提醒', count: 0, desc: '暂无超时审批', path: '/approval/todo?timeout=1' },
+        {
+          title: '审批待处理提醒',
+          count: 0,
+          desc: '暂无待处理审批',
+          path: '/approval/todo',
+          icon: 'Finished',
+          tone: 'purple',
+        },
+        {
+          title: '合同到期提醒',
+          count: 0,
+          desc: '暂无合同即将到期',
+          path: '/contract/expiring',
+          icon: 'DocumentChecked',
+          tone: 'orange',
+        },
+        {
+          title: '物业工单提醒',
+          count: 0,
+          desc: '暂无物业工单待处理',
+          path: '/enterprise/property-workorder',
+          icon: 'Tools',
+          tone: 'blue',
+        },
+        {
+          title: '审批超时提醒',
+          count: 0,
+          desc: '暂无超时待处理项目',
+          path: '/approval/todo?timeout=1',
+          icon: 'Bell',
+          tone: 'red',
+        },
       ],
       policies: [
-        { title: '园区政策通知入口已预留', date: '待接入', path: '/enterprise/policy-service' },
-        { title: '工作台 Banner 后续接入', date: '待接入', path: '/enterprise/policy-service' },
-        { title: '政策服务模块入口', date: '待接入', path: '/enterprise/policy-service' },
+        { title: '会计服务', date: '2026-06-10 10:29:52', path: '/enterprise/policy-service' },
       ],
+      calendarWeeks: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
       today: this.buildToday(),
       missingApis: [],
     };
+  },
+  computed: {
+    heroStyle() {
+      return {
+        backgroundImage: `url(${this.banner.imageUrl || '/img/bg/bg1.jpg'})`,
+      };
+    },
+    calendarDays() {
+      const { year, monthIndex } = this.today;
+      const firstDay = new Date(year, monthIndex, 1).getDay();
+      const monthLength = new Date(year, monthIndex + 1, 0).getDate();
+      const prevMonthLength = new Date(year, monthIndex, 0).getDate();
+      const days = [];
+
+      for (let index = firstDay - 1; index >= 0; index -= 1) {
+        const day = prevMonthLength - index;
+        days.push({
+          key: `prev-${day}`,
+          day,
+          dayText: String(day).padStart(2, '0'),
+          current: false,
+        });
+      }
+
+      for (let day = 1; day <= monthLength; day += 1) {
+        days.push({
+          key: `current-${day}`,
+          day,
+          dayText: String(day).padStart(2, '0'),
+          current: true,
+        });
+      }
+
+      let nextDay = 1;
+      while (days.length < 42) {
+        days.push({
+          key: `next-${nextDay}`,
+          day: nextDay,
+          dayText: String(nextDay).padStart(2, '0'),
+          current: false,
+        });
+        nextDay += 1;
+      }
+
+      return days;
+    },
   },
   created() {
     this.loadWorkbench();
@@ -209,8 +387,8 @@ export default {
       this.todos = this.todos.map(item => ({
         ...item,
         count: this.todoValue(item.title, todos),
+        desc: this.todoDesc(item.title, this.todoValue(item.title, todos)),
       }));
-      this.enterprises = this.normalizeEnterprises(data.enterprises);
       this.policies = this.normalizePolicies(data.policyNotices);
       this.missingApis = data.missingApis || [];
     },
@@ -226,35 +404,42 @@ export default {
     },
     todoValue(title, todos) {
       const map = {
-        审批待处理: 'approvalTodoCount',
+        审批待处理提醒: 'approvalTodoCount',
         合同到期提醒: 'expiringContractCount',
         物业工单提醒: 'workorderTodoCount',
         审批超时提醒: 'timeoutApprovalCount',
       };
       return Number(todos[map[title]]) || 0;
     },
-    normalizeEnterprises(list = []) {
-      if (!Array.isArray(list) || list.length === 0) {
-        return [
-          { shortName: '企', name: '暂无入驻企业', industry: '客户数据接入后自动展示' },
-        ];
+    todoDesc(title, count) {
+      if (!count) {
+        const emptyMap = {
+          审批待处理提醒: '暂无待处理审批',
+          合同到期提醒: '暂无合同即将到期',
+          物业工单提醒: '暂无物业工单待处理',
+          审批超时提醒: '暂无超时待处理项目',
+        };
+        return emptyMap[title] || '暂无待办任务';
       }
-      return list.map(item => ({
-        customerId: item.customerId,
-        shortName: item.shortName || (item.enterpriseName || '企').slice(0, 1),
-        name: item.enterpriseName || '未命名企业',
-        industry: item.industry || '暂未填写行业',
-      }));
+      const unitMap = {
+        审批待处理提醒: `${count} 个审批待处理`,
+        合同到期提醒: `${count} 个合同即将到期`,
+        物业工单提醒: `${count} 条物业工单待处理`,
+        审批超时提醒: `${count} 个审批项目已超时`,
+      };
+      return unitMap[title] || `${count} 条待办任务`;
     },
     normalizePolicies(list = []) {
       if (!Array.isArray(list) || list.length === 0) {
         return [
-          { title: '园区政策通知接口待第三步接入', date: '待接入', path: '/enterprise/policy-service' },
-          { title: '工作台 Banner 管理待第三步接入', date: '待接入', path: '/enterprise/policy-service' },
-          { title: '政策服务模块入口', date: '待接入', path: '/enterprise/policy-service' },
+          {
+            title: '会计服务',
+            date: '2026-06-10 10:29:52',
+            path: '/enterprise/policy-service',
+          },
         ];
       }
-      return list.slice(0, 3).map(item => ({
+      return list.slice(0, 4).map(item => ({
         title: item.title || '未命名政策',
         date: item.publishTime || '待发布',
         path: item.linkUrl || '/enterprise/policy-service',
@@ -262,9 +447,25 @@ export default {
     },
     buildToday() {
       const now = new Date();
+      const monthNames = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
       return {
-        day: String(now.getDate()).padStart(2, '0'),
-        month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+        day: now.getDate(),
+        year: now.getFullYear(),
+        monthIndex: now.getMonth(),
+        monthName: monthNames[now.getMonth()],
       };
     },
     go(path, disabled = false) {
@@ -287,368 +488,529 @@ export default {
 </script>
 
 <style scoped>
+.home-container :deep(.basic-container__card) {
+  border: none !important;
+  background: transparent;
+  box-shadow: none;
+}
+
+.home-container :deep(.basic-container__card > .el-card__body) {
+  padding: 0;
+}
+
 .home-workbench {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  color: #1f2937;
+  color: #1f2d3d;
 }
 
-.hero-section {
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.metric-card {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  min-height: 178px;
-  padding: 28px 32px;
-  border-radius: 6px;
-  background:
-    linear-gradient(115deg, rgba(24, 88, 199, 0.9), rgba(17, 126, 167, 0.78)),
-    url('/img/bg/bg1.jpg') center/cover no-repeat;
-  color: #fff;
+  min-height: 86px;
+  padding: 16px 58px 16px 16px;
+  border: none;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(30, 64, 120, 0.06);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.hero-eyebrow {
-  display: inline-block;
-  margin-bottom: 12px;
-  color: rgba(255, 255, 255, 0.82);
+.metric-card:hover {
+  box-shadow: 0 8px 18px rgba(16, 89, 198, 0.12);
+  transform: translateY(-1px);
+}
+
+.metric-icon,
+.entrance-item span,
+.shortcut-icon,
+.policy-icon,
+.todo-item > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 18px;
+}
+
+.metric-copy {
+  display: block;
+  margin-left: 12px;
+}
+
+.metric-copy span {
+  display: block;
+  color: #6f7b8a;
   font-size: 13px;
 }
 
+.metric-copy strong {
+  display: block;
+  margin-top: 6px;
+  color: #172033;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.metric-card em {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  color: #1c73f4;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.metric-card--blue .metric-icon,
+.shortcut-icon--blue,
+.todo-item--blue > span {
+  background: #1c73f4;
+}
+
+.metric-card--cyan .metric-icon,
+.entrance-item--cyan span,
+.shortcut-icon--cyan {
+  background: #26c4bf;
+}
+
+.metric-card--orange .metric-icon,
+.entrance-item--orange span,
+.shortcut-icon--orange,
+.todo-item--orange > span {
+  background: #ff8e23;
+}
+
+.metric-card--purple .metric-icon,
+.entrance-item--purple span,
+.shortcut-icon--purple,
+.todo-item--purple > span {
+  background: #8c54df;
+}
+
+.metric-card--green .metric-icon,
+.shortcut-icon--green {
+  background: #52c41a;
+}
+
+.entrance-item--red span,
+.todo-item--red > span {
+  background: #ff4757;
+}
+
+.shortcut-icon--indigo {
+  background: #3454f5;
+}
+
+.home-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 448px;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.home-main,
+.home-side {
+  display: contents;
+}
+
+.hero-section {
+  grid-column: 1;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36%;
+  min-height: 198px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: linear-gradient(110deg, #1167e8 0%, #1f7cff 58%, #d8e8ff 100%);
+}
+
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 28px 38px;
+  color: #fff;
+}
+
 .hero-copy h1 {
-  margin: 0 0 10px;
+  margin: 0 0 18px;
   font-size: 30px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .hero-copy p {
   max-width: 620px;
   margin: 0;
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 14px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 15px;
   line-height: 1.8;
 }
 
-.hero-actions {
-  display: flex;
-  gap: 10px;
-  flex-shrink: 0;
+.hero-visual {
+  min-height: 198px;
+  background-position: center;
+  background-size: cover;
 }
 
-.metric-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(145px, 1fr));
-  gap: 12px;
-}
-
-.metric-card,
-.entrance-item,
-.shortcut-item,
-.todo-item,
-.policy-item {
-  border: 1px solid #d9e2ec;
-  border-radius: 6px;
-  background: #fff;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.metric-card:hover,
-.entrance-item:hover,
-.shortcut-item:hover,
-.todo-item:hover,
-.policy-item:hover {
-  border-color: #2563eb;
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.08);
-}
-
-.metric-card {
-  min-height: 126px;
-  padding: 16px;
-}
-
-.metric-icon,
-.entrance-item span,
-.shortcut-item span,
-.enterprise-item span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 6px;
-  color: #fff;
-  font-weight: 600;
-}
-
-.metric-icon.blue {
-  background: #2563eb;
-}
-
-.metric-icon.green {
-  background: #16a34a;
-}
-
-.metric-icon.amber {
-  background: #d97706;
-}
-
-.metric-icon.purple {
-  background: #7c3aed;
-}
-
-.metric-icon.red {
-  background: #dc2626;
-}
-
-.metric-title {
-  display: block;
-  margin-top: 12px;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.metric-card strong {
-  display: block;
-  margin-top: 6px;
-  font-size: 26px;
-  font-weight: 600;
-}
-
-.metric-card em,
-.entrance-item em,
-.enterprise-item em,
-.todo-item em {
-  display: block;
-  margin-top: 4px;
-  color: #64748b;
-  font-size: 12px;
-  font-style: normal;
-  line-height: 1.5;
-}
-
-.content-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  gap: 16px;
-  align-items: start;
-}
-
-.main-column,
-.side-column {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.investment-panel {
+  grid-column: 1;
+  grid-row: 2;
 }
 
 .panel {
-  padding: 18px;
-  border: 1px solid #d9e2ec;
-  border-radius: 6px;
+  padding: 20px;
+  border-radius: 10px;
   background: #fff;
+  box-shadow: 0 4px 16px rgba(30, 64, 120, 0.06);
 }
 
 .panel-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .panel-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 0;
-  font-size: 17px;
-  font-weight: 600;
+  color: #172033;
+  font-size: 16px;
+  font-weight: 700;
 }
 
-.panel-head span {
-  color: #64748b;
+.panel-head p {
+  margin: 6px 0 0;
+  color: #8b98aa;
   font-size: 12px;
 }
 
 .entrance-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
   gap: 12px;
 }
 
 .entrance-item {
-  min-height: 116px;
-  padding: 14px;
+  position: relative;
+  min-height: 68px;
+  padding: 14px 40px 14px 62px;
+  border: 1px solid #e6edf6;
+  border-radius: 2px;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.entrance-item span,
-.shortcut-item span {
-  background: #0f766e;
+.entrance-item span {
+  position: absolute;
+  top: 16px;
+  left: 14px;
 }
 
-.entrance-item strong {
+.entrance-item strong,
+.shortcut-item strong,
+.policy-item strong,
+.todo-item strong {
   display: block;
-  margin-top: 12px;
-  font-size: 15px;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.entrance-item em,
+.policy-item em,
+.todo-item em {
+  display: block;
+  margin-top: 4px;
+  color: #8b98aa;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.45;
+}
+
+.entry-arrow {
+  position: absolute;
+  top: 26px;
+  right: 14px;
+  color: #b6c0ce;
+  font-size: 16px;
+}
+
+.home-dual-row {
+  grid-column: 1;
+  grid-row: 3;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  flex: 1;
+  align-items: stretch;
+}
+
+.policy-panel,
+.quick-panel,
+.todo-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.policy-list,
+.todo-list {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.policy-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 74px;
+  padding: 12px 62px 12px 0;
+  border: none;
+  border-bottom: 1px solid #edf1f6;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.policy-item:last-child,
+.todo-item:last-child {
+  border-bottom: none;
+}
+
+.policy-icon {
+  margin-right: 14px;
+  background: #1c73f4;
+}
+
+.policy-item b {
+  position: absolute;
+  right: 0;
+  color: #1c73f4;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .shortcut-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(90px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 12px;
+  flex: 1;
+  align-content: start;
 }
 
 .shortcut-item {
-  min-height: 84px;
-  padding: 12px;
+  display: flex;
+  align-items: center;
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid #e6edf6;
+  border-radius: 2px;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .shortcut-item strong {
-  display: block;
-  margin-top: 10px;
-  font-size: 13px;
+  margin-left: 10px;
+  font-weight: 500;
 }
 
 .shortcut-item.disabled {
   cursor: not-allowed;
-  opacity: 0.58;
+  opacity: 0.56;
 }
 
-.enterprise-list {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(160px, 1fr));
-  gap: 12px;
+.calendar-panel {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-height: 334px;
 }
 
-.enterprise-item {
+.todo-panel {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.calendar-toolbar {
   display: flex;
-  gap: 12px;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e5eaf2;
+  color: #667085;
+  font-size: 13px;
+}
+
+.calendar-toolbar span,
+.calendar-toolbar strong {
+  display: inline-flex;
   align-items: center;
-  min-height: 74px;
-  padding: 12px;
-  border: 1px solid #edf0f5;
-  border-radius: 6px;
+  justify-content: center;
+  height: 24px;
+  min-width: 58px;
+  padding: 0 8px;
+  border: 1px solid #d9deea;
+  background: #fff;
+  font-weight: 400;
 }
 
-.enterprise-item span {
-  flex-shrink: 0;
-  background: #1d4ed8;
+.calendar-toolbar strong {
+  border-color: #1c73f4;
+  color: #1c73f4;
 }
 
-.enterprise-item strong {
-  display: block;
-  font-size: 14px;
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+  padding-top: 8px;
 }
 
-.todo-list,
-.policy-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.calendar-week,
+.calendar-day {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  color: #667085;
+  font-size: 13px;
+}
+
+.calendar-day.muted {
+  color: #c3cad5;
+}
+
+.calendar-day.active {
+  color: #fff;
+}
+
+.calendar-day {
+  position: relative;
+}
+
+.calendar-day.active {
+  z-index: 0;
+}
+
+.calendar-day.active::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 22px;
+  height: 22px;
+  border-radius: 2px;
+  background: #1c73f4;
 }
 
 .todo-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
+  min-height: 58px;
+  padding: 10px 0;
+  border: none;
+  border-bottom: 1px solid #edf1f6;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.todo-item span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 6px;
-  background: #eef2ff;
-  color: #1d4ed8;
-  font-size: 18px;
-  font-weight: 600;
+.todo-item > span {
+  width: 32px;
+  height: 32px;
+  margin-right: 12px;
+  border-radius: 8px;
+  font-size: 16px;
 }
 
-.todo-item strong,
-.policy-item strong {
-  display: block;
-  font-size: 14px;
-}
-
-.policy-item {
-  padding: 12px;
-}
-
-.policy-item span {
-  display: block;
-  margin-top: 6px;
-  color: #64748b;
-  font-size: 12px;
-}
-
-.schedule-card {
-  min-height: 118px;
-  padding: 18px;
-  border-radius: 6px;
-  background: #f8fafc;
-}
-
-.schedule-card strong {
-  display: block;
-  font-size: 34px;
-  font-weight: 600;
-}
-
-.schedule-card span,
-.schedule-card em {
-  display: block;
-  color: #64748b;
-  font-size: 13px;
-  font-style: normal;
-}
-
-.schedule-card em {
-  margin-top: 16px;
+@media (max-width: 1500px) {
+  .home-layout {
+    grid-template-columns: minmax(0, 1fr) 390px;
+  }
 }
 
 @media (max-width: 1280px) {
   .metric-grid {
-    grid-template-columns: repeat(3, minmax(145px, 1fr));
+    grid-template-columns: repeat(3, minmax(160px, 1fr));
   }
 
-  .content-grid {
+  .home-layout,
+  .home-dual-row {
     grid-template-columns: 1fr;
+  }
+
+  .home-layout {
+    grid-template-rows: none;
+  }
+
+  .home-main,
+  .home-side {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: auto;
+  }
+
+  .hero-section,
+  .investment-panel,
+  .home-dual-row,
+  .calendar-panel,
+  .todo-panel {
+    grid-column: auto;
+    grid-row: auto;
   }
 }
 
 @media (max-width: 900px) {
+  .metric-grid,
+  .entrance-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .hero-section {
-    display: block;
+    grid-template-columns: 1fr;
   }
 
-  .hero-actions {
-    margin-top: 18px;
-  }
-
-  .entrance-grid,
-  .shortcut-grid,
-  .enterprise-list {
-    grid-template-columns: repeat(2, minmax(130px, 1fr));
+  .hero-visual {
+    min-height: 140px;
   }
 }
 
 @media (max-width: 640px) {
   .metric-grid,
   .entrance-grid,
-  .shortcut-grid,
-  .enterprise-list {
+  .shortcut-grid {
     grid-template-columns: 1fr;
   }
 
-  .hero-section {
-    padding: 22px;
-  }
-
-  .hero-actions {
-    flex-direction: column;
-    align-items: stretch;
+  .metric-card {
+    min-height: 78px;
   }
 }
 </style>

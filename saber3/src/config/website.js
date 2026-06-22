@@ -2,10 +2,10 @@
  * 全局配置文件
  */
 export default {
-  title: 'Saber',
+  title: '吴中金控企业服务平台',
   logo: 'X',
   key: 'saber', //配置主键,目前用于存储
-  indexTitle: 'BladeX 微服务平台',
+  indexTitle: '吴中金控企业服务平台',
   clientId: 'saber3', // 客户端id
   clientSecret: 'saber3_secret', // 客户端密钥
   tenantMode: true, // 是否开启租户模式
@@ -23,14 +23,14 @@ export default {
   setting: {
     sidebar: 'vertical',
     tag: true,
-    debug: true,
-    collapse: true,
-    search: true,
-    color: true,
-    lock: true,
+    debug: false,
+    collapse: false,
+    search: false,
+    color: false,
+    lock: false,
     screenshot: true,
-    fullscreen: true,
-    theme: true,
+    fullscreen: false,
+    theme: false,
     menu: true,
   },
   //首页配置
@@ -52,7 +52,7 @@ export default {
   //水印配置
   watermark: {
     mode: false,
-    text: 'BladeX',
+    text: '吴中金控企业服务平台',
   },
   //oauth2配置
   oauth2: {

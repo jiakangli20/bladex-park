@@ -2,11 +2,12 @@
   <div class="avue-logo">
     <transition name="fade">
       <span v-if="getScreen(isCollapse)" class="avue-logo_subtitle" key="0">
-        <img class="logo-img" src="/img/logo.png" />
+        <span class="logo-mark">企</span>
       </span>
     </transition>
     <transition-group name="fade">
       <template v-if="getScreen(!isCollapse)">
+        <span class="logo-mark" key="0">企</span>
         <span class="logo-title" key="1">{{ website.indexTitle }} </span>
       </template>
     </transition-group>
@@ -30,15 +31,23 @@ export default {
 </script>
 <style scoped>
 .logo-title {
-  font-size: 20px;
-  background-image: linear-gradient(120deg, #54b6d0 16%, #3f8bdb, #2c77f1);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #fff;
+  font-size: 18px;
   font-weight: 700;
-  padding-left: 30px;
+  letter-spacing: 0;
 }
-.logo-img {
-  width: 40px;
-  margin-top: 5px;
+
+.logo-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 12px;
+  border-radius: 4px;
+  background: #fff;
+  color: #1059c6;
+  font-size: 14px;
+  font-weight: 700;
 }
 </style>

@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import org.springblade.core.tool.support.Kv;
 import org.springblade.modules.approval.pojo.entity.ApprovalProject;
+import org.springblade.modules.business.excel.CustomerExcel;
 import org.springblade.modules.business.pojo.entity.Customer;
 
 import java.util.List;
@@ -26,6 +27,10 @@ public interface ICustomerService extends IService<Customer> {
 	IPage<Customer> selectCustomerPage(IPage<Customer> page, Customer customer);
 
 	Kv selectCustomerStatistics(Customer customer);
+
+	List<CustomerExcel> exportCustomer(Customer customer);
+
+	void importCustomer(List<CustomerExcel> data);
 
 	Customer insertCustomer(Customer customer);
 

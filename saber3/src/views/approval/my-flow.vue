@@ -34,105 +34,235 @@
       </section>
 
       <section class="approval-toolbar">
-        <span>{{ pageTitle }}</span>
+        <div class="toolbar-left">
+          <el-button
+            v-if="isSettlementMode && permissionList.addBtn"
+            type="primary"
+            icon="el-icon-plus"
+            @click="openCreateDialog"
+          >
+            发起审核
+          </el-button>
+          <el-button
+            v-if="isSettlementMode && permissionList.delBtn"
+            type="danger"
+            plain
+            icon="el-icon-delete"
+            :disabled="selectionList.length === 0"
+            @click="handleBatchDelete"
+          >
+            批量删除
+          </el-button>
+        </div>
         <el-tooltip content="刷新" placement="top">
           <el-button icon="el-icon-refresh" circle @click="reload" />
         </el-tooltip>
       </section>
 
-      <el-table v-loading="loading" :data="data" border row-key="projectId" class="approval-table">
-        <el-table-column prop="projectName" label="项目名称" min-width="210" show-overflow-tooltip>
-          <template #default="{ row }">
-            <el-button text type="primary" @click="openDetail(row)">{{ row.projectName || '-' }}</el-button>
-          </template>
-        </el-table-column>
-        <el-table-column prop="enterpriseName" label="企业名称" min-width="190" show-overflow-tooltip />
-        <el-table-column prop="businessType" label="审批类型" width="130">
-          <template #default="{ row }">{{ businessTypeText(row.businessType) }}</template>
-        </el-table-column>
-        <el-table-column prop="currentNodeName" label="当前节点" width="140" show-overflow-tooltip />
-        <el-table-column prop="processStatus" label="状态" width="110" align="center">
-          <template #default="{ row }">
-            <el-tag :type="statusType(row.processStatus)" effect="plain">
-              {{ statusText(row.processStatus) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="materialCount" label="资料" width="90" align="center">
-          <template #default="{ row }">{{ row.materialCount || 0 }} 份</template>
-        </el-table-column>
-        <el-table-column prop="logCount" label="日志" width="90" align="center">
-          <template #default="{ row }">{{ row.logCount || 0 }} 条</template>
-        </el-table-column>
-        <el-table-column prop="applicant" label="发起人" width="120" />
-        <el-table-column prop="applicantTime" label="发起时间" width="170" />
-        <el-table-column label="操作" width="310" fixed="right" align="center">
-          <template #default="{ row }">
-            <el-button v-if="permissionList.viewBtn" text type="primary" icon="el-icon-view" @click="openDetail(row)">
-              详情
-            </el-button>
-            <el-button v-if="permissionList.formBtn" text type="primary" icon="el-icon-document" @click="openForm(row)">
-              审批表
-            </el-button>
-            <el-button
-              v-if="permissionList.approveBtn && canCurrentUserAct(row)"
-              text
-              type="success"
-              icon="el-icon-check"
-              @click="openAction(row, 'approve')"
-            >
-              通过
-            </el-button>
-            <el-button
-              v-if="permissionList.rejectBtn && canCurrentUserAct(row)"
-              text
-              type="danger"
-              icon="el-icon-close"
-              @click="openAction(row, 'reject')"
-            >
-              驳回
-            </el-button>
-            <el-dropdown v-if="permissionList.transferBtn || permissionList.archiveBtn || permissionList.resubmitBtn" trigger="click">
-              <el-button text type="primary">更多</el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item
-                    v-if="permissionList.transferBtn && canCurrentUserAct(row)"
-                    @click="openAction(row, 'transfer')"
-                  >
-                    转审
-                  </el-dropdown-item>
-                  <el-dropdown-item
-                    v-if="permissionList.resubmitBtn && row.processStatus === '3'"
-                    @click="openAction(row, 'resubmit')"
-                  >
-                    重新提交
-                  </el-dropdown-item>
-                  <el-dropdown-item
-                    v-if="permissionList.archiveBtn && ['2', '3'].includes(row.processStatus)"
-                    @click="archiveProject(row)"
-                  >
-                    归档
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </template>
-        </el-table-column>
-      </el-table>
+      <section class="approval-table-card">
+        <el-table
+          v-loading="loading"
+          :data="data"
+          border
+          row-key="projectId"
+          class="approval-table"
+          @selection-change="selectionChange"
+        >
+          <el-table-column v-if="isSettlementMode" type="selection" width="48" align="center" />
+          <el-table-column prop="projectName" label="项目名称" min-width="210" align="center" show-overflow-tooltip>
+            <template #default="{ row }">
+              <el-button class="table-link" text type="primary" @click="openDetail(row)">{{ row.projectName || '-' }}</el-button>
+            </template>
+          </el-table-column>
+          <el-table-column prop="enterpriseName" label="企业名称" min-width="190" align="center" show-overflow-tooltip />
+          <el-table-column prop="businessType" label="审批类型" width="130" align="center">
+            <template #default="{ row }">{{ businessTypeText(row.businessType) }}</template>
+          </el-table-column>
+          <el-table-column prop="currentNodeName" label="当前节点" width="140" align="center" show-overflow-tooltip />
+          <el-table-column prop="processStatus" label="状态" width="110" align="center">
+            <template #default="{ row }">
+              <el-tag :type="statusType(row.processStatus)" effect="plain">
+                {{ statusText(row.processStatus) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="materialCount" label="资料" width="90" align="center">
+            <template #default="{ row }">{{ row.materialCount || 0 }} 份</template>
+          </el-table-column>
+          <el-table-column prop="logCount" label="日志" width="90" align="center">
+            <template #default="{ row }">{{ row.logCount || 0 }} 条</template>
+          </el-table-column>
+          <el-table-column prop="applicant" label="发起人" width="120" align="center" />
+          <el-table-column prop="applicantTime" label="发起时间" width="170" align="center" />
+          <el-table-column label="操作" width="310" fixed="right" align="center">
+            <template #default="{ row }">
+              <el-button v-if="permissionList.viewBtn" text type="primary" icon="el-icon-view" @click="openDetail(row)">
+                详情
+              </el-button>
+              <el-button v-if="permissionList.formBtn" text type="primary" icon="el-icon-document" @click="openForm(row)">
+                审批表
+              </el-button>
+              <el-button
+                v-if="permissionList.approveBtn && canCurrentUserAct(row)"
+                text
+                type="success"
+                icon="el-icon-check"
+                @click="openAction(row, 'approve')"
+              >
+                通过
+              </el-button>
+              <el-button
+                v-if="permissionList.rejectBtn && canCurrentUserAct(row)"
+                text
+                type="danger"
+                icon="el-icon-close"
+                @click="openAction(row, 'reject')"
+              >
+                驳回
+              </el-button>
+              <el-dropdown v-if="permissionList.transferBtn || permissionList.archiveBtn || permissionList.resubmitBtn" trigger="click">
+                <el-button text type="primary">更多</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item
+                      v-if="permissionList.transferBtn && canCurrentUserAct(row)"
+                      @click="openAction(row, 'transfer')"
+                    >
+                      转审
+                    </el-dropdown-item>
+                    <el-dropdown-item
+                      v-if="permissionList.resubmitBtn && row.processStatus === '3'"
+                      @click="openAction(row, 'resubmit')"
+                    >
+                      重新提交
+                    </el-dropdown-item>
+                    <el-dropdown-item
+                      v-if="permissionList.archiveBtn && ['2', '3'].includes(row.processStatus)"
+                      @click="archiveProject(row)"
+                    >
+                      归档
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </template>
+          </el-table-column>
+        </el-table>
 
-      <div class="approval-pagination">
-        <el-pagination
-          background
-          :current-page="page.currentPage"
-          :page-sizes="[10, 20, 30, 50, 100]"
-          :page-size="page.pageSize"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="page.total"
-          @size-change="sizeChange"
-          @current-change="currentChange"
-        />
-      </div>
+        <div class="approval-pagination">
+          <el-pagination
+            background
+            :current-page="page.currentPage"
+            :page-sizes="[10, 20, 30, 50, 100]"
+            :page-size="page.pageSize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="page.total"
+            @size-change="sizeChange"
+            @current-change="currentChange"
+          />
+        </div>
+      </section>
+
+      <el-dialog
+        v-model="createVisible"
+        title="发起审核"
+        width="640px"
+        append-to-body
+        class="create-approval-dialog"
+        @closed="resetCreateForm"
+      >
+        <el-form
+          ref="createFormRef"
+          :model="createForm"
+          :rules="createRules"
+          label-width="112px"
+          class="create-approval-form"
+        >
+          <el-form-item label="入驻客户" prop="customerId">
+            <el-select
+              v-model="createForm.customerId"
+              filterable
+              remote
+              clearable
+              :remote-method="remoteCustomerSearch"
+              :loading="customerLoading"
+              placeholder="请选择客户"
+              style="width: 100%"
+              @change="handleCustomerChange"
+            >
+              <el-option
+                v-for="item in customerOptions"
+                :key="item.customerId"
+                :label="item.enterpriseName"
+                :value="item.customerId"
+              >
+                <span>{{ item.enterpriseName }}</span>
+                <span class="customer-option-extra">{{ item.contactName || item.contactPhone || '' }}</span>
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="审批流程" prop="flowId">
+            <el-select
+              v-model="createForm.flowId"
+              :loading="flowLoading"
+              placeholder="审批流程暂未配置"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="item in flowOptions"
+                :key="item.flowId"
+                :label="flowLabel(item)"
+                :value="item.flowId"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="项目名称">
+            <el-input v-model="createForm.projectName" placeholder="留空时自动按客户生成" />
+          </el-form-item>
+          <el-form-item label="发起部门">
+            <el-input v-model="createForm.applicantDept" disabled placeholder="自动带出当前部门" />
+          </el-form-item>
+          <el-form-item label="租赁楼层">
+            <el-input v-model="createForm.leaseFloor" placeholder="如：1号楼3层" />
+          </el-form-item>
+          <el-form-item label="租赁面积">
+            <el-input v-model="createForm.leaseArea" placeholder="请输入租赁面积" />
+          </el-form-item>
+          <el-form-item label="单价（元）">
+            <el-input v-model="createForm.rentPrice" placeholder="请输入租金单价" />
+          </el-form-item>
+          <el-form-item label="保证金（元）">
+            <el-input v-model="createForm.deposit" placeholder="请输入保证金" />
+          </el-form-item>
+          <el-form-item label="租赁周期">
+            <el-date-picker
+              v-model="createForm.leaseRange"
+              type="daterange"
+              value-format="YYYY-MM-DD"
+              start-placeholder="Start date"
+              end-placeholder="End date"
+              range-separator="~"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="附件">
+            <el-upload
+              action="#"
+              :auto-upload="false"
+              :file-list="attachmentList"
+              :on-change="handleAttachmentChange"
+              :on-remove="handleAttachmentRemove"
+              multiple
+            >
+              <el-button icon="el-icon-upload">上传附件</el-button>
+            </el-upload>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="createVisible = false">取消</el-button>
+          <el-button type="primary" :loading="createLoading" @click="submitCreateApproval">确定</el-button>
+        </template>
+      </el-dialog>
 
       <el-drawer v-model="detailVisible" :title="detailTitle" size="76%" append-to-body>
         <div v-loading="detailLoading" class="approval-detail">
@@ -237,12 +367,17 @@ import {
   archiveApprovalProject,
   exportApprovalForm,
   getApprovalForm,
+  getApprovalFlowAll,
   getApprovalProjectList,
   getApprovalProjectStatistics,
+  removeApprovalProject,
   rejectApprovalProject,
   resubmitApprovalProject,
+  saveApprovalProject,
+  submitApprovalProject,
   transferApprovalProject,
 } from '@/api/approval/approval';
+import { getCustomerDetail, getCustomerList } from '@/api/business/customer';
 
 const statusOptions = [
   { value: '0', label: '草稿', type: 'info' },
@@ -258,6 +393,24 @@ const businessTypeOptions = [
   { value: 'contract_renewal', label: '合同续签' },
   { value: 'termination', label: '退租审批' },
 ];
+
+const createDefaultForm = () => ({
+  customerId: '',
+  flowId: '',
+  projectName: '',
+  enterpriseName: '',
+  creditCode: '',
+  applicantDept: '',
+  shareholderInfo: '',
+  businessScope: '',
+  responsiblePerson: '',
+  contactPhone: '',
+  leaseFloor: '',
+  leaseArea: '',
+  rentPrice: '',
+  deposit: '',
+  leaseRange: [],
+});
 
 export default {
   name: 'ApprovalMyFlow',
@@ -300,6 +453,19 @@ export default {
         opinion: '',
         transferTo: '',
       },
+      selectionList: [],
+      createVisible: false,
+      createLoading: false,
+      flowLoading: false,
+      customerLoading: false,
+      customerOptions: [],
+      flowOptions: [],
+      attachmentList: [],
+      createForm: createDefaultForm(),
+      createRules: {
+        customerId: [{ required: true, message: '请选择入驻客户', trigger: 'change' }],
+        flowId: [{ required: true, message: '请选择审批流程', trigger: 'change' }],
+      },
       statusOptions,
       businessTypeOptions,
     };
@@ -337,14 +503,17 @@ export default {
       };
       const prefix = prefixMap[this.approvalMode] || 'approval_my_flow';
       const fallback = key => this.validData(this.permission[`${prefix}_${key}`], this.permission[`approval_my_flow_${key}`]);
+      const settlementEntryMode = this.approvalMode === 'settlement';
       return {
+        addBtn: this.validData(fallback('add'), settlementEntryMode),
+        delBtn: this.validData(fallback('delete'), settlementEntryMode),
         viewBtn: this.validData(fallback('view'), false),
         formBtn: this.validData(fallback('form'), false),
-        approveBtn: this.validData(fallback('approve'), false),
-        rejectBtn: this.validData(fallback('reject'), false),
-        transferBtn: this.validData(fallback('transfer'), false),
-        archiveBtn: this.validData(fallback('archive'), false),
-        resubmitBtn: this.validData(fallback('resubmit'), false),
+        approveBtn: settlementEntryMode ? false : this.validData(fallback('approve'), false),
+        rejectBtn: settlementEntryMode ? false : this.validData(fallback('reject'), false),
+        transferBtn: settlementEntryMode ? false : this.validData(fallback('transfer'), false),
+        archiveBtn: settlementEntryMode ? false : this.validData(fallback('archive'), false),
+        resubmitBtn: settlementEntryMode ? false : this.validData(fallback('resubmit'), false),
       };
     },
     detailTitle() {
@@ -364,6 +533,9 @@ export default {
       if (index >= 0) return index;
       if (this.current.processStatus === '2' || this.current.processStatus === '5') return this.flowNodes.length;
       return 0;
+    },
+    ids() {
+      return this.selectionList.map(item => item.projectId).filter(Boolean).join(',');
     },
   },
   created() {
@@ -447,6 +619,176 @@ export default {
       this.page.pageSize = pageSize;
       this.page.currentPage = 1;
       this.onLoad(this.page);
+    },
+    selectionChange(list) {
+      this.selectionList = list;
+    },
+    loadFlowOptions() {
+      this.flowLoading = true;
+      getApprovalFlowAll({
+        businessType: 'tenant_entry',
+        status: '1',
+        includeGlobal: true,
+      })
+        .then(res => {
+          this.flowOptions = res.data.data || [];
+          if (!this.createForm.flowId && this.flowOptions.length) {
+            this.createForm.flowId = this.flowOptions[0].flowId;
+          }
+        })
+        .finally(() => {
+          this.flowLoading = false;
+        });
+    },
+    loadCustomerOptions(keyword = '') {
+      this.customerLoading = true;
+      getCustomerList(1, 20, {
+        keyword,
+      })
+        .then(res => {
+          const result = res.data.data || {};
+          this.customerOptions = result.records || [];
+        })
+        .finally(() => {
+          this.customerLoading = false;
+        });
+    },
+    remoteCustomerSearch(keyword) {
+      this.loadCustomerOptions(keyword);
+    },
+    openCreateDialog() {
+      this.createForm = {
+        ...createDefaultForm(),
+        applicantDept: this.currentDeptName(),
+      };
+      this.attachmentList = [];
+      this.createVisible = true;
+      this.loadFlowOptions();
+      this.loadCustomerOptions();
+      this.$nextTick(() => {
+        if (this.$refs.createFormRef) {
+          this.$refs.createFormRef.clearValidate();
+        }
+      });
+    },
+    resetCreateForm() {
+      this.createForm = createDefaultForm();
+      this.attachmentList = [];
+      this.createLoading = false;
+    },
+    handleCustomerChange(customerId) {
+      if (!customerId) {
+        this.createForm = {
+          ...this.createForm,
+          enterpriseName: '',
+          creditCode: '',
+          businessScope: '',
+          shareholderInfo: '',
+          responsiblePerson: '',
+          contactPhone: '',
+        };
+        return;
+      }
+      const cached = this.customerOptions.find(item => `${item.customerId}` === `${customerId}`);
+      if (cached) {
+        this.fillCreateCustomer(cached);
+      }
+      getCustomerDetail(customerId).then(res => {
+        const detail = res.data.data || cached || {};
+        this.fillCreateCustomer(detail);
+      });
+    },
+    fillCreateCustomer(customer = {}) {
+      const enterpriseName = customer.enterpriseName || '';
+      this.createForm = {
+        ...this.createForm,
+        customerId: customer.customerId || this.createForm.customerId,
+        enterpriseName,
+        creditCode: customer.creditCode || '',
+        businessScope: customer.businessScope || customer.mainBusiness || '',
+        shareholderInfo: customer.equityStructure || '',
+        responsiblePerson: customer.contactName || '',
+        contactPhone: customer.contactPhone || '',
+        projectName: this.createForm.projectName || (enterpriseName ? `${enterpriseName} 入驻审核` : ''),
+      };
+    },
+    handleAttachmentChange(file, fileList) {
+      this.attachmentList = fileList;
+    },
+    handleAttachmentRemove(file, fileList) {
+      this.attachmentList = fileList;
+    },
+    submitCreateApproval() {
+      if (!this.flowOptions.length) {
+        this.$message.warning('审批流程暂未配置，请先在协同办公配置入驻审批流程');
+        return;
+      }
+      this.$refs.createFormRef.validate(valid => {
+        if (!valid) return;
+        const payload = this.buildCreatePayload();
+        this.createLoading = true;
+        saveApprovalProject(payload)
+          .then(res => {
+            const project = res.data.data || {};
+            if (!project.projectId) {
+              throw new Error('审批项目创建失败');
+            }
+            return submitApprovalProject(project.projectId);
+          })
+          .then(() => {
+            this.$message.success('发起成功，已提交入驻审批申请');
+            this.createVisible = false;
+            this.selectionList = [];
+            this.reload();
+          })
+          .finally(() => {
+            this.createLoading = false;
+          });
+      });
+    },
+    buildCreatePayload() {
+      const [leaseStartDate, leaseEndDate] = this.createForm.leaseRange || [];
+      const projectName = this.createForm.projectName || `${this.createForm.enterpriseName || ''} 入驻审核`;
+      return {
+        businessType: 'tenant_entry',
+        processStatus: '0',
+        customerId: this.createForm.customerId,
+        businessId: this.createForm.customerId,
+        flowId: this.createForm.flowId,
+        projectName,
+        enterpriseName: this.createForm.enterpriseName,
+        creditCode: this.createForm.creditCode,
+        applicantDept: this.createForm.applicantDept,
+        shareholderInfo: this.createForm.shareholderInfo,
+        businessScope: this.createForm.businessScope,
+        responsiblePerson: this.createForm.responsiblePerson,
+        contactPhone: this.createForm.contactPhone,
+        leaseFloor: this.createForm.leaseFloor,
+        leaseArea: this.createForm.leaseArea,
+        rentPrice: this.createForm.rentPrice,
+        deposit: this.createForm.deposit,
+        leaseStartDate,
+        leaseEndDate,
+        summary: projectName,
+        approvalMatter: `${this.createForm.enterpriseName || projectName} 入驻审批申请`,
+      };
+    },
+    handleBatchDelete() {
+      if (!this.ids) {
+        this.$message.warning('请选择至少一条数据');
+        return;
+      }
+      this.$confirm('确定删除选中的审批项目?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      })
+        .then(() => removeApprovalProject(this.ids))
+        .then(() => {
+          this.$message.success('删除成功');
+          this.selectionList = [];
+          this.reload();
+        });
     },
     openDetail(row) {
       this.detailVisible = true;
@@ -587,6 +929,12 @@ export default {
       const item = this.businessTypeOptions.find(option => option.value === value);
       return item ? item.label : value || '-';
     },
+    flowLabel(flow) {
+      return `${flow.flowName || '入驻审批'}${flow.flowVersion ? ` v${flow.flowVersion}` : ''}`;
+    },
+    currentDeptName() {
+      return this.userInfo.dept_name || this.userInfo.deptName || this.userInfo.dept_name_full || '';
+    },
     statusText(value) {
       const item = this.statusOptions.find(option => option.value === `${value}`);
       return item ? item.label : '-';
@@ -641,36 +989,38 @@ export default {
   gap: 14px;
 }
 
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(120px, 1fr));
-  gap: 12px;
-}
-
-.summary-card {
-  border: 1px solid #ebeef5;
-  border-radius: 6px;
-  padding: 14px 16px;
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.summary-card span {
-  color: #909399;
-  font-size: 13px;
-}
-
-.summary-card strong {
-  color: #303133;
-  font-size: 24px;
-  font-weight: 600;
-}
-
 .approval-search,
-.approval-toolbar {
+.approval-toolbar,
+.approval-table-card {
+  padding: 16px 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
   background: #fff;
+}
+
+.approval-search :deep(.el-form-item) {
+  margin: 0 22px 12px 0;
+}
+
+.approval-search :deep(.el-form-item__label) {
+  height: 36px;
+  line-height: 36px;
+  color: #303133;
+}
+
+.approval-search :deep(.el-input),
+.approval-search :deep(.el-select) {
+  width: 168px;
+}
+
+.approval-search :deep(.el-input__wrapper),
+.approval-search :deep(.el-select__wrapper) {
+  min-height: 36px;
+}
+
+.approval-search :deep(.el-button) {
+  height: 36px;
+  padding: 0 18px;
 }
 
 .approval-toolbar {
@@ -679,13 +1029,66 @@ export default {
   align-items: center;
 }
 
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .approval-table {
   width: 100%;
+}
+
+.approval-table :deep(.el-table__cell) {
+  text-align: center;
+}
+
+.approval-table :deep(.cell) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+}
+
+.table-link {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .approval-pagination {
   display: flex;
   justify-content: flex-end;
+  padding: 12px 0 0;
+}
+
+.create-approval-form {
+  padding: 8px 34px 0 26px;
+}
+
+.create-approval-form :deep(.el-form-item) {
+  margin-bottom: 20px;
+}
+
+.create-approval-form :deep(.el-input__wrapper),
+.create-approval-form :deep(.el-select__wrapper) {
+  min-height: 32px;
+  border-radius: 0;
+}
+
+.create-approval-form :deep(.el-date-editor) {
+  width: 100%;
+}
+
+.customer-option-extra {
+  float: right;
+  margin-left: 16px;
+  color: #909399;
+  font-size: 12px;
 }
 
 .approval-detail {
@@ -718,9 +1121,4 @@ export default {
   border: 1px solid #ebeef5;
 }
 
-@media (max-width: 900px) {
-  .summary-grid {
-    grid-template-columns: repeat(2, minmax(120px, 1fr));
-  }
-}
 </style>

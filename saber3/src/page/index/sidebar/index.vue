@@ -1,6 +1,6 @@
 <template>
   <el-scrollbar class="avue-menu">
-    <div v-if="menu && menu.length == 0 && !isHorizontal" class="avue-sidebar--tip">
+    <div v-if="showMenuTip" class="avue-sidebar--tip">
       {{ $t('menuTip') }}
     </div>
     <el-menu
@@ -26,7 +26,10 @@ export default {
     this.index.openMenu();
   },
   computed: {
-    ...mapGetters(['isHorizontal', 'setting', 'menu', 'tag', 'isCollapse', 'menuId']),
+    ...mapGetters(['isHorizontal', 'setting', 'menu', 'tag', 'tagWel', 'isCollapse', 'menuId']),
+    showMenuTip() {
+      return this.menu && this.menu.length === 0 && !this.isHorizontal && this.$route.path !== this.tagWel.path;
+    },
     activeMenu() {
       const route = this.$route;
       const { meta, path } = route;

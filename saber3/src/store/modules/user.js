@@ -19,10 +19,62 @@ import {
   getButtons,
   registerUser,
 } from '@/api/user';
-import { getRoutes, getTopMenu, getMainMenu } from '@/api/system/menu';
+import { getRoutes, getMainMenu } from '@/api/system/menu';
 import { formatPath } from '@/router/avue-router';
 import { ElMessage } from 'element-plus';
 import { encrypt } from '@/utils/sm2';
+import website from '@/config/website';
+
+const menuProps = website.menu;
+const childrenKey = menuProps.children;
+const fixedHomePath = website.fistPage.path;
+
+const formatRouteMenu = data => {
+  const routeMenu = deepClone(data || []);
+  routeMenu.forEach(ele => formatPath(ele, true));
+  return routeMenu;
+};
+
+const matchPath = (menuItem, path) => {
+  if (!menuItem || !path) return false;
+  const menuPath = menuItem[menuProps.path];
+  if (menuPath && (path === menuPath || path.indexOf(`${menuPath}/`) === 0)) return true;
+  return (menuItem[childrenKey] || []).some(child => matchPath(child, path));
+};
+
+const findTopMenu = (menuList = [], topMenuId, currentPath) => {
+  if (topMenuId) {
+    const menu = menuList.find(item => String(item.id) === String(topMenuId));
+    if (menu) return menu;
+  }
+  if (currentPath) {
+    const menu = menuList.find(item => matchPath(item, currentPath));
+    if (menu) return menu;
+  }
+  return menuList[0] || {};
+};
+
+const isFixedHomeMenu = menuItem => menuItem && menuItem[menuProps.path] === fixedHomePath;
+
+const topMenuOrder = ['园区管理', '入驻管理', '合同管理', '企业服务', '财务管理', '协同办公'];
+const getMenuName = menuItem => String(menuItem?.[menuProps.label] || menuItem?.name || '').trim();
+
+const getVisibleTopMenus = (menuList = []) =>
+  menuList
+    .filter(item => !isFixedHomeMenu(item))
+    .map((item, index) => ({ item, index }))
+    .sort((left, right) => {
+      const leftOrder = topMenuOrder.indexOf(getMenuName(left.item));
+      const rightOrder = topMenuOrder.indexOf(getMenuName(right.item));
+      const safeLeftOrder = leftOrder === -1 ? Number.MAX_SAFE_INTEGER : leftOrder;
+      const safeRightOrder = rightOrder === -1 ? Number.MAX_SAFE_INTEGER : rightOrder;
+
+      if (safeLeftOrder !== safeRightOrder) {
+        return safeLeftOrder - safeRightOrder;
+      }
+      return left.index - right.index;
+    })
+    .map(({ item }) => item);
 
 const user = {
   state: {
@@ -31,6 +83,8 @@ const user = {
     permission: getStore({ name: 'permission' }) || {},
     roles: [],
     menuId: {},
+    routesLoaded: false,
+    topMenu: [],
     menu: getStore({ name: 'menu' }) || [],
     menuAll: getStore({ name: 'menuAll' }) || [],
     token: getStore({ name: 'token' }) || '',
@@ -226,6 +280,7 @@ const user = {
           .then(() => {
             commit('SET_TOKEN', '');
             commit('SET_MENU_ALL_NULL', []);
+            commit('SET_TOP_MENU', []);
             commit('SET_MENU', []);
             commit('SET_ROLES', []);
             commit('DEL_ALL_TAG', []);
@@ -245,6 +300,7 @@ const user = {
       return new Promise(resolve => {
         commit('SET_TOKEN', '');
         commit('SET_MENU_ALL_NULL', []);
+        commit('SET_TOP_MENU', []);
         commit('SET_MENU', []);
         commit('SET_ROLES', []);
         commit('DEL_ALL_TAG', []);
@@ -255,12 +311,26 @@ const user = {
         resolve();
       });
     },
-    GetTopMenu() {
+    GetTopMenu({ commit, state }) {
       return new Promise(resolve => {
-        getTopMenu().then(res => {
-          const data = res.data.data || [];
-          resolve(data);
-        });
+        if (state.routesLoaded && (state.menuAll || []).length) {
+          const topMenu = getVisibleTopMenus(state.menuAll);
+          commit('SET_TOP_MENU', topMenu);
+          resolve(topMenu);
+          return;
+        }
+        getRoutes()
+          .then(routeRes => {
+            const routeMenu = formatRouteMenu(routeRes.data.data);
+            const topMenu = getVisibleTopMenus(routeMenu);
+            commit('SET_TOP_MENU', topMenu);
+            commit('SET_MENU_ALL_NULL');
+            commit('SET_MENU_ALL', routeMenu);
+            resolve(topMenu);
+          })
+          .catch(() => {
+            resolve(state.topMenu || []);
+          });
       });
     },
     GetMainMenu() {
@@ -274,17 +344,28 @@ const user = {
           });
       });
     },
-    GetMenu({ commit, dispatch }, topMenuId) {
+    GetMenu({ commit, dispatch, state }, topMenuId) {
       return new Promise(resolve => {
-        getRoutes(topMenuId)
+        const applyMenu = routeMenu => {
+          const currentPath = window.location.pathname;
+          const topMenu = getVisibleTopMenus(routeMenu);
+          const currentTop =
+            !topMenuId && currentPath === fixedHomePath ? {} : findTopMenu(topMenu, topMenuId, currentPath);
+          const sideMenu = currentTop[childrenKey] || [];
+          commit('SET_TOP_MENU', topMenu);
+          commit('SET_MENU', sideMenu);
+          commit('SET_MENU_ALL_NULL');
+          commit('SET_MENU_ALL', routeMenu);
+          dispatch('GetButtons');
+          resolve(topMenuId ? sideMenu : routeMenu);
+        };
+        if (state.routesLoaded && (state.menuAll || []).length) {
+          applyMenu(state.menuAll);
+          return;
+        }
+        getRoutes()
           .then(res => {
-            const data = res.data.data || [];
-            let menu = deepClone(data);
-            menu.forEach(ele => formatPath(ele, true));
-            commit('SET_MENU', menu);
-            commit('SET_MENU_ALL', menu);
-            dispatch('GetButtons');
-            resolve(menu);
+            applyMenu(formatRouteMenu(res.data.data));
           })
           .catch(() => {
             resolve([]);
@@ -314,6 +395,10 @@ const user = {
     },
     SET_MENU_ID(state, menuId) {
       state.menuId = menuId;
+    },
+    SET_TOP_MENU: (state, topMenu) => {
+      state.topMenu = topMenu;
+      setStore({ name: 'topMenu', content: state.topMenu });
     },
     SET_TENANT_ID: (state, tenantId) => {
       state.tenantId = tenantId;
@@ -363,10 +448,12 @@ const user = {
         }
       });
       state.menuAll = menu;
+      state.routesLoaded = true;
       setStore({ name: 'menuAll', content: state.menuAll });
     },
     SET_MENU_ALL_NULL: state => {
       state.menuAll = [];
+      state.routesLoaded = false;
       setStore({ name: 'menuAll', content: state.menuAll });
     },
     SET_MENU: (state, menu) => {

@@ -10,16 +10,22 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import lombok.AllArgsConstructor;
 import org.springblade.core.boot.ctrl.BladeController;
+import org.springblade.core.excel.util.ExcelUtil;
 import org.springblade.core.mp.support.Condition;
 import org.springblade.core.mp.support.Query;
 import org.springblade.core.secure.annotation.PreAuth;
 import org.springblade.core.tenant.annotation.NonDS;
 import org.springblade.core.tool.api.R;
 import org.springblade.core.tool.support.Kv;
+import org.springblade.core.tool.utils.DateUtil;
+import org.springblade.modules.business.excel.CustomerExcel;
+import org.springblade.modules.business.excel.CustomerImporter;
 import org.springblade.modules.business.pojo.entity.Customer;
 import org.springblade.modules.business.service.ICustomerService;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 
 /**
@@ -127,6 +133,30 @@ public class CustomerController extends BladeController {
 	@Operation(summary = "设置标签", description = "设置客户标签")
 	public R setTags(@PathVariable Long customerId, @RequestBody(required = false) List<Long> tagIds) {
 		return R.status(customerService.setCustomerTags(customerId, tagIds));
+	}
+
+	@GetMapping("/export")
+	@ApiOperationSupport(order = 14)
+	@Operation(summary = "导出", description = "导出客户数据")
+	public void export(Customer customer, HttpServletResponse response) {
+		List<CustomerExcel> list = customerService.exportCustomer(customer);
+		ExcelUtil.export(response, "客户数据" + DateUtil.time(), "客户数据表", list, CustomerExcel.class);
+	}
+
+	@GetMapping("/export-template")
+	@ApiOperationSupport(order = 15)
+	@Operation(summary = "导出模板", description = "导出客户导入模板")
+	public void exportTemplate(HttpServletResponse response) {
+		ExcelUtil.export(response, "客户数据模板", "客户数据表", List.of(), CustomerExcel.class);
+	}
+
+	@PostMapping("/import")
+	@ApiOperationSupport(order = 16)
+	@Operation(summary = "导入", description = "导入客户数据")
+	public R importCustomer(MultipartFile file) {
+		CustomerImporter importer = new CustomerImporter(customerService);
+		ExcelUtil.save(file, importer, CustomerExcel.class);
+		return R.success("操作成功");
 	}
 
 }

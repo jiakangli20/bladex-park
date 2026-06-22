@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.apache.ibatis.annotations.Param;
 import org.springblade.modules.business.pojo.entity.Customer;
+import org.springblade.modules.park.pojo.entity.Park;
 
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,8 @@ public interface CustomerMapper extends BaseMapper<Customer> {
 	IPage<Customer> selectCustomerPage(IPage<Customer> page, @Param("customer") Customer customer);
 
 	Map<String, Object> selectCustomerStatistics(@Param("customer") Customer customer);
+
+	List<Park> selectListPark();
 
 	Long selectCustomerIdByCreditCode(@Param("creditCode") String creditCode);
 
@@ -50,6 +53,14 @@ public interface CustomerMapper extends BaseMapper<Customer> {
 							 @Param("updateBy") String updateBy);
 
 	int updateCustomerCheckResult(Customer customer);
+
+	int updateOpportunityEnterpriseNameByCustomerId(@Param("customerId") Long customerId,
+													@Param("enterpriseName") String enterpriseName,
+													@Param("updateBy") String updateBy);
+
+	int updateApprovalProjectEnterpriseNameByCustomerId(@Param("customerId") Long customerId,
+														@Param("enterpriseName") String enterpriseName,
+														@Param("updateBy") String updateBy);
 
 	int deleteCustomerByIds(@Param("ids") List<Long> ids,
 							@Param("updateBy") String updateBy);

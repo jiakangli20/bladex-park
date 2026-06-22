@@ -49,6 +49,10 @@ public class BusinessOpportunityFollow implements Serializable {
 	@Schema(description = "跟进人")
 	private String followUser;
 
+	@JsonSerialize(using = ToStringSerializer.class)
+	@Schema(description = "跟进人用户ID")
+	private Long followUserId;
+
 	@Schema(description = "商机状态")
 	private String opportunityStatus;
 

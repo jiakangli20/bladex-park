@@ -28,15 +28,16 @@ export default {
 .stat-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  gap: 16px;
 }
 
 .stat-cards__item {
   min-height: 86px;
-  padding: 14px;
-  border: 1px solid #ebeef5;
-  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #e8edf3;
+  border-radius: 10px;
   background: #fff;
+  box-shadow: 0 4px 16px rgba(30, 64, 120, 0.04);
 }
 
 .stat-cards__label {
@@ -66,13 +67,13 @@ export default {
 
 .stat-cards--compact {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .stat-cards--compact .stat-cards__item {
-  min-height: 72px;
+  min-height: 78px;
   padding: 14px 16px;
-  border-radius: 6px;
+  border-radius: 10px;
 }
 
 .stat-cards--compact .stat-cards__label {

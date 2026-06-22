@@ -88,3 +88,47 @@ export const setCustomerTags = (customerId, tagIds) => {
     data: tagIds,
   });
 };
+
+export const listIndustryRule = (params = {}) => {
+  return request({
+    url: '/blade-park/industry-rule/list',
+    method: 'get',
+    params,
+  });
+};
+
+export const addIndustryRule = row => {
+  return request({
+    url: '/blade-park/industry-rule/save',
+    method: 'post',
+    data: row,
+  });
+};
+
+export const updateIndustryRule = row => {
+  return request({
+    url: '/blade-park/industry-rule/update',
+    method: 'post',
+    data: row,
+  });
+};
+
+export const delIndustryRule = ids => {
+  return request({
+    url: '/blade-park/industry-rule/remove',
+    method: 'post',
+    params: {
+      ids,
+    },
+  });
+};
+
+export const checkIndustryRule = industryKeyword => {
+  return request({
+    url: '/blade-park/industry-rule/check',
+    method: 'get',
+    params: {
+      industryKeyword,
+    },
+  });
+};

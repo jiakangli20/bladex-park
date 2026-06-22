@@ -27,6 +27,7 @@ const getters = {
   roles: state => state.user.roles,
   permission: state => state.user.permission,
   menuId: state => state.user.menuId,
+  topMenu: state => state.user.topMenu,
   menu: state => state.user.menu,
   menuAll: state => state.user.menuAll,
   logsList: state => state.logs.logsList,
