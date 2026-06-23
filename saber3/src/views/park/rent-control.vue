@@ -397,6 +397,7 @@ export default {
       currentPark: {},
       currentBuilding: {},
       parks: [],
+      treeParks: [],
       buildings: [],
       floors: [],
       overview: {},
@@ -437,7 +438,7 @@ export default {
   computed: {
     ...mapGetters(['permission']),
     treeData() {
-      return this.parks.map(park => ({
+      return this.getTreeParks().map(park => ({
         key: `park-${park.id}`,
         type: 'park',
         id: park.id,
@@ -461,7 +462,7 @@ export default {
       }));
     },
     currentTitle() {
-      return this.currentBuilding.name || this.currentPark.name || '租赁管理';
+      return this.currentBuilding.name || this.currentPark.name || '租控管理';
     },
     currentSubtitle() {
       if (this.query.floorNo) {
@@ -525,11 +526,25 @@ export default {
       getBoard(params)
         .then(res => {
           const data = res.data.data || {};
+          const parks = this.sortParks(data.parks || []);
+          if (!this.query.parkId && parks.length) {
+            this.parks = parks;
+            this.treeParks = parks;
+            this.query.parkId = Number(parks[0].id);
+            this.query.buildingId = undefined;
+            this.query.floorNo = undefined;
+            this.selectedKey = `park-${parks[0].id}`;
+            this.loadBoard();
+            return;
+          }
           this.board = data;
           this.currentPark = data.currentPark || {};
           this.currentBuilding = data.currentBuilding || {};
-          this.parks = data.parks || [];
-          this.buildings = data.buildings || [];
+          this.parks = parks;
+          if (!this.query.parkId || !this.treeParks.length || this.parks.length > this.treeParks.length) {
+            this.treeParks = this.parks;
+          }
+          this.buildings = this.sortBuildings(data.buildings || []);
           this.floors = data.floors || [];
           this.overview = data.overview || {};
           this.analysis = Object.assign(
@@ -548,9 +563,12 @@ export default {
         this.allBuildings = res.data.data || [];
       });
     },
+    getTreeParks() {
+      return this.treeParks.length ? this.treeParks : this.parks;
+    },
     syncTreeState() {
       const expanded = [];
-      this.parks.forEach(park => {
+      this.getTreeParks().forEach(park => {
         expanded.push(`park-${park.id}`);
         (park.buildings || []).forEach(building => {
           if (this.query.buildingId && String(this.query.buildingId) === String(building.id)) {
@@ -590,18 +608,69 @@ export default {
       this.loadBoard();
     },
     handleReset() {
+      const { parkId, buildingId, floorNo } = this.query;
       this.query = {
-        parkId: undefined,
-        buildingId: undefined,
-        floorNo: undefined,
+        parkId,
+        buildingId,
+        floorNo,
         keyword: '',
         searchType: 'room',
         status: '',
         orientation: '',
       };
-      this.selectedKey = '';
       this.activeTab = 'overview';
       this.loadBoard();
+    },
+    sortParks(parks) {
+      return [...parks].sort((left, right) => {
+        const leftOrder = this.getParkOrder(left.name);
+        const rightOrder = this.getParkOrder(right.name);
+        if (leftOrder !== rightOrder) {
+          return leftOrder - rightOrder;
+        }
+        const nameCompare = String(left.name || '').localeCompare(String(right.name || ''), 'zh-Hans-CN', { numeric: true });
+        if (nameCompare !== 0) {
+          return nameCompare;
+        }
+        return Number(left.id || 0) - Number(right.id || 0);
+      });
+    },
+    sortBuildings(buildings) {
+      return [...buildings].sort((left, right) => {
+        const sortCompare = Number(left.sortNum || 999999) - Number(right.sortNum || 999999);
+        if (sortCompare !== 0) {
+          return sortCompare;
+        }
+        const nameCompare = String(left.name || '').localeCompare(String(right.name || ''), 'zh-Hans-CN', { numeric: true });
+        if (nameCompare !== 0) {
+          return nameCompare;
+        }
+        return Number(left.id || 0) - Number(right.id || 0);
+      });
+    },
+    getParkOrder(name) {
+      const match = String(name || '').match(/园区([一二三四五六七八九十百\d]+)号|([一二三四五六七八九十百\d]+)号园区/);
+      if (!match) {
+        return 999999;
+      }
+      const value = match[1] || match[2];
+      if (/^\d+$/.test(value)) {
+        return Number(value);
+      }
+      return this.parseChineseNumber(value);
+    },
+    parseChineseNumber(text) {
+      const map = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+      if (text === '十') {
+        return 10;
+      }
+      if (text.includes('十')) {
+        const parts = text.split('十');
+        const tens = parts[0] ? map[parts[0]] : 1;
+        const ones = parts[1] ? map[parts[1]] : 0;
+        return tens * 10 + ones;
+      }
+      return map[text] || 999999;
     },
     formatNumber(value) {
       const number = Number(value || 0);

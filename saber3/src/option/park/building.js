@@ -33,17 +33,22 @@ export const tableOption = {
   calcHeight: 32,
   tip: false,
   searchShow: true,
-  searchMenuSpan: 6,
+  searchSpan: 5,
+  searchMenuSpan: 5,
+  searchMenuPosition: 'left',
   border: true,
   index: true,
   selection: true,
+  addBtn: false,
+  editBtn: false,
+  delBtn: false,
+  addBtnText: '新增楼宇',
   align: 'center',
   headerAlign: 'center',
   menuAlign: 'center',
   menuHeaderAlign: 'center',
-  viewBtn: true,
-  dialogType: 'drawer',
-  dialogWidth: '1040px',
+  menuWidth: 150,
+  viewBtn: false,
   dialogClickModal: false,
   labelWidth: 120,
   column: [
@@ -89,7 +94,6 @@ export const tableOption = {
       label: '建筑编号',
       prop: 'code',
       minWidth: 130,
-      search: true,
       rules: [
         {
           required: true,
@@ -300,7 +304,6 @@ export const tableOption = {
       dicData: statusDic,
       value: '0',
       width: 90,
-      search: true,
       slot: true,
       rules: [
         {

@@ -1,6 +1,13 @@
 <template>
   <basic-container>
     <div class="floor-page">
+      <section class="summary-grid">
+        <div v-for="item in summaryCards" :key="item.key" class="summary-card">
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+        </div>
+      </section>
+
       <section class="floor-toolbar">
         <el-form :model="query" inline class="floor-search">
           <el-form-item label="所属建筑">
@@ -29,40 +36,28 @@
               @change="handleSearch"
             />
           </el-form-item>
-          <el-form-item label="楼层状态">
-            <el-select v-model="query.status" clearable placeholder="请选择" @change="handleSearch">
-              <el-option v-for="item in floorStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="房间状态">
-            <el-select v-model="query.roomStatus" clearable placeholder="请选择" @change="handleSearch">
-              <el-option v-for="item in roomStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
-            </el-select>
-          </el-form-item>
           <el-form-item>
             <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
             <el-button :icon="Refresh" @click="handleReset">重置</el-button>
           </el-form-item>
         </el-form>
-
-        <div class="floor-actions">
-          <el-button v-if="permission.floor_add" type="primary" :icon="Plus" @click="openCreate">
-            新增
-          </el-button>
-          <el-button v-if="permission.floor_delete" type="danger" plain :icon="Delete" @click="handleBatchDelete">
-            删除
-          </el-button>
-          <el-button v-if="permission.floor_sync" plain :icon="Connection" @click="handleSyncBuilding">
-            同步建筑
-          </el-button>
-          <el-button v-if="permission.floor_sync" plain :icon="RefreshRight" @click="handleSyncAll">
-            同步全部
-          </el-button>
-          <el-button :icon="Refresh" @click="refreshData">刷新</el-button>
-        </div>
       </section>
 
-      <stat-cards :items="statCards" />
+      <div class="table-action-bar">
+        <el-button v-if="permission.floor_add" type="primary" :icon="Plus" @click="openCreate">
+          新增楼层
+        </el-button>
+        <el-button
+          v-if="permission.floor_delete"
+          type="danger"
+          plain
+          :icon="Delete"
+          :disabled="selectionList.length === 0"
+          @click="handleBatchDelete"
+        >
+          批量删除
+        </el-button>
+      </div>
 
       <el-table
         v-loading="loading"
@@ -137,16 +132,13 @@
           </template>
         </el-table-column>
         <el-table-column prop="memo" label="备注" min-width="140" show-overflow-tooltip />
-        <el-table-column label="操作" width="180" fixed="right" align="center">
+        <el-table-column label="操作" width="130" fixed="right" align="center">
           <template #default="{ row }">
             <el-button v-if="permission.floor_view" link type="primary" :icon="View" @click="openView(row)">
               查看
             </el-button>
             <el-button v-if="permission.floor_edit" link type="primary" :icon="Edit" @click="openEdit(row)">
               编辑
-            </el-button>
-            <el-button v-if="permission.floor_delete" link type="danger" :icon="Delete" @click="handleDelete(row)">
-              删除
             </el-button>
           </template>
         </el-table-column>
@@ -221,7 +213,7 @@
 <script>
 import { mapGetters } from 'vuex';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Connection, Delete, Edit, Plus, Refresh, RefreshRight, Search, View } from '@element-plus/icons-vue';
+import { Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
 import { getSimpleList as getBuildingList } from '@/api/park/building';
 import {
   getDetail,
@@ -229,19 +221,15 @@ import {
   getStatistics,
   remove,
   submit,
-  syncAll,
-  syncBuilding,
 } from '@/api/park/floor';
 
 export default {
   data() {
     return {
-      Connection,
       Delete,
       Edit,
       Plus,
       Refresh,
-      RefreshRight,
       Search,
       View,
       loading: false,
@@ -255,8 +243,6 @@ export default {
       query: {
         buildingId: undefined,
         floorNo: undefined,
-        status: '',
-        roomStatus: '',
       },
       page: {
         currentPage: 1,
@@ -300,32 +286,27 @@ export default {
       const building = this.findBuilding(this.form.buildingId);
       return building && building.floors ? Number(building.floors) : null;
     },
-    statCards() {
+    summaryCards() {
       return [
         {
+          key: 'floorCount',
           label: '楼层总数',
-          value: this.statistics.floorCount || 0,
-          desc: `房间 ${this.statistics.totalCount || 0} 间`,
+          value: `${this.statistics.floorCount || 0} 层`,
         },
         {
+          key: 'totalArea',
           label: '楼层面积',
-          value: `${this.formatNumber(this.statistics.totalArea)}㎡`,
-          desc: `已用 ${this.formatNumber(this.statistics.usedArea)}㎡`,
+          value: `${this.formatNumber(this.statistics.totalArea)} ㎡`,
         },
         {
-          label: '已出租房间',
-          value: this.statistics.rentedCount || 0,
-          desc: `空置 ${this.statistics.vacantCount || 0} 间`,
+          key: 'totalCount',
+          label: '房间总数',
+          value: `${this.statistics.totalCount || 0} 间`,
         },
         {
+          key: 'occupancyRate',
           label: '出租率',
           value: `${this.formatNumber(this.statistics.occupancyRate)}%`,
-          desc: `预定 ${this.statistics.reservedCount || 0} 间`,
-        },
-        {
-          label: '不可用房间',
-          value: Number(this.statistics.renovatingCount || 0) + Number(this.statistics.disabledCount || 0),
-          desc: `装修 ${this.statistics.renovatingCount || 0} / 停用 ${this.statistics.disabledCount || 0}`,
         },
       ];
     },
@@ -381,8 +362,6 @@ export default {
       this.query = {
         buildingId: undefined,
         floorNo: undefined,
-        status: '',
-        roomStatus: '',
       };
       this.page.currentPage = 1;
       this.refreshData();
@@ -405,7 +384,7 @@ export default {
       this.openDetail(row.id);
     },
     openDetail(id) {
-      getDetail(id, { roomStatus: this.query.roomStatus }).then(res => {
+      getDetail(id).then(res => {
         this.form = Object.assign(this.emptyForm(), res.data.data || {});
         this.drawerVisible = true;
       });
@@ -473,22 +452,6 @@ export default {
           ElMessage.success('删除成功');
           this.refreshData();
         });
-    },
-    handleSyncBuilding() {
-      if (!this.query.buildingId) {
-        ElMessage.warning('请先选择建筑');
-        return;
-      }
-      syncBuilding(this.query.buildingId).then(() => {
-        ElMessage.success('同步成功');
-        this.refreshData();
-      });
-    },
-    handleSyncAll() {
-      syncAll().then(() => {
-        ElMessage.success('同步成功');
-        this.refreshData();
-      });
     },
     handleSelectionChange(list) {
       this.selectionList = list;
@@ -566,11 +529,28 @@ export default {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(16, 89, 198, 0.05);
+}
+
+.floor-page :deep(.el-button) {
+  border-radius: 6px;
+}
+
+.floor-page .table-action-bar {
+  gap: 10px;
 }
 
 .floor-search {
   flex: 1;
   min-width: 0;
+}
+
+.floor-search :deep(.el-form-item) {
+  margin-bottom: 0;
 }
 
 .floor-search :deep(.el-select) {
@@ -579,13 +559,6 @@ export default {
 
 .floor-search :deep(.el-input-number) {
   width: 130px;
-}
-
-.floor-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
 }
 
 .floor-table {
@@ -620,10 +593,6 @@ export default {
 @media (max-width: 960px) {
   .floor-toolbar {
     flex-direction: column;
-  }
-
-  .floor-actions {
-    justify-content: flex-start;
   }
 
   .page-footer {

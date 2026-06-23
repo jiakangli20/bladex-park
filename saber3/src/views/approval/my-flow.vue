@@ -94,7 +94,7 @@
           </el-table-column>
           <el-table-column prop="applicant" label="发起人" width="120" align="center" />
           <el-table-column prop="applicantTime" label="发起时间" width="170" align="center" />
-          <el-table-column label="操作" width="310" fixed="right" align="center">
+          <el-table-column label="操作" width="200" fixed="right" align="center">
             <template #default="{ row }">
               <el-button v-if="permissionList.viewBtn" text type="primary" icon="el-icon-view" @click="openDetail(row)">
                 详情
@@ -334,7 +334,9 @@
       </el-drawer>
 
       <el-dialog v-model="formVisible" title="审批表" width="860px" append-to-body>
-        <div class="approval-form-preview" v-html="approvalHtml"></div>
+        <div class="approval-form-preview">
+          <div class="approval-form-preview__doc" v-html="approvalHtml"></div>
+        </div>
         <template #footer>
           <el-button @click="formVisible = false">关闭</el-button>
           <el-button icon="el-icon-printer" @click="printApprovalForm">打印 / 另存为 PDF</el-button>
@@ -807,7 +809,7 @@ export default {
       getApprovalForm(row.projectId).then(res => {
         const data = res.data.data || {};
         this.setDetailData(data, row);
-        this.approvalHtml = this.buildApprovalHtml(data);
+        this.approvalHtml = this.buildApprovalContent(data);
         this.formVisible = true;
       });
     },
@@ -874,11 +876,11 @@ export default {
     printApprovalForm() {
       const win = window.open('', '_blank');
       if (!win) return;
-      win.document.write(this.approvalHtml || this.buildApprovalHtml(this.formData));
+      win.document.write(this.buildApprovalHtml(this.formData));
       win.document.close();
       win.print();
     },
-    buildApprovalHtml(data) {
+    buildApprovalRows(data) {
       const project = data.project || {};
       const logs = data.logs || [];
       const materials = data.materials || [];
@@ -893,14 +895,21 @@ export default {
         ['发起时间', project.applicantTime || project.createTime],
         ['审批事项', project.approvalMatter || project.summary],
       ];
-      return `<!doctype html><html><head><meta charset="utf-8"><title>审批表</title>
-        <style>body{font-family:Arial,"Microsoft YaHei",sans-serif;padding:24px;color:#303133}h2{text-align:center}table{width:100%;border-collapse:collapse;margin:14px 0}td,th{border:1px solid #dcdfe6;padding:8px;text-align:left}.muted{color:#909399}</style>
-        </head><body><h2>${data.templateName || '项目审批表'}</h2>
+      return { rows, logs, materials };
+    },
+    buildApprovalContent(data) {
+      const { rows, logs, materials } = this.buildApprovalRows(data);
+      return `<h2>${this.escapeHtml(data.templateName || '项目审批表')}</h2>
         <table>${rows.map(row => `<tr><th style="width:140px">${this.escapeHtml(row[0])}</th><td>${this.escapeHtml(row[1] || '-')}</td></tr>`).join('')}</table>
         <h3>审批日志</h3>
         <table><tr><th>节点</th><th>动作</th><th>操作人</th><th>意见</th><th>时间</th></tr>
         ${logs.map(log => `<tr><td>${this.escapeHtml(log.nodeName || '-')}</td><td>${this.escapeHtml(this.actionText(log.actionType))}</td><td>${this.escapeHtml(log.operatorName || '-')}</td><td>${this.escapeHtml(log.opinion || '-')}</td><td>${this.escapeHtml(log.operateTime || log.createTime || '-')}</td></tr>`).join('')}
-        </table><h3>审批资料</h3><p class="muted">共 ${materials.length} 份资料</p></body></html>`;
+        </table><h3>审批资料</h3><p class="muted">共 ${materials.length} 份资料</p>`;
+    },
+    buildApprovalHtml(data) {
+      return `<!doctype html><html><head><meta charset="utf-8"><title>审批表</title>
+        <style>body{font-family:Arial,"Microsoft YaHei",sans-serif;padding:24px;color:#303133}h2{text-align:center}table{width:100%;border-collapse:collapse;margin:14px 0}td,th{border:1px solid #dcdfe6;padding:8px;text-align:left}.muted{color:#909399}</style>
+        </head><body>${this.buildApprovalContent(data)}</body></html>`;
     },
     escapeHtml(value) {
       return `${value}`.replace(/[&<>"']/g, char => ({
@@ -989,9 +998,7 @@ export default {
   gap: 14px;
 }
 
-.approval-search,
-.approval-toolbar,
-.approval-table-card {
+.approval-search {
   padding: 16px 18px;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
@@ -1027,6 +1034,9 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .toolbar-left {
@@ -1039,6 +1049,12 @@ export default {
   width: 100%;
 }
 
+.approval-table-card {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
 .approval-table :deep(.el-table__cell) {
   text-align: center;
 }
@@ -1048,6 +1064,14 @@ export default {
   align-items: center;
   justify-content: center;
   min-height: 32px;
+}
+
+.approval-table :deep(.el-button + .el-button) {
+  margin-left: 4px;
+}
+
+.approval-table :deep(.el-dropdown) {
+  margin-left: 4px;
 }
 
 .table-link {
@@ -1119,6 +1143,38 @@ export default {
   max-height: 62vh;
   overflow: auto;
   border: 1px solid #ebeef5;
+}
+
+.approval-form-preview__doc {
+  padding: 24px;
+  color: #303133;
+  font-family: Arial, "Microsoft YaHei", sans-serif;
+}
+
+.approval-form-preview__doc :deep(h2) {
+  margin: 0 0 14px;
+  text-align: center;
+}
+
+.approval-form-preview__doc :deep(h3) {
+  margin: 18px 0 8px;
+}
+
+.approval-form-preview__doc :deep(table) {
+  width: 100%;
+  margin: 14px 0;
+  border-collapse: collapse;
+}
+
+.approval-form-preview__doc :deep(td),
+.approval-form-preview__doc :deep(th) {
+  padding: 8px;
+  border: 1px solid #dcdfe6;
+  text-align: left;
+}
+
+.approval-form-preview__doc :deep(.muted) {
+  color: #909399;
 }
 
 </style>

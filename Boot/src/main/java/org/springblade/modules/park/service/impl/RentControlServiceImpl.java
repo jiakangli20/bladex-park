@@ -73,9 +73,8 @@ public class RentControlServiceImpl implements IRentControlService {
 			buildingQuery.setName(keyword);
 		}
 		List<Building> buildingList = buildingService.selectBuildingList(buildingQuery);
-		List<Park> parkList = parkService.list(Wrappers.<Park>lambdaQuery()
-			.eq(parkId != null, Park::getId, parkId)
-			.orderByAsc(Park::getId));
+		List<Park> treeParkList = parkService.list(Wrappers.<Park>lambdaQuery().orderByAsc(Park::getId));
+		List<Building> treeBuildingList = buildingService.selectBuildingList(new Building());
 
 		Long selectedBuildingId = normalizeSelectedBuildingId(buildingList, buildingId);
 		Building currentBuilding = selectedBuildingId == null ? null : findBuilding(buildingList, selectedBuildingId);
@@ -91,10 +90,12 @@ public class RentControlServiceImpl implements IRentControlService {
 		Floor allFloorQuery = new Floor();
 		allFloorQuery.setParkId(parkId);
 		List<Floor> allFloorList = floorService.selectFloorList(allFloorQuery);
+		List<Floor> treeFloorList = floorService.selectFloorList(new Floor());
 
 		Room allRoomQuery = new Room();
 		allRoomQuery.setParkId(parkId);
 		List<RoomVO> allRoomList = roomService.selectRoomList(allRoomQuery);
+		List<RoomVO> treeRoomList = roomService.selectRoomList(new Room());
 
 		Room roomQuery = new Room();
 		roomQuery.setParkId(parkId);
@@ -118,10 +119,11 @@ public class RentControlServiceImpl implements IRentControlService {
 
 		Map<String, Object> result = new LinkedHashMap<>();
 		List<Map<String, Object>> buildingTree = buildBuildingTree(buildingList, allRoomList, allFloorList);
+		List<Map<String, Object>> parkTreeBuildings = buildBuildingTree(treeBuildingList, treeRoomList, treeFloorList);
 		result.put("parkName", currentPark == null ? null : currentPark.getName());
 		result.put("currentPark", currentPark);
 		result.put("currentBuilding", currentBuilding);
-		result.put("parks", buildParkTree(parkList, buildingTree));
+		result.put("parks", buildParkTree(treeParkList, parkTreeBuildings));
 		result.put("buildings", buildingTree);
 		result.put("overview", buildOverview(floorList, roomList));
 		result.put("analysis", buildAnalysis(roomList));

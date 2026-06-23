@@ -28,7 +28,7 @@ WHERE `id` IN (
 
 INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `sort`, `category`, `action`, `is_open`, `component`, `remark`, `is_deleted`)
 VALUES
-  (1963598815738675601, 1963598815738675401, 'building', '建筑管理', 'menu', '/park/building', 'iconfont icon-caidanguanli', 2, 1, 0, 1, '', NULL, 0),
+  (1963598815738675601, 1963598815738675401, 'building', '建筑管理', 'menu', '/park/building', 'iconfont icon-caidanguanli', 3, 1, 0, 1, '', NULL, 0),
   (1963598815738675602, 1963598815738675601, 'building_view', '查看', 'view', '/api/blade-park/building/detail', 'file-text', 1, 2, 2, 1, '', NULL, 0),
   (1963598815738675603, 1963598815738675601, 'building_add', '新增', 'add', '/api/blade-park/building/submit', 'plus', 2, 2, 1, 1, '', NULL, 0),
   (1963598815738675604, 1963598815738675601, 'building_edit', '修改', 'edit', '/api/blade-park/building/submit', 'form', 3, 2, 2, 1, '', NULL, 0),

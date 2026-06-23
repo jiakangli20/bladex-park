@@ -619,19 +619,25 @@ export default {
 .tag-main {
   display: flex;
   flex-direction: column;
-  border: 1px solid #ebeef5;
+  gap: 14px;
+  background: transparent;
+  border: 0;
 }
 
 .tag-search {
   padding: 16px 16px 0;
-  border-bottom: 1px solid #edf0f5;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
 }
 
 .tag-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .toolbar-left,
@@ -658,7 +664,7 @@ export default {
 .tag-pagination {
   display: flex;
   justify-content: flex-end;
-  padding: 14px 16px;
+  padding: 0;
 }
 
 .color-field {

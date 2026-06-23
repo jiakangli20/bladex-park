@@ -1616,8 +1616,7 @@ export default {
   gap: 14px;
 }
 
-.customer-search,
-.customer-toolbar {
+.customer-search {
   padding: 16px 18px;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
@@ -1653,6 +1652,9 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .toolbar-left {

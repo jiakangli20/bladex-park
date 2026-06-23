@@ -1,6 +1,6 @@
--- 园区管理 / 租赁管理菜单与按钮权限
+-- 园区管理 / 租控管理菜单与按钮权限
 -- 执行库：bladex_boot
--- 说明：仅新增租赁管理菜单与超级管理员授权，不改动 ics_park / ics_building / ics_floor / ics_room 表结构。
+-- 说明：仅新增租控管理菜单与超级管理员授权，不改动 ics_park / ics_building / ics_floor / ics_room 表结构。
 
 DELETE FROM `blade_role_menu`
 WHERE `menu_id` IN (
@@ -32,7 +32,7 @@ WHERE `id` IN (
 
 INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `sort`, `category`, `action`, `is_open`, `component`, `remark`, `is_deleted`)
 VALUES
-  (1963598815738675501, 1963598815738675401, 'rent_control', '租赁管理', 'menu', '/park/rent-control', 'iconfont icon-caidanguanli', 4, 1, 0, 1, '', NULL, 0),
+  (1963598815738675501, 1963598815738675401, 'rent_control', '租控管理', 'menu', '/park/rent-control', 'iconfont icon-caidanguanli', 1, 1, 0, 1, '', NULL, 0),
   (1963598815738675502, 1963598815738675501, 'rent_control_list', '看板查询', 'list', '/api/blade-park/rent-control/board', 'search', 1, 2, 1, 1, '', NULL, 0),
   (1963598815738675503, 1963598815738675501, 'rent_control_detail', '房源详情', 'detail', '/api/blade-park/room/detail', 'file-text', 2, 2, 2, 1, '', NULL, 0),
   (1963598815738675504, 1963598815738675501, 'rent_control_room_add', '新增房间', 'add', '/api/blade-park/room/submit', 'plus', 3, 2, 1, 1, '', NULL, 0),

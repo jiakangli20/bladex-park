@@ -168,6 +168,13 @@ a {
   line-height: 1.2;
 }
 
+.table-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
 .customer-tag-chip-list {
   display: flex;
   width: 100%;

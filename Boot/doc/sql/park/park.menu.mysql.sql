@@ -25,7 +25,7 @@ WHERE `id` IN (
 INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `sort`, `category`, `action`, `is_open`, `component`, `remark`, `is_deleted`)
 VALUES
   (1963598815738675401, 0, 'park_asset', '园区管理', 'menu', '/park', 'iconfont icon-shouye', 7, 1, 0, 1, '', NULL, 0),
-  (1963598815738675402, 1963598815738675401, 'park', '园区档案', 'menu', '/park/park', 'iconfont icon-chengshi', 1, 1, 0, 1, '', NULL, 0),
+  (1963598815738675402, 1963598815738675401, 'park', '园区档案', 'menu', '/park/park', 'iconfont icon-chengshi', 2, 1, 0, 1, '', NULL, 0),
   (1963598815738675403, 1963598815738675402, 'park_add', '新增', 'add', '/park/park/add', 'plus', 1, 2, 1, 1, '', NULL, 0),
   (1963598815738675404, 1963598815738675402, 'park_edit', '修改', 'edit', '/park/park/edit', 'form', 2, 2, 2, 1, '', NULL, 0),
   (1963598815738675405, 1963598815738675402, 'park_delete', '删除', 'delete', '/api/blade-park/park/remove', 'delete', 3, 2, 3, 1, '', NULL, 0),
