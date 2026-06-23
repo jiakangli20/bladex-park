@@ -69,4 +69,13 @@ public interface CustomerMapper extends BaseMapper<Customer> {
 										@Param("customerId") Long customerId,
 										@Param("updateBy") String updateBy);
 
+	int updateTenantEntryFlowState(@Param("customerId") Long customerId,
+								   @Param("processInsId") String processInsId,
+								   @Param("status") String status,
+								   @Param("currentNode") String currentNode,
+								   @Param("approvalPdfUrl") String approvalPdfUrl,
+								   @Param("approvalTime") java.util.Date approvalTime,
+								   @Param("settlementStatus") Integer settlementStatus,
+								   @Param("updateBy") String updateBy);
+
 }

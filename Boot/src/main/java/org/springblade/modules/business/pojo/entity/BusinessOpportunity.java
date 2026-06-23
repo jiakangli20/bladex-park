@@ -172,6 +172,23 @@ public class BusinessOpportunity implements Serializable {
 	@Schema(description = "是否提交审核")
 	private String submittedAuditFlag;
 
+	@Schema(description = "入驻流程实例ID")
+	private String tenantEntryProcessInsId;
+
+	@Schema(description = "入驻流程状态")
+	private String tenantEntryStatus;
+
+	@Schema(description = "入驻流程当前节点")
+	private String tenantEntryCurrentNode;
+
+	@Schema(description = "入驻审批表文件地址")
+	private String tenantEntryApprovalPdfUrl;
+
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@Schema(description = "入驻审批通过时间")
+	private Date tenantEntryApprovalTime;
+
 	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
 	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
 	@Schema(description = "最后跟进时间")
@@ -244,5 +261,9 @@ public class BusinessOpportunity implements Serializable {
 	@TableField(exist = false)
 	@Schema(description = "联系人/联系电话关键词")
 	private String contactKeyword;
+
+	@TableField(exist = false)
+	@Schema(description = "是否只查询可发起入驻审批的商机")
+	private Boolean tenantEntryCandidate;
 
 }

@@ -487,7 +487,7 @@ export default {
     },
     pageTitle() {
       const titles = {
-        settlement: '项目审核',
+        settlement: '入驻审核',
         mine: '我的审批',
         todo: '待办任务',
         done: '已办任务',

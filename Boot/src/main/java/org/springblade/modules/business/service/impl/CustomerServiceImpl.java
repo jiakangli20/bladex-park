@@ -286,6 +286,53 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
+	public Customer completeTenantEntryApproval(BusinessOpportunity opportunity, String processInsId, String approvalPdfUrl) {
+		if (Func.isEmpty(opportunity)) {
+			return null;
+		}
+		Long customerId = resolveCustomerId(opportunity);
+		Customer customer = Func.isEmpty(customerId) ? new Customer() : baseMapper.selectCustomerById(customerId);
+		boolean isCreate = Func.isEmpty(customer) || Func.isEmpty(customer.getCustomerId());
+		if (isCreate) {
+			customer = new Customer();
+		}
+		mergeOpportunityCustomer(customer, opportunity);
+		customer.setSettlementStatus(3);
+		customer.setStatus(STATUS_NORMAL);
+		customer.setDelFlag(DEL_FLAG_NORMAL);
+		customer.setTenantEntryProcessInsId(processInsId);
+		customer.setTenantEntryStatus("approved");
+		customer.setTenantEntryCurrentNode("流程结束");
+		customer.setTenantEntryApprovalPdfUrl(approvalPdfUrl);
+		customer.setTenantEntryApprovalTime(DateUtil.now());
+		customer.setUpdateBy(currentUserName());
+		customer.setUpdateTime(DateUtil.now());
+		applyLocalCheck(customer);
+		if (isCreate) {
+			normalizeCustomer(customer);
+			validateCustomer(customer, null);
+			customer.setCreateBy(currentUserName());
+			customer.setCreateTime(DateUtil.now());
+			baseMapper.insertCustomer(customer);
+		} else {
+			baseMapper.updateCustomer(customer);
+		}
+		BusinessOpportunity patch = new BusinessOpportunity();
+		patch.setOpportunityId(opportunity.getOpportunityId());
+		patch.setCustomerId(customer.getCustomerId());
+		patch.setSubmittedAuditFlag(AUDIT_FLAG_YES);
+		patch.setOpportunityStatus(OPPORTUNITY_STATUS_DEAL);
+		patch.setUpdateBy(currentUserName());
+		businessOpportunityMapper.updateBusinessOpportunity(patch);
+		List<Long> tagIds = tagService.selectTagsByOpportunityId(opportunity.getOpportunityId()).stream()
+			.map(Tag::getTagId)
+			.collect(Collectors.toList());
+		tagService.setCustomerTags(customer.getCustomerId(), tagIds);
+		return selectCustomerById(customer.getCustomerId());
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
 	public boolean resetTenantEntryApproval(ApprovalProject project) {
 		if (!isTenantEntryProject(project) || Func.isEmpty(project.getBusinessId())) {
 			return false;
@@ -504,6 +551,20 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		return StringUtil.isBlank(enterpriseName) ? null : baseMapper.selectCustomerIdByEnterpriseAndPark(enterpriseName, parkId, null);
 	}
 
+	private Long resolveCustomerId(BusinessOpportunity opportunity) {
+		if (Func.isNotEmpty(opportunity.getCustomerId()) && Func.isNotEmpty(baseMapper.selectCustomerById(opportunity.getCustomerId()))) {
+			return opportunity.getCustomerId();
+		}
+		if (StringUtil.isNotBlank(opportunity.getCreditCode())) {
+			Long customerId = baseMapper.selectCustomerIdByCreditCode(opportunity.getCreditCode());
+			if (Func.isNotEmpty(customerId)) {
+				return customerId;
+			}
+		}
+		return StringUtil.isBlank(opportunity.getEnterpriseName()) ? null
+			: baseMapper.selectCustomerIdByEnterpriseAndPark(opportunity.getEnterpriseName(), opportunity.getParkId(), null);
+	}
+
 	private void mergeApprovalCustomer(Customer customer, ApprovalProject project, BusinessOpportunity opportunity) {
 		customer.setParkId(Func.isNotEmpty(project.getParkId()) ? project.getParkId() : opportunity == null ? customer.getParkId() : opportunity.getParkId());
 		customer.setEnterpriseName(firstNotBlank(project.getEnterpriseName(), opportunity == null ? customer.getEnterpriseName() : opportunity.getEnterpriseName(), customer.getEnterpriseName(), project.getProjectName()));
@@ -539,6 +600,41 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 			customer.setChannel(firstNotBlank(opportunity.getChannel(), customer.getChannel()));
 			customer.setThirdPartyChannelName(firstNotBlank(opportunity.getThirdPartyChannelName(), customer.getThirdPartyChannelName()));
 		}
+	}
+
+	private void mergeOpportunityCustomer(Customer customer, BusinessOpportunity opportunity) {
+		customer.setParkId(Func.isNotEmpty(opportunity.getParkId()) ? opportunity.getParkId() : customer.getParkId());
+		customer.setEnterpriseName(firstNotBlank(opportunity.getEnterpriseName(), customer.getEnterpriseName()));
+		customer.setCreditCode(firstNotBlank(opportunity.getCreditCode(), customer.getCreditCode()));
+		customer.setContactName(firstNotBlank(opportunity.getContactName(), customer.getContactName(), opportunity.getEnterpriseName()));
+		customer.setContactPhone(firstNotBlank(opportunity.getContactPhone(), customer.getContactPhone()));
+		customer.setIntentArea(firstNonNull(opportunity.getIntentArea(), customer.getIntentArea()));
+		customer.setBusinessScope(firstNotBlank(opportunity.getBusinessScope(), customer.getBusinessScope()));
+		customer.setRemark(firstNotBlank(opportunity.getRemark(), customer.getRemark()));
+		customer.setEstablishDate(firstNonNull(opportunity.getEstablishDate(), customer.getEstablishDate()));
+		customer.setRegisteredCapital(firstNonNull(opportunity.getRegisteredCapital(), customer.getRegisteredCapital()));
+		customer.setEnterpriseType(firstNotBlank(opportunity.getEnterpriseType(), customer.getEnterpriseType()));
+		customer.setIndustry(firstNotBlank(opportunity.getIndustryType(), customer.getIndustry()));
+		customer.setRegisteredAddress(firstNotBlank(opportunity.getRegisteredAddress(), customer.getRegisteredAddress()));
+		customer.setAddress(firstNotBlank(customer.getAddress(), opportunity.getRegisteredAddress()));
+		customer.setEquityStructure(firstNotBlank(opportunity.getEquityStructure(), customer.getEquityStructure()));
+		customer.setOrganizationStructure(firstNotBlank(opportunity.getOrganizationStructure(), customer.getOrganizationStructure()));
+		customer.setMainBusiness(firstNotBlank(opportunity.getMainBusiness(), customer.getMainBusiness()));
+		customer.setLastYearRevenue(firstNonNull(opportunity.getLastYearRevenue(), customer.getLastYearRevenue()));
+		customer.setMajorClients(firstNotBlank(opportunity.getMajorClients(), customer.getMajorClients()));
+		customer.setMajorIllegalFlag(firstNotBlank(opportunity.getMajorIllegalFlag(), customer.getMajorIllegalFlag(), "0"));
+		customer.setDishonestFlag(firstNotBlank(opportunity.getDishonestFlag(), customer.getDishonestFlag(), "0"));
+		customer.setIndustryPenaltyFlag(firstNotBlank(opportunity.getIndustryPenaltyFlag(), customer.getIndustryPenaltyFlag(), "0"));
+		customer.setCarrierTypes(firstNotBlank(opportunity.getCarrierTypes(), customer.getCarrierTypes()));
+		customer.setUsagePurpose(firstNotBlank(opportunity.getUsagePurpose(), customer.getUsagePurpose()));
+		customer.setLeaseTermYears(firstNonNull(opportunity.getLeaseTermYears(), customer.getLeaseTermYears()));
+		customer.setLeaseTermLabel(firstNotBlank(opportunity.getLeaseTermLabel(), customer.getLeaseTermLabel()));
+		customer.setDecorationRequirement(firstNotBlank(opportunity.getDecorationRequirement(), customer.getDecorationRequirement()));
+		customer.setSupportingNeeds(firstNotBlank(opportunity.getSupportingNeeds(), customer.getSupportingNeeds()));
+		customer.setContactEmail(firstNotBlank(opportunity.getContactEmail(), customer.getContactEmail()));
+		customer.setContactPosition(firstNotBlank(opportunity.getContactPosition(), customer.getContactPosition()));
+		customer.setChannel(firstNotBlank(opportunity.getChannel(), customer.getChannel()));
+		customer.setThirdPartyChannelName(firstNotBlank(opportunity.getThirdPartyChannelName(), customer.getThirdPartyChannelName()));
 	}
 
 	private void applyLocalCheck(Customer customer) {

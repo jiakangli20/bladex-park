@@ -54,6 +54,8 @@ public interface IBusinessOpportunityService extends IService<BusinessOpportunit
 
 	BusinessOpportunity createApprovalProjectFromOpportunity(Long opportunityId, Long flowId);
 
+	Map<String, Object> exportTenantEntryApprovalForm(Long opportunityId, String processInsId);
+
 	Map<String, Object> selectOpportunityStatistics();
 
 }

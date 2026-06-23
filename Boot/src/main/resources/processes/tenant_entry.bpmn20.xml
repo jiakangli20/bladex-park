@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://www.flowable.org/processdef">
+    <process id="tenant_entry" name="企业入驻审批" isExecutable="true" flowable:title="${#enterpriseName} 入驻审核">
+        <documentation>入驻管理项目审核流程：发起人提交，经理审批，老板审批，审批节点自动抄送人事。</documentation>
+        <startEvent id="startEvent" name="发起人" flowable:initiator="applyUser" flowable:exFormKey="TenantEntry" flowable:hideCopy="true" flowable:hideExamine="true">
+            <extensionElements>
+                <flowable:exFormKey value="TenantEntry"/>
+                <flowable:hideCopy value="true"/>
+                <flowable:hideExamine value="true"/>
+            </extensionElements>
+        </startEvent>
+        <userTask id="managerTask" name="经理审批" flowable:candidateGroups="1123598816738675204" flowable:exFormKey="TenantEntry" flowable:hideCopy="true" flowable:hideExamine="true">
+            <extensionElements>
+                <flowable:exFormKey value="TenantEntry"/>
+                <flowable:hideExamine value="true"/>
+                <flowable:hideCopy value="true"/>
+                <flowable:button label="通过" prop="wf_pass" display="true"/>
+                <flowable:button label="驳回" prop="wf_reject" display="true"/>
+            </extensionElements>
+        </userTask>
+        <exclusiveGateway id="managerGateway" name="经理审批结果"/>
+        <userTask id="bossTask" name="老板审批" flowable:candidateGroups="1123598816738675205" flowable:exFormKey="TenantEntry" flowable:hideCopy="true" flowable:hideExamine="true">
+            <extensionElements>
+                <flowable:exFormKey value="TenantEntry"/>
+                <flowable:hideExamine value="true"/>
+                <flowable:hideCopy value="true"/>
+                <flowable:button label="通过" prop="wf_pass" display="true"/>
+                <flowable:button label="驳回" prop="wf_reject" display="true"/>
+            </extensionElements>
+        </userTask>
+        <exclusiveGateway id="bossGateway" name="老板审批结果"/>
+        <endEvent id="approvedEnd" name="审批通过"/>
+        <endEvent id="rejectedEnd" name="审批驳回"/>
+        <sequenceFlow id="flow_start_manager" sourceRef="startEvent" targetRef="managerTask"/>
+        <sequenceFlow id="flow_manager_gateway" sourceRef="managerTask" targetRef="managerGateway"/>
+        <sequenceFlow id="flow_manager_pass" name="通过" sourceRef="managerGateway" targetRef="bossTask">
+            <conditionExpression xsi:type="tFormalExpression"><![CDATA[${pass}]]></conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="flow_manager_reject" name="驳回" sourceRef="managerGateway" targetRef="rejectedEnd">
+            <conditionExpression xsi:type="tFormalExpression"><![CDATA[${!pass}]]></conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="flow_boss_gateway" sourceRef="bossTask" targetRef="bossGateway"/>
+        <sequenceFlow id="flow_boss_pass" name="通过" sourceRef="bossGateway" targetRef="approvedEnd">
+            <conditionExpression xsi:type="tFormalExpression"><![CDATA[${pass}]]></conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="flow_boss_reject" name="驳回" sourceRef="bossGateway" targetRef="rejectedEnd">
+            <conditionExpression xsi:type="tFormalExpression"><![CDATA[${!pass}]]></conditionExpression>
+        </sequenceFlow>
+    </process>
+    <bpmndi:BPMNDiagram id="BPMNDiagram_tenant_entry">
+        <bpmndi:BPMNPlane id="BPMNPlane_tenant_entry" bpmnElement="tenant_entry">
+            <bpmndi:BPMNShape id="BPMNShape_startEvent" bpmnElement="startEvent">
+                <omgdc:Bounds x="120.0" y="160.0" width="36.0" height="36.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="BPMNShape_managerTask" bpmnElement="managerTask">
+                <omgdc:Bounds x="220.0" y="138.0" width="110.0" height="80.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="BPMNShape_managerGateway" bpmnElement="managerGateway">
+                <omgdc:Bounds x="390.0" y="153.0" width="50.0" height="50.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="BPMNShape_bossTask" bpmnElement="bossTask">
+                <omgdc:Bounds x="500.0" y="138.0" width="110.0" height="80.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="BPMNShape_bossGateway" bpmnElement="bossGateway">
+                <omgdc:Bounds x="670.0" y="153.0" width="50.0" height="50.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="BPMNShape_approvedEnd" bpmnElement="approvedEnd">
+                <omgdc:Bounds x="790.0" y="160.0" width="36.0" height="36.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="BPMNShape_rejectedEnd" bpmnElement="rejectedEnd">
+                <omgdc:Bounds x="540.0" y="300.0" width="36.0" height="36.0"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNEdge id="BPMNEdge_flow_start_manager" bpmnElement="flow_start_manager">
+                <omgdi:waypoint x="156.0" y="178.0"/>
+                <omgdi:waypoint x="220.0" y="178.0"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="BPMNEdge_flow_manager_gateway" bpmnElement="flow_manager_gateway">
+                <omgdi:waypoint x="330.0" y="178.0"/>
+                <omgdi:waypoint x="390.0" y="178.0"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="BPMNEdge_flow_manager_pass" bpmnElement="flow_manager_pass">
+                <omgdi:waypoint x="440.0" y="178.0"/>
+                <omgdi:waypoint x="500.0" y="178.0"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="BPMNEdge_flow_manager_reject" bpmnElement="flow_manager_reject">
+                <omgdi:waypoint x="415.0" y="203.0"/>
+                <omgdi:waypoint x="415.0" y="318.0"/>
+                <omgdi:waypoint x="540.0" y="318.0"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="BPMNEdge_flow_boss_gateway" bpmnElement="flow_boss_gateway">
+                <omgdi:waypoint x="610.0" y="178.0"/>
+                <omgdi:waypoint x="670.0" y="178.0"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="BPMNEdge_flow_boss_pass" bpmnElement="flow_boss_pass">
+                <omgdi:waypoint x="720.0" y="178.0"/>
+                <omgdi:waypoint x="790.0" y="178.0"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="BPMNEdge_flow_boss_reject" bpmnElement="flow_boss_reject">
+                <omgdi:waypoint x="695.0" y="203.0"/>
+                <omgdi:waypoint x="695.0" y="318.0"/>
+                <omgdi:waypoint x="576.0" y="318.0"/>
+            </bpmndi:BPMNEdge>
+        </bpmndi:BPMNPlane>
+    </bpmndi:BPMNDiagram>
+</definitions>

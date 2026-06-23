@@ -1135,6 +1135,7 @@ public class WfProcessService implements IWfProcessService {
 		if (variables == null) {
 			variables = new HashMap<>();
 		}
+		variables.put(WfProcessConstant.PASS_KEY, true);
 		variables.put(WfProcessConstant.TASK_VARIABLE_ASSIGNEE, assignee);
 
 		if (StringUtil.isNoneBlank(processInstanceId, comment)) { // 增加评论
@@ -1376,6 +1377,10 @@ public class WfProcessService implements IWfProcessService {
 	private Map<String, Object> buildTaskVariables(String status, String processInsId, WfProcess process) {
 		Map<String, Object> variables = new HashMap<>();
 		if (WfProcessConstant.STATUS_TODO.equals(status)) { // 进行中实例
+			Map<String, Object> runtimeVariables = runtimeService.getVariables(processInsId);
+			if (ObjectUtil.isNotEmpty(runtimeVariables)) {
+				variables.putAll(runtimeVariables);
+			}
 			Object applyUsername = runtimeService.getVariable(processInsId, WfProcessConstant.TASK_VARIABLE_APPLY_USER_NAME);
 			// 发起人
 			if (ObjectUtil.isNotEmpty(applyUsername)) {
@@ -1390,6 +1395,10 @@ public class WfProcessService implements IWfProcessService {
 		} else { // 历史实例
 			HistoricVariableInstanceQuery variableInstanceQuery = historyService.createHistoricVariableInstanceQuery()
 				.processInstanceId(processInsId);
+			List<HistoricVariableInstance> variableInstanceList = variableInstanceQuery.list();
+			if (ObjectUtil.isNotEmpty(variableInstanceList)) {
+				variableInstanceList.forEach(item -> variables.put(item.getVariableName(), item.getValue()));
+			}
 			// 发起人
 			HistoricVariableInstance applyUsername = variableInstanceQuery.variableName(WfProcessConstant.TASK_VARIABLE_APPLY_USER_NAME).singleResult();
 			if (ObjectUtil.isNotEmpty(applyUsername)) {

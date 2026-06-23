@@ -9,6 +9,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import org.flowable.engine.HistoryService;
+import org.flowable.variable.api.history.HistoricVariableInstance;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.oss.model.BladeFile;
 import org.springblade.core.secure.utils.AuthUtil;
@@ -56,6 +58,8 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 
 	private final ITagService tagService;
 	private final OssBuilder ossBuilder;
+	private final TenantEntryWorkflowServiceImpl tenantEntryWorkflowService;
+	private final HistoryService historyService;
 
 	@Override
 	public BusinessOpportunity selectBusinessOpportunityById(Long opportunityId) {
@@ -317,6 +321,38 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		patch.setUpdateBy(currentUserName());
 		baseMapper.updateBusinessOpportunity(patch);
 		return selectBusinessOpportunityById(opportunityId);
+	}
+
+	@Override
+	public Map<String, Object> exportTenantEntryApprovalForm(Long opportunityId, String processInsId) {
+		BusinessOpportunity opportunity = selectBusinessOpportunityById(opportunityId);
+		if (Func.isEmpty(opportunity)) {
+			throw new ServiceException("商机不存在");
+		}
+		Map<String, Object> variables = loadProcessVariables(processInsId);
+		variables.put("applyUserName", firstNotBlank(opportunity.getCreateBy(), currentUserName()));
+		String html = tenantEntryWorkflowService.buildApprovalHtml(opportunity, variables);
+		Map<String, Object> result = new HashMap<>(8);
+		result.put("fileName", "企业入驻审批表-" + opportunity.getEnterpriseName() + ".html");
+		result.put("contentType", "text/html;charset=utf-8");
+		result.put("html", html);
+		result.put("processInsId", processInsId);
+		result.put("generatedAt", DateUtil.formatDateTime(new Date()));
+		return result;
+	}
+
+	private Map<String, Object> loadProcessVariables(String processInsId) {
+		Map<String, Object> variables = new HashMap<>();
+		if (StringUtil.isBlank(processInsId)) {
+			return variables;
+		}
+		List<HistoricVariableInstance> list = historyService.createHistoricVariableInstanceQuery()
+			.processInstanceId(processInsId)
+			.list();
+		for (HistoricVariableInstance item : list) {
+			variables.put(item.getVariableName(), item.getValue());
+		}
+		return variables;
 	}
 
 	@Override

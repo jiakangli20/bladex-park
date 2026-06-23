@@ -46,6 +46,11 @@
 		<result property="remark" column="remark"/>
 		<result property="approvalProjectId" column="approval_project_id"/>
 		<result property="submittedAuditFlag" column="submitted_audit_flag"/>
+		<result property="tenantEntryProcessInsId" column="tenant_entry_process_ins_id"/>
+		<result property="tenantEntryStatus" column="tenant_entry_status"/>
+		<result property="tenantEntryCurrentNode" column="tenant_entry_current_node"/>
+		<result property="tenantEntryApprovalPdfUrl" column="tenant_entry_approval_pdf_url"/>
+		<result property="tenantEntryApprovalTime" column="tenant_entry_approval_time"/>
 		<result property="lastFollowTime" column="last_follow_time"/>
 		<result property="nextFollowTime" column="next_follow_time"/>
 		<result property="delFlag" column="del_flag"/>
@@ -121,6 +126,11 @@
 			   remark,
 			   approval_project_id,
 			   submitted_audit_flag,
+			   tenant_entry_process_ins_id,
+			   tenant_entry_status,
+			   tenant_entry_current_node,
+			   tenant_entry_approval_pdf_url,
+			   tenant_entry_approval_time,
 			   last_follow_time,
 			   next_follow_time,
 			   del_flag,
@@ -139,6 +149,11 @@
 				<if test="opportunity.customerId != null">and customer_id = #{opportunity.customerId}</if>
 				<if test="opportunity.opportunityStatus != null and opportunity.opportunityStatus != ''">and opportunity_status = #{opportunity.opportunityStatus}</if>
 				<if test="opportunity.submittedAuditFlag != null and opportunity.submittedAuditFlag != ''">and submitted_audit_flag = #{opportunity.submittedAuditFlag}</if>
+				<if test="opportunity.tenantEntryStatus != null and opportunity.tenantEntryStatus != ''">and tenant_entry_status = #{opportunity.tenantEntryStatus}</if>
+				<if test="opportunity.tenantEntryCandidate != null and opportunity.tenantEntryCandidate">
+					and (tenant_entry_process_ins_id is null or tenant_entry_process_ins_id = '')
+					and (tenant_entry_status is null or tenant_entry_status in ('rejected', 'canceled'))
+				</if>
 				<if test="opportunity.channel != null and opportunity.channel != ''">and channel = #{opportunity.channel}</if>
 				<if test="opportunity.followUserId != null">and follow_user_id = #{opportunity.followUserId}</if>
 				<if test="opportunity.followUser != null and opportunity.followUser != ''">and follow_user = #{opportunity.followUser}</if>
@@ -196,6 +211,7 @@
 			carrier_types, intent_area, usage_purpose, lease_term_years, lease_term_label, decoration_requirement,
 			supporting_needs, contact_name, contact_phone, contact_email, contact_address, id_card_files, contact_position, channel,
 			third_party_channel_name, follow_user, follow_user_id, opportunity_status, remark, approval_project_id, submitted_audit_flag,
+			tenant_entry_process_ins_id, tenant_entry_status, tenant_entry_current_node, tenant_entry_approval_pdf_url, tenant_entry_approval_time,
 			last_follow_time, next_follow_time, del_flag, create_by, create_time, update_by, update_time
 		) values (
 			#{parkId}, #{customerId}, #{opportunityNo}, #{enterpriseName}, #{creditCode}, #{establishDate}, #{registeredCapital},
@@ -204,6 +220,7 @@
 			#{carrierTypes}, #{intentArea}, #{usagePurpose}, #{leaseTermYears}, #{leaseTermLabel}, #{decorationRequirement},
 			#{supportingNeeds}, #{contactName}, #{contactPhone}, #{contactEmail}, #{contactAddress}, #{idCardFiles}, #{contactPosition}, #{channel},
 			#{thirdPartyChannelName}, #{followUser}, #{followUserId}, #{opportunityStatus}, #{remark}, #{approvalProjectId}, #{submittedAuditFlag},
+			#{tenantEntryProcessInsId}, #{tenantEntryStatus}, #{tenantEntryCurrentNode}, #{tenantEntryApprovalPdfUrl}, #{tenantEntryApprovalTime},
 			#{lastFollowTime}, #{nextFollowTime}, #{delFlag}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime}
 		)
 	</insert>
@@ -250,6 +267,11 @@
 			<if test="remark != null">remark = #{remark},</if>
 			<if test="approvalProjectId != null">approval_project_id = #{approvalProjectId},</if>
 			<if test="submittedAuditFlag != null">submitted_audit_flag = #{submittedAuditFlag},</if>
+			<if test="tenantEntryProcessInsId != null">tenant_entry_process_ins_id = #{tenantEntryProcessInsId},</if>
+			<if test="tenantEntryStatus != null">tenant_entry_status = #{tenantEntryStatus},</if>
+			<if test="tenantEntryCurrentNode != null">tenant_entry_current_node = #{tenantEntryCurrentNode},</if>
+			<if test="tenantEntryApprovalPdfUrl != null">tenant_entry_approval_pdf_url = #{tenantEntryApprovalPdfUrl},</if>
+			<if test="tenantEntryApprovalTime != null">tenant_entry_approval_time = #{tenantEntryApprovalTime},</if>
 			<if test="lastFollowTime != null">last_follow_time = #{lastFollowTime},</if>
 			<if test="nextFollowTime != null and opportunityStatus != 'DEAL'">next_follow_time = #{nextFollowTime},</if>
 			<if test="opportunityStatus != null and opportunityStatus == 'DEAL'">next_follow_time = null,</if>
@@ -377,6 +399,13 @@
 		limit 1
 	</select>
 
+	<select id="selectBusinessOpportunityByProcessInsId" resultMap="BusinessOpportunityResult">
+		<include refid="selectOpportunityColumns"/>
+		where tenant_entry_process_ins_id = #{processInsId}
+		  and del_flag = '0'
+		limit 1
+	</select>
+
 	<select id="selectApprovalNodeCandidates" resultType="java.util.HashMap">
 		select node_name as nodeName,
 			   approver_login as approverLogin
@@ -415,6 +444,23 @@
 			update_by = #{loginName},
 			update_time = now()
 		where project_id = #{projectId}
+	</update>
+
+	<update id="updateTenantEntryFlowState">
+		update biz_business_opportunity
+		<set>
+			<if test="processInsId != null">tenant_entry_process_ins_id = #{processInsId},</if>
+			<if test="status != null">tenant_entry_status = #{status},</if>
+			<if test="currentNode != null">tenant_entry_current_node = #{currentNode},</if>
+			<if test="approvalPdfUrl != null">tenant_entry_approval_pdf_url = #{approvalPdfUrl},</if>
+			<if test="approvalTime != null">tenant_entry_approval_time = #{approvalTime},</if>
+			<if test="submittedAuditFlag != null">submitted_audit_flag = #{submittedAuditFlag},</if>
+			<if test="opportunityStatus != null">opportunity_status = #{opportunityStatus},</if>
+			<if test="updateBy != null">update_by = #{updateBy},</if>
+			update_time = now()
+		</set>
+		where opportunity_id = #{opportunityId}
+		  and del_flag = '0'
 	</update>
 
 	<insert id="insertApprovalLog">

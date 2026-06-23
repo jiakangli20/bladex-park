@@ -59,6 +59,8 @@ public interface BusinessOpportunityMapper extends BaseMapper<BusinessOpportunit
 
 	Long selectExistingApprovalProjectId(@Param("opportunityId") Long opportunityId);
 
+	BusinessOpportunity selectBusinessOpportunityByProcessInsId(@Param("processInsId") String processInsId);
+
 	List<Map<String, Object>> selectApprovalNodeCandidates(@Param("flowId") Long flowId);
 
 	String selectApprovalFlowNodeConfig(@Param("flowId") Long flowId);
@@ -71,6 +73,16 @@ public interface BusinessOpportunityMapper extends BaseMapper<BusinessOpportunit
 									@Param("loginName") String loginName,
 									@Param("currentNode") String currentNode,
 									@Param("currentNodeName") String currentNodeName);
+
+	int updateTenantEntryFlowState(@Param("opportunityId") Long opportunityId,
+								   @Param("processInsId") String processInsId,
+								   @Param("status") String status,
+								   @Param("currentNode") String currentNode,
+								   @Param("approvalPdfUrl") String approvalPdfUrl,
+								   @Param("approvalTime") java.util.Date approvalTime,
+								   @Param("submittedAuditFlag") String submittedAuditFlag,
+								   @Param("opportunityStatus") String opportunityStatus,
+								   @Param("updateBy") String updateBy);
 
 	int insertApprovalLog(@Param("opportunity") BusinessOpportunity opportunity,
 						  @Param("projectId") Long projectId,

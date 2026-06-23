@@ -10,6 +10,7 @@ import org.flowable.engine.runtime.ProcessInstanceQuery;
 import org.flowable.task.api.Task;
 import org.springblade.core.redis.cache.BladeRedis;
 import org.springblade.core.tool.utils.Func;
+import org.springblade.modules.business.service.ITenantEntryWorkflowService;
 import org.springblade.plugin.workflow.core.constant.WfProcessConstant;
 import org.springblade.plugin.workflow.core.user.WfUser;
 import org.springblade.plugin.workflow.core.user.WfUserCache;
@@ -45,6 +46,7 @@ public class WfNoticeServiceImpl implements IWfNoticeService {
     private final BladeRedis redis;
     private final IWfTaskService wfTaskService;
     private final IWfProcessLeaveService leaveService;
+    private final ITenantEntryWorkflowService tenantEntryWorkflowService;
     private final IWfLowcodeService wfLowcodeService;
 
     // 需要发送消息的操作
@@ -105,6 +107,9 @@ public class WfNoticeServiceImpl implements IWfNoticeService {
             // 以请假流程为示例
             if ("leave".equalsIgnoreCase(processDefinitionKey)) {
                 leaveService.businessWithNotice(notice);
+            }
+            if (tenantEntryWorkflowService.supports(notice)) {
+                tenantEntryWorkflowService.businessWithNotice(notice);
             }
         }
     }
@@ -224,14 +229,15 @@ public class WfNoticeServiceImpl implements IWfNoticeService {
                     break;
             }
         }
-        sendNotice((WfNoticeDTO) new WfNoticeDTO()
-                .setFromUser(fromUser)
-                .setToUser(toUsers)
-                .setStartUser(startUser)
-                .setType(type)
-                .setTask(task)
-                .setProcessInstance(processInstance)
-                .setVariables(variables));
+        WfNoticeDTO noticeDTO = new WfNoticeDTO();
+        noticeDTO.setFromUser(fromUser);
+        noticeDTO.setToUser(toUsers);
+        noticeDTO.setStartUser(startUser);
+        noticeDTO.setType(type);
+        noticeDTO.setTask(task);
+        noticeDTO.setProcessInstance(processInstance);
+        noticeDTO.setVariables(variables);
+        sendNotice(noticeDTO);
     }
 
 }

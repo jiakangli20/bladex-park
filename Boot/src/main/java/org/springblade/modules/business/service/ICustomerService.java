@@ -9,6 +9,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import org.springblade.core.tool.support.Kv;
 import org.springblade.modules.approval.pojo.entity.ApprovalProject;
 import org.springblade.modules.business.excel.CustomerExcel;
+import org.springblade.modules.business.pojo.entity.BusinessOpportunity;
 import org.springblade.modules.business.pojo.entity.Customer;
 
 import java.util.List;
@@ -47,6 +48,8 @@ public interface ICustomerService extends IService<Customer> {
 	boolean setCustomerTags(Long customerId, List<Long> tagIds);
 
 	Customer completeTenantEntryApproval(ApprovalProject project);
+
+	Customer completeTenantEntryApproval(BusinessOpportunity opportunity, String processInsId, String approvalPdfUrl);
 
 	boolean resetTenantEntryApproval(ApprovalProject project);
 

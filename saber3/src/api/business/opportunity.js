@@ -135,3 +135,11 @@ export const submitOpportunityAudit = (opportunityId, flowId) => {
     params: flowId ? { flowId } : {},
   });
 };
+
+export const exportTenantEntryApprovalForm = (opportunityId, processInsId) => {
+  return request({
+    url: `/blade-park/opportunity/tenant-entry/approval-form/${opportunityId}`,
+    method: 'get',
+    params: processInsId ? { processInsId } : {},
+  });
+};

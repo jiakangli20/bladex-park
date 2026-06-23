@@ -334,3 +334,16 @@ export const postList = (current, size, params) => {
     }
   })
 }
+
+/**
+ * 根据流程定义key发起入口
+ */
+export const getStartFormByKey = processDefKey => {
+  return request({
+    url: `${prefix}/getFormByProcessDefKey`,
+    method: 'get',
+    params: {
+      processDefKey,
+    },
+  })
+}

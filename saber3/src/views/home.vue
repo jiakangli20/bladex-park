@@ -245,8 +245,8 @@ export default {
           tone: 'red',
         },
         {
-          title: '项目审核',
-          desc: '入驻项目发起与审批记录',
+          title: '入驻审核',
+          desc: '入驻申请发起与审批记录',
           path: '/settlement/project-approval',
           icon: 'Tickets',
           tone: 'purple',

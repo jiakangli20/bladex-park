@@ -163,8 +163,16 @@ public class BusinessOpportunityController extends BladeController {
 		return R.data(businessOpportunityService.queryBackgroundInvestigationByName(enterpriseName));
 	}
 
-	@PostMapping("/submitAudit/{opportunityId}")
+	@GetMapping("/tenant-entry/approval-form/{opportunityId}")
 	@ApiOperationSupport(order = 18)
+	@Operation(summary = "企业入驻审批表", description = "导出入驻审批表HTML")
+	public R<Map<String, Object>> tenantEntryApprovalForm(@PathVariable Long opportunityId,
+														  @RequestParam(value = "processInsId", required = false) String processInsId) {
+		return R.data(businessOpportunityService.exportTenantEntryApprovalForm(opportunityId, processInsId));
+	}
+
+	@PostMapping("/submitAudit/{opportunityId}")
+	@ApiOperationSupport(order = 19)
 	@Operation(summary = "提交审核", description = "提交入驻审核")
 	public R<BusinessOpportunity> submitAudit(@PathVariable Long opportunityId,
 											  @RequestParam(value = "flowId", required = false) Long flowId) {

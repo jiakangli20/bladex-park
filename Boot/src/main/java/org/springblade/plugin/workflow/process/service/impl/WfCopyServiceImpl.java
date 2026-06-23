@@ -89,7 +89,8 @@ public class WfCopyServiceImpl extends BaseServiceImpl<WfCopyMapper, WfCopy> imp
                 copy.setTaskId(taskId);
                 copy.setProcessId(processInstanceId);
                 copy.setUserId(Long.parseLong(id));
-                copy.setTitle(processInstance.getProcessDefinitionName() + " - " + task.getName());
+                String processTitle = StringUtil.isBlank(processInstance.getName()) ? processInstance.getProcessDefinitionName() : processInstance.getName();
+                copy.setTitle(processTitle + " - " + task.getName());
                 copy.setInitiator(WfTaskUtil.getNickName());
                 if (StringUtil.isNotBlank(exFormKey)) {
                     copy.setFormKey(WfProcessConstant.EX_FORM_PREFIX + exFormKey);

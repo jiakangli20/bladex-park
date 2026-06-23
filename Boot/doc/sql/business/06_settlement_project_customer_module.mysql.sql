@@ -1,11 +1,11 @@
--- 入驻管理 - 项目审核 / 客户管理菜单闭环脚本
--- 业务顺序：商机管理 -> 项目审核 -> 客户管理 -> 客户标签
+-- 入驻管理 - 入驻审核 / 客户管理菜单闭环脚本
+-- 业务顺序：商机管理 -> 入驻审核 -> 客户管理 -> 客户标签
 
 INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `component`, `sort`, `category`, `action`, `is_open`, `remark`, `is_deleted`)
 VALUES
   (1890000000003000000, 0, 'settlement', '入驻管理', 'menu', '/settlement', 'iconfont iconicon_compile', '', 30, 1, 0, 1, '入驻管理', 0),
   (1890000000003000100, 1890000000003000000, 'business_opportunity', '商机管理', 'menu', '/settlement/opportunity', 'iconfont iconicon_doc', 'views/settlement/opportunity', 1, 1, 0, 1, '商机管理', 0),
-  (1890000000003000200, 1890000000003000000, 'settlement_project_approval', '项目审核', 'menu', '/settlement/project-approval', 'iconfont iconicon_compile', 'views/settlement/project-approval', 2, 1, 0, 1, '入驻项目审核', 0),
+  (1890000000003000200, 1890000000003000000, 'settlement_project_approval', '入驻审核', 'menu', '/settlement/project-approval', 'iconfont iconicon_compile', 'views/settlement/project-approval', 2, 1, 0, 1, '入驻审核', 0),
   (1890000000003000201, 1890000000003000200, 'settlement_project_approval_view', '查看', 'view', '/settlement/project-approval/view', 'file-text', '', 3, 2, 2, 1, NULL, 0),
   (1890000000003000202, 1890000000003000200, 'settlement_project_approval_form', '审批表', 'form', '/settlement/project-approval/form', 'file', '', 4, 2, 2, 1, NULL, 0),
   (1890000000003000203, 1890000000003000200, 'settlement_project_approval_approve', '通过', 'approve', '/api/blade-approval/project/approve', 'check', '', 5, 2, 2, 1, NULL, 0),
