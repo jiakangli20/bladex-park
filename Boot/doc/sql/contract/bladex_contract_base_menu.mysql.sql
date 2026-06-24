@@ -6,15 +6,8 @@ INSERT IGNORE INTO `blade_menu`
 (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `sort`, `category`, `action`, `is_open`, `component`, `remark`, `is_deleted`)
 VALUES
 (2007600000000000001, 0, 'contract', '合同管理', 'menu', '/contract', 'iconfont iconicon_doc', 20, 1, 0, 1, '', 'RuoYi 合同管理迁移第一阶段', 0),
-(2007600000000000002, 2007600000000000001, 'contract_expense', '费项配置', 'menu', '/contract/expense', 'iconfont icon-canshu', 1, 1, 0, 1, '', '费项配置', 0),
-(2007600000000000003, 2007600000000000001, 'contract_contract', '合同管理', 'menu', '/contract/contract', 'iconfont iconicon_doc', 2, 1, 0, 1, '', '合同主档', 0),
-(2007600000000000004, 2007600000000000001, 'contract_expiring', '合同到期提醒', 'menu', '/contract/contract', 'iconfont icon-time', 3, 1, 0, 1, '', '合同到期提醒入口复用合同页面', 0),
-
-(2007600000000000010, 2007600000000000002, 'contract_expense_add', '新增', 'add', '/contract/expense/add', 'plus', 1, 2, 1, 1, '', NULL, 0),
-(2007600000000000011, 2007600000000000002, 'contract_expense_edit', '修改', 'edit', '/contract/expense/edit', 'form', 2, 2, 2, 1, '', NULL, 0),
-(2007600000000000012, 2007600000000000002, 'contract_expense_delete', '删除', 'delete', '/api/blade-contract/expense/remove', 'delete', 3, 2, 3, 1, '', NULL, 0),
-(2007600000000000013, 2007600000000000002, 'contract_expense_view', '查看', 'view', '/contract/expense/view', 'file-text', 4, 2, 2, 1, '', NULL, 0),
-(2007600000000000014, 2007600000000000002, 'contract_expense_status', '启停', 'status', '/api/blade-contract/expense/status', 'retweet', 5, 2, 2, 1, '', NULL, 0),
+(2007600000000000003, 2007600000000000001, 'contract_contract', '合同管理', 'menu', '/contract/contract', 'iconfont iconicon_doc', 1, 1, 0, 1, '', '合同主档', 0),
+(2007600000000000004, 2007600000000000001, 'contract_expiring', '合同到期提醒', 'menu', '/contract/contract', 'iconfont icon-time', 2, 1, 0, 1, '', '合同到期提醒入口复用合同页面', 0),
 
 (2007600000000000020, 2007600000000000003, 'contract_contract_add', '新增', 'add', '/contract/contract/add', 'plus', 1, 2, 1, 1, '', NULL, 0),
 (2007600000000000021, 2007600000000000003, 'contract_contract_edit', '修改', 'edit', '/contract/contract/edit', 'form', 2, 2, 2, 1, '', NULL, 0),
@@ -29,14 +22,8 @@ INSERT IGNORE INTO `blade_role_menu` (`id`, `menu_id`, `role_id`)
 SELECT 2007600000000100000 + menu_offset.offset_value, menu_offset.menu_id, 1123598816738675201
 FROM (
   SELECT 1 AS offset_value, 2007600000000000001 AS menu_id UNION ALL
-  SELECT 2, 2007600000000000002 UNION ALL
   SELECT 3, 2007600000000000003 UNION ALL
   SELECT 4, 2007600000000000004 UNION ALL
-  SELECT 10, 2007600000000000010 UNION ALL
-  SELECT 11, 2007600000000000011 UNION ALL
-  SELECT 12, 2007600000000000012 UNION ALL
-  SELECT 13, 2007600000000000013 UNION ALL
-  SELECT 14, 2007600000000000014 UNION ALL
   SELECT 20, 2007600000000000020 UNION ALL
   SELECT 21, 2007600000000000021 UNION ALL
   SELECT 22, 2007600000000000022 UNION ALL

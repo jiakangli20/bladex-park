@@ -287,6 +287,25 @@
         <el-form-item label="核心卖点">
           <el-input v-model="roomForm.highlights" type="textarea" :rows="2" />
         </el-form-item>
+        <el-form-item label="房间照片">
+          <el-upload
+            v-model:file-list="roomImageFileList"
+            action="/api/blade-resource/oss/endpoint/put-file-attach"
+            :headers="uploadHeaders"
+            list-type="picture-card"
+            accept="image/*"
+            multiple
+            :limit="9"
+            :before-upload="beforeRoomImageUpload"
+            :on-success="handleRoomImageUploadSuccess"
+            :on-remove="handleRoomImageRemove"
+            :on-error="handleRoomImageUploadError"
+            :on-exceed="handleRoomImageExceed"
+          >
+            <el-button v-if="roomImageFileList.length < 9" :icon="Upload" text>上传</el-button>
+          </el-upload>
+          <div class="form-tip">支持 jpg、png 等图片格式，最多上传 9 张，单张不超过 10MB。</div>
+        </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="roomForm.memo" type="textarea" :rows="3" />
         </el-form-item>
@@ -307,6 +326,19 @@
         <div><span>月租金</span><strong>{{ formatNumber(roomDetail.rentPrice) }}元</strong></div>
         <div><span>同步状态</span><strong>{{ roomDetail.syncStatus === '1' ? '已同步' : '待同步' }}</strong></div>
         <div><span>核心卖点</span><strong>{{ roomDetail.highlights || '-' }}</strong></div>
+        <div v-if="roomDetailImageList.length" class="room-detail-images">
+          <span>房间照片</span>
+          <strong>
+            <el-image
+              v-for="image in roomDetailImageList"
+              :key="image"
+              :src="image"
+              :preview-src-list="roomDetailImageList"
+              fit="cover"
+              preview-teleported
+            />
+          </strong>
+        </div>
       </section>
       <template #footer>
         <el-button
@@ -355,7 +387,8 @@ import {
   submitRoom,
   syncRoomMini,
 } from '@/api/park/rent-control';
-import { Plus, Refresh, RefreshRight, Search } from '@element-plus/icons-vue';
+import { Plus, Refresh, RefreshRight, Search, Upload } from '@element-plus/icons-vue';
+import { getToken } from '@/utils/auth';
 
 export default {
   data() {
@@ -364,6 +397,7 @@ export default {
       Plus,
       Refresh,
       RefreshRight,
+      Upload,
       activeTab: 'overview',
       loading: false,
       selectedKey: '',
@@ -416,6 +450,11 @@ export default {
       roomFormVisible: false,
       roomSaving: false,
       roomForm: this.emptyRoomForm(),
+      roomImageFileList: [],
+      uploadHeaders: {
+        'Blade-Auth': `bearer ${getToken()}`,
+        'Blade-Requested-With': 'BladeHttpRequest',
+      },
       roomRules: {
         buildingId: [{ required: true, message: '请选择所属建筑', trigger: 'change' }],
         name: [{ required: true, message: '请输入房间名称', trigger: 'blur' }],
@@ -485,6 +524,9 @@ export default {
         { label: '联系电话', value: this.displayValue(this.currentPark.contactPhone) },
         { label: '状态', value: this.currentBuilding.status === '1' ? '停用' : '启用' },
       ];
+    },
+    roomDetailImageList() {
+      return this.parseRoomImageUrls(this.roomDetail.sceneImages);
     },
   },
   created() {
@@ -697,6 +739,7 @@ export default {
     },
     handleAddRoom() {
       this.roomForm = this.emptyRoomForm();
+      this.roomImageFileList = [];
       this.roomDetail = {};
       if (this.query.buildingId) {
         this.roomForm.buildingId = this.query.buildingId;
@@ -716,6 +759,7 @@ export default {
     },
     handleEditRoom(room) {
       this.roomForm = Object.assign(this.emptyRoomForm(), room);
+      this.roomImageFileList = this.parseRoomImageFiles(this.roomForm.sceneImages);
       this.roomDetail = Object.assign({}, room);
       this.roomDetailVisible = false;
       this.syncCurrentBuildingFloors();
@@ -797,6 +841,11 @@ export default {
         if (!valid) {
           return;
         }
+        if (this.hasUploadingRoomImages()) {
+          ElMessage.warning('房间照片正在上传，请稍后保存');
+          return;
+        }
+        this.syncRoomImageField();
         if (
           this.currentFloorRemainArea !== null &&
           this.roomForm.area !== undefined &&
@@ -816,6 +865,93 @@ export default {
             this.roomSaving = false;
           });
       });
+    },
+    beforeRoomImageUpload(file) {
+      const isImage = file.type && file.type.indexOf('image/') === 0;
+      const isValidSize = file.size / 1024 / 1024 <= 10;
+      if (!isImage) {
+        ElMessage.warning('请上传图片文件');
+      }
+      if (!isValidSize) {
+        ElMessage.warning('单张图片不能超过 10MB');
+      }
+      return isImage && isValidSize;
+    },
+    handleRoomImageUploadSuccess(response, uploadFile, uploadFiles) {
+      const success = response && (response.success || response.code === 200 || response.code === 0);
+      const data = response && response.data;
+      const url = typeof data === 'string' ? data : (data && (data.link || data.url)) || '';
+      if (!success || !url) {
+        this.roomImageFileList = (uploadFiles || []).filter(file => file.uid !== uploadFile.uid);
+        this.syncRoomImageField();
+        ElMessage.error((response && response.msg) || '上传失败');
+        return;
+      }
+      uploadFile.url = url;
+      uploadFile.name = (data && (data.originalName || data.name)) || uploadFile.name;
+      uploadFile.status = 'success';
+      this.roomImageFileList = this.normalizeRoomImageFiles(uploadFiles || []);
+      this.syncRoomImageField();
+      ElMessage.success('上传成功');
+    },
+    handleRoomImageRemove(file, uploadFiles) {
+      this.roomImageFileList = this.normalizeRoomImageFiles(uploadFiles || []);
+      this.syncRoomImageField();
+    },
+    handleRoomImageUploadError() {
+      ElMessage.error('上传失败');
+    },
+    handleRoomImageExceed() {
+      ElMessage.warning('房间照片最多上传 9 张');
+    },
+    hasUploadingRoomImages() {
+      return this.roomImageFileList.some(file => file.status && file.status !== 'success');
+    },
+    syncRoomImageField() {
+      this.roomForm.sceneImages = this.roomImageFileList.map(file => file.url).filter(Boolean).join(',');
+    },
+    normalizeRoomImageFiles(files) {
+      return (Array.isArray(files) ? files : [])
+        .map((file, index) => {
+          const responseData = file.response && file.response.data;
+          const url = file.url || (typeof responseData === 'string' ? responseData : responseData && (responseData.link || responseData.url)) || '';
+          return {
+            uid: file.uid || `${Date.now()}-${index}`,
+            name: file.name || (url ? url.split('/').pop() : `房间照片${index + 1}`),
+            url,
+            status: file.status || 'success',
+          };
+        })
+        .filter(file => file.url || file.status !== 'success');
+    },
+    parseRoomImageFiles(value) {
+      return this.parseRoomImageUrls(value).map((url, index) => ({
+        uid: `${Date.now()}-${index}`,
+        name: url.split('/').pop() || `房间照片${index + 1}`,
+        url,
+        status: 'success',
+      }));
+    },
+    parseRoomImageUrls(value) {
+      if (!value) {
+        return [];
+      }
+      if (Array.isArray(value)) {
+        return value.map(item => (typeof item === 'string' ? item : item.url || item.link || '')).filter(Boolean);
+      }
+      const text = String(value).trim();
+      if (!text) {
+        return [];
+      }
+      if (text.startsWith('[')) {
+        try {
+          const list = JSON.parse(text);
+          return this.parseRoomImageUrls(list);
+        } catch (error) {
+          return [];
+        }
+      }
+      return text.split(',').map(item => item.trim()).filter(Boolean);
     },
     loadWorkorders() {
       getWorkorders().then(res => {
@@ -1209,6 +1345,20 @@ export default {
 .room-detail strong {
   color: #303133;
   font-weight: 500;
+}
+
+.room-detail-images strong {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.room-detail-images :deep(.el-image) {
+  width: 78px;
+  height: 78px;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 @media (max-width: 1100px) {

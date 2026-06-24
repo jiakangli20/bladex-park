@@ -8,7 +8,7 @@
         </div>
       </section>
 
-      <section class="filter-card">
+      <section class="tenant-entry-search">
         <el-form :inline="true" :model="query">
           <el-form-item label="企业名称">
             <el-input v-model="query.enterpriseName" clearable placeholder="请输入企业名称" @keyup.enter="searchChange" />
@@ -23,44 +23,55 @@
             <el-button icon="el-icon-delete" @click="searchReset">清空</el-button>
           </el-form-item>
         </el-form>
-        <div class="toolbar-row">
+      </section>
+
+      <section class="tenant-entry-toolbar">
+        <div class="toolbar-left">
           <el-button type="primary" icon="el-icon-plus" @click="openStart">发起审核</el-button>
         </div>
       </section>
 
-      <section class="table-section">
-        <el-table v-loading="loading" :data="data" border row-key="rowKey" class="tenant-entry-table">
-          <el-table-column prop="enterpriseName" label="企业名称" min-width="220" align="center" show-overflow-tooltip />
-          <el-table-column prop="processDefinitionName" label="审批类型" width="150" align="center" />
-          <el-table-column prop="taskName" label="当前节点" width="140" align="center" show-overflow-tooltip />
-          <el-table-column prop="statusLabel" label="状态" width="110" align="center">
-            <template #default="{ row }">
-              <el-tag :type="statusTag(row)" effect="plain">{{ row.statusLabel }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="startUsername" label="发起人" width="120" align="center" show-overflow-tooltip />
-          <el-table-column prop="createTime" label="发起/到达时间" width="180" align="center" />
-          <el-table-column label="操作" width="190" fixed="right" align="center">
-            <template #default="{ row }">
+      <el-table v-loading="loading" :data="data" border row-key="rowKey" class="tenant-entry-table">
+        <el-table-column
+          prop="enterpriseName"
+          label="企业名称"
+          width="180"
+          align="center"
+          show-overflow-tooltip
+          class-name="enterprise-name-column"
+        />
+        <el-table-column prop="processDefinitionName" label="审批类型" min-width="180" align="center" show-overflow-tooltip />
+        <el-table-column prop="taskName" label="当前节点" min-width="170" align="center" show-overflow-tooltip />
+        <el-table-column prop="statusLabel" label="状态" width="110" align="center">
+          <template #default="{ row }">
+            <el-tag :type="statusTag(row)" effect="plain">{{ row.statusLabel }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="startUsername" label="发起人" width="120" align="center" show-overflow-tooltip />
+        <el-table-column prop="createTime" label="发起/到达时间" min-width="210" align="center" />
+        <el-table-column label="操作" width="220" fixed="right" align="center">
+          <template #default="{ row }">
+            <div class="operation-actions">
               <el-button v-if="row.scope === 'todo'" text type="primary" @click="openDetail(row)">处理</el-button>
               <el-button v-else text type="primary" @click="openDetail(row)">详情</el-button>
               <el-button v-if="canExportApprovalForm(row)" text type="primary" @click="openApprovalForm(row)">导出审核表</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-        <div class="pagination-row">
-          <el-pagination
-            background
-            :current-page="page.currentPage"
-            :page-sizes="[10, 20, 30, 50]"
-            :page-size="page.pageSize"
-            layout="total, sizes, prev, pager, next, jumper"
-            :total="page.total"
-            @size-change="sizeChange"
-            @current-change="currentChange"
-          />
-        </div>
-      </section>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="tenant-entry-pagination">
+        <el-pagination
+          background
+          :current-page="page.currentPage"
+          :page-sizes="[10, 20, 30, 50]"
+          :page-size="page.pageSize"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="page.total"
+          @size-change="sizeChange"
+          @current-change="currentChange"
+        />
+      </div>
 
       <el-dialog v-model="startVisible" title="发起入驻审核" width="620px" append-to-body>
         <el-form label-width="100px">
@@ -398,71 +409,94 @@ export default {
 .tenant-entry-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.summary-card,
-.filter-card,
-.table-section {
+.tenant-entry-search {
+  padding: 16px 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
   background: #fff;
-  border-radius: 10px;
 }
 
-.summary-card {
-  min-height: 86px;
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 8px;
+.tenant-entry-search :deep(.el-form-item) {
+  margin: 0 22px 12px 0;
 }
 
-.summary-card span {
-  color: #606266;
-  font-size: 14px;
+.tenant-entry-search :deep(.el-form-item__label) {
+  height: 36px;
+  line-height: 36px;
+  color: #303133;
 }
 
-.summary-card strong {
-  color: #1f2f3d;
-  font-size: 26px;
-  line-height: 1;
+.tenant-entry-search :deep(.el-input),
+.tenant-entry-search :deep(.el-select) {
+  width: 168px;
 }
 
-.filter-card {
-  padding: 18px 18px 14px;
+.tenant-entry-search :deep(.el-input__wrapper),
+.tenant-entry-search :deep(.el-select__wrapper) {
+  min-height: 36px;
 }
 
-.toolbar-row {
+.tenant-entry-search :deep(.el-button) {
+  height: 36px;
+  padding: 0 18px;
+}
+
+.tenant-entry-toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
-.table-section {
-  border-radius: 0;
-  overflow: hidden;
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .tenant-entry-table {
   width: 100%;
 }
 
-:deep(.tenant-entry-table.el-table),
-:deep(.tenant-entry-table .el-table__inner-wrapper),
-:deep(.tenant-entry-table .el-table__border-left-patch) {
-  border-radius: 0;
+.tenant-entry-table :deep(.el-table__cell) {
+  text-align: center;
 }
 
-.pagination-row {
-  padding: 14px 16px;
+.tenant-entry-table :deep(.cell) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+}
+
+.tenant-entry-table :deep(.enterprise-name-column .cell) {
+  overflow: hidden;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+.tenant-entry-table :deep(.operation-actions) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.tenant-entry-table :deep(.operation-actions .el-button) {
+  margin-left: 0;
+}
+
+.tenant-entry-pagination {
   display: flex;
   justify-content: flex-end;
+  padding: 12px 0 0;
 }
 
 .option-extra {
@@ -477,8 +511,8 @@ export default {
 }
 
 @media (max-width: 1200px) {
-  .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .tenant-entry-search :deep(.el-form-item) {
+    margin-right: 14px;
   }
 }
 </style>

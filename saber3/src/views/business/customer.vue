@@ -632,6 +632,16 @@
             </el-tab-pane>
 
             <el-tab-pane label="合同信息" name="contracts">
+              <div class="contract-tab-toolbar">
+                <el-button
+                  v-if="permission.contract_contract_add"
+                  type="primary"
+                  icon="el-icon-plus"
+                  @click="createContract"
+                >
+                  创建合同
+                </el-button>
+              </div>
               <el-table :data="contractList" border size="small" empty-text="暂无合同信息" class="detail-table">
                 <el-table-column prop="contractNo" label="合同编号" width="150" />
                 <el-table-column prop="contractName" label="合同名称" min-width="180" show-overflow-tooltip>
@@ -1428,6 +1438,19 @@ export default {
     handleDeleteAttachment() {
       this.$message.info('附件接口暂未接入');
     },
+    createContract() {
+      if (!this.current || !this.current.customerId) {
+        this.$message.warning('请先选择客户');
+        return;
+      }
+      this.$router.push({
+        path: '/contract/create-template',
+        query: {
+          mode: 'create',
+          customerId: this.current.customerId,
+        },
+      });
+    },
     goContract(row) {
       this.$router.push({
         path: '/contract/contract',
@@ -1885,6 +1908,12 @@ export default {
 
 .detail-table {
   width: 100%;
+}
+
+.contract-tab-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
 }
 
 .detail-table :deep(.el-table__body-wrapper),
