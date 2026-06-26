@@ -13,3 +13,11 @@ export const exportBlob = (url, params) => {
     responseType: 'blob',
   });
 };
+
+export const downloadBlob = url => {
+  return request({
+    url,
+    method: 'get',
+    responseType: 'blob',
+  });
+};

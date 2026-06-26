@@ -158,6 +158,10 @@ public class ContractArchiveVO implements Serializable {
 	private String remark;
 
 	@JsonSerialize(using = ToStringSerializer.class)
+	@Schema(description = "续签来源合同ID")
+	private Long parentContractId;
+
+	@JsonSerialize(using = ToStringSerializer.class)
 	@Schema(description = "园区ID")
 	private Long parkId;
 
@@ -172,14 +176,37 @@ public class ContractArchiveVO implements Serializable {
 	@Schema(description = "创建时间")
 	private Date createTime;
 
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
+	@Schema(description = "退租时间")
+	private Date terminationTime;
+
 	@JsonSerialize(using = ToStringSerializer.class)
 	@Schema(description = "审批项目ID")
 	private Long approvalProjectId;
+
+	@JsonSerialize(using = ToStringSerializer.class)
+	@Schema(description = "审批流程记录ID")
+	private Long approvalRecordId;
+
+	@Schema(description = "审批流程定义Key")
+	private String approvalProcessDefKey;
+
+	@Schema(description = "审批流程实例ID")
+	private String approvalProcessInsId;
 
 	@Schema(description = "审批状态")
 	private String approvalStatus;
 
 	@Schema(description = "审批当前节点")
 	private String approvalCurrentNodeName;
+
+	@Schema(description = "审批文件地址")
+	private String approvalFileUrl;
+
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@Schema(description = "审批完成时间")
+	private Date approvalTime;
 
 }

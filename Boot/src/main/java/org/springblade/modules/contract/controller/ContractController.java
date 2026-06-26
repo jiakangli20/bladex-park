@@ -125,10 +125,20 @@ public class ContractController extends BladeController {
 	}
 
 	/**
+	 * 上传盖章合同
+	 */
+	@PostMapping("/signed-file")
+	@ApiOperationSupport(order = 7)
+	@Operation(summary = "上传盖章合同", description = "传入contractId和contractFileUrl")
+	public R signedFile(@RequestParam Long contractId, @RequestBody Contract contract) {
+		return R.status(contractService.uploadSignedContract(contractId, contract));
+	}
+
+	/**
 	 * 合同统计
 	 */
 	@GetMapping("/stats")
-	@ApiOperationSupport(order = 7)
+	@ApiOperationSupport(order = 8)
 	@Operation(summary = "统计", description = "传入parkId")
 	public R<ContractStatsVO> stats(@RequestParam(required = false) Long parkId) {
 		return R.data(contractService.stats(parkId));
@@ -138,7 +148,7 @@ public class ContractController extends BladeController {
 	 * 到期提醒
 	 */
 	@GetMapping("/expiring")
-	@ApiOperationSupport(order = 8)
+	@ApiOperationSupport(order = 9)
 	@Operation(summary = "到期提醒", description = "传入contract")
 	public R<IPage<Contract>> expiring(Contract contract, Query query) {
 		IPage<Contract> pages = contractService.selectExpiringPage(Condition.getPage(query), contract);
@@ -149,17 +159,27 @@ public class ContractController extends BladeController {
 	 * 合同缴费计划
 	 */
 	@GetMapping("/payment")
-	@ApiOperationSupport(order = 9)
+	@ApiOperationSupport(order = 10)
 	@Operation(summary = "合同缴费计划", description = "传入contractId")
 	public R<List<ContractPayment>> payment(@RequestParam Long contractId) {
 		return R.data(contractService.selectPaymentByContractId(contractId));
 	}
 
 	/**
+	 * 获取或创建押金退还付款单
+	 */
+	@PostMapping("/payment/deposit-refund")
+	@ApiOperationSupport(order = 11)
+	@Operation(summary = "获取或创建押金退还付款单", description = "传入contractId")
+	public R<ContractPayment> depositRefundPayment(@RequestParam Long contractId) {
+		return R.data(contractService.ensureDepositRefundPayment(contractId));
+	}
+
+	/**
 	 * 缴费分页
 	 */
 	@GetMapping("/payment/list")
-	@ApiOperationSupport(order = 10)
+	@ApiOperationSupport(order = 12)
 	@Operation(summary = "缴费分页", description = "传入payment")
 	public R<IPage<ContractPayment>> paymentList(ContractPayment payment, Query query) {
 		IPage<ContractPayment> pages = contractService.selectPaymentPage(Condition.getPage(query), payment);
@@ -170,7 +190,7 @@ public class ContractController extends BladeController {
 	 * 确认缴费
 	 */
 	@PostMapping("/payment/confirm")
-	@ApiOperationSupport(order = 11)
+	@ApiOperationSupport(order = 13)
 	@Operation(summary = "确认缴费", description = "传入paymentId")
 	public R confirmPayment(@RequestParam Long paymentId, @RequestBody ContractPayment payment) {
 		return R.status(contractService.confirmPayment(paymentId, payment));
@@ -180,7 +200,7 @@ public class ContractController extends BladeController {
 	 * 催缴
 	 */
 	@PostMapping("/payment/remind")
-	@ApiOperationSupport(order = 12)
+	@ApiOperationSupport(order = 14)
 	@Operation(summary = "催缴", description = "传入paymentId")
 	public R remind(@RequestParam Long paymentId) {
 		return R.status(contractService.remindPayment(paymentId));
@@ -190,7 +210,7 @@ public class ContractController extends BladeController {
 	 * 合同日志
 	 */
 	@GetMapping("/log")
-	@ApiOperationSupport(order = 13)
+	@ApiOperationSupport(order = 15)
 	@Operation(summary = "合同日志", description = "传入contractId")
 	public R<List<ContractLog>> log(@RequestParam Long contractId) {
 		return R.data(contractService.selectLogByContractId(contractId));

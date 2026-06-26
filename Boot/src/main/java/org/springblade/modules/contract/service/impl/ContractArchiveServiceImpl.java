@@ -26,23 +26,27 @@
 package org.springblade.modules.contract.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springblade.core.log.exception.ServiceException;
+import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.support.Kv;
 import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.Func;
 import org.springblade.modules.contract.mapper.ContractArchiveMapper;
 import org.springblade.modules.contract.mapper.ContractLogMapper;
 import org.springblade.modules.contract.mapper.ContractPaymentMapper;
+import org.springblade.modules.contract.mapper.ContractSupplementAgreementMapper;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
+import org.springblade.modules.contract.pojo.entity.ContractSupplementAgreement;
 import org.springblade.modules.contract.pojo.vo.ContractArchiveDetailVO;
 import org.springblade.modules.contract.pojo.vo.ContractArchiveVO;
-import org.springblade.modules.contract.pojo.vo.ContractChangeArchiveVO;
 import org.springblade.modules.contract.pojo.vo.TerminationArchiveVO;
 import org.springblade.modules.contract.service.IContractArchiveService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
@@ -69,6 +73,7 @@ public class ContractArchiveServiceImpl implements IContractArchiveService {
 	private final ContractArchiveMapper contractArchiveMapper;
 	private final ContractPaymentMapper contractPaymentMapper;
 	private final ContractLogMapper contractLogMapper;
+	private final ContractSupplementAgreementMapper contractSupplementAgreementMapper;
 
 	@Override
 	public IPage<ContractArchiveVO> selectArchivePage(IPage<ContractArchiveVO> page, ContractArchiveVO contract) {
@@ -79,17 +84,17 @@ public class ContractArchiveServiceImpl implements IContractArchiveService {
 	public ContractArchiveDetailVO getArchiveDetail(Long contractId) {
 		ContractArchiveVO contract = requireContract(contractId);
 		List<ContractPayment> payments = safePayments(contractId);
-		List<ContractChangeArchiveVO> changes = safeChanges(contractId);
+		List<ContractSupplementAgreement> supplements = safeSupplements(contractId);
 		List<TerminationArchiveVO> terminations = safeTerminations(contractId);
 		List<ContractLog> logs = safeLogs(contractId);
 
 		ContractArchiveDetailVO detail = new ContractArchiveDetailVO();
 		detail.setContract(contract);
 		detail.setPayments(payments);
-		detail.setChanges(changes);
+		detail.setSupplements(supplements);
 		detail.setTerminations(terminations);
 		detail.setLogs(logs);
-		detail.setArchiveStep(calculateArchiveStep(payments, changes, terminations));
+		detail.setArchiveStep(calculateArchiveStep(payments, supplements, terminations));
 		return detail;
 	}
 
@@ -115,6 +120,68 @@ public class ContractArchiveServiceImpl implements IContractArchiveService {
 			.set("generatedAt", DateUtil.formatDateTime(new Date()));
 	}
 
+	@Override
+	public List<ContractSupplementAgreement> listSupplementAgreements(Long contractId) {
+		requireContract(contractId);
+		return listSupplements(contractId);
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public boolean saveSupplementAgreement(ContractSupplementAgreement agreement) {
+		if (agreement == null || agreement.getContractId() == null) {
+			throw new ServiceException("合同ID不能为空");
+		}
+		if (Func.isBlank(agreement.getAgreementName())) {
+			throw new ServiceException("协议名称不能为空");
+		}
+		if (Func.isBlank(agreement.getFileUrl())) {
+			throw new ServiceException("请上传补充协议文件");
+		}
+		requireContract(agreement.getContractId());
+		Date now = DateUtil.now();
+		String userName = currentUserName();
+		agreement.setDelFlag("0");
+		if (agreement.getAgreementId() == null) {
+			agreement.setCreateBy(userName);
+			agreement.setCreateTime(now);
+			boolean result = contractSupplementAgreementMapper.insert(agreement) > 0;
+			if (result) {
+				addLog(agreement.getContractId(), "supplement_agreement", "归档补充协议：" + agreement.getAgreementName());
+			}
+			return result;
+		}
+		agreement.setUpdateBy(userName);
+		agreement.setUpdateTime(now);
+		boolean result = contractSupplementAgreementMapper.updateById(agreement) > 0;
+		if (result) {
+			addLog(agreement.getContractId(), "supplement_agreement_update", "更新补充协议：" + agreement.getAgreementName());
+		}
+		return result;
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public boolean removeSupplementAgreement(Long agreementId) {
+		if (agreementId == null) {
+			throw new ServiceException("补充协议ID不能为空");
+		}
+		ContractSupplementAgreement agreement = contractSupplementAgreementMapper.selectById(agreementId);
+		if (agreement == null || !"0".equals(agreement.getDelFlag())) {
+			throw new ServiceException("补充协议不存在");
+		}
+		ContractSupplementAgreement update = new ContractSupplementAgreement();
+		update.setAgreementId(agreementId);
+		update.setDelFlag("1");
+		update.setUpdateBy(currentUserName());
+		update.setUpdateTime(DateUtil.now());
+		boolean result = contractSupplementAgreementMapper.updateById(update) > 0;
+		if (result) {
+			addLog(agreement.getContractId(), "supplement_agreement_delete", "删除补充协议：" + agreement.getAgreementName());
+		}
+		return result;
+	}
+
 	private ContractArchiveVO requireContract(Long contractId) {
 		if (contractId == null) {
 			throw new ServiceException("合同ID不能为空");
@@ -135,11 +202,11 @@ public class ContractArchiveServiceImpl implements IContractArchiveService {
 		}
 	}
 
-	private List<ContractChangeArchiveVO> safeChanges(Long contractId) {
+	private List<ContractSupplementAgreement> safeSupplements(Long contractId) {
 		try {
-			return contractArchiveMapper.selectChangesByContractId(contractId);
+			return listSupplements(contractId);
 		} catch (Exception exception) {
-			log.warn("合同归档变更记录加载失败，contractId={}", contractId, exception);
+			log.warn("合同归档补充协议加载失败，contractId={}", contractId, exception);
 			return new ArrayList<>();
 		}
 	}
@@ -162,17 +229,40 @@ public class ContractArchiveServiceImpl implements IContractArchiveService {
 		}
 	}
 
-	private Integer calculateArchiveStep(List<ContractPayment> payments, List<ContractChangeArchiveVO> changes, List<TerminationArchiveVO> terminations) {
+	private Integer calculateArchiveStep(List<ContractPayment> payments, List<ContractSupplementAgreement> supplements, List<TerminationArchiveVO> terminations) {
 		if (terminations.stream().anyMatch(termination -> TERMINATION_SETTLED.equals(termination.getStatus()))) {
 			return 3;
 		}
-		if (!changes.isEmpty() || !terminations.isEmpty()) {
+		if (!supplements.isEmpty() || !terminations.isEmpty()) {
 			return 2;
 		}
 		if (payments.stream().anyMatch(payment -> PAID_STATUS.equals(payment.getPayStatus()))) {
 			return 1;
 		}
 		return 0;
+	}
+
+	private List<ContractSupplementAgreement> listSupplements(Long contractId) {
+		return contractSupplementAgreementMapper.selectList(Wrappers.<ContractSupplementAgreement>lambdaQuery()
+			.eq(ContractSupplementAgreement::getContractId, contractId)
+			.eq(ContractSupplementAgreement::getDelFlag, "0")
+			.orderByDesc(ContractSupplementAgreement::getCreateTime)
+			.orderByDesc(ContractSupplementAgreement::getAgreementId));
+	}
+
+	private void addLog(Long contractId, String action, String actionDesc) {
+		ContractLog contractLog = new ContractLog();
+		contractLog.setContractId(contractId);
+		contractLog.setAction(action);
+		contractLog.setActionDesc(actionDesc);
+		contractLog.setOperator(currentUserName());
+		contractLog.setOperateTime(DateUtil.now());
+		contractLogMapper.insert(contractLog);
+	}
+
+	private String currentUserName() {
+		String userName = AuthUtil.getUserName();
+		return Func.isBlank(userName) ? "system" : userName;
 	}
 
 	private String buildApprovalHtml(ContractArchiveVO contract) {

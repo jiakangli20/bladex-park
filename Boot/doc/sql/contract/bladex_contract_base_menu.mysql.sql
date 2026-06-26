@@ -7,7 +7,7 @@ INSERT IGNORE INTO `blade_menu`
 VALUES
 (2007600000000000001, 0, 'contract', '合同管理', 'menu', '/contract', 'iconfont iconicon_doc', 20, 1, 0, 1, '', 'RuoYi 合同管理迁移第一阶段', 0),
 (2007600000000000003, 2007600000000000001, 'contract_contract', '合同管理', 'menu', '/contract/contract', 'iconfont iconicon_doc', 1, 1, 0, 1, '', '合同主档', 0),
-(2007600000000000004, 2007600000000000001, 'contract_expiring', '合同到期提醒', 'menu', '/contract/contract', 'iconfont icon-time', 2, 1, 0, 1, '', '合同到期提醒入口复用合同页面', 0),
+(2007600000000000004, 2007600000000000001, 'contract_expiring', '合同到期提醒', 'menu', '/contract/expiring', 'iconfont icon-time', 2, 1, 0, 1, 'views/contract/expiring', '合同到期提醒规则入口', 0),
 
 (2007600000000000020, 2007600000000000003, 'contract_contract_add', '新增', 'add', '/contract/contract/add', 'plus', 1, 2, 1, 1, '', NULL, 0),
 (2007600000000000021, 2007600000000000003, 'contract_contract_edit', '修改', 'edit', '/contract/contract/edit', 'form', 2, 2, 2, 1, '', NULL, 0),

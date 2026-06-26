@@ -4,6 +4,7 @@
 
 <script>
 import NfFormStart from '../../../components/nf-form-start/index.vue';
+import { Base64 } from 'js-base64';
 
 export default {
   components: {
@@ -13,7 +14,7 @@ export default {
     '$route.params.params': {
       handler(val) {
         if (val) {
-          const param = JSON.parse(window.atob(val));
+          const param = JSON.parse(Base64.decode(decodeURIComponent(val)));
           const { processId, processDefKey, params } = param;
           this.props = {
             processDefId: processId,

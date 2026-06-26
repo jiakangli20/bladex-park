@@ -29,6 +29,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
+import org.springblade.modules.contract.pojo.entity.ContractSupplementAgreement;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -55,6 +56,9 @@ public class ContractArchiveDetailVO implements Serializable {
 
 	@Schema(description = "变更审批")
 	private List<ContractChangeArchiveVO> changes = new ArrayList<>();
+
+	@Schema(description = "补充协议归档")
+	private List<ContractSupplementAgreement> supplements = new ArrayList<>();
 
 	@Schema(description = "退租记录")
 	private List<TerminationArchiveVO> terminations = new ArrayList<>();

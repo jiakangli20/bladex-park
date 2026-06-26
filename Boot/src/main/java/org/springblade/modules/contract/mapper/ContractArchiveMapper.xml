@@ -35,13 +35,20 @@
         <result column="payment_cycle" property="paymentCycle"/>
         <result column="contract_file_url" property="contractFileUrl"/>
         <result column="remark" property="remark"/>
+        <result column="parent_contract_id" property="parentContractId"/>
         <result column="park_id" property="parkId"/>
         <result column="park_name" property="parkName"/>
         <result column="create_by" property="createBy"/>
         <result column="create_time" property="createTime"/>
+        <result column="termination_time" property="terminationTime"/>
         <result column="approval_project_id" property="approvalProjectId"/>
+        <result column="approval_record_id" property="approvalRecordId"/>
+        <result column="approval_process_def_key" property="approvalProcessDefKey"/>
+        <result column="approval_process_ins_id" property="approvalProcessInsId"/>
         <result column="approval_status" property="approvalStatus"/>
         <result column="approval_current_node_name" property="approvalCurrentNodeName"/>
+        <result column="approval_file_url" property="approvalFileUrl"/>
+        <result column="approval_time" property="approvalTime"/>
     </resultMap>
 
     <resultMap id="changeResultMap" type="org.springblade.modules.contract.pojo.vo.ContractChangeArchiveVO">
@@ -119,27 +126,50 @@
                 WHEN '2' THEN '已到期'
                 WHEN '3' THEN '已续签'
                 WHEN '4' THEN '已终止'
+                WHEN '5' THEN '审批通过待盖章'
+                WHEN '6' THEN '退租审批中'
+                WHEN '7' THEN '退租待交接'
+                WHEN '8' THEN '房屋验收中'
                 ELSE '未知'
             END AS contract_status_name,
             c.payment_cycle,
             c.contract_file_url,
             c.remark,
+            c.parent_contract_id,
             c.park_id,
             p.name AS park_name,
             c.create_by,
             c.create_time,
-            ap.project_id AS approval_project_id,
-            ap.process_status AS approval_status,
-            ap.current_node_name AS approval_current_node_name
+            DATE(COALESCE(term_cwr.approval_time, term_cwr.create_time)) AS termination_time,
+            cwr.record_id AS approval_project_id,
+            cwr.record_id AS approval_record_id,
+            cwr.process_def_key AS approval_process_def_key,
+            cwr.process_ins_id AS approval_process_ins_id,
+            cwr.process_status AS approval_status,
+            cwr.current_node AS approval_current_node_name,
+            cwr.print_file_url AS approval_file_url,
+            cwr.approval_time AS approval_time
         FROM biz_contract c
         LEFT JOIN ics_park p ON p.id = c.park_id
         LEFT JOIN biz_customer cu ON cu.customer_id = c.customer_id
         LEFT JOIN ics_room r ON r.id = c.room_id
         LEFT JOIN ics_building b ON b.id = c.building_id
-        LEFT JOIN biz_approval_project ap
-          ON ap.business_id = c.contract_id
-         AND ap.business_type IN ('contract', 'contract_renewal')
-         AND ap.process_status != '9'
+        LEFT JOIN (
+            SELECT contract_id, MAX(record_id) AS record_id
+            FROM biz_contract_workflow_record
+            WHERE business_type = 'contract_termination'
+              AND del_flag = '0'
+            GROUP BY contract_id
+        ) latest_term_cwr ON latest_term_cwr.contract_id = c.contract_id
+        LEFT JOIN biz_contract_workflow_record term_cwr ON term_cwr.record_id = latest_term_cwr.record_id
+        LEFT JOIN (
+            SELECT contract_id, MAX(record_id) AS record_id
+            FROM biz_contract_workflow_record
+            WHERE business_type = 'contract_approval'
+              AND del_flag = '0'
+            GROUP BY contract_id
+        ) latest_cwr ON latest_cwr.contract_id = c.contract_id
+        LEFT JOIN biz_contract_workflow_record cwr ON cwr.record_id = latest_cwr.record_id
     </sql>
 
     <sql id="archiveWhere">
@@ -158,6 +188,9 @@
         </if>
         <if test="contract.contractStatus != null and contract.contractStatus != ''">
             AND c.contract_status = #{contract.contractStatus}
+        </if>
+        <if test="contract.approvalStatus != null and contract.approvalStatus != ''">
+            AND cwr.process_status = #{contract.approvalStatus}
         </if>
         <if test="contract.parkId != null">
             AND c.park_id = #{contract.parkId}

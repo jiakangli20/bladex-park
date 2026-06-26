@@ -1,6 +1,6 @@
 # BladeX 合同归档二级菜单迁移清单
 
-本文档用于细化「合同管理 -> 合同归档」二级菜单从 RuoYi 迁移到 BladeX 的执行清单。合同归档不是孤立 CRUD，它是合同主档、缴费记录、合同变更、退租记录、合同日志、审批表导出、合同打印的聚合查看页。迁移时必须先明确数据流和依赖边界，再逐项校验功能完整性。
+本文档用于细化「合同管理 -> 合同归档」二级菜单从 RuoYi 迁移到 BladeX 的执行清单。合同归档不是孤立 CRUD，它是合同主档、缴费记录、补充协议、退租记录、合同日志、审批表导出、合同打印的聚合查看页。迁移时必须先明确数据流和依赖边界，再逐项校验功能完整性。
 
 ## 1. 迁移边界
 
@@ -63,7 +63,7 @@
 | --- | --- | --- |
 | `biz_contract` | 合同档案主数据、列表数据 | 必迁 |
 | `biz_contract_payment` | 缴费记录标签页 | 依赖缴费模块 |
-| `biz_contract_change` | 变更审批标签页 | 依赖合同变更模块 |
+| `biz_contract_supplement_agreement` | 补充协议标签页 | 合同归档内上传维护 |
 | `biz_termination` | 退租记录标签页 | 依赖退租模块 |
 | `biz_contract_log` | 操作日志时间线 | 依赖合同基础模块 |
 | `biz_document_template` | 合同审批表导出模板 | 依赖模板模块 |
@@ -174,7 +174,7 @@ ContractArchiveDetailVO
 | ---: | --- |
 | 0 | 只有合同主档，尚无已缴费记录 |
 | 1 | 存在 `pay_status = 1` 的缴费记录 |
-| 2 | 存在合同变更或退租记录 |
+| 2 | 存在补充协议或退租记录 |
 | 3 | 存在已结算退租，或产品后续新增合同归档标记 |
 
 ### 3.3 缴费记录标签页
@@ -203,30 +203,28 @@ ContractArchiveDetailVO
 - [ ] 账期展示格式统一为 `periodStart ~ periodEnd`。
 - [ ] 缴费模块未迁完时，归档详情仍可打开并展示空缴费记录。
 
-### 3.4 变更审批标签页
+### 3.4 补充协议标签页
 
 功能范围：
 
-- 展示变更单号、变更类型、审批状态、审批意见。
-- 只展示当前合同的变更记录。
+- 展示协议名称、变更事项、文件名称、归档人、归档时间。
+- 支持上传、下载、删除当前合同的补充协议。
 
 当前数据流：
 
 ```text
 归档详情
-  -> listContractChange({ contractId, pageNum: 1, pageSize: 100 })
-  -> ContractChangeController.list
-  -> IContractChangeService.selectContractChangeList
-  -> biz_contract_change
+  -> ContractArchiveController.supplementList
+  -> IContractArchiveService.listSupplementAgreements
+  -> biz_contract_supplement_agreement
 ```
 
 迁移任务：
 
-- [ ] 变更记录按 `contract_id` 查询。
-- [ ] 字段映射：`change_no`、`change_type`、`approval_status`、`approval_opinion`。
-- [ ] 变更类型字典迁移：`rent` 租金变更、`endDate` 租期变更、`other` 其他变更。
-- [ ] 审批状态字典迁移：`0` 草稿、`1` 待审批、`2` 已通过、`3` 已驳回。
-- [ ] 变更模块未迁完时，归档详情返回空数组，不影响合同档案。
+- [ ] 补充协议按 `contract_id` 查询。
+- [ ] 字段映射：`agreement_name`、`change_item`、`file_name`、`file_url`、`create_by`、`create_time`。
+- [ ] 上传文件复用 OSS 上传接口，归档表只保存文件元数据。
+- [ ] 补充协议表未建时，归档详情返回空数组，不影响合同档案。
 
 ### 3.5 退租记录标签页
 

@@ -39,13 +39,19 @@ import org.springblade.core.tenant.annotation.NonDS;
 import org.springblade.core.tenant.annotation.TenantIgnore;
 import org.springblade.core.tool.api.R;
 import org.springblade.core.tool.support.Kv;
+import org.springblade.modules.contract.pojo.entity.ContractSupplementAgreement;
 import org.springblade.modules.contract.pojo.vo.ContractArchiveDetailVO;
 import org.springblade.modules.contract.pojo.vo.ContractArchiveVO;
 import org.springblade.modules.contract.service.IContractArchiveService;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * 合同归档控制器
@@ -106,6 +112,39 @@ public class ContractArchiveController extends BladeController {
 	@Operation(summary = "打印预览", description = "传入contractId")
 	public R<Kv> print(@Parameter(description = "合同ID") @PathVariable Long contractId) {
 		return R.data(contractArchiveService.printContract(contractId));
+	}
+
+	/**
+	 * 补充协议列表
+	 */
+	@GetMapping("/supplement/list/{contractId}")
+	@PreAuth(menu = "contract_archive_detail")
+	@ApiOperationSupport(order = 5)
+	@Operation(summary = "补充协议列表", description = "传入contractId")
+	public R<List<ContractSupplementAgreement>> supplementList(@Parameter(description = "合同ID") @PathVariable Long contractId) {
+		return R.data(contractArchiveService.listSupplementAgreements(contractId));
+	}
+
+	/**
+	 * 保存补充协议
+	 */
+	@PostMapping("/supplement/save")
+	@PreAuth(menu = "contract_archive_detail")
+	@ApiOperationSupport(order = 6)
+	@Operation(summary = "保存补充协议", description = "传入supplementAgreement")
+	public R<Boolean> saveSupplement(@RequestBody ContractSupplementAgreement supplementAgreement) {
+		return R.status(contractArchiveService.saveSupplementAgreement(supplementAgreement));
+	}
+
+	/**
+	 * 删除补充协议
+	 */
+	@DeleteMapping("/supplement/remove/{agreementId}")
+	@PreAuth(menu = "contract_archive_detail")
+	@ApiOperationSupport(order = 7)
+	@Operation(summary = "删除补充协议", description = "传入agreementId")
+	public R<Boolean> removeSupplement(@Parameter(description = "补充协议ID") @PathVariable Long agreementId) {
+		return R.status(contractArchiveService.removeSupplementAgreement(agreementId));
 	}
 
 }

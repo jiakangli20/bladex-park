@@ -57,6 +57,23 @@ public class PaymentController extends BladeController {
 		return R.data(paymentService.selectPaymentPage(Condition.getPage(query), payment, "overdue"));
 	}
 
+	@GetMapping("/overdue-reminder-page")
+	@PreAuth(menu = "finance_overdue_reminder")
+	@ApiOperationSupport(order = 21)
+	@Operation(summary = "逾期提醒分页", description = "动态逾期提醒口径")
+	public R<IPage<ContractPayment>> overdueReminderPage(ContractPayment payment, Query query) {
+		return R.data(paymentService.selectPaymentPage(Condition.getPage(query), payment, "overdue"));
+	}
+
+	@GetMapping("/overdue-reminder-summary")
+	@PreAuth(menu = "finance_overdue_reminder")
+	@ApiOperationSupport(order = 22)
+	@Operation(summary = "逾期提醒汇总", description = "动态逾期提醒汇总")
+	public R<PaymentSummaryVO> overdueReminderSummary(ContractPayment payment) {
+		payment.setPayStatus("2");
+		return R.data(paymentService.summary(payment));
+	}
+
 	@GetMapping("/detail")
 	@PreAuth(menu = "finance_payment_view")
 	@ApiOperationSupport(order = 3)
@@ -94,6 +111,14 @@ public class PaymentController extends BladeController {
 	@ApiOperationSupport(order = 7)
 	@Operation(summary = "催缴", description = "传入paymentId")
 	public R remind(@Parameter(description = "账单ID") @RequestParam Long paymentId) {
+		return R.status(paymentService.remind(paymentId));
+	}
+
+	@PostMapping("/overdue-reminder-remind")
+	@PreAuth(menu = "finance_overdue_reminder")
+	@ApiOperationSupport(order = 23)
+	@Operation(summary = "逾期提醒催缴", description = "传入paymentId")
+	public R overdueReminderRemind(@Parameter(description = "账单ID") @RequestParam Long paymentId) {
 		return R.status(paymentService.remind(paymentId));
 	}
 

@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.contract.mapper.ContractWorkflowRecordMapper">
+
+    <resultMap id="recordResultMap" type="org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord">
+        <id column="record_id" property="recordId"/>
+        <result column="park_id" property="parkId"/>
+        <result column="business_type" property="businessType"/>
+        <result column="business_key" property="businessKey"/>
+        <result column="process_def_key" property="processDefKey"/>
+        <result column="process_def_id" property="processDefId"/>
+        <result column="process_name" property="processName"/>
+        <result column="process_ins_id" property="processInsId"/>
+        <result column="process_status" property="processStatus"/>
+        <result column="current_node_key" property="currentNodeKey"/>
+        <result column="current_node" property="currentNode"/>
+        <result column="contract_id" property="contractId"/>
+        <result column="payment_id" property="paymentId"/>
+        <result column="customer_id" property="customerId"/>
+        <result column="room_ids" property="roomIds"/>
+        <result column="template_key" property="templateKey"/>
+        <result column="form_key" property="formKey"/>
+        <result column="form_data_json" property="formDataJson"/>
+        <result column="attachment_json" property="attachmentJson"/>
+        <result column="print_file_url" property="printFileUrl"/>
+        <result column="approval_time" property="approvalTime"/>
+        <result column="remark" property="remark"/>
+        <result column="del_flag" property="delFlag"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="contract_no" property="contractNo"/>
+        <result column="contract_name" property="contractName"/>
+        <result column="customer_name" property="customerName"/>
+        <result column="room_name" property="roomName"/>
+        <result column="building_name" property="buildingName"/>
+        <result column="contract_status" property="contractStatus"/>
+        <result column="contract_status_name" property="contractStatusName"/>
+        <result column="monthly_rent" property="monthlyRent"/>
+        <result column="deposit" property="deposit"/>
+        <result column="start_date" property="startDate"/>
+        <result column="end_date" property="endDate"/>
+    </resultMap>
+
+    <sql id="selectRecordColumns">
+        SELECT record_id,
+               park_id,
+               business_type,
+               business_key,
+               process_def_key,
+               process_def_id,
+               process_name,
+               process_ins_id,
+               process_status,
+               current_node_key,
+               current_node,
+               contract_id,
+               payment_id,
+               customer_id,
+               room_ids,
+               template_key,
+               form_key,
+               form_data_json,
+               attachment_json,
+               print_file_url,
+               approval_time,
+               remark,
+               del_flag,
+               create_by,
+               create_time,
+               update_by,
+               update_time
+        FROM biz_contract_workflow_record
+    </sql>
+
+    <sql id="selectRecordVo">
+        SELECT cwr.record_id,
+               cwr.park_id,
+               cwr.business_type,
+               cwr.business_key,
+               cwr.process_def_key,
+               cwr.process_def_id,
+               cwr.process_name,
+               cwr.process_ins_id,
+               cwr.process_status,
+               cwr.current_node_key,
+               cwr.current_node,
+               cwr.contract_id,
+               cwr.payment_id,
+               cwr.customer_id,
+               cwr.room_ids,
+               cwr.template_key,
+               cwr.form_key,
+               cwr.form_data_json,
+               cwr.attachment_json,
+               cwr.print_file_url,
+               cwr.approval_time,
+               cwr.remark,
+               cwr.del_flag,
+               cwr.create_by,
+               cwr.create_time,
+               cwr.update_by,
+               cwr.update_time,
+               c.contract_no,
+               c.contract_name,
+               c.customer_name,
+               c.room_name,
+               c.building_name,
+               c.contract_status,
+               CASE c.contract_status
+                   WHEN '0' THEN '待签约'
+                   WHEN '1' THEN '履约中'
+                   WHEN '2' THEN '已到期'
+                   WHEN '3' THEN '已续签'
+                   WHEN '4' THEN '已终止'
+                   WHEN '5' THEN '审批通过待盖章'
+                   WHEN '6' THEN '退租审批中'
+                   WHEN '7' THEN '退租待交接'
+                   WHEN '8' THEN '房屋验收中'
+                   ELSE '未知'
+               END AS contract_status_name,
+               c.monthly_rent,
+               c.deposit,
+               c.start_date,
+               c.end_date
+        FROM biz_contract_workflow_record cwr
+        LEFT JOIN biz_contract c ON c.contract_id = cwr.contract_id
+    </sql>
+
+    <sql id="recordWhere">
+        cwr.del_flag = '0'
+        <if test="record != null">
+            <if test="record.recordId != null">
+                AND cwr.record_id = #{record.recordId}
+            </if>
+            <if test="record.parkId != null">
+                AND cwr.park_id = #{record.parkId}
+            </if>
+            <if test="record.businessType != null and record.businessType != ''">
+                AND cwr.business_type = #{record.businessType}
+            </if>
+            <if test="record.processDefKey != null and record.processDefKey != ''">
+                AND cwr.process_def_key = #{record.processDefKey}
+            </if>
+            <if test="record.processInsId != null and record.processInsId != ''">
+                AND cwr.process_ins_id = #{record.processInsId}
+            </if>
+            <if test="record.processStatus != null and record.processStatus != ''">
+                AND cwr.process_status = #{record.processStatus}
+            </if>
+            <if test="record.contractId != null">
+                AND cwr.contract_id = #{record.contractId}
+            </if>
+            <if test="record.paymentId != null">
+                AND cwr.payment_id = #{record.paymentId}
+            </if>
+            <if test="record.customerId != null">
+                AND cwr.customer_id = #{record.customerId}
+            </if>
+            <if test="record.contractNo != null and record.contractNo != ''">
+                AND c.contract_no LIKE CONCAT('%', #{record.contractNo}, '%')
+            </if>
+            <if test="record.contractName != null and record.contractName != ''">
+                AND c.contract_name LIKE CONCAT('%', #{record.contractName}, '%')
+            </if>
+            <if test="record.customerName != null and record.customerName != ''">
+                AND c.customer_name LIKE CONCAT('%', #{record.customerName}, '%')
+            </if>
+            <if test="record.contractStatus != null and record.contractStatus != ''">
+                AND c.contract_status = #{record.contractStatus}
+            </if>
+        </if>
+    </sql>
+
+    <select id="selectRecordPage" resultMap="recordResultMap">
+        <include refid="selectRecordVo"/>
+        <where>
+            <include refid="recordWhere"/>
+        </where>
+        ORDER BY cwr.create_time DESC, cwr.record_id DESC
+    </select>
+
+    <select id="selectByContractId" resultMap="recordResultMap">
+        <include refid="selectRecordColumns"/>
+        WHERE contract_id = #{contractId}
+          AND del_flag = '0'
+        ORDER BY create_time DESC, record_id DESC
+    </select>
+
+    <select id="selectByProcessInsId" resultMap="recordResultMap">
+        <include refid="selectRecordColumns"/>
+        WHERE process_ins_id = #{processInsId}
+          AND del_flag = '0'
+        ORDER BY record_id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectLatest" resultMap="recordResultMap">
+        <include refid="selectRecordColumns"/>
+        WHERE contract_id = #{contractId}
+          AND business_type = #{businessType}
+          AND del_flag = '0'
+        ORDER BY create_time DESC, record_id DESC
+        LIMIT 1
+    </select>
+
+</mapper>

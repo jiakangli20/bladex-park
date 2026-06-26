@@ -4,6 +4,10 @@ export const statusDic = [
   { label: '已到期', value: '2' },
   { label: '已续签', value: '3' },
   { label: '已终止', value: '4' },
+  { label: '审批通过待盖章', value: '5' },
+  { label: '退租审批中', value: '6' },
+  { label: '退租待交接', value: '7' },
+  { label: '房屋验收中', value: '8' },
 ];
 
 export const paymentCycleDic = [

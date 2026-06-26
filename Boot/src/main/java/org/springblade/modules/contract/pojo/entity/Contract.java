@@ -209,11 +209,34 @@ public class Contract implements Serializable {
 	private Long approvalProjectId;
 
 	@TableField(exist = false)
+	@JsonSerialize(using = ToStringSerializer.class)
+	@Schema(description = "审批流程记录ID")
+	private Long approvalRecordId;
+
+	@TableField(exist = false)
+	@Schema(description = "审批流程定义Key")
+	private String approvalProcessDefKey;
+
+	@TableField(exist = false)
+	@Schema(description = "审批流程实例ID")
+	private String approvalProcessInsId;
+
+	@TableField(exist = false)
 	@Schema(description = "审批状态")
 	private String approvalStatus;
 
 	@TableField(exist = false)
 	@Schema(description = "审批当前节点")
 	private String approvalCurrentNodeName;
+
+	@TableField(exist = false)
+	@Schema(description = "审批文件地址")
+	private String approvalFileUrl;
+
+	@TableField(exist = false)
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@Schema(description = "审批完成时间")
+	private Date approvalTime;
 
 }

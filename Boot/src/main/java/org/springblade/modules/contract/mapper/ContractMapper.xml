@@ -46,6 +46,14 @@
         <result column="update_time" property="updateTime"/>
         <result column="park_name" property="parkName"/>
         <result column="contract_status_name" property="contractStatusName"/>
+        <result column="approval_project_id" property="approvalProjectId"/>
+        <result column="approval_record_id" property="approvalRecordId"/>
+        <result column="approval_process_def_key" property="approvalProcessDefKey"/>
+        <result column="approval_process_ins_id" property="approvalProcessInsId"/>
+        <result column="approval_status" property="approvalStatus"/>
+        <result column="approval_current_node_name" property="approvalCurrentNodeName"/>
+        <result column="approval_file_url" property="approvalFileUrl"/>
+        <result column="approval_time" property="approvalTime"/>
     </resultMap>
 
     <resultMap id="contractStatsResultMap" type="org.springblade.modules.contract.pojo.vo.ContractStatsVO">
@@ -98,6 +106,10 @@
                 WHEN '2' THEN '已到期'
                 WHEN '3' THEN '已续签'
                 WHEN '4' THEN '已终止'
+                WHEN '5' THEN '审批通过待盖章'
+                WHEN '6' THEN '退租审批中'
+                WHEN '7' THEN '退租待交接'
+                WHEN '8' THEN '房屋验收中'
                 ELSE '未知'
             END AS contract_status_name,
             c.payment_cycle,
@@ -110,9 +122,25 @@
             c.create_time,
             c.update_by,
             c.update_time,
-            p.name AS park_name
+            p.name AS park_name,
+            cwr.record_id AS approval_project_id,
+            cwr.record_id AS approval_record_id,
+            cwr.process_def_key AS approval_process_def_key,
+            cwr.process_ins_id AS approval_process_ins_id,
+            cwr.process_status AS approval_status,
+            cwr.current_node AS approval_current_node_name,
+            cwr.print_file_url AS approval_file_url,
+            cwr.approval_time AS approval_time
         FROM biz_contract c
         LEFT JOIN ics_park p ON p.id = c.park_id
+        LEFT JOIN (
+            SELECT contract_id, MAX(record_id) AS record_id
+            FROM biz_contract_workflow_record
+            WHERE business_type = 'contract_approval'
+              AND del_flag = '0'
+            GROUP BY contract_id
+        ) latest_cwr ON latest_cwr.contract_id = c.contract_id
+        LEFT JOIN biz_contract_workflow_record cwr ON cwr.record_id = latest_cwr.record_id
     </sql>
 
     <sql id="contractWhere">

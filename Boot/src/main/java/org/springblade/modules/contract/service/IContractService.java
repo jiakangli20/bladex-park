@@ -92,6 +92,15 @@ public interface IContractService extends IService<Contract> {
 	boolean terminateContract(Long contractId);
 
 	/**
+	 * 上传盖章合同并生效
+	 *
+	 * @param contractId 合同ID
+	 * @param contract   合同附件
+	 * @return 是否成功
+	 */
+	boolean uploadSignedContract(Long contractId, Contract contract);
+
+	/**
 	 * 到期提醒分页
 	 *
 	 * @param page     分页
@@ -124,6 +133,14 @@ public interface IContractService extends IService<Contract> {
 	 * @return 缴费计划
 	 */
 	List<ContractPayment> selectPaymentByContractId(Long contractId);
+
+	/**
+	 * 获取或创建押金退还付款单
+	 *
+	 * @param contractId 合同ID
+	 * @return 押金退还付款单
+	 */
+	ContractPayment ensureDepositRefundPayment(Long contractId);
 
 	/**
 	 * 确认缴费

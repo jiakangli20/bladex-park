@@ -12,8 +12,20 @@
           </header>
 
           <el-table :data="templates" border class="template-table" row-key="key">
-            <el-table-column prop="name" label="模板名称" min-width="220" align="center" show-overflow-tooltip />
-            <el-table-column prop="projectName" label="应用项目" width="180" align="center" show-overflow-tooltip />
+            <el-table-column
+              prop="name"
+              label="模板名称"
+              min-width="220"
+              align="center"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              prop="projectName"
+              label="应用项目"
+              width="180"
+              align="center"
+              show-overflow-tooltip
+            />
             <el-table-column prop="updateTime" label="更新时间" width="180" align="center" />
             <el-table-column prop="expireTime" label="截止时间" width="120" align="center" />
             <el-table-column label="状态" width="110" align="center">
@@ -46,14 +58,18 @@
             <span>2</span>
             <strong>费用条款</strong>
           </div>
-          <div class="selected-template">
-            当前模板：{{ currentTemplate.name }}
-          </div>
+          <div class="selected-template">当前模板：{{ currentTemplate.name }}</div>
         </section>
 
         <div class="create-workspace">
           <main class="form-column">
-            <el-form ref="contractForm" :model="form" :rules="rules" label-width="132px" class="contract-form">
+            <el-form
+              ref="contractForm"
+              :model="form"
+              :rules="rules"
+              label-width="132px"
+              class="contract-form"
+            >
               <section class="form-section">
                 <header class="section-title">
                   <span>基本信息</span>
@@ -79,7 +95,11 @@
                   </el-col>
                   <el-col :span="12">
                     <el-form-item label="合同名称" prop="contractName">
-                      <el-input v-model="form.contractName" maxlength="120" placeholder="请输入合同名称" />
+                      <el-input
+                        v-model="form.contractName"
+                        maxlength="120"
+                        placeholder="请输入合同名称"
+                      />
                     </el-form-item>
                   </el-col>
                 </el-row>
@@ -154,7 +174,12 @@
                         style="width: 100%"
                         @change="handleParkChange"
                       >
-                        <el-option v-for="park in parkOptions" :key="park.id" :label="park.name" :value="park.id" />
+                        <el-option
+                          v-for="park in parkOptions"
+                          :key="park.id"
+                          :label="park.name"
+                          :value="park.id"
+                        />
                       </el-select>
                     </el-form-item>
                   </el-col>
@@ -200,14 +225,24 @@
                   </el-col>
                   <el-col :span="12">
                     <el-form-item label="租赁面积(㎡)" prop="rentArea">
-                      <el-input-number v-model="form.rentArea" :min="0" :precision="2" style="width: 100%" />
+                      <el-input-number
+                        v-model="form.rentArea"
+                        :min="0"
+                        :precision="2"
+                        style="width: 100%"
+                      />
                     </el-form-item>
                   </el-col>
                 </el-row>
                 <el-row :gutter="18">
                   <el-col :span="8">
                     <el-form-item label="租赁期限(月)" prop="leaseMonths">
-                      <el-input-number v-model="form.leaseMonths" :min="1" :precision="0" style="width: 100%" />
+                      <el-input-number
+                        v-model="form.leaseMonths"
+                        :min="1"
+                        :precision="0"
+                        style="width: 100%"
+                      />
                     </el-form-item>
                   </el-col>
                   <el-col :span="8">
@@ -347,13 +382,27 @@
                   </el-col>
                   <el-col :span="8">
                     <el-form-item label="月租金" prop="monthlyRent">
-                      <el-input-number v-model="form.monthlyRent" :min="0" :precision="2" style="width: 100%" />
+                      <el-input-number
+                        v-model="form.monthlyRent"
+                        :min="0"
+                        :precision="2"
+                        style="width: 100%"
+                      />
                     </el-form-item>
                   </el-col>
                   <el-col :span="8">
                     <el-form-item label="缴费周期" prop="paymentCycle">
-                      <el-select v-model="form.paymentCycle" placeholder="请选择缴费周期" style="width: 100%">
-                        <el-option v-for="item in paymentCycleOptions" :key="item.value" :label="item.label" :value="item.value" />
+                      <el-select
+                        v-model="form.paymentCycle"
+                        placeholder="请选择缴费周期"
+                        style="width: 100%"
+                      >
+                        <el-option
+                          v-for="item in paymentCycleOptions"
+                          :key="item.value"
+                          :label="item.label"
+                          :value="item.value"
+                        />
                       </el-select>
                     </el-form-item>
                   </el-col>
@@ -362,17 +411,32 @@
                 <el-row :gutter="18">
                   <el-col :span="8">
                     <el-form-item label="物业费单价">
-                      <el-input-number v-model="form.propertyFee" :min="0" :precision="2" style="width: 100%" />
+                      <el-input-number
+                        v-model="form.propertyFee"
+                        :min="0"
+                        :precision="2"
+                        style="width: 100%"
+                      />
                     </el-form-item>
                   </el-col>
                   <el-col :span="8">
                     <el-form-item label="押金">
-                      <el-input-number v-model="form.deposit" :min="0" :precision="2" style="width: 100%" />
+                      <el-input-number
+                        v-model="form.deposit"
+                        :min="0"
+                        :precision="2"
+                        style="width: 100%"
+                      />
                     </el-form-item>
                   </el-col>
                   <el-col :span="8">
                     <el-form-item label="履约保证月数">
-                      <el-input-number v-model="form.depositMonths" :min="0" :precision="0" style="width: 100%" />
+                      <el-input-number
+                        v-model="form.depositMonths"
+                        :min="0"
+                        :precision="0"
+                        style="width: 100%"
+                      />
                     </el-form-item>
                   </el-col>
                 </el-row>
@@ -380,12 +444,22 @@
                 <el-row :gutter="18">
                   <el-col :span="8">
                     <el-form-item label="滞纳金比例">
-                      <el-input-number v-model="form.lateFeeRatio" :min="0" :precision="4" style="width: 100%" />
+                      <el-input-number
+                        v-model="form.lateFeeRatio"
+                        :min="0"
+                        :precision="4"
+                        style="width: 100%"
+                      />
                     </el-form-item>
                   </el-col>
                   <el-col :span="8">
                     <el-form-item label="滞纳金单位">
-                      <el-select v-model="form.lateFeeUnit" clearable placeholder="请选择单位" style="width: 100%">
+                      <el-select
+                        v-model="form.lateFeeUnit"
+                        clearable
+                        placeholder="请选择单位"
+                        style="width: 100%"
+                      >
                         <el-option label="%/天" value="percent_day" />
                         <el-option label="元/天" value="yuan_day" />
                       </el-select>
@@ -393,7 +467,12 @@
                   </el-col>
                   <el-col :span="8">
                     <el-form-item label="滞纳金上限">
-                      <el-input-number v-model="form.lateFeeCap" :min="0" :precision="2" style="width: 100%" />
+                      <el-input-number
+                        v-model="form.lateFeeCap"
+                        :min="0"
+                        :precision="2"
+                        style="width: 100%"
+                      />
                     </el-form-item>
                   </el-col>
                 </el-row>
@@ -412,7 +491,12 @@
                   </el-col>
                   <el-col :span="8">
                     <el-form-item label="续签提醒天数">
-                      <el-input-number v-model="form.renewalRemindDays" :min="0" :precision="0" style="width: 100%" />
+                      <el-input-number
+                        v-model="form.renewalRemindDays"
+                        :min="0"
+                        :precision="0"
+                        style="width: 100%"
+                      />
                     </el-form-item>
                   </el-col>
                   <el-col :span="8">
@@ -426,7 +510,12 @@
                 </el-row>
 
                 <el-form-item label="备注">
-                  <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="请输入备注" />
+                  <el-input
+                    v-model="form.remark"
+                    type="textarea"
+                    :rows="3"
+                    placeholder="请输入备注"
+                  />
                 </el-form-item>
               </section>
             </el-form>
@@ -436,7 +525,9 @@
             <section class="room-panel">
               <header class="room-panel__header">
                 <span>请选择房源</span>
-                <el-button text type="primary" :loading="roomLoading" @click="loadRooms">刷新</el-button>
+                <el-button text type="primary" :loading="roomLoading" @click="loadRooms"
+                  >刷新</el-button
+                >
               </header>
               <div class="room-filters">
                 <el-select
@@ -446,7 +537,12 @@
                   placeholder="园区"
                   @change="handleRoomParkChange"
                 >
-                  <el-option v-for="park in parkOptions" :key="park.id" :label="park.name" :value="park.id" />
+                  <el-option
+                    v-for="park in parkOptions"
+                    :key="park.id"
+                    :label="park.name"
+                    :value="park.id"
+                  />
                 </el-select>
                 <el-select
                   v-model="roomQuery.buildingId"
@@ -462,7 +558,13 @@
                     :value="building.id"
                   />
                 </el-select>
-                <el-input v-model="roomQuery.keyword" clearable placeholder="搜索房号" @keyup.enter="loadRooms" @clear="loadRooms">
+                <el-input
+                  v-model="roomQuery.keyword"
+                  clearable
+                  placeholder="搜索房号"
+                  @keyup.enter="loadRooms"
+                  @clear="loadRooms"
+                >
                   <template #append>
                     <el-button icon="el-icon-search" @click="loadRooms" />
                   </template>
@@ -484,9 +586,15 @@
                       <span>{{ room.buildingName || '-' }} · {{ room.floor || '-' }}F</span>
                     </div>
                     <em>{{ formatNumber(room.area) }}㎡</em>
-                    <small>{{ roomStatusText(room.status) }} · {{ formatNumber(room.rentPrice) }}元/月</small>
+                    <small
+                      >{{ roomStatusText(room.status) }} ·
+                      {{ formatNumber(room.rentPrice) }}元/月</small
+                    >
                   </button>
-                  <el-empty v-if="!roomLoading && roomOptions.length === 0" description="暂无房源" />
+                  <el-empty
+                    v-if="!roomLoading && roomOptions.length === 0"
+                    description="暂无房源"
+                  />
                 </div>
               </el-scrollbar>
             </section>
@@ -494,14 +602,19 @@
             <section class="room-summary">
               <span>已选房源</span>
               <strong>{{ form.roomName || '暂未选择' }}</strong>
-              <p>{{ form.buildingName || '-' }} / {{ formatNumber(form.rentArea) }}㎡ / {{ formatNumber(form.monthlyRent) }}元/月</p>
+              <p>
+                {{ form.buildingName || '-' }} / {{ formatNumber(form.rentArea) }}㎡ /
+                {{ formatNumber(form.monthlyRent) }}元/月
+              </p>
             </section>
           </aside>
         </div>
 
         <section class="create-footer">
           <el-button @click="backToList">返回模板列表</el-button>
-          <el-button type="primary" :loading="submitLoading" @click="submitContract">保存合同</el-button>
+          <el-button type="primary" :loading="submitLoading" @click="submitContract"
+            >保存合同</el-button
+          >
         </section>
       </template>
     </div>
@@ -510,7 +623,7 @@
 
 <script>
 import { ArrowLeft } from '@element-plus/icons-vue';
-import { add } from '@/api/contract/contract';
+import { add, getDetail as getContractDetail, renew } from '@/api/contract/contract';
 import { getCustomerDetail, getCustomerList } from '@/api/business/customer';
 import { getList as getParkList } from '@/api/park/park';
 import { getSimpleList as getBuildingList } from '@/api/park/building';
@@ -528,6 +641,9 @@ export default {
       pageMode: 'list',
       activeAnchor: 'basic',
       currentTemplateKey: 'fixed-rent',
+      renewalMode: false,
+      renewalSourceContractId: '',
+      renewalSourceContract: {},
       submitLoading: false,
       customerLoading: false,
       roomLoading: false,
@@ -627,15 +743,21 @@ export default {
     },
     filteredBuildings() {
       if (!this.form.parkId) return this.buildingOptions;
-      return this.buildingOptions.filter(item => String(item.parkId || '') === String(this.form.parkId));
+      return this.buildingOptions.filter(
+        item => String(item.parkId || '') === String(this.form.parkId)
+      );
     },
     roomFilterBuildings() {
       if (!this.roomQuery.parkId) return this.buildingOptions;
-      return this.buildingOptions.filter(item => String(item.parkId || '') === String(this.roomQuery.parkId));
+      return this.buildingOptions.filter(
+        item => String(item.parkId || '') === String(this.roomQuery.parkId)
+      );
     },
     customerContactText() {
       if (!this.selectedCustomer.customerId) return '';
-      const parts = [this.selectedCustomer.contactName, this.selectedCustomer.contactPhone].filter(Boolean);
+      const parts = [this.selectedCustomer.contactName, this.selectedCustomer.contactPhone].filter(
+        Boolean
+      );
       return parts.join(' / ');
     },
   },
@@ -648,6 +770,7 @@ export default {
       return {
         contractNo: '',
         contractName: '',
+        parentContractId: '',
         customerId: '',
         customerName: '',
         parkId: '',
@@ -711,13 +834,102 @@ export default {
         this.currentTemplateKey = templateKey;
         this.pageMode = 'create';
       }
-      if (query.mode === 'create' || query.customerId) {
+      if (query.mode === 'create' || query.mode === 'renew' || query.customerId) {
         this.pageMode = 'create';
+      }
+      if (query.mode === 'renew' && query.sourceContractId) {
+        this.renewalMode = true;
+        this.renewalSourceContractId = query.sourceContractId;
+        this.loadRenewalSource(query.sourceContractId, query);
       }
       if (query.customerId) {
         this.form.customerId = query.customerId;
         this.prefillCustomer(query.customerId);
       }
+    },
+    loadRenewalSource(contractId, query = {}) {
+      getContractDetail(contractId).then(res => {
+        const contract = res.data.data || {};
+        this.renewalSourceContract = contract;
+        this.applyRenewalSource(contract, query);
+      });
+    },
+    applyRenewalSource(contract = {}, query = {}) {
+      if (!contract.contractId) return;
+      const renewStartDate =
+        query.renewStartDate || this.nextDate(contract.endDate) || this.today();
+      const renewEndDate =
+        query.renewEndDate ||
+        this.defaultRenewEndDate(renewStartDate, contract.startDate, contract.endDate);
+      const templateKey = this.resolveTemplateKey(contract);
+      this.currentTemplateKey = templateKey;
+      Object.assign(this.form, {
+        contractNo: '',
+        contractName: `${contract.customerName || contract.contractName || '合同'} 续租合同`,
+        parentContractId: contract.contractId,
+        customerId: contract.customerId || '',
+        customerName: contract.customerName || '',
+        parkId: contract.parkId || '',
+        parkName: contract.parkName || '',
+        buildingId: contract.buildingId || '',
+        buildingName: contract.buildingName || '',
+        roomId: contract.roomId || '',
+        roomName: contract.roomName || '',
+        rentArea: this.toNumber(contract.rentArea, undefined),
+        leaseMonths: undefined,
+        startDate: renewStartDate,
+        endDate: renewEndDate,
+        signDate: this.today(),
+        deliveryDate: renewStartDate,
+        rentFreeStartDate: '',
+        rentFreeEndDate: '',
+        rentPrice: this.toNumber(contract.rentPrice, undefined),
+        monthlyRent: this.toNumber(contract.monthlyRent, undefined),
+        propertyFee: this.toNumber(contract.propertyFee, undefined),
+        deposit: this.toNumber(contract.deposit, undefined),
+        depositMonths: 1,
+        paymentCycle: contract.paymentCycle || 'monthly',
+        lateFeeRatio: this.toNumber(contract.lateFeeRatio, 0.0005),
+        lateFeeUnit: contract.lateFeeUnit || 'percent_day',
+        lateFeeCap: this.toNumber(contract.lateFeeCap, undefined),
+        renewalRemindDays: contract.renewalRemindDays || 30,
+        contractStatus: '0',
+        remark: `续租来源合同：${contract.contractNo || contract.contractId}`,
+      });
+      if (this.isFloatingTemplate) {
+        Object.assign(this.form, {
+          stage1StartDate: renewStartDate,
+          stage1EndDate: renewEndDate,
+          stage1RentPrice: this.form.rentPrice,
+          stage1MonthlyRent: this.form.monthlyRent,
+          stage2StartDate: '',
+          stage2EndDate: '',
+          stage2RentPrice: undefined,
+          stage2MonthlyRent: undefined,
+        });
+      }
+      this.roomQuery.parkId = contract.parkId || '';
+      this.roomQuery.buildingId = contract.buildingId || '';
+      this.selectedCustomer = {
+        customerId: contract.customerId,
+        enterpriseName: contract.customerName,
+      };
+      if (
+        contract.customerId &&
+        !this.customerOptions.some(item => String(item.customerId) === String(contract.customerId))
+      ) {
+        this.customerOptions.unshift(this.selectedCustomer);
+      }
+      this.ensureSelectedRoomOption();
+      this.syncLeaseMonths();
+      if (contract.customerId) {
+        this.prefillCustomer(contract.customerId);
+      }
+      this.$nextTick(() => {
+        if (this.$refs.contractForm) {
+          this.$refs.contractForm.clearValidate();
+        }
+      });
     },
     handleTemplateChange(templateKey) {
       if (!templateKey) return;
@@ -771,7 +983,9 @@ export default {
           const records = data.records || [];
           if (
             this.selectedCustomer.customerId &&
-            !records.some(item => String(item.customerId) === String(this.selectedCustomer.customerId))
+            !records.some(
+              item => String(item.customerId) === String(this.selectedCustomer.customerId)
+            )
           ) {
             records.unshift(this.selectedCustomer);
           }
@@ -784,7 +998,12 @@ export default {
     prefillCustomer(customerId) {
       getCustomerDetail(customerId).then(res => {
         const customer = res.data.data || {};
-        if (customer.customerId && !this.customerOptions.some(item => String(item.customerId) === String(customer.customerId))) {
+        if (
+          customer.customerId &&
+          !this.customerOptions.some(
+            item => String(item.customerId) === String(customer.customerId)
+          )
+        ) {
           this.customerOptions.unshift(customer);
         }
         this.applyCustomer(customer);
@@ -796,7 +1015,9 @@ export default {
         this.form.customerName = '';
         return;
       }
-      const cached = this.customerOptions.find(item => String(item.customerId) === String(customerId));
+      const cached = this.customerOptions.find(
+        item => String(item.customerId) === String(customerId)
+      );
       if (cached) {
         this.applyCustomer(cached);
       }
@@ -864,6 +1085,7 @@ export default {
         .then(res => {
           const data = res.data.data || {};
           this.roomOptions = Array.isArray(data) ? data : data.records || [];
+          this.ensureSelectedRoomOption();
         })
         .finally(() => {
           this.roomLoading = false;
@@ -891,16 +1113,22 @@ export default {
     },
     applyRoom(room) {
       if (!room || !room.id) return;
-      const building = this.buildingOptions.find(item => String(item.id) === String(room.buildingId));
+      const building = this.buildingOptions.find(
+        item => String(item.id) === String(room.buildingId)
+      );
       const parkId = room.parkId || (building && building.parkId) || this.form.parkId;
       this.form.roomId = room.id;
       this.form.roomName = room.name || '';
       this.form.buildingId = room.buildingId || this.form.buildingId;
-      this.form.buildingName = room.buildingName || (building && building.name) || this.form.buildingName;
+      this.form.buildingName =
+        room.buildingName || (building && building.name) || this.form.buildingName;
       this.form.parkId = parkId;
       this.form.parkName = room.parkName || this.parkName(parkId);
       this.form.rentArea = this.toNumber(room.area, this.form.rentArea);
-      this.form.rentPrice = this.toNumber(room.unitRentPrice, this.toNumber(room.rentUnitPrice, this.form.rentPrice));
+      this.form.rentPrice = this.toNumber(
+        room.unitRentPrice,
+        this.toNumber(room.rentUnitPrice, this.form.rentPrice)
+      );
       if (!this.form.rentPrice && room.rentPrice && this.form.rentArea) {
         this.form.monthlyRent = this.toNumber(room.rentPrice, this.form.monthlyRent);
       } else if (room.rentPrice && !this.form.monthlyRent) {
@@ -920,7 +1148,9 @@ export default {
         this.form.monthlyRent = Number((area * price).toFixed(2));
       }
       if (!this.form.deposit && this.form.monthlyRent && this.form.depositMonths) {
-        this.form.deposit = Number((Number(this.form.monthlyRent) * Number(this.form.depositMonths)).toFixed(2));
+        this.form.deposit = Number(
+          (Number(this.form.monthlyRent) * Number(this.form.depositMonths)).toFixed(2)
+        );
       }
     },
     calculateStageRent(stage) {
@@ -935,7 +1165,8 @@ export default {
       const start = new Date(this.form.startDate);
       const end = new Date(this.form.endDate);
       if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return;
-      const months = (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth();
+      const months =
+        (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth();
       this.form.leaseMonths = Math.max(months, 1);
       if (this.isFloatingTemplate) {
         this.form.stage1StartDate = this.form.stage1StartDate || this.form.startDate;
@@ -946,9 +1177,13 @@ export default {
       this.$refs.contractForm.validate(valid => {
         if (!valid) return;
         this.submitLoading = true;
-        add(this.buildPayload())
+        const request =
+          this.renewalMode && this.renewalSourceContractId
+            ? renew(this.renewalSourceContractId, this.buildPayload())
+            : add(this.buildPayload());
+        request
           .then(() => {
-            this.$message.success('合同创建成功');
+            this.$message.success(this.renewalMode ? '续租合同创建成功' : '合同创建成功');
             this.$router.push({ path: '/contract/contract' });
           })
           .finally(() => {
@@ -960,6 +1195,7 @@ export default {
       const payload = {
         contractNo: this.form.contractNo,
         contractName: this.form.contractName,
+        parentContractId: this.form.parentContractId,
         customerId: this.form.customerId,
         customerName: this.form.customerName,
         parkId: this.form.parkId,
@@ -1007,10 +1243,38 @@ export default {
       }
       return lines.join('\n');
     },
+    resolveTemplateKey(contract) {
+      if (contract && contract.rentIncreaseNode) {
+        return 'floating-rent';
+      }
+      return this.currentTemplateKey || 'fixed-rent';
+    },
+    ensureSelectedRoomOption() {
+      if (!this.form.roomId) return;
+      const exists = this.roomOptions.some(item => String(item.id) === String(this.form.roomId));
+      if (exists) return;
+      this.roomOptions.unshift({
+        id: this.form.roomId,
+        name: this.form.roomName,
+        buildingId: this.form.buildingId,
+        buildingName: this.form.buildingName,
+        parkId: this.form.parkId,
+        parkName: this.form.parkName,
+        area: this.form.rentArea,
+        unitRentPrice: this.form.rentPrice,
+        rentPrice: this.form.monthlyRent,
+        propertyFee: this.form.propertyFee,
+        status: '1',
+      });
+    },
     rentIncreaseSummary() {
       return [
-        `${this.form.stage1StartDate || '-'} 至 ${this.form.stage1EndDate || '-'}：${this.form.stage1RentPrice || '-'}元/㎡/月，${this.form.stage1MonthlyRent || '-'}元/月`,
-        `${this.form.stage2StartDate || '-'} 至 ${this.form.stage2EndDate || '-'}：${this.form.stage2RentPrice || '-'}元/㎡/月，${this.form.stage2MonthlyRent || '-'}元/月`,
+        `${this.form.stage1StartDate || '-'} 至 ${this.form.stage1EndDate || '-'}：${
+          this.form.stage1RentPrice || '-'
+        }元/㎡/月，${this.form.stage1MonthlyRent || '-'}元/月`,
+        `${this.form.stage2StartDate || '-'} 至 ${this.form.stage2EndDate || '-'}：${
+          this.form.stage2RentPrice || '-'
+        }元/㎡/月，${this.form.stage2MonthlyRent || '-'}元/月`,
       ].join('；');
     },
     parkName(parkId) {
@@ -1018,7 +1282,9 @@ export default {
       return park ? park.name : '';
     },
     roomLabel(room) {
-      const parts = [room.buildingName, room.floor ? `${room.floor}F` : '', room.name].filter(Boolean);
+      const parts = [room.buildingName, room.floor ? `${room.floor}F` : '', room.name].filter(
+        Boolean
+      );
       return parts.join(' / ');
     },
     roomStatusText(status) {
@@ -1038,6 +1304,40 @@ export default {
       }
       const number = Number(value);
       return Number.isNaN(number) ? fallback : number;
+    },
+    parseDate(value) {
+      if (!value) return null;
+      const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
+      return Number.isNaN(date.getTime()) ? null : date;
+    },
+    nextDate(value) {
+      const date = this.parseDate(value);
+      if (!date) return '';
+      date.setDate(date.getDate() + 1);
+      return this.formatDate(date);
+    },
+    defaultRenewEndDate(startDate, oldStartDate, oldEndDate) {
+      const start = this.parseDate(startDate);
+      if (!start) return '';
+      const oldStart = this.parseDate(oldStartDate);
+      const oldEnd = this.parseDate(oldEndDate);
+      const months =
+        oldStart && oldEnd
+          ? Math.max(
+              (oldEnd.getFullYear() - oldStart.getFullYear()) * 12 +
+                oldEnd.getMonth() -
+                oldStart.getMonth(),
+              1
+            )
+          : 12;
+      const end = new Date(start);
+      end.setMonth(end.getMonth() + months);
+      return this.formatDate(end);
+    },
+    formatDate(date) {
+      const month = `${date.getMonth() + 1}`.padStart(2, '0');
+      const day = `${date.getDate()}`.padStart(2, '0');
+      return `${date.getFullYear()}-${month}-${day}`;
     },
     today() {
       const date = new Date();

@@ -24,6 +24,23 @@
         <result column="update_time" property="updateTime"/>
         <result column="contract_no" property="contractNo"/>
         <result column="customer_name" property="customerName"/>
+        <result column="contract_name" property="contractName"/>
+        <result column="room_name" property="roomName"/>
+        <result column="building_name" property="buildingName"/>
+        <result column="contract_status" property="contractStatus"/>
+        <result column="contract_status_name" property="contractStatusName"/>
+        <result column="payment_process_ins_id" property="paymentProcessInsId"/>
+        <result column="payment_approval_status" property="paymentApprovalStatus"/>
+        <result column="payment_current_node_name" property="paymentCurrentNodeName"/>
+        <result column="payment_file_url" property="paymentFileUrl"/>
+        <result column="overdue_process_ins_id" property="overdueProcessInsId"/>
+        <result column="overdue_approval_status" property="overdueApprovalStatus"/>
+        <result column="overdue_current_node_name" property="overdueCurrentNodeName"/>
+        <result column="overdue_file_url" property="overdueFileUrl"/>
+        <result column="termination_process_ins_id" property="terminationProcessInsId"/>
+        <result column="termination_approval_status" property="terminationApprovalStatus"/>
+        <result column="termination_current_node_name" property="terminationCurrentNodeName"/>
+        <result column="termination_file_url" property="terminationFileUrl"/>
     </resultMap>
 
     <sql id="selectPaymentVo">
@@ -48,9 +65,61 @@
             p.update_by,
             p.update_time,
             c.contract_no,
-            c.customer_name
+            c.customer_name,
+            c.contract_name,
+            c.room_name,
+            c.building_name,
+            c.contract_status,
+            CASE c.contract_status
+                WHEN '0' THEN '待签约'
+                WHEN '1' THEN '履约中'
+                WHEN '2' THEN '已到期'
+                WHEN '3' THEN '已续签'
+                WHEN '4' THEN '已终止'
+                WHEN '5' THEN '审批通过待盖章'
+                WHEN '6' THEN '退租审批中'
+                WHEN '7' THEN '退租待交接'
+                WHEN '8' THEN '房屋验收中'
+                ELSE '未知'
+            END AS contract_status_name,
+            pay_cwr.process_ins_id AS payment_process_ins_id,
+            pay_cwr.process_status AS payment_approval_status,
+            pay_cwr.current_node AS payment_current_node_name,
+            pay_cwr.print_file_url AS payment_file_url,
+            law_cwr.process_ins_id AS overdue_process_ins_id,
+            law_cwr.process_status AS overdue_approval_status,
+            law_cwr.current_node AS overdue_current_node_name,
+            law_cwr.print_file_url AS overdue_file_url,
+            term_cwr.process_ins_id AS termination_process_ins_id,
+            term_cwr.process_status AS termination_approval_status,
+            term_cwr.current_node AS termination_current_node_name,
+            term_cwr.print_file_url AS termination_file_url
         FROM biz_contract_payment p
         LEFT JOIN biz_contract c ON c.contract_id = p.contract_id
+        LEFT JOIN (
+            SELECT payment_id, MAX(record_id) AS record_id
+            FROM biz_contract_workflow_record
+            WHERE business_type = 'contract_payment'
+              AND del_flag = '0'
+            GROUP BY payment_id
+        ) latest_pay_cwr ON latest_pay_cwr.payment_id = p.payment_id
+        LEFT JOIN biz_contract_workflow_record pay_cwr ON pay_cwr.record_id = latest_pay_cwr.record_id
+        LEFT JOIN (
+            SELECT payment_id, MAX(record_id) AS record_id
+            FROM biz_contract_workflow_record
+            WHERE business_type = 'contract_overdue_legal'
+              AND del_flag = '0'
+            GROUP BY payment_id
+        ) latest_law_cwr ON latest_law_cwr.payment_id = p.payment_id
+        LEFT JOIN biz_contract_workflow_record law_cwr ON law_cwr.record_id = latest_law_cwr.record_id
+        LEFT JOIN (
+            SELECT contract_id, MAX(record_id) AS record_id
+            FROM biz_contract_workflow_record
+            WHERE business_type = 'contract_termination'
+              AND del_flag = '0'
+            GROUP BY contract_id
+        ) latest_term_cwr ON latest_term_cwr.contract_id = p.contract_id
+        LEFT JOIN biz_contract_workflow_record term_cwr ON term_cwr.record_id = latest_term_cwr.record_id
     </sql>
 
     <select id="selectPaymentPage" resultMap="paymentResultMap">

@@ -1,6 +1,6 @@
 # BladeX 合同管理模块迁移清单
 
-本文档用于把 RuoYi 项目中的合同管理域迁移到 BladeX。范围以当前页面截图中的合同管理菜单为边界：费项配置、合同管理、退租管理、合同到期提醒、合同变更审批、合同创建模板、合同打印模板、合同归档。目标是先制定可执行清单，再按子模块并行迁移，最后用校验清单逐项验收。
+本文档用于把 RuoYi 项目中的合同管理域迁移到 BladeX。范围以当前页面截图中的合同管理菜单为边界：费项配置、合同管理、退租管理、合同到期提醒、合同创建模板、合同打印模板、合同归档。合同变更不再设置独立二级菜单，改为在合同归档内上传补充协议。目标是先制定可执行清单，再按子模块并行迁移，最后用校验清单逐项验收。
 
 ## 1. 当前状态
 
@@ -24,7 +24,7 @@
 | `biz_contract_payment` | 2 | 合同缴费计划/账单 |
 | `biz_contract_log` | 34 | 合同操作日志 |
 | `biz_termination` | 3 | 退租管理 |
-| `biz_contract_change` | 0 | 合同变更审批 |
+| `biz_contract_supplement_agreement` | 0 | 合同补充协议归档 |
 | `biz_document_template` | 2 | 合同/退租导出模板配置 |
 | `biz_approval_flow` | 4 | 审批流程配置 |
 | `biz_approval_node` | 3 | 审批节点 |
@@ -322,7 +322,7 @@ ORDER BY t.termination_id;
 - `biz_approval_project`
 - `biz_document_template`
 
-### 3.5 合同变更审批
+### 3.5 合同补充协议归档
 
 源代码：
 

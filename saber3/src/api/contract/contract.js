@@ -69,6 +69,17 @@ export const terminate = contractId => {
   });
 };
 
+export const uploadSignedContract = (contractId, row) => {
+  return request({
+    url: '/blade-contract/contract/signed-file',
+    method: 'post',
+    params: {
+      contractId,
+    },
+    data: row,
+  });
+};
+
 export const getStats = params => {
   return request({
     url: '/blade-contract/contract/stats',
@@ -93,6 +104,16 @@ export const getPayment = contractId => {
   return request({
     url: '/blade-contract/contract/payment',
     method: 'get',
+    params: {
+      contractId,
+    },
+  });
+};
+
+export const ensureDepositRefundPayment = contractId => {
+  return request({
+    url: '/blade-contract/contract/payment/deposit-refund',
+    method: 'post',
     params: {
       contractId,
     },
@@ -138,6 +159,36 @@ export const getLogs = contractId => {
     method: 'get',
     params: {
       contractId,
+    },
+  });
+};
+
+export const getWorkflowRecords = contractId => {
+  return request({
+    url: `/blade-contract/workflow-record/contract/${contractId}`,
+    method: 'get',
+  });
+};
+
+export const getLatestWorkflowRecord = (contractId, businessType) => {
+  return request({
+    url: '/blade-contract/workflow-record/latest',
+    method: 'get',
+    params: {
+      contractId,
+      businessType,
+    },
+  });
+};
+
+export const getWorkflowRecordPage = (current, size, params) => {
+  return request({
+    url: '/blade-contract/workflow-record/page',
+    method: 'get',
+    params: {
+      ...params,
+      current,
+      size,
     },
   });
 };

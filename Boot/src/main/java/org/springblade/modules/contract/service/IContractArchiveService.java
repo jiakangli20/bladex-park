@@ -27,8 +27,11 @@ package org.springblade.modules.contract.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.springblade.core.tool.support.Kv;
+import org.springblade.modules.contract.pojo.entity.ContractSupplementAgreement;
 import org.springblade.modules.contract.pojo.vo.ContractArchiveDetailVO;
 import org.springblade.modules.contract.pojo.vo.ContractArchiveVO;
+
+import java.util.List;
 
 /**
  * 合同归档服务类
@@ -69,5 +72,29 @@ public interface IContractArchiveService {
 	 * @return 打印数据
 	 */
 	Kv printContract(Long contractId);
+
+	/**
+	 * 合同补充协议列表
+	 *
+	 * @param contractId 合同ID
+	 * @return 补充协议列表
+	 */
+	List<ContractSupplementAgreement> listSupplementAgreements(Long contractId);
+
+	/**
+	 * 保存合同补充协议
+	 *
+	 * @param agreement 补充协议
+	 * @return 是否成功
+	 */
+	boolean saveSupplementAgreement(ContractSupplementAgreement agreement);
+
+	/**
+	 * 删除合同补充协议
+	 *
+	 * @param agreementId 补充协议ID
+	 * @return 是否成功
+	 */
+	boolean removeSupplementAgreement(Long agreementId);
 
 }

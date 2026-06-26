@@ -43,76 +43,94 @@ import java.math.BigDecimal;
 import java.util.Date;
 
 /**
- * 合同缴费计划实体类
+ * 合同管理流程记录实体类
  *
  * @author Chill
  */
 @Data
-@TableName("biz_contract_payment")
-@Schema(description = "合同缴费计划")
-public class ContractPayment implements Serializable {
+@TableName("biz_contract_workflow_record")
+@Schema(description = "合同管理流程记录")
+public class ContractWorkflowRecord implements Serializable {
 
 	@Serial
 	private static final long serialVersionUID = 1L;
 
 	@JsonSerialize(using = ToStringSerializer.class)
-	@TableId(value = "payment_id", type = IdType.AUTO)
-	@Schema(description = "缴费ID")
-	private Long paymentId;
+	@TableId(value = "record_id", type = IdType.AUTO)
+	@Schema(description = "记录ID")
+	private Long recordId;
+
+	@JsonSerialize(using = ToStringSerializer.class)
+	@Schema(description = "园区ID")
+	private Long parkId;
+
+	@Schema(description = "业务类型")
+	private String businessType;
+
+	@Schema(description = "业务主键")
+	private String businessKey;
+
+	@Schema(description = "流程定义Key")
+	private String processDefKey;
+
+	@Schema(description = "流程定义ID")
+	private String processDefId;
+
+	@Schema(description = "流程名称")
+	private String processName;
+
+	@Schema(description = "流程实例ID")
+	private String processInsId;
+
+	@Schema(description = "流程状态")
+	private String processStatus;
+
+	@Schema(description = "当前节点Key")
+	private String currentNodeKey;
+
+	@Schema(description = "当前节点名称")
+	private String currentNode;
 
 	@JsonSerialize(using = ToStringSerializer.class)
 	@Schema(description = "合同ID")
 	private Long contractId;
 
-	@Schema(description = "费用类型")
-	private String feeType;
+	@JsonSerialize(using = ToStringSerializer.class)
+	@Schema(description = "付款计划ID")
+	private Long paymentId;
 
-	@Schema(description = "费用名称")
-	private String feeName;
+	@JsonSerialize(using = ToStringSerializer.class)
+	@Schema(description = "客户ID")
+	private Long customerId;
 
-	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
-	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
-	@Schema(description = "账期开始")
-	private Date periodStart;
+	@Schema(description = "房源ID集合")
+	private String roomIds;
 
-	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
-	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
-	@Schema(description = "账期结束")
-	private Date periodEnd;
+	@Schema(description = "打印模板Key")
+	private String templateKey;
 
-	@Schema(description = "应收金额")
-	private BigDecimal amountDue;
+	@Schema(description = "内置表单Key")
+	private String formKey;
 
-	@Schema(description = "实收金额")
-	private BigDecimal amountPaid;
+	@Schema(description = "表单数据快照")
+	private String formDataJson;
 
-	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
-	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
-	@Schema(description = "应缴日期")
-	private Date payDeadline;
+	@Schema(description = "附件数据")
+	private String attachmentJson;
 
-	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
-	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
-	@Schema(description = "实缴时间")
-	private Date payTime;
-
-	@Schema(description = "缴费状态")
-	private String payStatus;
-
-	@Schema(description = "催缴状态")
-	private String remindStatus;
+	@Schema(description = "打印文件地址")
+	private String printFileUrl;
 
 	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
 	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
-	@Schema(description = "催缴时间")
-	private Date remindTime;
+	@Schema(description = "审批完成时间")
+	private Date approvalTime;
 
 	@Schema(description = "备注")
 	private String remark;
 
-	@JsonSerialize(using = ToStringSerializer.class)
-	@Schema(description = "园区ID")
-	private Long parkId;
+	@Schema(description = "删除标志")
+	private String delFlag;
 
 	@Schema(description = "创建人")
 	private String createBy;
@@ -135,12 +153,12 @@ public class ContractPayment implements Serializable {
 	private String contractNo;
 
 	@TableField(exist = false)
-	@Schema(description = "客户名称")
-	private String customerName;
-
-	@TableField(exist = false)
 	@Schema(description = "合同名称")
 	private String contractName;
+
+	@TableField(exist = false)
+	@Schema(description = "客户名称")
+	private String customerName;
 
 	@TableField(exist = false)
 	@Schema(description = "房源名称")
@@ -159,51 +177,23 @@ public class ContractPayment implements Serializable {
 	private String contractStatusName;
 
 	@TableField(exist = false)
-	@Schema(description = "付款流程实例ID")
-	private String paymentProcessInsId;
+	@Schema(description = "月租金")
+	private BigDecimal monthlyRent;
 
 	@TableField(exist = false)
-	@Schema(description = "付款审批状态")
-	private String paymentApprovalStatus;
+	@Schema(description = "押金")
+	private BigDecimal deposit;
 
 	@TableField(exist = false)
-	@Schema(description = "付款审批当前节点")
-	private String paymentCurrentNodeName;
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
+	@Schema(description = "合同开始日期")
+	private Date startDate;
 
 	@TableField(exist = false)
-	@Schema(description = "付款审批文件地址")
-	private String paymentFileUrl;
-
-	@TableField(exist = false)
-	@Schema(description = "逾期律师函流程实例ID")
-	private String overdueProcessInsId;
-
-	@TableField(exist = false)
-	@Schema(description = "逾期律师函审批状态")
-	private String overdueApprovalStatus;
-
-	@TableField(exist = false)
-	@Schema(description = "逾期律师函当前节点")
-	private String overdueCurrentNodeName;
-
-	@TableField(exist = false)
-	@Schema(description = "逾期律师函文件地址")
-	private String overdueFileUrl;
-
-	@TableField(exist = false)
-	@Schema(description = "退租流程实例ID")
-	private String terminationProcessInsId;
-
-	@TableField(exist = false)
-	@Schema(description = "退租审批状态")
-	private String terminationApprovalStatus;
-
-	@TableField(exist = false)
-	@Schema(description = "退租审批当前节点")
-	private String terminationCurrentNodeName;
-
-	@TableField(exist = false)
-	@Schema(description = "退租审批文件地址")
-	private String terminationFileUrl;
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
+	@Schema(description = "合同结束日期")
+	private Date endDate;
 
 }

@@ -68,6 +68,8 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private static final String STATUS_ACTIVE = "1";
 	private static final String STATUS_RENEWED = "3";
 	private static final String STATUS_TERMINATED = "4";
+	private static final String STATUS_PENDING_SEAL = "5";
+	private static final String FEE_TYPE_DEPOSIT_REFUND = "deposit_refund";
 	private static final String PAY_STATUS_UNPAID = "0";
 	private static final String PAY_STATUS_PAID = "1";
 	private static final String REMIND_STATUS_REMINDED = "1";
@@ -138,6 +140,33 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	}
 
 	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public boolean uploadSignedContract(Long contractId, Contract contract) {
+		Contract existing = requireContract(contractId);
+		if (!STATUS_PENDING_SEAL.equals(existing.getContractStatus())) {
+			throw new ServiceException("合同审批通过后才可以上传盖章合同");
+		}
+		if (Func.isBlank(contract.getContractFileUrl())) {
+			throw new ServiceException("请上传盖章合同文件");
+		}
+		Contract update = new Contract();
+		update.setContractId(contractId);
+		update.setContractFileUrl(contract.getContractFileUrl());
+		update.setContractStatus(STATUS_ACTIVE);
+		update.setUpdateBy(currentUserName());
+		update.setUpdateTime(DateUtil.now());
+		boolean result = baseMapper.updateById(update) > 0;
+		if (result) {
+			if (contractPaymentMapper.selectByContractId(contractId).isEmpty()) {
+				existing.setContractStatus(STATUS_ACTIVE);
+				generatePaymentPlan(existing);
+			}
+			addLog(contractId, "signed", "上传盖章合同，合同生效");
+		}
+		return result;
+	}
+
+	@Override
 	public IPage<Contract> selectExpiringPage(IPage<Contract> page, Contract contract) {
 		return page.setRecords(baseMapper.selectExpiringPage(page, contract));
 	}
@@ -156,6 +185,40 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	@Override
 	public List<ContractPayment> selectPaymentByContractId(Long contractId) {
 		return contractPaymentMapper.selectByContractId(contractId);
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public ContractPayment ensureDepositRefundPayment(Long contractId) {
+		Contract contract = requireContract(contractId);
+		if (!STATUS_TERMINATED.equals(contract.getContractStatus())) {
+			throw new ServiceException("房屋验收完成后才可以发起押金退还");
+		}
+		if (contract.getDeposit() == null || contract.getDeposit().compareTo(BigDecimal.ZERO) <= 0) {
+			throw new ServiceException("该合同未配置可退保证金");
+		}
+		ContractPayment existing = findDepositRefundPayment(contractId);
+		if (existing != null) {
+			return existing;
+		}
+		Date now = DateUtil.now();
+		ContractPayment payment = new ContractPayment();
+		payment.setContractId(contractId);
+		payment.setFeeType(FEE_TYPE_DEPOSIT_REFUND);
+		payment.setFeeName("押金退还");
+		payment.setPeriodStart(now);
+		payment.setPeriodEnd(now);
+		payment.setAmountDue(contract.getDeposit());
+		payment.setAmountPaid(BigDecimal.ZERO);
+		payment.setPayDeadline(now);
+		payment.setPayStatus(PAY_STATUS_UNPAID);
+		payment.setParkId(contract.getParkId());
+		payment.setRemark("退租押金退还付款单");
+		payment.setCreateBy(currentUserName());
+		payment.setCreateTime(now);
+		contractPaymentMapper.insert(payment);
+		addLog(contractId, "deposit_refund", "生成押金退还付款单");
+		return contractPaymentMapper.selectById(payment.getPaymentId());
 	}
 
 	@Override
@@ -225,7 +288,6 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		contract.setCreateTime(now);
 		boolean result = save(contract);
 		if (result) {
-			generatePaymentPlan(contract);
 			addLog(contract.getContractId(), "create", "创建合同");
 		}
 		return result;
@@ -251,6 +313,13 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 			throw new ServiceException("合同不存在");
 		}
 		return contract;
+	}
+
+	private ContractPayment findDepositRefundPayment(Long contractId) {
+		return contractPaymentMapper.selectByContractId(contractId).stream()
+			.filter(payment -> FEE_TYPE_DEPOSIT_REFUND.equals(payment.getFeeType()))
+			.findFirst()
+			.orElse(null);
 	}
 
 	private void validateNewRelations(Contract contract) {
