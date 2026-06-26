@@ -140,6 +140,16 @@
 	</sql>
 
 	<sql id="paymentConditions">
+		<if test="payment != null and payment.direction != null and payment.direction != ''">
+			<choose>
+				<when test='payment.direction == "payable"'>
+					AND p.fee_type = 'deposit_refund'
+				</when>
+				<when test='payment.direction == "receivable"'>
+					AND (p.fee_type IS NULL OR p.fee_type != 'deposit_refund')
+				</when>
+			</choose>
+		</if>
 		<if test="payment != null and payment.contractId != null">
 			AND p.contract_id = #{payment.contractId}
 		</if>
@@ -165,6 +175,46 @@
 		</if>
 		<if test="payment != null and payment.customerName != null and payment.customerName != ''">
 			AND c.customer_name LIKE CONCAT('%', #{payment.customerName}, '%')
+		</if>
+		<if test="payment != null and payment.buildingNameQuery != null and payment.buildingNameQuery != ''">
+			AND c.building_name LIKE CONCAT('%', #{payment.buildingNameQuery}, '%')
+		</if>
+		<if test="payment != null and payment.deadlineStartDate != null">
+			AND p.pay_deadline &gt;= #{payment.deadlineStartDate}
+		</if>
+		<if test="payment != null and payment.deadlineEndDate != null">
+			AND p.pay_deadline &lt;= #{payment.deadlineEndDate}
+		</if>
+		<if test="payment != null and payment.hideFuture != null and payment.hideFuture">
+			AND p.pay_deadline &lt;= CURDATE()
+		</if>
+		<if test="payment != null and payment.periodStartBegin != null">
+			AND p.period_start &gt;= #{payment.periodStartBegin}
+		</if>
+		<if test="payment != null and payment.periodStartEnd != null">
+			AND p.period_start &lt;= #{payment.periodStartEnd}
+		</if>
+		<if test="payment != null and payment.periodEndBegin != null">
+			AND p.period_end &gt;= #{payment.periodEndBegin}
+		</if>
+		<if test="payment != null and payment.periodEndEnd != null">
+			AND p.period_end &lt;= #{payment.periodEndEnd}
+		</if>
+		<if test="payment != null and payment.createStartDate != null">
+			AND DATE(p.create_time) &gt;= #{payment.createStartDate}
+		</if>
+		<if test="payment != null and payment.createEndDate != null">
+			AND DATE(p.create_time) &lt;= #{payment.createEndDate}
+		</if>
+		<if test="payment != null and payment.settleStatus != null and payment.settleStatus != ''">
+			<choose>
+				<when test='payment.settleStatus == "settled"'>
+					AND p.pay_status = '1'
+				</when>
+				<when test='payment.settleStatus == "unsettled"'>
+					AND p.pay_status != '1'
+				</when>
+			</choose>
 		</if>
 	</sql>
 

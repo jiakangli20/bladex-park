@@ -206,4 +206,68 @@ public class ContractPayment implements Serializable {
 	@Schema(description = "退租审批文件地址")
 	private String terminationFileUrl;
 
+	@TableField(exist = false)
+	@Schema(description = "账单方向：receivable 收款，payable 付款")
+	private String direction;
+
+	@TableField(exist = false)
+	@Schema(description = "应收/应付开始日期")
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
+	private Date deadlineStartDate;
+
+	@TableField(exist = false)
+	@Schema(description = "应收/应付结束日期")
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
+	private Date deadlineEndDate;
+
+	@TableField(exist = false)
+	@Schema(description = "隐藏未到应收/应付期账单")
+	private Boolean hideFuture;
+
+	@TableField(exist = false)
+	@Schema(description = "账期开始日期-起")
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
+	private Date periodStartBegin;
+
+	@TableField(exist = false)
+	@Schema(description = "账期开始日期-止")
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
+	private Date periodStartEnd;
+
+	@TableField(exist = false)
+	@Schema(description = "账期结束日期-起")
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
+	private Date periodEndBegin;
+
+	@TableField(exist = false)
+	@Schema(description = "账期结束日期-止")
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
+	private Date periodEndEnd;
+
+	@TableField(exist = false)
+	@Schema(description = "创建开始日期")
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
+	private Date createStartDate;
+
+	@TableField(exist = false)
+	@Schema(description = "创建结束日期")
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
+	private Date createEndDate;
+
+	@TableField(exist = false)
+	@Schema(description = "楼宇名称查询")
+	private String buildingNameQuery;
+
+	@TableField(exist = false)
+	@Schema(description = "结清状态：settled 已结清，unsettled 未结清")
+	private String settleStatus;
+
 }

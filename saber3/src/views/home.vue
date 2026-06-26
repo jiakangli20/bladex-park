@@ -233,7 +233,7 @@ export default {
         {
           title: '租金收缴',
           desc: '账单、催缴、流水闭环',
-          path: '/finance/payment',
+          path: '/finance/bills-all',
           icon: 'Money',
           tone: 'orange',
         },

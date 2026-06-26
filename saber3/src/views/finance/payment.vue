@@ -18,11 +18,7 @@
         </section>
 
         <section class="payment-toolbar">
-          <el-radio-group v-model="mode" size="small" @change="changeMode">
-            <el-radio-button label="payment">缴费管理</el-radio-button>
-            <el-radio-button label="all">所有账单</el-radio-button>
-            <el-radio-button label="overdue">逾期账单</el-radio-button>
-          </el-radio-group>
+          <div class="payment-toolbar__title">{{ pageTitle }}</div>
           <el-tooltip content="刷新" placement="top">
             <el-button icon="el-icon-refresh" circle @click="reload" />
           </el-tooltip>
@@ -198,7 +194,7 @@ export default {
     ...mapGetters(['permission']),
     permissionList() {
       return {
-        viewBtn: this.validData(this.permission.finance_payment_view, false),
+        viewBtn: this.validData(this.permission.finance_bills_all_view || this.permission.finance_payment_view, false),
         confirmBtn: this.validData(this.permission.finance_payment_confirm, false),
         remindBtn: this.validData(this.permission.finance_payment_remind, false),
       };
@@ -212,6 +208,9 @@ export default {
         { key: 'due', label: '应收金额', value: this.formatMoney(this.summary.amountDue) },
         { key: 'paid', label: '实收金额', value: this.formatMoney(this.summary.amountPaid) },
       ];
+    },
+    pageTitle() {
+      return this.mode === 'overdue' ? '逾期账单' : '所有账单';
     },
     crudOption() {
       const option = {
@@ -273,14 +272,6 @@ export default {
         this.query.payStatus = routeQuery.payStatus;
         this.search.payStatus = routeQuery.payStatus;
       }
-    },
-    changeMode(value) {
-      const pathMap = {
-        payment: '/finance/payment',
-        all: '/finance/bills-all',
-        overdue: '/finance/bills-overdue',
-      };
-      this.$router.push({ path: pathMap[value] || '/finance/payment' });
     },
     searchChange(params = {}, done) {
       this.query = { ...params };
@@ -492,6 +483,12 @@ export default {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+}
+
+.payment-toolbar__title {
+  color: #303133;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .notice-placeholder {

@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.ics.mapper.PaymentNoticeMapper">
+
+	<resultMap id="noticeResultMap" type="org.springblade.modules.ics.pojo.vo.PaymentNoticeVO">
+		<id column="notice_id" property="noticeId"/>
+		<result column="payment_id" property="paymentId"/>
+		<result column="contract_id" property="contractId"/>
+		<result column="customer_id" property="customerId"/>
+		<result column="park_id" property="parkId"/>
+		<result column="notice_no" property="noticeNo"/>
+		<result column="payment_no" property="paymentNo"/>
+		<result column="contract_no" property="contractNo"/>
+		<result column="customer_name" property="customerName"/>
+		<result column="building_name" property="buildingName"/>
+		<result column="room_name" property="roomName"/>
+		<result column="contact_phone" property="contactPhone"/>
+		<result column="contact_email" property="contactEmail"/>
+		<result column="fee_name" property="feeName"/>
+		<result column="period_start" property="periodStart"/>
+		<result column="period_end" property="periodEnd"/>
+		<result column="amount_due" property="amountDue"/>
+		<result column="amount_paid" property="amountPaid"/>
+		<result column="pay_deadline" property="payDeadline"/>
+		<result column="sms_status" property="smsStatus"/>
+		<result column="email_status" property="emailStatus"/>
+		<result column="inbox_status" property="inboxStatus"/>
+		<result column="miniapp_status" property="miniappStatus"/>
+		<result column="send_count" property="sendCount"/>
+		<result column="last_send_time" property="lastSendTime"/>
+		<result column="file_name" property="fileName"/>
+		<result column="file_url" property="fileUrl"/>
+		<result column="generated_date" property="generatedDate"/>
+	</resultMap>
+
+	<resultMap id="summaryResultMap" type="org.springblade.modules.ics.pojo.vo.PaymentNoticeSummaryVO">
+		<result column="generated_count" property="generatedCount"/>
+		<result column="sms_success_count" property="smsSuccessCount"/>
+		<result column="email_success_count" property="emailSuccessCount"/>
+		<result column="inbox_success_count" property="inboxSuccessCount"/>
+	</resultMap>
+
+	<sql id="selectNoticeVo">
+		SELECT
+			n.notice_id,
+			p.payment_id,
+			p.contract_id,
+			c.customer_id,
+			p.park_id,
+			n.notice_no,
+			CONCAT('ZD', p.payment_id) AS payment_no,
+			c.contract_no,
+			c.customer_name,
+			c.building_name,
+			c.room_name,
+			bc.contact_phone,
+			bc.contact_email,
+			p.fee_name,
+			p.period_start,
+			p.period_end,
+			p.amount_due,
+			p.amount_paid,
+			p.pay_deadline,
+			COALESCE(n.sms_status, 'pending') AS sms_status,
+			COALESCE(n.email_status, 'pending') AS email_status,
+			COALESCE(n.inbox_status, 'pending') AS inbox_status,
+			COALESCE(n.miniapp_status, 'pending') AS miniapp_status,
+			COALESCE(n.send_count, 0) AS send_count,
+			n.last_send_time,
+			n.file_name,
+			n.file_url,
+			DATE(COALESCE(n.create_time, p.create_time, p.pay_deadline)) AS generated_date
+		FROM biz_contract_payment p
+		LEFT JOIN biz_contract c ON c.contract_id = p.contract_id
+		LEFT JOIN biz_customer bc ON bc.customer_id = c.customer_id
+		LEFT JOIN biz_payment_notice n ON n.payment_id = p.payment_id AND n.del_flag = '0'
+	</sql>
+
+	<sql id="noticeConditions">
+		<if test="query != null and query.parkId != null">
+			AND p.park_id = #{query.parkId}
+		</if>
+		<if test="query != null and query.customerName != null and query.customerName != ''">
+			AND c.customer_name LIKE CONCAT('%', #{query.customerName}, '%')
+		</if>
+		<if test="query != null and query.paymentNo != null and query.paymentNo != ''">
+			AND (
+				CONCAT('ZD', p.payment_id) LIKE CONCAT('%', #{query.paymentNo}, '%')
+				OR CAST(p.payment_id AS CHAR) LIKE CONCAT('%', #{query.paymentNo}, '%')
+				OR n.notice_no LIKE CONCAT('%', #{query.paymentNo}, '%')
+			)
+		</if>
+		<if test="query != null and query.smsStatus != null and query.smsStatus != ''">
+			AND COALESCE(n.sms_status, 'pending') = #{query.smsStatus}
+		</if>
+		<if test="query != null and query.emailStatus != null and query.emailStatus != ''">
+			AND COALESCE(n.email_status, 'pending') = #{query.emailStatus}
+		</if>
+		<if test="query != null and query.inboxStatus != null and query.inboxStatus != ''">
+			AND COALESCE(n.inbox_status, 'pending') = #{query.inboxStatus}
+		</if>
+		<if test="query != null and query.buildingName != null and query.buildingName != ''">
+			AND c.building_name = #{query.buildingName}
+		</if>
+		<if test="query != null and query.createStartDate != null">
+			AND DATE(COALESCE(n.create_time, p.create_time, p.pay_deadline)) &gt;= #{query.createStartDate}
+		</if>
+		<if test="query != null and query.createEndDate != null">
+			AND DATE(COALESCE(n.create_time, p.create_time, p.pay_deadline)) &lt;= #{query.createEndDate}
+		</if>
+	</sql>
+
+	<select id="selectNoticePage" resultMap="noticeResultMap">
+		<include refid="selectNoticeVo"/>
+		<where>
+			<include refid="noticeConditions"/>
+		</where>
+		ORDER BY COALESCE(n.create_time, p.create_time, p.pay_deadline) DESC, p.payment_id DESC
+	</select>
+
+	<select id="selectNoticeSummary" resultMap="summaryResultMap">
+		SELECT
+			COUNT(1) AS generated_count,
+			SUM(CASE WHEN COALESCE(n.sms_status, 'pending') = 'success' THEN 1 ELSE 0 END) AS sms_success_count,
+			SUM(CASE WHEN COALESCE(n.email_status, 'pending') = 'success' THEN 1 ELSE 0 END) AS email_success_count,
+			SUM(CASE WHEN COALESCE(n.inbox_status, 'pending') = 'success' THEN 1 ELSE 0 END) AS inbox_success_count
+		FROM biz_contract_payment p
+		LEFT JOIN biz_contract c ON c.contract_id = p.contract_id
+		LEFT JOIN biz_customer bc ON bc.customer_id = c.customer_id
+		LEFT JOIN biz_payment_notice n ON n.payment_id = p.payment_id AND n.del_flag = '0'
+		<where>
+			<include refid="noticeConditions"/>
+		</where>
+	</select>
+
+	<select id="selectByPaymentId" resultType="org.springblade.modules.ics.pojo.entity.PaymentNotice">
+		SELECT
+			notice_id,
+			payment_id,
+			notice_no,
+			notice_type,
+			sms_status,
+			email_status,
+			inbox_status,
+			send_count,
+			last_send_time,
+			file_name,
+			file_url,
+			miniapp_status,
+			miniapp_send_time,
+			remark,
+			del_flag,
+			create_by,
+			create_time,
+			update_by,
+			update_time
+		FROM biz_payment_notice
+		WHERE payment_id = #{paymentId}
+		  AND del_flag = '0'
+		ORDER BY notice_id DESC
+		LIMIT 1
+	</select>
+
+	<select id="selectBuildingOptions" resultType="java.lang.String">
+		SELECT DISTINCT c.building_name
+		FROM biz_contract_payment p
+		LEFT JOIN biz_contract c ON c.contract_id = p.contract_id
+		LEFT JOIN biz_payment_notice n ON n.payment_id = p.payment_id AND n.del_flag = '0'
+		<where>
+			c.building_name IS NOT NULL
+			AND c.building_name != ''
+			<include refid="noticeConditions"/>
+		</where>
+		ORDER BY c.building_name ASC
+	</select>
+
+	<select id="selectNoticeByPaymentId" resultMap="noticeResultMap">
+		<include refid="selectNoticeVo"/>
+		WHERE p.payment_id = #{paymentId}
+		LIMIT 1
+	</select>
+
+</mapper>

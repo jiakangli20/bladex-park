@@ -7,7 +7,10 @@ package org.springblade.modules.ics.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
+import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticePlaceholderVO;
+import org.springblade.modules.ics.pojo.vo.PaymentNoticeSummaryVO;
+import org.springblade.modules.ics.pojo.vo.PaymentNoticeVO;
 import org.springblade.modules.ics.pojo.vo.PaymentSummaryVO;
 
 import java.util.List;
@@ -84,5 +87,54 @@ public interface IPaymentService {
 	 * @return 占位说明
 	 */
 	PaymentNoticePlaceholderVO noticePlaceholder();
+
+	/**
+	 * 收款通知分页.
+	 *
+	 * @param page  分页
+	 * @param query 查询条件
+	 * @return 收款通知分页
+	 */
+	IPage<PaymentNoticeVO> selectNoticePage(IPage<PaymentNoticeVO> page, PaymentNoticeVO query);
+
+	/**
+	 * 收款通知汇总.
+	 *
+	 * @param query 查询条件
+	 * @return 汇总
+	 */
+	PaymentNoticeSummaryVO noticeSummary(PaymentNoticeVO query);
+
+	/**
+	 * 楼宇下拉选项.
+	 *
+	 * @param query 查询条件
+	 * @return 楼宇名称
+	 */
+	List<String> noticeBuildingOptions(PaymentNoticeVO query);
+
+	/**
+	 * 重新发送收款通知.
+	 *
+	 * @param paymentId 账单ID
+	 * @return 通知详情
+	 */
+	PaymentNoticeVO resendNotice(Long paymentId);
+
+	/**
+	 * 生成并返回收款通知文件.
+	 *
+	 * @param paymentId 账单ID
+	 * @return 文件
+	 */
+	ContractNoticeFileVO generatePaymentNoticeFile(Long paymentId);
+
+	/**
+	 * 小程序发送预留接口.
+	 *
+	 * @param paymentId 账单ID
+	 * @return 通知详情
+	 */
+	PaymentNoticeVO sendMiniAppNotice(Long paymentId);
 
 }

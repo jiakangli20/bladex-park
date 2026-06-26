@@ -52,11 +52,9 @@ ON DUPLICATE KEY UPDATE
   `role_id` = VALUES(`role_id`),
   `menu_id` = VALUES(`menu_id`);
 
--- 首页租金收缴入口应跳转到 BladeX 财务缴费管理
+-- 缴费管理入口已废弃，租金收缴统一进入所有账单
 UPDATE `blade_menu`
-SET `path` = '/finance/payment',
-    `component` = 'views/finance/payment',
-    `is_deleted` = 0
+SET `is_deleted` = 1
 WHERE `code` IN ('finance_payment');
 
 -- 校验

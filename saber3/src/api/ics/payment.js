@@ -120,6 +120,64 @@ export const getPaymentNoticePlaceholder = () => {
   });
 };
 
+export const getPaymentNoticePage = (current, size, params) => {
+  return request({
+    url: '/blade-ics/payment/notice-page',
+    method: 'get',
+    params: {
+      ...params,
+      current,
+      size,
+    },
+  });
+};
+
+export const getPaymentNoticeSummary = params => {
+  return request({
+    url: '/blade-ics/payment/notice-summary',
+    method: 'get',
+    params,
+  });
+};
+
+export const getPaymentNoticeBuildings = params => {
+  return request({
+    url: '/blade-ics/payment/notice-buildings',
+    method: 'get',
+    params,
+  });
+};
+
+export const resendPaymentNotice = paymentId => {
+  return request({
+    url: '/blade-ics/payment/notice-resend',
+    method: 'post',
+    params: {
+      paymentId,
+    },
+  });
+};
+
+export const generatePaymentNotice = paymentId => {
+  return request({
+    url: '/blade-ics/payment/notice-generate',
+    method: 'post',
+    params: {
+      paymentId,
+    },
+  });
+};
+
+export const sendPaymentNoticeMiniApp = paymentId => {
+  return request({
+    url: '/blade-ics/payment/notice-miniapp-send',
+    method: 'post',
+    params: {
+      paymentId,
+    },
+  });
+};
+
 export const generateContractNotice = params => {
   return request({
     url: '/blade-contract/print/generate',
