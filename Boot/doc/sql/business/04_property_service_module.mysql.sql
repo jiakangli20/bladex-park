@@ -182,7 +182,13 @@ VALUES
   (1890000000007000111, 1890000000007000160, 'property_workorder_assign', '指派工单', 'assign', '/api/blade-ics/property-workorder/assign', 'user', '', 6, 2, 2, 1, NULL, 0),
   (1890000000007000112, 1890000000007000160, 'property_workorder_finish', '完成工单', 'finish', '/api/blade-ics/property-workorder/finish', 'circle-check', '', 7, 2, 2, 1, NULL, 0),
   (1890000000007000113, 1890000000007000160, 'property_workorder_close', '关闭工单', 'close', '/api/blade-ics/property-workorder/close', 'circle-close', '', 8, 2, 2, 1, NULL, 0),
-  (1890000000007000114, 1890000000007000160, 'property_workorder_rate', '评价工单', 'rate', '/api/blade-ics/property-workorder/rate', 'star', '', 9, 2, 2, 1, NULL, 0)
+  (1890000000007000114, 1890000000007000160, 'property_workorder_rate', '评价工单', 'rate', '/api/blade-ics/property-workorder/rate', 'star', '', 9, 2, 2, 1, NULL, 0),
+  (1890000000007000115, 1890000000007000150, 'property_service_miniapp_list', '小程序服务列表', 'list', '/api/blade-ics/property-service/miniapp/list', 'list', '', 10, 2, 0, 1, NULL, 0),
+  (1890000000007000116, 1890000000007000150, 'property_service_miniapp_detail', '小程序服务详情', 'view', '/api/blade-ics/property-service/miniapp/detail', 'file-text', '', 11, 2, 0, 1, NULL, 0),
+  (1890000000007000117, 1890000000007000160, 'property_workorder_miniapp_apply', '小程序申请工单', 'add', '/api/blade-ics/property-workorder/miniapp/apply', 'plus', '', 10, 2, 1, 1, NULL, 0),
+  (1890000000007000118, 1890000000007000160, 'property_workorder_miniapp_my_page', '小程序我的工单', 'list', '/api/blade-ics/property-workorder/miniapp/my-page', 'list', '', 11, 2, 0, 1, NULL, 0),
+  (1890000000007000119, 1890000000007000160, 'property_workorder_miniapp_admin_page', '小程序管理员工单', 'list', '/api/blade-ics/property-workorder/miniapp/admin/page', 'list', '', 12, 2, 0, 1, NULL, 0),
+  (1890000000007000120, 1890000000007000160, 'property_workorder_miniapp_admin_handle', '小程序处理工单', 'edit', '/api/blade-ics/property-workorder/miniapp/admin/handle', 'form', '', 13, 2, 2, 1, NULL, 0)
 ON DUPLICATE KEY UPDATE
   `parent_id` = VALUES(`parent_id`),
   `name` = VALUES(`name`),
@@ -216,7 +222,13 @@ VALUES
   (1890000000008000013, 1123598816738675201, 1890000000007000111),
   (1890000000008000014, 1123598816738675201, 1890000000007000112),
   (1890000000008000015, 1123598816738675201, 1890000000007000113),
-  (1890000000008000016, 1123598816738675201, 1890000000007000114);
+  (1890000000008000016, 1123598816738675201, 1890000000007000114),
+  (1890000000008000019, 1123598816738675201, 1890000000007000115),
+  (1890000000008000020, 1123598816738675201, 1890000000007000116),
+  (1890000000008000021, 1123598816738675201, 1890000000007000117),
+  (1890000000008000022, 1123598816738675201, 1890000000007000118),
+  (1890000000008000023, 1123598816738675201, 1890000000007000119),
+  (1890000000008000024, 1123598816738675201, 1890000000007000120);
 
 -- 清理此前误落到「审批中心」下面的物业工单菜单
 UPDATE `blade_menu`

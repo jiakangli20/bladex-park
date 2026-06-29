@@ -38,6 +38,48 @@ export const getMerchantDetail = merchantId => {
   });
 };
 
+export const getMiniAppMerchantList = (params = {}) => {
+  return request({
+    url: '/blade-ics/merchant/miniapp/list',
+    method: 'get',
+    params,
+  });
+};
+
+export const getMiniAppMerchantDetail = merchantId => {
+  return request({
+    url: '/blade-ics/merchant/miniapp/detail',
+    method: 'get',
+    params: {
+      merchantId,
+    },
+  });
+};
+
+export const miniAppApplyMerchantService = row => {
+  return request({
+    url: '/blade-ics/merchant/miniapp/apply',
+    method: 'post',
+    data: row,
+  });
+};
+
+export const miniAppAdminFollowMerchantService = row => {
+  return request({
+    url: '/blade-ics/merchant/miniapp/admin/follow',
+    method: 'post',
+    data: row,
+  });
+};
+
+export const miniAppAdminDealMerchantService = row => {
+  return request({
+    url: '/blade-ics/merchant/miniapp/admin/deal',
+    method: 'post',
+    data: row,
+  });
+};
+
 export const addMerchant = row => {
   return request({
     url: '/blade-ics/merchant/save',

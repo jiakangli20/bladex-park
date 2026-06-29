@@ -1,10 +1,6 @@
 <template>
   <basic-container>
     <div class="property-workorder-page">
-      <div class="page-title-row">
-        <h2>工单处理</h2>
-      </div>
-
       <workorder-panel
         :query="processQuery"
         :page="processPage"
@@ -15,7 +11,6 @@
         :status-options="statusOptions"
         :priority-options="priorityOptions"
         :permission-list="permissionList"
-        :show-total-stat="false"
         :show-service-filter="false"
         :show-reload="false"
         create-label="录入工单"
@@ -69,6 +64,9 @@
           </el-form-item>
           <el-form-item label="需求描述" prop="demandDesc">
             <el-input v-model="workorderForm.demandDesc" type="textarea" :rows="3" maxlength="1000" show-word-limit placeholder="请输入需求描述" />
+          </el-form-item>
+          <el-form-item label="需求图片">
+            <el-input v-model="workorderForm.demandImages" maxlength="1000" placeholder="多个图片地址用英文逗号分隔" />
           </el-form-item>
           <el-form-item label="优先级" prop="priority">
             <el-select v-model="workorderForm.priority" style="width: 100%">
@@ -168,6 +166,7 @@
             <el-descriptions-item label="指派人">{{ currentOrder.assignTo || '-' }}</el-descriptions-item>
             <el-descriptions-item label="完成时间">{{ currentOrder.finishTime || '-' }}</el-descriptions-item>
             <el-descriptions-item label="需求描述" :span="2">{{ currentOrder.demandDesc || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="需求图片" :span="2">{{ currentOrder.demandImages || '-' }}</el-descriptions-item>
             <el-descriptions-item label="处置内容" :span="2">{{ currentOrder.disposalContent || '-' }}</el-descriptions-item>
             <el-descriptions-item label="评分">
               <template v-if="currentOrder.rating">
@@ -499,21 +498,10 @@ export default {
 
 <style scoped>
 .property-workorder-page {
-  min-width: 0;
-}
-
-.page-title-row {
   display: flex;
-  align-items: center;
-  min-height: 32px;
-  margin-bottom: 12px;
-}
-
-.page-title-row h2 {
-  margin: 0;
-  color: #1f2937;
-  font-size: 20px;
-  font-weight: 600;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
 .log-title {
@@ -521,5 +509,11 @@ export default {
   color: #1f2d3d;
   font-size: 15px;
   font-weight: 600;
+}
+
+.property-workorder-page :deep(.el-button),
+.property-workorder-page :deep(.el-input__wrapper),
+.property-workorder-page :deep(.el-select__wrapper) {
+  border-radius: 6px;
 }
 </style>

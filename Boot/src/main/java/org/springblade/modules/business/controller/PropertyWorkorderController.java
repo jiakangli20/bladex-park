@@ -142,4 +142,37 @@ public class PropertyWorkorderController extends BladeController {
 		return R.data(propertyWorkorderService.selectLogByOrderId(orderId));
 	}
 
+	@PostMapping("/miniapp/apply")
+	@PreAuth(menu = "property_workorder_miniapp_apply")
+	@ApiOperationSupport(order = 20)
+	@Operation(summary = "小程序申请物业服务预留接口", description = "待小程序鉴权接入后开放，当前仅后台联调使用")
+	public R miniAppApply(@RequestBody ServiceWorkorder workorder) {
+		workorder.setOrderStatus("0");
+		return R.status(propertyWorkorderService.insertWorkorder(workorder));
+	}
+
+	@GetMapping("/miniapp/my-page")
+	@PreAuth(menu = "property_workorder_miniapp_my_page")
+	@ApiOperationSupport(order = 21)
+	@Operation(summary = "小程序我的工单预留接口", description = "待小程序鉴权接入后开放，当前仅后台联调使用")
+	public R<IPage<ServiceWorkorder>> miniAppMyPage(ServiceWorkorder workorder, Query query) {
+		return R.data(propertyWorkorderService.selectWorkorderPage(Condition.getPage(query), workorder));
+	}
+
+	@GetMapping("/miniapp/admin/page")
+	@PreAuth(menu = "property_workorder_miniapp_admin_page")
+	@ApiOperationSupport(order = 22)
+	@Operation(summary = "小程序管理员工单分页预留接口", description = "待小程序鉴权接入后开放，当前仅后台联调使用")
+	public R<IPage<ServiceWorkorder>> miniAppAdminPage(ServiceWorkorder workorder, Query query) {
+		return R.data(propertyWorkorderService.selectWorkorderPage(Condition.getPage(query), workorder));
+	}
+
+	@PostMapping("/miniapp/admin/handle")
+	@PreAuth(menu = "property_workorder_miniapp_admin_handle")
+	@ApiOperationSupport(order = 23)
+	@Operation(summary = "小程序管理员处理工单预留接口", description = "待小程序鉴权接入后开放，当前仅后台联调使用")
+	public R miniAppAdminHandle(@RequestBody ServiceWorkorder workorder) {
+		return R.status(propertyWorkorderService.updateWorkorder(workorder));
+	}
+
 }

@@ -206,10 +206,36 @@ export default {
     },
   },
   mounted() {
+    this.applyRouteQuery();
     this.reload();
     this.loadBuildingOptions();
   },
+  watch: {
+    '$route.query': {
+      handler() {
+        this.applyRouteQuery();
+        this.page.currentPage = 1;
+        this.reload();
+      },
+      deep: true,
+    },
+  },
   methods: {
+    applyRouteQuery() {
+      const routeQuery = this.$route.query || {};
+      this.query = {
+        ...this.query,
+        feeType: routeQuery.feeType || '',
+        settleStatus: routeQuery.settleStatus || '',
+        buildingNameQuery: routeQuery.buildingNameQuery || '',
+        customerName: routeQuery.customerName || '',
+      };
+      if (routeQuery.deadlineStartDate && routeQuery.deadlineEndDate) {
+        this.query.deadlineRange = [routeQuery.deadlineStartDate, routeQuery.deadlineEndDate];
+      } else if (!routeQuery.deadlineStartDate && !routeQuery.deadlineEndDate) {
+        this.query.deadlineRange = [];
+      }
+    },
     reload() {
       this.loadSummary();
       this.loadData();

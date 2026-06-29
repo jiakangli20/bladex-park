@@ -1,15 +1,10 @@
 <template>
   <basic-container>
     <div class="merchant-page">
-      <section class="summary-row">
-        <div v-for="item in summaryCards" :key="item.key" class="summary-card">
-          <span>{{ item.label }}</span>
-          <strong>{{ item.value }}</strong>
-        </div>
-      </section>
+      <stat-cards :items="summaryCards" />
 
-      <section class="toolbar-row">
-        <el-form :inline="true" :model="query" class="query-form">
+      <section class="contract-search">
+        <el-form :inline="true" :model="query">
           <el-form-item label="服务商名称">
             <el-input v-model="query.merchantName" clearable placeholder="请输入服务商名称" @keyup.enter="searchChange" />
           </el-form-item>
@@ -31,7 +26,10 @@
             <el-button icon="el-icon-delete" @click="searchReset">清空</el-button>
           </el-form-item>
         </el-form>
-        <div class="toolbar-actions">
+      </section>
+
+      <section class="contract-toolbar">
+        <div class="toolbar-left">
           <el-button v-if="permissionList.addBtn" type="primary" icon="el-icon-plus" @click="openAdd">新增商户</el-button>
           <el-button
             v-if="permissionList.delBtn"
@@ -43,10 +41,10 @@
           >
             批量删除
           </el-button>
-          <el-tooltip content="刷新" placement="top">
-            <el-button icon="el-icon-refresh" circle @click="onLoad(page)" />
-          </el-tooltip>
         </div>
+        <el-tooltip content="刷新" placement="top">
+          <el-button icon="el-icon-refresh" circle @click="reload" />
+        </el-tooltip>
       </section>
 
       <el-table
@@ -55,45 +53,48 @@
         :data="data"
         border
         row-key="merchantId"
+        class="contract-table"
         @selection-change="selectionChange"
       >
         <el-table-column type="selection" width="48" align="center" />
-        <el-table-column prop="merchantName" label="服务商名称" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="businessType" label="服务类型" width="120">
+        <el-table-column prop="merchantName" label="服务商名称" min-width="180" align="center" show-overflow-tooltip />
+        <el-table-column prop="businessType" label="服务类型" width="120" align="center">
           <template #default="{ row }">
             <el-tag effect="plain">{{ businessTypeText(row.businessType) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="serviceScope" label="服务范围" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="serviceArea" label="服务区域" min-width="160" show-overflow-tooltip />
-        <el-table-column prop="contactName" label="联系人" width="110" />
-        <el-table-column prop="contactPhone" label="联系电话" width="130" />
-        <el-table-column prop="status" label="状态" width="110" align="center">
+        <el-table-column prop="serviceScope" label="服务范围" min-width="180" align="center" show-overflow-tooltip />
+        <el-table-column prop="serviceArea" label="服务区域" min-width="150" align="center" show-overflow-tooltip />
+        <el-table-column prop="contactName" label="联系人" width="110" align="center" show-overflow-tooltip />
+        <el-table-column prop="contactPhone" label="联系电话" width="130" align="center" show-overflow-tooltip />
+        <el-table-column prop="status" label="小程序展示" width="120" align="center">
           <template #default="{ row }">
             <el-tag :type="statusTagType(row.status)" effect="plain">{{ statusText(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180" />
-        <el-table-column label="操作" width="230" fixed="right" align="center">
+        <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
+        <el-table-column label="操作" width="190" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button v-if="permissionList.viewBtn" type="primary" text icon="el-icon-view" @click="openView(row)">查看</el-button>
-            <el-button v-if="permissionList.editBtn" type="primary" text icon="el-icon-edit" @click="openEdit(row)">编辑</el-button>
-            <el-dropdown v-if="permissionList.statusBtn || permissionList.delBtn" trigger="click">
-              <el-button type="primary" text icon="el-icon-more">更多</el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '0'" @click="changeStatus(row, '0')">启用</el-dropdown-item>
-                  <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '1'" @click="changeStatus(row, '1')">停用</el-dropdown-item>
-                  <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '2'" @click="changeStatus(row, '2')">暂停</el-dropdown-item>
-                  <el-dropdown-item v-if="permissionList.delBtn" divided @click="removeRow(row)">删除</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+            <div class="table-actions">
+              <el-button v-if="permissionList.viewBtn" type="primary" text @click="openView(row)">查看</el-button>
+              <el-button v-if="permissionList.editBtn" type="primary" text @click="openEdit(row)">编辑</el-button>
+              <el-dropdown v-if="permissionList.statusBtn || permissionList.delBtn" trigger="click">
+                <el-button type="primary" text>更多</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '0'" @click="changeStatus(row, '0')">上架</el-dropdown-item>
+                    <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '1'" @click="changeStatus(row, '1')">下架</el-dropdown-item>
+                    <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '2'" @click="changeStatus(row, '2')">暂停展示</el-dropdown-item>
+                    <el-dropdown-item v-if="permissionList.delBtn" divided @click="removeRow(row)">删除</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </template>
         </el-table-column>
       </el-table>
 
-      <div class="pagination-row">
+      <div class="contract-pagination">
         <el-pagination
           background
           :current-page="page.currentPage"
@@ -207,6 +208,7 @@ import {
 } from '@/api/business/merchant';
 
 const businessTypeOptions = [
+  { value: 'value_added', label: '增值服务' },
   { value: 'IT', label: 'IT服务' },
   { value: 'clean', label: '保洁服务' },
   { value: 'security', label: '安保服务' },
@@ -217,9 +219,9 @@ const businessTypeOptions = [
 ];
 
 const statusOptions = [
-  { value: '0', label: '正常', type: 'success' },
-  { value: '1', label: '停用', type: 'info' },
-  { value: '2', label: '暂停', type: 'warning' },
+  { value: '0', label: '已上架', type: 'success' },
+  { value: '1', label: '已下架', type: 'info' },
+  { value: '2', label: '暂停展示', type: 'warning' },
 ];
 
 const defaultForm = () => ({
@@ -253,9 +255,9 @@ export default {
       selectionList: [],
       summaryCards: [
         { key: 'totalCount', label: '商户总数', value: 0 },
-        { key: 'normalCount', label: '正常商户', value: 0 },
-        { key: 'disabledCount', label: '停用商户', value: 0 },
-        { key: 'suspendedCount', label: '暂停商户', value: 0 },
+        { key: 'normalCount', label: '小程序展示', value: 0 },
+        { key: 'disabledCount', label: '已下架', value: 0 },
+        { key: 'suspendedCount', label: '暂停展示', value: 0 },
       ],
       businessTypeOptions,
       statusOptions,
@@ -349,6 +351,10 @@ export default {
     searchReset() {
       this.query = {};
       this.page.currentPage = 1;
+      this.loadStatistics();
+      this.onLoad(this.page);
+    },
+    reload() {
       this.loadStatistics();
       this.onLoad(this.page);
     },
@@ -511,72 +517,72 @@ export default {
 .merchant-page {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
-.summary-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
+.contract-search,
+.contract-toolbar {
+  border-radius: 10px;
 }
 
-.summary-card {
-  padding: 16px;
-  border: 1px solid #d9e2ec;
-  border-radius: 6px;
+.contract-search {
+  padding: 16px 18px 4px;
+  border: 1px solid #e5e7eb;
   background: #fff;
 }
 
-.summary-card span {
-  display: block;
-  margin-bottom: 8px;
-  color: #64748b;
-  font-size: 13px;
+.contract-search :deep(.el-form-item) {
+  margin-right: 20px;
+  margin-bottom: 12px;
 }
 
-.summary-card strong {
-  color: #1f2937;
-  font-size: 24px;
-  font-weight: 600;
+.contract-search :deep(.el-input),
+.contract-search :deep(.el-select) {
+  width: 190px;
 }
 
-.toolbar-row {
+.contract-toolbar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid #d9e2ec;
-  border-radius: 6px;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
   background: #fff;
 }
 
-.query-form {
-  flex: 1;
+.toolbar-left {
+  display: flex;
+  gap: 10px;
 }
 
-.toolbar-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-  min-width: 260px;
+.contract-table {
+  width: 100%;
+  border-radius: 0;
 }
 
-.pagination-row {
+.table-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.contract-pagination {
   display: flex;
   justify-content: flex-end;
-  padding-top: 4px;
+  padding: 12px 0 0;
+}
+
+.merchant-page :deep(.el-button),
+.merchant-page :deep(.el-input__wrapper),
+.merchant-page :deep(.el-select__wrapper) {
+  border-radius: 6px;
 }
 
 @media (max-width: 960px) {
-  .toolbar-row {
-    flex-direction: column;
-  }
-
-  .toolbar-actions {
-    justify-content: flex-start;
-    min-width: 0;
+  .toolbar-left {
+    flex-wrap: wrap;
   }
 }
 </style>

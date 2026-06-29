@@ -30,6 +30,24 @@ export const getServiceDetail = serviceId => {
   });
 };
 
+export const getMiniAppServiceList = (params = {}) => {
+  return request({
+    url: '/blade-ics/property-service/miniapp/list',
+    method: 'get',
+    params,
+  });
+};
+
+export const getMiniAppServiceDetail = serviceId => {
+  return request({
+    url: '/blade-ics/property-service/miniapp/detail',
+    method: 'get',
+    params: {
+      serviceId,
+    },
+  });
+};
+
 export const submitService = row => {
   return request({
     url: '/blade-ics/property-service/submit',
@@ -159,5 +177,45 @@ export const getWorkorderLog = orderId => {
     params: {
       orderId,
     },
+  });
+};
+
+export const miniAppApplyWorkorder = row => {
+  return request({
+    url: '/blade-ics/property-workorder/miniapp/apply',
+    method: 'post',
+    data: row,
+  });
+};
+
+export const getMiniAppWorkorderPage = (current, size, params = {}) => {
+  return request({
+    url: '/blade-ics/property-workorder/miniapp/my-page',
+    method: 'get',
+    params: {
+      ...params,
+      current,
+      size,
+    },
+  });
+};
+
+export const getMiniAppAdminWorkorderPage = (current, size, params = {}) => {
+  return request({
+    url: '/blade-ics/property-workorder/miniapp/admin/page',
+    method: 'get',
+    params: {
+      ...params,
+      current,
+      size,
+    },
+  });
+};
+
+export const miniAppAdminHandleWorkorder = row => {
+  return request({
+    url: '/blade-ics/property-workorder/miniapp/admin/handle',
+    method: 'post',
+    data: row,
   });
 };

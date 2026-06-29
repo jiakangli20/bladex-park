@@ -93,4 +93,21 @@ public class PropertyServiceController extends BladeController {
 		return R.status(propertyServiceService.deletePropertyServiceByIds(ids));
 	}
 
+	@GetMapping("/miniapp/list")
+	@PreAuth(menu = "property_service_miniapp_list")
+	@ApiOperationSupport(order = 20)
+	@Operation(summary = "小程序服务列表预留接口", description = "待小程序鉴权接入后开放，当前仅后台联调使用")
+	public R<List<PropertyService>> miniAppList(PropertyService service) {
+		service.setStatus("0");
+		return R.data(propertyServiceService.selectPropertyServiceList(service));
+	}
+
+	@GetMapping("/miniapp/detail")
+	@PreAuth(menu = "property_service_miniapp_detail")
+	@ApiOperationSupport(order = 21)
+	@Operation(summary = "小程序服务详情预留接口", description = "待小程序鉴权接入后开放，当前仅后台联调使用")
+	public R<PropertyService> miniAppDetail(@Parameter(description = "服务ID") @RequestParam Long serviceId) {
+		return R.data(propertyServiceService.selectPropertyServiceById(serviceId));
+	}
+
 }

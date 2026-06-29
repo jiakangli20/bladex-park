@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.business.mapper.MerchantAdMapper">
+
+	<resultMap id="MerchantAdResult" type="org.springblade.modules.business.pojo.entity.MerchantAd">
+		<id property="adId" column="ad_id"/>
+		<result property="parkId" column="park_id"/>
+		<result property="adTitle" column="ad_title"/>
+		<result property="adPosition" column="ad_position"/>
+		<result property="coverUrl" column="cover_url"/>
+		<result property="linkType" column="link_type"/>
+		<result property="linkUrl" column="link_url"/>
+		<result property="merchantId" column="merchant_id"/>
+		<result property="sortOrder" column="sort_order"/>
+		<result property="startTime" column="start_time"/>
+		<result property="endTime" column="end_time"/>
+		<result property="status" column="status"/>
+		<result property="remark" column="remark"/>
+		<result property="delFlag" column="del_flag"/>
+		<result property="createBy" column="create_by"/>
+		<result property="createTime" column="create_time"/>
+		<result property="updateBy" column="update_by"/>
+		<result property="updateTime" column="update_time"/>
+		<result property="parkName" column="park_name"/>
+		<result property="merchantName" column="merchant_name"/>
+	</resultMap>
+
+	<sql id="selectAdColumns">
+		select a.ad_id,
+			   a.park_id,
+			   a.ad_title,
+			   a.ad_position,
+			   a.cover_url,
+			   a.link_type,
+			   a.link_url,
+			   a.merchant_id,
+			   a.sort_order,
+			   a.start_time,
+			   a.end_time,
+			   a.status,
+			   a.remark,
+			   a.del_flag,
+			   a.create_by,
+			   a.create_time,
+			   a.update_by,
+			   a.update_time,
+			   p.name as park_name,
+			   m.merchant_name
+		from biz_merchant_ad a
+		left join ics_park p on a.park_id = p.id
+		left join biz_merchant m on a.merchant_id = m.merchant_id
+	</sql>
+
+	<sql id="adWhere">
+		<where>
+			a.del_flag = '0'
+			<if test="ad != null">
+				<if test="ad.parkId != null and ad.parkId != 0">and a.park_id = #{ad.parkId}</if>
+				<if test="ad.adTitle != null and ad.adTitle != ''">and a.ad_title like concat('%', #{ad.adTitle}, '%')</if>
+				<if test="ad.adPosition != null and ad.adPosition != ''">and a.ad_position = #{ad.adPosition}</if>
+				<if test="ad.linkType != null and ad.linkType != ''">and a.link_type = #{ad.linkType}</if>
+				<if test="ad.status != null and ad.status != ''">and a.status = #{ad.status}</if>
+				<if test="ad.merchantName != null and ad.merchantName != ''">and m.merchant_name like concat('%', #{ad.merchantName}, '%')</if>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectAdById" resultMap="MerchantAdResult">
+		<include refid="selectAdColumns"/>
+		where a.ad_id = #{adId} and a.del_flag = '0'
+	</select>
+
+	<select id="selectAdList" resultMap="MerchantAdResult">
+		<include refid="selectAdColumns"/>
+		<include refid="adWhere"/>
+		order by a.sort_order asc, a.create_time desc, a.ad_id desc
+	</select>
+
+	<select id="selectAdPage" resultMap="MerchantAdResult">
+		<include refid="selectAdColumns"/>
+		<include refid="adWhere"/>
+		order by a.sort_order asc, a.create_time desc, a.ad_id desc
+	</select>
+
+	<select id="selectAdStatistics" resultType="java.util.HashMap">
+		select count(1) as totalCount,
+			   coalesce(sum(case when a.status = '0' then 1 else 0 end), 0) as onlineCount,
+			   coalesce(sum(case when a.status = '1' then 1 else 0 end), 0) as offlineCount,
+			   coalesce(sum(case when a.start_time is not null and a.start_time > now() then 1 else 0 end), 0) as waitingCount
+		from biz_merchant_ad a
+		left join biz_merchant m on a.merchant_id = m.merchant_id
+		<include refid="adWhere"/>
+	</select>
+
+	<insert id="insertAd" parameterType="org.springblade.modules.business.pojo.entity.MerchantAd" useGeneratedKeys="true" keyProperty="adId">
+		insert into biz_merchant_ad (
+			park_id, ad_title, ad_position, cover_url, link_type, link_url, merchant_id,
+			sort_order, start_time, end_time, status, remark, del_flag, create_by,
+			create_time, update_by, update_time
+		) values (
+			#{parkId}, #{adTitle}, #{adPosition}, #{coverUrl}, #{linkType}, #{linkUrl}, #{merchantId},
+			#{sortOrder}, #{startTime}, #{endTime}, #{status}, #{remark}, #{delFlag}, #{createBy},
+			#{createTime}, #{updateBy}, #{updateTime}
+		)
+	</insert>
+
+	<update id="updateAd" parameterType="org.springblade.modules.business.pojo.entity.MerchantAd">
+		update biz_merchant_ad
+		<set>
+			<if test="parkId != null">park_id = #{parkId},</if>
+			<if test="adTitle != null">ad_title = #{adTitle},</if>
+			<if test="adPosition != null">ad_position = #{adPosition},</if>
+			<if test="coverUrl != null">cover_url = #{coverUrl},</if>
+			<if test="linkType != null">link_type = #{linkType},</if>
+			<if test="linkType != null and linkType != 'url'">link_url = null,</if>
+			<if test="(linkType == null or linkType == 'url') and linkUrl != null">link_url = #{linkUrl},</if>
+			<if test="linkType != null and linkType != 'merchant'">merchant_id = null,</if>
+			<if test="(linkType == null or linkType == 'merchant') and merchantId != null">merchant_id = #{merchantId},</if>
+			<if test="sortOrder != null">sort_order = #{sortOrder},</if>
+			<if test="startTime != null">start_time = #{startTime},</if>
+			<if test="endTime != null">end_time = #{endTime},</if>
+			<if test="status != null">status = #{status},</if>
+			<if test="remark != null">remark = #{remark},</if>
+			<if test="updateBy != null">update_by = #{updateBy},</if>
+			update_time = now()
+		</set>
+		where ad_id = #{adId}
+	</update>
+
+	<update id="deleteAdByIds">
+		update biz_merchant_ad
+		set del_flag = '1',
+			update_by = #{updateBy},
+			update_time = now()
+		where ad_id in
+		<foreach collection="ids" item="id" open="(" separator="," close=")">
+			#{id}
+		</foreach>
+		<if test="parkId != null">and park_id = #{parkId}</if>
+	</update>
+
+	<update id="updateAdStatus">
+		update biz_merchant_ad
+		set status = #{status},
+			update_by = #{updateBy},
+			update_time = now()
+		where ad_id = #{adId}
+	</update>
+
+</mapper>

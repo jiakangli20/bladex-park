@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.business.mapper.PolicyServiceMapper">
+
+	<resultMap id="PolicyServiceResult" type="org.springblade.modules.business.pojo.entity.PolicyService">
+		<id property="policyId" column="policy_id"/>
+		<result property="parkId" column="park_id"/>
+		<result property="serviceTitle" column="service_title"/>
+		<result property="projectScope" column="project_scope"/>
+		<result property="serviceStatus" column="service_status"/>
+		<result property="viewCount" column="view_count"/>
+		<result property="permanentFlag" column="permanent_flag"/>
+		<result property="validTime" column="valid_time"/>
+		<result property="onlineFlag" column="online_flag"/>
+		<result property="coverUrl" column="cover_url"/>
+		<result property="content" column="content"/>
+		<result property="attachmentFiles" column="attachment_files"/>
+		<result property="sortOrder" column="sort_order"/>
+		<result property="remark" column="remark"/>
+		<result property="delFlag" column="del_flag"/>
+		<result property="createBy" column="create_by"/>
+		<result property="createTime" column="create_time"/>
+		<result property="updateBy" column="update_by"/>
+		<result property="updateTime" column="update_time"/>
+		<result property="parkName" column="park_name"/>
+	</resultMap>
+
+	<sql id="selectPolicyColumns">
+		select p.policy_id,
+			   p.park_id,
+			   p.service_title,
+			   p.project_scope,
+			   p.service_status,
+			   p.view_count,
+			   p.permanent_flag,
+			   p.valid_time,
+			   p.online_flag,
+			   p.cover_url,
+			   p.content,
+			   p.attachment_files,
+			   p.sort_order,
+			   p.remark,
+			   p.del_flag,
+			   p.create_by,
+			   p.create_time,
+			   p.update_by,
+			   p.update_time,
+			   park.name as park_name
+		from biz_policy_service p
+		left join ics_park park on p.park_id = park.id
+	</sql>
+
+	<sql id="policyWhere">
+		<where>
+			p.del_flag = '0'
+			<if test="policy != null">
+				<if test="policy.parkId != null and policy.parkId != 0">and p.park_id = #{policy.parkId}</if>
+				<if test="policy.serviceTitle != null and policy.serviceTitle != ''">and p.service_title like concat('%', #{policy.serviceTitle}, '%')</if>
+				<if test="policy.projectScope != null and policy.projectScope != ''">and p.project_scope = #{policy.projectScope}</if>
+				<if test="policy.serviceStatus != null and policy.serviceStatus != ''">and p.service_status = #{policy.serviceStatus}</if>
+				<if test="policy.onlineFlag != null and policy.onlineFlag != ''">and p.online_flag = #{policy.onlineFlag}</if>
+				<if test="policy.permanentFlag != null and policy.permanentFlag != ''">and p.permanent_flag = #{policy.permanentFlag}</if>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectPolicyById" resultMap="PolicyServiceResult">
+		<include refid="selectPolicyColumns"/>
+		where p.policy_id = #{policyId} and p.del_flag = '0'
+	</select>
+
+	<select id="selectPolicyList" resultMap="PolicyServiceResult">
+		<include refid="selectPolicyColumns"/>
+		<include refid="policyWhere"/>
+		order by p.sort_order asc, p.create_time desc, p.policy_id desc
+	</select>
+
+	<select id="selectPolicyPage" resultMap="PolicyServiceResult">
+		<include refid="selectPolicyColumns"/>
+		<include refid="policyWhere"/>
+		order by p.sort_order asc, p.create_time desc, p.policy_id desc
+	</select>
+
+	<select id="selectPolicyStatistics" resultType="java.util.HashMap">
+		select count(1) as totalCount,
+			   coalesce(sum(case when p.service_status = '0' then 1 else 0 end), 0) as publishedCount,
+			   coalesce(sum(case when p.service_status = '1' then 1 else 0 end), 0) as draftCount,
+			   coalesce(sum(case when p.online_flag = '0' then 1 else 0 end), 0) as onlineCount,
+			   coalesce(sum(p.view_count), 0) as viewCount
+		from biz_policy_service p
+		<include refid="policyWhere"/>
+	</select>
+
+	<insert id="insertPolicy" parameterType="org.springblade.modules.business.pojo.entity.PolicyService" useGeneratedKeys="true" keyProperty="policyId">
+		insert into biz_policy_service (
+			park_id, service_title, project_scope, service_status, view_count, permanent_flag,
+			valid_time, online_flag, cover_url, content, attachment_files, sort_order,
+			remark, del_flag, create_by, create_time, update_by, update_time
+		) values (
+			#{parkId}, #{serviceTitle}, #{projectScope}, #{serviceStatus}, #{viewCount}, #{permanentFlag},
+			#{validTime}, #{onlineFlag}, #{coverUrl}, #{content}, #{attachmentFiles}, #{sortOrder},
+			#{remark}, #{delFlag}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime}
+		)
+	</insert>
+
+	<update id="updatePolicy" parameterType="org.springblade.modules.business.pojo.entity.PolicyService">
+		update biz_policy_service
+		<set>
+			<if test="parkId != null">park_id = #{parkId},</if>
+			<if test="serviceTitle != null">service_title = #{serviceTitle},</if>
+			<if test="projectScope != null">project_scope = #{projectScope},</if>
+			<if test="serviceStatus != null">service_status = #{serviceStatus},</if>
+			<if test="viewCount != null">view_count = #{viewCount},</if>
+			<if test="permanentFlag != null">permanent_flag = #{permanentFlag},</if>
+			<if test="permanentFlag != null and permanentFlag == '0'">valid_time = null,</if>
+			<if test="validTime != null">valid_time = #{validTime},</if>
+			<if test="onlineFlag != null">online_flag = #{onlineFlag},</if>
+			<if test="coverUrl != null">cover_url = #{coverUrl},</if>
+			<if test="content != null">content = #{content},</if>
+			<if test="attachmentFiles != null">attachment_files = #{attachmentFiles},</if>
+			<if test="sortOrder != null">sort_order = #{sortOrder},</if>
+			<if test="remark != null">remark = #{remark},</if>
+			<if test="updateBy != null">update_by = #{updateBy},</if>
+			update_time = now()
+		</set>
+		where policy_id = #{policyId}
+	</update>
+
+	<update id="deletePolicyByIds">
+		update biz_policy_service
+		set del_flag = '1',
+			update_by = #{updateBy},
+			update_time = now()
+		where policy_id in
+		<foreach collection="ids" item="id" open="(" separator="," close=")">
+			#{id}
+		</foreach>
+		<if test="parkId != null">and park_id = #{parkId}</if>
+	</update>
+
+	<update id="updateOnlineFlag">
+		update biz_policy_service
+		set online_flag = #{onlineFlag},
+			update_by = #{updateBy},
+			update_time = now()
+		where policy_id = #{policyId}
+	</update>
+
+	<update id="increaseViewCount">
+		update biz_policy_service
+		set view_count = coalesce(view_count, 0) + 1
+		where policy_id = #{policyId}
+	</update>
+
+</mapper>

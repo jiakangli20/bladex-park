@@ -18,7 +18,9 @@ import org.springblade.core.tenant.annotation.NonDS;
 import org.springblade.core.tool.api.R;
 import org.springblade.core.tool.support.Kv;
 import org.springblade.modules.business.pojo.entity.Merchant;
+import org.springblade.modules.business.pojo.entity.MerchantServiceOrder;
 import org.springblade.modules.business.service.IMerchantService;
+import org.springblade.modules.business.service.IMerchantServiceOrderService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,6 +39,7 @@ import java.util.List;
 public class MerchantController extends BladeController {
 
 	private final IMerchantService merchantService;
+	private final IMerchantServiceOrderService merchantServiceOrderService;
 
 	@GetMapping("/detail")
 	@PreAuth(menu = "merchant_service_merchant_view")
@@ -116,6 +119,48 @@ public class MerchantController extends BladeController {
 	@Operation(summary = "状态变更", description = "启用、停用、暂停商户")
 	public R changeStatus(@PathVariable Long merchantId, @RequestParam String status) {
 		return R.status(merchantService.changeStatus(merchantId, status));
+	}
+
+	@GetMapping("/miniapp/list")
+	@PreAuth(menu = "merchant_service_miniapp_list")
+	@ApiOperationSupport(order = 20)
+	@Operation(summary = "小程序增值服务列表预留接口", description = "待小程序鉴权接入后开放，当前仅后台联调使用")
+	public R<List<Merchant>> miniAppList(Merchant merchant) {
+		merchant.setStatus("0");
+		return R.data(merchantService.selectMerchantList(merchant));
+	}
+
+	@GetMapping("/miniapp/detail")
+	@PreAuth(menu = "merchant_service_miniapp_detail")
+	@ApiOperationSupport(order = 21)
+	@Operation(summary = "小程序增值服务详情预留接口", description = "待小程序鉴权接入后开放，当前仅后台联调使用")
+	public R<Merchant> miniAppDetail(@Parameter(description = "商户ID") @RequestParam Long merchantId) {
+		return R.data(merchantService.selectMerchantById(merchantId));
+	}
+
+	@PostMapping("/miniapp/apply")
+	@PreAuth(menu = "merchant_service_miniapp_apply")
+	@ApiOperationSupport(order = 22)
+	@Operation(summary = "小程序申请增值服务预留接口", description = "待小程序鉴权接入后开放，当前仅后台联调使用")
+	public R miniAppApply(@RequestBody MerchantServiceOrder order) {
+		order.setOrderStatus("0");
+		return R.status(merchantServiceOrderService.insertOrder(order));
+	}
+
+	@PostMapping("/miniapp/admin/follow")
+	@PreAuth(menu = "merchant_service_miniapp_follow")
+	@ApiOperationSupport(order = 23)
+	@Operation(summary = "小程序管理员跟进服务预留接口", description = "待小程序鉴权接入后开放，当前仅后台联调使用")
+	public R miniAppAdminFollow(@RequestBody MerchantServiceOrder order) {
+		return R.status(merchantServiceOrderService.followOrder(order));
+	}
+
+	@PostMapping("/miniapp/admin/deal")
+	@PreAuth(menu = "merchant_service_miniapp_deal")
+	@ApiOperationSupport(order = 24)
+	@Operation(summary = "小程序管理员撮合成交预留接口", description = "待小程序鉴权接入后开放，当前仅后台联调使用")
+	public R miniAppAdminDeal(@RequestBody MerchantServiceOrder order) {
+		return R.status(merchantServiceOrderService.dealOrder(order));
 	}
 
 }

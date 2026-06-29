@@ -194,13 +194,37 @@ export default {
     },
   },
   mounted() {
-    const direction = this.$route.query?.direction;
-    if (direction === 'payable' || direction === 'receivable') {
-      this.direction = direction;
-    }
+    this.applyRouteQuery();
     this.reload();
   },
+  watch: {
+    '$route.query': {
+      handler() {
+        this.applyRouteQuery();
+        this.page.currentPage = 1;
+        this.reload();
+      },
+      deep: true,
+    },
+  },
   methods: {
+    applyRouteQuery() {
+      const routeQuery = this.$route.query || {};
+      const nextQuery = {
+        customerName: routeQuery.customerName || '',
+        contractNo: routeQuery.contractNo || '',
+        deadlineRange: [],
+        hideFuture: routeQuery.hideFuture === true || routeQuery.hideFuture === 'true',
+        settleStatus: routeQuery.settleStatus || '',
+      };
+      if (routeQuery.direction === 'payable' || routeQuery.direction === 'receivable') {
+        this.direction = routeQuery.direction;
+      }
+      if (routeQuery.deadlineStartDate && routeQuery.deadlineEndDate) {
+        nextQuery.deadlineRange = [routeQuery.deadlineStartDate, routeQuery.deadlineEndDate];
+      }
+      this.query = nextQuery;
+    },
     reload() {
       this.loadSummary();
       this.loadPage();
@@ -228,6 +252,7 @@ export default {
         customerName: this.query.customerName,
         contractNo: this.query.contractNo,
         hideFuture: this.query.hideFuture,
+        settleStatus: this.query.settleStatus,
       };
       if (this.isPayable) {
         params.feeType = 'deposit_refund';
@@ -261,6 +286,7 @@ export default {
         contractNo: '',
         deadlineRange: [],
         hideFuture: false,
+        settleStatus: '',
       };
       this.page.currentPage = 1;
       this.reload();

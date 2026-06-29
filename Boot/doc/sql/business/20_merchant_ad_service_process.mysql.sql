@@ -1,0 +1,142 @@
+-- 企业服务-广告管理与商户服务处理闭环
+-- 说明：补齐广告管理、服务处理两张页面所需业务表与接口权限；可重复执行。
+
+CREATE TABLE IF NOT EXISTS `biz_merchant_ad` (
+  `ad_id` bigint NOT NULL AUTO_INCREMENT COMMENT '广告ID',
+  `park_id` bigint DEFAULT NULL COMMENT '园区ID',
+  `ad_title` varchar(200) NOT NULL COMMENT '广告标题',
+  `ad_position` varchar(50) NOT NULL COMMENT '广告位置',
+  `cover_url` varchar(500) DEFAULT NULL COMMENT '封面图',
+  `link_type` varchar(50) NOT NULL DEFAULT 'none' COMMENT '跳转类型(none merchant url service)',
+  `link_url` varchar(500) DEFAULT NULL COMMENT '跳转地址',
+  `merchant_id` bigint DEFAULT NULL COMMENT '关联商户ID',
+  `sort_order` int NOT NULL DEFAULT 0 COMMENT '排序',
+  `start_time` datetime DEFAULT NULL COMMENT '开始展示时间',
+  `end_time` datetime DEFAULT NULL COMMENT '结束展示时间',
+  `status` char(1) NOT NULL DEFAULT '1' COMMENT '状态(0上架 1下架)',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标志',
+  `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`ad_id`),
+  KEY `idx_merchant_ad_park` (`park_id`),
+  KEY `idx_merchant_ad_status` (`status`, `del_flag`),
+  KEY `idx_merchant_ad_position` (`ad_position`, `sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='商户小程序广告';
+
+CREATE TABLE IF NOT EXISTS `biz_merchant_service_order` (
+  `order_id` bigint NOT NULL AUTO_INCREMENT COMMENT '服务单ID',
+  `order_no` varchar(64) NOT NULL COMMENT '服务单号',
+  `park_id` bigint DEFAULT NULL COMMENT '园区ID',
+  `merchant_id` bigint DEFAULT NULL COMMENT '商户ID',
+  `merchant_name` varchar(200) DEFAULT NULL COMMENT '服务商名称',
+  `service_type` varchar(100) DEFAULT NULL COMMENT '服务类型',
+  `customer_id` bigint DEFAULT NULL COMMENT '客户ID',
+  `customer_name` varchar(200) NOT NULL COMMENT '客户名称',
+  `contact_name` varchar(100) NOT NULL COMMENT '联系人',
+  `contact_phone` varchar(50) NOT NULL COMMENT '联系电话',
+  `service_scope` varchar(500) DEFAULT NULL COMMENT '服务范围',
+  `demand_desc` text COMMENT '需求描述',
+  `demand_images` varchar(1000) DEFAULT NULL COMMENT '需求图片',
+  `order_status` char(1) NOT NULL DEFAULT '0' COMMENT '状态(0待受理 1跟进中 2已成交 3已关闭)',
+  `priority` char(1) NOT NULL DEFAULT '1' COMMENT '优先级(0紧急 1普通 2低)',
+  `assign_to` varchar(100) DEFAULT NULL COMMENT '处理人',
+  `assign_time` datetime DEFAULT NULL COMMENT '指派时间',
+  `process_content` text COMMENT '处理进展',
+  `next_follow_time` datetime DEFAULT NULL COMMENT '下次跟进时间',
+  `deal_amount` decimal(18,2) DEFAULT NULL COMMENT '成交金额',
+  `deal_time` datetime DEFAULT NULL COMMENT '成交时间',
+  `close_reason` varchar(500) DEFAULT NULL COMMENT '关闭原因',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标志',
+  `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`order_id`),
+  UNIQUE KEY `uk_merchant_service_order_no` (`order_no`),
+  KEY `idx_merchant_service_order_park` (`park_id`),
+  KEY `idx_merchant_service_order_status` (`order_status`, `del_flag`),
+  KEY `idx_merchant_service_order_merchant` (`merchant_id`),
+  KEY `idx_merchant_service_order_customer` (`customer_id`, `customer_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='商户增值服务处理单';
+
+CREATE TABLE IF NOT EXISTS `biz_merchant_service_order_log` (
+  `log_id` bigint NOT NULL AUTO_INCREMENT COMMENT '日志ID',
+  `order_id` bigint NOT NULL COMMENT '服务单ID',
+  `action` varchar(50) NOT NULL COMMENT '操作类型',
+  `action_desc` varchar(1000) DEFAULT NULL COMMENT '操作说明',
+  `operator` varchar(100) DEFAULT NULL COMMENT '操作人',
+  `operate_time` datetime DEFAULT NULL COMMENT '操作时间',
+  PRIMARY KEY (`log_id`),
+  KEY `idx_merchant_service_order_log_order` (`order_id`, `operate_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='商户增值服务处理日志';
+
+INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `component`, `sort`, `category`, `action`, `is_open`, `remark`, `is_deleted`)
+VALUES
+  (1890000000007000220, 1890000000007000200, 'merchant_service_ad', '广告管理', 'menu', '/enterprise/merchant-ad', 'iconfont iconicon_doc', 'views/enterprise/merchant-ad', 2, 1, 0, 1, '广告管理入口', 0),
+  (1890000000007000241, 1890000000007000220, 'merchant_service_ad_list', '广告列表', 'list', '/api/blade-ics/merchant-ad/page', 'list', '', 1, 2, 0, 1, NULL, 0),
+  (1890000000007000242, 1890000000007000220, 'merchant_service_ad_add', '新增广告', 'add', '/api/blade-ics/merchant-ad/save', 'plus', '', 2, 2, 1, 1, NULL, 0),
+  (1890000000007000243, 1890000000007000220, 'merchant_service_ad_edit', '修改广告', 'edit', '/api/blade-ics/merchant-ad/update', 'form', '', 3, 2, 2, 1, NULL, 0),
+  (1890000000007000244, 1890000000007000220, 'merchant_service_ad_delete', '删除广告', 'delete', '/api/blade-ics/merchant-ad/remove', 'delete', '', 4, 2, 3, 1, NULL, 0),
+  (1890000000007000245, 1890000000007000220, 'merchant_service_ad_view', '查看广告', 'view', '/api/blade-ics/merchant-ad/detail', 'file-text', '', 5, 2, 2, 1, NULL, 0),
+  (1890000000007000246, 1890000000007000220, 'merchant_service_ad_status', '广告上下架', 'status', '/api/blade-ics/merchant-ad/changeStatus', 'circle-check', '', 6, 2, 2, 1, NULL, 0),
+  (1890000000007000247, 1890000000007000220, 'merchant_service_ad_miniapp_list', '小程序广告列表', 'list', '/api/blade-ics/merchant-ad/miniapp/list', 'list', '', 7, 2, 0, 1, NULL, 0),
+  (1890000000007000248, 1890000000007000220, 'merchant_service_ad_miniapp_detail', '小程序广告详情', 'view', '/api/blade-ics/merchant-ad/miniapp/detail', 'file-text', '', 8, 2, 0, 1, NULL, 0),
+  (1890000000007000230, 1890000000007000200, 'merchant_service_process', '服务处理', 'menu', '/enterprise/merchant-service-process', 'iconfont iconicon_task', 'views/enterprise/merchant-service-process', 3, 1, 0, 1, '服务处理入口', 0),
+  (1890000000007000251, 1890000000007000230, 'merchant_service_process_list', '服务处理列表', 'list', '/api/blade-ics/merchant-service-order/page', 'list', '', 1, 2, 0, 1, NULL, 0),
+  (1890000000007000252, 1890000000007000230, 'merchant_service_process_add', '新增服务申请', 'add', '/api/blade-ics/merchant-service-order/save', 'plus', '', 2, 2, 1, 1, NULL, 0),
+  (1890000000007000253, 1890000000007000230, 'merchant_service_process_edit', '修改服务申请', 'edit', '/api/blade-ics/merchant-service-order/update', 'form', '', 3, 2, 2, 1, NULL, 0),
+  (1890000000007000254, 1890000000007000230, 'merchant_service_process_delete', '删除服务单', 'delete', '/api/blade-ics/merchant-service-order/remove', 'delete', '', 4, 2, 3, 1, NULL, 0),
+  (1890000000007000255, 1890000000007000230, 'merchant_service_process_view', '查看服务单', 'view', '/api/blade-ics/merchant-service-order/detail', 'file-text', '', 5, 2, 2, 1, NULL, 0),
+  (1890000000007000256, 1890000000007000230, 'merchant_service_process_assign', '指派服务单', 'edit', '/api/blade-ics/merchant-service-order/assign', 'form', '', 6, 2, 2, 1, NULL, 0),
+  (1890000000007000257, 1890000000007000230, 'merchant_service_process_follow', '跟进服务单', 'edit', '/api/blade-ics/merchant-service-order/follow', 'form', '', 7, 2, 2, 1, NULL, 0),
+  (1890000000007000258, 1890000000007000230, 'merchant_service_process_deal', '服务成交', 'edit', '/api/blade-ics/merchant-service-order/deal', 'circle-check', '', 8, 2, 2, 1, NULL, 0),
+  (1890000000007000259, 1890000000007000230, 'merchant_service_process_close', '关闭服务单', 'edit', '/api/blade-ics/merchant-service-order/close', 'circle-close', '', 9, 2, 2, 1, NULL, 0),
+  (1890000000007000260, 1890000000007000230, 'merchant_service_process_miniapp_apply', '小程序申请服务', 'add', '/api/blade-ics/merchant-service-order/miniapp/apply', 'plus', '', 10, 2, 1, 1, NULL, 0),
+  (1890000000007000261, 1890000000007000230, 'merchant_service_process_miniapp_my', '小程序我的服务', 'list', '/api/blade-ics/merchant-service-order/miniapp/my-page', 'list', '', 11, 2, 0, 1, NULL, 0),
+  (1890000000007000262, 1890000000007000230, 'merchant_service_process_miniapp_follow', '小程序服务跟进', 'edit', '/api/blade-ics/merchant-service-order/miniapp/admin/follow', 'form', '', 12, 2, 2, 1, NULL, 0),
+  (1890000000007000263, 1890000000007000230, 'merchant_service_process_miniapp_deal', '小程序服务成交', 'edit', '/api/blade-ics/merchant-service-order/miniapp/admin/deal', 'circle-check', '', 13, 2, 2, 1, NULL, 0)
+ON DUPLICATE KEY UPDATE
+  `parent_id` = VALUES(`parent_id`),
+  `code` = VALUES(`code`),
+  `name` = VALUES(`name`),
+  `alias` = VALUES(`alias`),
+  `path` = VALUES(`path`),
+  `source` = VALUES(`source`),
+  `component` = VALUES(`component`),
+  `sort` = VALUES(`sort`),
+  `category` = VALUES(`category`),
+  `action` = VALUES(`action`),
+  `is_open` = VALUES(`is_open`),
+  `remark` = VALUES(`remark`),
+  `is_deleted` = 0;
+
+INSERT IGNORE INTO `blade_role_menu` (`id`, `role_id`, `menu_id`)
+VALUES
+  (1890000000008000201, 1123598816738675201, 1890000000007000241),
+  (1890000000008000202, 1123598816738675201, 1890000000007000242),
+  (1890000000008000203, 1123598816738675201, 1890000000007000243),
+  (1890000000008000204, 1123598816738675201, 1890000000007000244),
+  (1890000000008000205, 1123598816738675201, 1890000000007000245),
+  (1890000000008000206, 1123598816738675201, 1890000000007000246),
+  (1890000000008000207, 1123598816738675201, 1890000000007000247),
+  (1890000000008000208, 1123598816738675201, 1890000000007000248),
+  (1890000000008000209, 1123598816738675201, 1890000000007000251),
+  (1890000000008000210, 1123598816738675201, 1890000000007000252),
+  (1890000000008000211, 1123598816738675201, 1890000000007000253),
+  (1890000000008000212, 1123598816738675201, 1890000000007000254),
+  (1890000000008000213, 1123598816738675201, 1890000000007000255),
+  (1890000000008000214, 1123598816738675201, 1890000000007000256),
+  (1890000000008000215, 1123598816738675201, 1890000000007000257),
+  (1890000000008000216, 1123598816738675201, 1890000000007000258),
+  (1890000000008000217, 1123598816738675201, 1890000000007000259),
+  (1890000000008000218, 1123598816738675201, 1890000000007000260),
+  (1890000000008000219, 1123598816738675201, 1890000000007000261),
+  (1890000000008000220, 1123598816738675201, 1890000000007000262),
+  (1890000000008000221, 1123598816738675201, 1890000000007000263);
+
+SELECT COUNT(*) AS merchant_ad_table_ready FROM `biz_merchant_ad`;
+SELECT COUNT(*) AS merchant_service_order_table_ready FROM `biz_merchant_service_order`;

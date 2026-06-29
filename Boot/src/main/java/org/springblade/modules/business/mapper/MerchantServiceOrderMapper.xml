@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.business.mapper.MerchantServiceOrderMapper">
+
+	<resultMap id="MerchantServiceOrderResult" type="org.springblade.modules.business.pojo.entity.MerchantServiceOrder">
+		<id property="orderId" column="order_id"/>
+		<result property="orderNo" column="order_no"/>
+		<result property="parkId" column="park_id"/>
+		<result property="merchantId" column="merchant_id"/>
+		<result property="merchantName" column="merchant_name"/>
+		<result property="serviceType" column="service_type"/>
+		<result property="customerId" column="customer_id"/>
+		<result property="customerName" column="customer_name"/>
+		<result property="contactName" column="contact_name"/>
+		<result property="contactPhone" column="contact_phone"/>
+		<result property="serviceScope" column="service_scope"/>
+		<result property="demandDesc" column="demand_desc"/>
+		<result property="demandImages" column="demand_images"/>
+		<result property="orderStatus" column="order_status"/>
+		<result property="priority" column="priority"/>
+		<result property="assignTo" column="assign_to"/>
+		<result property="assignTime" column="assign_time"/>
+		<result property="processContent" column="process_content"/>
+		<result property="nextFollowTime" column="next_follow_time"/>
+		<result property="dealAmount" column="deal_amount"/>
+		<result property="dealTime" column="deal_time"/>
+		<result property="closeReason" column="close_reason"/>
+		<result property="remark" column="remark"/>
+		<result property="delFlag" column="del_flag"/>
+		<result property="createBy" column="create_by"/>
+		<result property="createTime" column="create_time"/>
+		<result property="updateBy" column="update_by"/>
+		<result property="updateTime" column="update_time"/>
+		<result property="parkName" column="park_name"/>
+	</resultMap>
+
+	<resultMap id="MerchantServiceOrderLogResult" type="org.springblade.modules.business.pojo.entity.MerchantServiceOrderLog">
+		<id property="logId" column="log_id"/>
+		<result property="orderId" column="order_id"/>
+		<result property="action" column="action"/>
+		<result property="actionDesc" column="action_desc"/>
+		<result property="operator" column="operator"/>
+		<result property="operateTime" column="operate_time"/>
+	</resultMap>
+
+	<sql id="selectOrderColumns">
+		select o.order_id,
+			   o.order_no,
+			   o.park_id,
+			   o.merchant_id,
+			   o.merchant_name,
+			   o.service_type,
+			   o.customer_id,
+			   o.customer_name,
+			   o.contact_name,
+			   o.contact_phone,
+			   o.service_scope,
+			   o.demand_desc,
+			   o.demand_images,
+			   o.order_status,
+			   o.priority,
+			   o.assign_to,
+			   o.assign_time,
+			   o.process_content,
+			   o.next_follow_time,
+			   o.deal_amount,
+			   o.deal_time,
+			   o.close_reason,
+			   o.remark,
+			   o.del_flag,
+			   o.create_by,
+			   o.create_time,
+			   o.update_by,
+			   o.update_time,
+			   p.name as park_name
+		from biz_merchant_service_order o
+		left join ics_park p on o.park_id = p.id
+	</sql>
+
+	<sql id="orderWhere">
+		<where>
+			o.del_flag = '0'
+			<if test="order != null">
+				<if test="order.parkId != null and order.parkId != 0">and o.park_id = #{order.parkId}</if>
+				<if test="order.orderNo != null and order.orderNo != ''">and o.order_no like concat('%', #{order.orderNo}, '%')</if>
+				<if test="order.merchantId != null">and o.merchant_id = #{order.merchantId}</if>
+				<if test="order.merchantName != null and order.merchantName != ''">and o.merchant_name like concat('%', #{order.merchantName}, '%')</if>
+				<if test="order.serviceType != null and order.serviceType != ''">and o.service_type = #{order.serviceType}</if>
+				<if test="order.customerId != null">and o.customer_id = #{order.customerId}</if>
+				<if test="order.customerName != null and order.customerName != ''">and o.customer_name like concat('%', #{order.customerName}, '%')</if>
+				<if test="order.contactPhone != null and order.contactPhone != ''">and o.contact_phone like concat('%', #{order.contactPhone}, '%')</if>
+				<if test="order.orderStatus != null and order.orderStatus != ''">and o.order_status = #{order.orderStatus}</if>
+				<if test="order.priority != null and order.priority != ''">and o.priority = #{order.priority}</if>
+				<if test="order.assignTo != null and order.assignTo != ''">and o.assign_to = #{order.assignTo}</if>
+				<if test="order.mine != null and order.mine and order.currentUser != null and order.currentUser != ''">
+					and (o.create_by = #{order.currentUser} or o.assign_to = #{order.currentUser})
+				</if>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectOrderById" resultMap="MerchantServiceOrderResult">
+		<include refid="selectOrderColumns"/>
+		where o.order_id = #{orderId} and o.del_flag = '0'
+	</select>
+
+	<select id="selectOrderList" resultMap="MerchantServiceOrderResult">
+		<include refid="selectOrderColumns"/>
+		<include refid="orderWhere"/>
+		order by o.create_time desc, o.order_id desc
+	</select>
+
+	<select id="selectOrderPage" resultMap="MerchantServiceOrderResult">
+		<include refid="selectOrderColumns"/>
+		<include refid="orderWhere"/>
+		order by o.create_time desc, o.order_id desc
+	</select>
+
+	<select id="selectOrderStatistics" resultType="java.util.HashMap">
+		select count(1) as totalCount,
+			   coalesce(sum(case when o.order_status = '0' then 1 else 0 end), 0) as pendingCount,
+			   coalesce(sum(case when o.order_status = '1' then 1 else 0 end), 0) as processingCount,
+			   coalesce(sum(case when o.order_status = '2' then 1 else 0 end), 0) as dealCount,
+			   coalesce(sum(case when o.order_status = '3' then 1 else 0 end), 0) as closedCount,
+			   coalesce(sum(case when o.order_status = '2' then o.deal_amount else 0 end), 0) as dealAmount
+		from biz_merchant_service_order o
+		<include refid="orderWhere"/>
+	</select>
+
+	<insert id="insertOrder" parameterType="org.springblade.modules.business.pojo.entity.MerchantServiceOrder" useGeneratedKeys="true" keyProperty="orderId">
+		insert into biz_merchant_service_order (
+			order_no, park_id, merchant_id, merchant_name, service_type, customer_id, customer_name,
+			contact_name, contact_phone, service_scope, demand_desc, demand_images, order_status,
+			priority, assign_to, assign_time, process_content, next_follow_time, deal_amount,
+			deal_time, close_reason, remark, del_flag, create_by, create_time, update_by, update_time
+		) values (
+			#{orderNo}, #{parkId}, #{merchantId}, #{merchantName}, #{serviceType}, #{customerId}, #{customerName},
+			#{contactName}, #{contactPhone}, #{serviceScope}, #{demandDesc}, #{demandImages}, #{orderStatus},
+			#{priority}, #{assignTo}, #{assignTime}, #{processContent}, #{nextFollowTime}, #{dealAmount},
+			#{dealTime}, #{closeReason}, #{remark}, #{delFlag}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime}
+		)
+	</insert>
+
+	<update id="updateOrder" parameterType="org.springblade.modules.business.pojo.entity.MerchantServiceOrder">
+		update biz_merchant_service_order
+		<set>
+			<if test="parkId != null">park_id = #{parkId},</if>
+			<if test="merchantId != null">merchant_id = #{merchantId},</if>
+			<if test="merchantName != null">merchant_name = #{merchantName},</if>
+			<if test="serviceType != null">service_type = #{serviceType},</if>
+			<if test="customerId != null">customer_id = #{customerId},</if>
+			<if test="customerName != null">customer_name = #{customerName},</if>
+			<if test="contactName != null">contact_name = #{contactName},</if>
+			<if test="contactPhone != null">contact_phone = #{contactPhone},</if>
+			<if test="serviceScope != null">service_scope = #{serviceScope},</if>
+			<if test="demandDesc != null">demand_desc = #{demandDesc},</if>
+			<if test="demandImages != null">demand_images = #{demandImages},</if>
+			<if test="orderStatus != null">order_status = #{orderStatus},</if>
+			<if test="priority != null">priority = #{priority},</if>
+			<if test="assignTo != null">assign_to = #{assignTo},</if>
+			<if test="assignTime != null">assign_time = #{assignTime},</if>
+			<if test="processContent != null">process_content = #{processContent},</if>
+			<if test="nextFollowTime != null">next_follow_time = #{nextFollowTime},</if>
+			<if test="dealAmount != null">deal_amount = #{dealAmount},</if>
+			<if test="dealTime != null">deal_time = #{dealTime},</if>
+			<if test="closeReason != null">close_reason = #{closeReason},</if>
+			<if test="remark != null">remark = #{remark},</if>
+			<if test="updateBy != null">update_by = #{updateBy},</if>
+			update_time = now()
+		</set>
+		where order_id = #{orderId}
+	</update>
+
+	<update id="deleteOrderByIds">
+		update biz_merchant_service_order
+		set del_flag = '1',
+			update_by = #{updateBy},
+			update_time = now()
+		where order_id in
+		<foreach collection="ids" item="id" open="(" separator="," close=")">
+			#{id}
+		</foreach>
+		<if test="parkId != null">and park_id = #{parkId}</if>
+	</update>
+
+	<insert id="insertLog" parameterType="org.springblade.modules.business.pojo.entity.MerchantServiceOrderLog" useGeneratedKeys="true" keyProperty="logId">
+		insert into biz_merchant_service_order_log (order_id, action, action_desc, operator, operate_time)
+		values (#{orderId}, #{action}, #{actionDesc}, #{operator}, #{operateTime})
+	</insert>
+
+	<select id="selectLogByOrderId" resultMap="MerchantServiceOrderLogResult">
+		select log_id,
+			   order_id,
+			   action,
+			   action_desc,
+			   operator,
+			   operate_time
+		from biz_merchant_service_order_log
+		where order_id = #{orderId}
+		order by operate_time desc, log_id desc
+	</select>
+
+</mapper>
