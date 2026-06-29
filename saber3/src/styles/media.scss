@@ -66,4 +66,16 @@
   .top-bar__item {
     display: none;
   }
+  .avue-top {
+    .avue-logo {
+      width: 64px;
+      flex-basis: 64px;
+      padding: 0 18px;
+      overflow: hidden;
+    }
+
+    .top-bar__menu {
+      padding-left: 6px;
+    }
+  }
 }

@@ -188,6 +188,12 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	}
 
 	@Override
+	public ContractPayment getDepositRefundPayment(Long contractId) {
+		requireContract(contractId);
+		return findDepositRefundPayment(contractId);
+	}
+
+	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public ContractPayment ensureDepositRefundPayment(Long contractId) {
 		Contract contract = requireContract(contractId);

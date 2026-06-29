@@ -119,7 +119,17 @@
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>
-                <el-button text type="primary" @click="handleSendMiniApp(row)">发小程序</el-button>
+                <el-dropdown trigger="click" @command="command => handleMiniAppCommand(row, command)">
+                  <el-button text type="primary">发小程序</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="reminder-notice">催款通知书</el-dropdown-item>
+                      <el-dropdown-item command="overdue-notice">逾期处理通知书</el-dropdown-item>
+                      <el-dropdown-item command="legal-letter">律师函</el-dropdown-item>
+                      <el-dropdown-item command="move-out-notice">限期搬离通知书</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
                 <el-button text type="danger" :disabled="row.terminationApprovalStatus === 'running'" @click="handleRefusalDispose(row)">
                   拒不返还
                 </el-button>
@@ -185,6 +195,15 @@
           </el-button>
         </template>
       </el-dialog>
+
+      <notice-preview-dialog
+        v-model="noticePreview.visible"
+        :title="noticePreview.title"
+        :html="noticePreview.html"
+        :loading="noticePreview.loading"
+        :download-url="noticePreview.downloadUrl"
+        @download="downloadNoticePreviewFile"
+      />
     </div>
   </basic-container>
 </template>
@@ -192,6 +211,8 @@
 <script>
 import { Base64 } from 'js-base64';
 import { mapGetters } from 'vuex';
+import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
+import { noticePrintUrl } from '@/api/contract/print';
 import {
   generateContractNotice,
   getOverdueReminderPage,
@@ -201,7 +222,11 @@ import {
 } from '@/api/ics/payment';
 import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
 import { feeTypeDic } from '@/option/finance/payment';
-import { baseUrl } from '@/config/env';
+import {
+  createNoticePreviewState,
+  downloadNoticeFile,
+  openNoticePreview,
+} from '@/utils/contract-notice';
 
 const OVERDUE_WORKFLOW = 'contract_overdue_legal';
 const TERMINATION_WORKFLOW = 'contract_termination';
@@ -226,6 +251,9 @@ const WORKFLOW_CONFIG = {
 
 export default {
   name: 'FinanceOverdueReminder',
+  components: {
+    NoticePreviewDialog,
+  },
   data() {
     return {
       query: {
@@ -250,6 +278,7 @@ export default {
       workflowForm: {
         processDefKey: '',
       },
+      noticePreview: createNoticePreviewState(),
     };
   },
   computed: {
@@ -346,7 +375,28 @@ export default {
       this.selectionList = list;
     },
     handleNoticeCommand(row, noticeType) {
-      this.handleGenerateNotice(row, noticeType);
+      this.previewNotice(row, noticeType);
+    },
+    handleMiniAppCommand(row, noticeType) {
+      this.handleSendMiniApp(row, noticeType);
+    },
+    previewNotice(row, noticeType) {
+      if (!row || !row.paymentId) return;
+      openNoticePreview(
+        this,
+        this.noticePreview,
+        {
+          noticeType,
+          paymentId: row.paymentId,
+          contractId: row.contractId,
+        },
+        noticePrintUrl(noticeType, {
+          paymentId: row.paymentId,
+          contractId: row.contractId,
+        }),
+        this.noticeFallbackName(row, noticeType),
+        '审批表预览'
+      );
     },
     handleGenerateNotice(row, noticeType) {
       if (!row || !row.paymentId) return;
@@ -357,20 +407,36 @@ export default {
       };
       generateContractNotice(params).then(res => {
         const file = res.data.data || {};
-        const url = file.fileUrl || this.printUrl(row, noticeType);
-        window.open(url, '_blank');
-        this.$message.success(`${file.noticeName || '通知文件'}已生成`);
+        const url =
+          file.fileUrl ||
+          noticePrintUrl(noticeType, {
+            paymentId: row.paymentId,
+            contractId: row.contractId,
+          });
+        const fallbackName = this.noticeFallbackName(row, noticeType, file.noticeName);
+        return this.downloadNoticeFile(url, fallbackName).then(() => {
+          this.$message.success(`${file.noticeName || '通知文件'}已生成`);
+        });
       });
     },
-    handleSendMiniApp(row) {
+    handleSendMiniApp(row, noticeType = 'overdue-notice') {
       if (!row || !row.paymentId) return;
+      const messageMap = {
+        'reminder-notice': '催款通知书',
+        'overdue-notice': '租金逾期处理通知书',
+        'legal-letter': '律师函',
+        'move-out-notice': '限期搬离通知书',
+      };
       sendMiniAppNotice({
-        noticeType: 'overdue-notice',
+        noticeType,
         paymentId: row.paymentId,
         contractId: row.contractId,
       }).then(() => {
-        remindOverduePayment(row.paymentId).finally(() => this.reload());
-        this.$message.success('小程序发送数据已生成，已预留给小程序接口');
+        const refresh = noticeType === 'move-out-notice'
+          ? Promise.resolve()
+          : remindOverduePayment(row.paymentId);
+        refresh.finally(() => this.reload());
+        this.$message.success(`${messageMap[noticeType] || '通知文件'}的小程序发送数据已生成，已预留给小程序接口`);
       });
     },
     handleStartOverdueApproval(row) {
@@ -409,12 +475,17 @@ export default {
         )
         .then(res => {
           const file = res.data.data || {};
-          const url = file.fileUrl || this.printUrl(row, 'move-out-notice');
-          if (url) {
-            window.open(url, '_blank');
-          }
-          this.$message.success('限期搬离通知书已生成，请继续发起退租审批');
-          this.openWorkflowDialog(TERMINATION_WORKFLOW, row);
+          const url =
+            file.fileUrl ||
+            noticePrintUrl('move-out-notice', {
+              paymentId: row.paymentId,
+              contractId: row.contractId,
+            });
+          const fallbackName = this.noticeFallbackName(row, 'move-out-notice', file.noticeName);
+          return this.downloadNoticeFile(url, fallbackName).then(() => {
+            this.$message.success('限期搬离通知书已生成，请继续发起退租审批');
+            this.openWorkflowDialog(TERMINATION_WORKFLOW, row);
+          });
         });
     },
     openWorkflowDialog(type, row) {
@@ -538,16 +609,25 @@ export default {
         },
       });
     },
-    printUrl(row, noticeType) {
-      const typeMap = {
-        'project-approval': `${baseUrl}/blade-contract/print/project-approval/${row.paymentId}`,
-        'payment-notice': `${baseUrl}/blade-contract/print/payment-notice/${row.paymentId}`,
-        'reminder-notice': `${baseUrl}/blade-contract/print/reminder-notice/${row.paymentId}`,
-        'overdue-notice': `${baseUrl}/blade-contract/print/overdue-notice/${row.paymentId}`,
-        'legal-letter': `${baseUrl}/blade-contract/print/legal-letter/${row.paymentId}`,
-        'move-out-notice': `${baseUrl}/blade-contract/print/move-out-notice/payment/${row.paymentId}`,
+    noticeFallbackName(row, noticeType, noticeName) {
+      const typeNameMap = {
+        'project-approval': '项目审批表',
+        'payment-notice': '付款通知单',
+        'reminder-notice': '催款通知书',
+        'overdue-notice': '租金逾期处理通知书',
+        'legal-letter': '律师函',
+        'move-out-notice': '限期搬离通知书',
       };
-      return typeMap[noticeType] || typeMap['overdue-notice'];
+      const baseName = noticeName || typeNameMap[noticeType] || '通知文件';
+      const contractNo = row && row.contractNo ? `${row.contractNo}-` : '';
+      return `${contractNo}${baseName}.docx`;
+    },
+    downloadNoticeFile(url, fallbackName) {
+      return Promise.resolve().then(() => downloadNoticeFile(url, fallbackName));
+    },
+    downloadNoticePreviewFile() {
+      if (!this.noticePreview.downloadUrl) return;
+      downloadNoticeFile(this.noticePreview.downloadUrl, this.noticePreview.fallbackName);
     },
     approvalStatusText(value) {
       const map = {

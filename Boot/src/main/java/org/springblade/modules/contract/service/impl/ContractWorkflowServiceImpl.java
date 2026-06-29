@@ -104,11 +104,16 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 	private static final String NODE_END = "流程结束";
 	private static final Set<String> PAYMENT_AMOUNT_KEYS = Set.of(
 		"amountPaid",
+		"amountDue",
 		"payAmount",
 		"paymentAmount",
 		"paidAmount",
 		"actualAmount",
 		"invoiceAmount",
+		"a178271012553233941",
+		"a178229043562386124",
+		"a178229053048579216",
+		"a178229053161649966",
 		"实收金额",
 		"付款金额",
 		"缴费金额",
@@ -124,17 +129,18 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		BUSINESS_TYPE_CONTRACT_OVERDUE_LEGAL
 	);
 
-	private static final Map<String, String> PROCESS_KEY_BUSINESS_TYPE = Map.of(
-		"contract_sign", BUSINESS_TYPE_CONTRACT_APPROVAL,
-		"contract_approval", BUSINESS_TYPE_CONTRACT_APPROVAL,
-		"pay", BUSINESS_TYPE_CONTRACT_PAYMENT,
-		"contract_payment", BUSINESS_TYPE_CONTRACT_PAYMENT,
-		"roomreview", BUSINESS_TYPE_CONTRACT_ROOM_REVIEW,
-		"contract_room_review", BUSINESS_TYPE_CONTRACT_ROOM_REVIEW,
-		"termination", BUSINESS_TYPE_CONTRACT_TERMINATION,
-		"contract_termination", BUSINESS_TYPE_CONTRACT_TERMINATION,
-		"law", BUSINESS_TYPE_CONTRACT_OVERDUE_LEGAL,
-		"contract_overdue_legal", BUSINESS_TYPE_CONTRACT_OVERDUE_LEGAL
+	private static final Map<String, String> PROCESS_KEY_BUSINESS_TYPE = Map.ofEntries(
+		Map.entry("contract_sign", BUSINESS_TYPE_CONTRACT_APPROVAL),
+		Map.entry("contract_approval", BUSINESS_TYPE_CONTRACT_APPROVAL),
+		Map.entry("pay", BUSINESS_TYPE_CONTRACT_PAYMENT),
+		Map.entry("invoice", BUSINESS_TYPE_CONTRACT_PAYMENT),
+		Map.entry("contract_payment", BUSINESS_TYPE_CONTRACT_PAYMENT),
+		Map.entry("roomreview", BUSINESS_TYPE_CONTRACT_ROOM_REVIEW),
+		Map.entry("contract_room_review", BUSINESS_TYPE_CONTRACT_ROOM_REVIEW),
+		Map.entry("termination", BUSINESS_TYPE_CONTRACT_TERMINATION),
+		Map.entry("contract_termination", BUSINESS_TYPE_CONTRACT_TERMINATION),
+		Map.entry("law", BUSINESS_TYPE_CONTRACT_OVERDUE_LEGAL),
+		Map.entry("contract_overdue_legal", BUSINESS_TYPE_CONTRACT_OVERDUE_LEGAL)
 	);
 
 	private final ContractMapper contractMapper;
@@ -257,7 +263,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 				Map<String, String> paymentFiles = uploadPaymentPackage(record.getPaymentId());
 				if (!paymentFiles.isEmpty()) {
 					record.setAttachmentJson(JsonUtil.toJson(paymentFiles));
-					record.setPrintFileUrl(limit(firstNotBlank(paymentFiles.get(IContractNoticeService.NOTICE_INVOICE), paymentFiles.get(IContractNoticeService.NOTICE_PAYMENT), record.getPrintFileUrl(), buildPrintFileUrl(record)), 500));
+					record.setPrintFileUrl(limit(firstNotBlank(paymentFiles.get(IContractNoticeService.NOTICE_PAYMENT), paymentFiles.get(IContractNoticeService.NOTICE_INVOICE), record.getPrintFileUrl(), buildPrintFileUrl(record)), 500));
 					return;
 				}
 			}
@@ -506,7 +512,11 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			return firstNotBlank(uploadNotice(IContractNoticeService.NOTICE_CONTRACT_APPROVAL, null, record.getContractId()), "/blade-contract/print/contract-approval/" + record.getContractId());
 		}
 		if (BUSINESS_TYPE_CONTRACT_PAYMENT.equals(record.getBusinessType()) && record.getPaymentId() != null) {
-			return firstNotBlank(uploadNotice(IContractNoticeService.NOTICE_INVOICE, record.getPaymentId(), null), "/blade-contract/print/invoice-apply/" + record.getPaymentId());
+			return firstNotBlank(
+				uploadNotice(IContractNoticeService.NOTICE_PAYMENT, record.getPaymentId(), null),
+				uploadNotice(IContractNoticeService.NOTICE_INVOICE, record.getPaymentId(), null),
+				"/blade-contract/print/payment-notice/" + record.getPaymentId()
+			);
 		}
 		if (BUSINESS_TYPE_CONTRACT_OVERDUE_LEGAL.equals(record.getBusinessType()) && record.getPaymentId() != null) {
 			return firstNotBlank(uploadNotice(IContractNoticeService.NOTICE_LEGAL, record.getPaymentId(), null), "/blade-contract/print/legal-letter/" + record.getPaymentId());
@@ -653,7 +663,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 
 	private String businessTypeLabel(String businessType) {
 		if (BUSINESS_TYPE_CONTRACT_PAYMENT.equals(businessType)) {
-			return "付款/开票审批";
+			return "付款流程审批";
 		}
 		if (BUSINESS_TYPE_CONTRACT_ROOM_REVIEW.equals(businessType)) {
 			return "房屋验收审批";

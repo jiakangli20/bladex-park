@@ -16,6 +16,8 @@ import org.springblade.core.mp.support.Query;
 import org.springblade.core.secure.annotation.PreAuth;
 import org.springblade.core.tenant.annotation.NonDS;
 import org.springblade.core.tool.api.R;
+import org.springblade.core.tool.utils.DateUtil;
+import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
@@ -25,8 +27,11 @@ import org.springblade.modules.ics.pojo.vo.PaymentNoticeSummaryVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeVO;
 import org.springblade.modules.ics.pojo.vo.PaymentSummaryVO;
 import org.springblade.modules.ics.service.IPaymentService;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
 
+import java.beans.PropertyEditorSupport;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -44,8 +49,27 @@ public class PaymentController extends BladeController {
 
 	private final IPaymentService paymentService;
 
+	@InitBinder
+	public void initBinder(WebDataBinder binder) {
+		binder.registerCustomEditor(Date.class, new PropertyEditorSupport() {
+			@Override
+			public void setAsText(String text) {
+				if (StringUtil.isBlank(text)) {
+					setValue(null);
+					return;
+				}
+				String value = text.trim();
+				if (value.length() == DateUtil.PATTERN_DATE.length()) {
+					setValue(DateUtil.parse(value, DateUtil.PATTERN_DATE));
+				} else {
+					setValue(DateUtil.parse(value, DateUtil.PATTERN_DATETIME));
+				}
+			}
+		});
+	}
+
 	@GetMapping("/page")
-	@PreAuth(menu = "finance_bills_all_list")
+	@PreAuth(menu = "finance_bills_all")
 	@ApiOperationSupport(order = 1)
 	@Operation(summary = "账单分页", description = "传入缴费查询条件")
 	public R<IPage<ContractPayment>> page(ContractPayment payment, Query query, @RequestParam(required = false) String scope) {

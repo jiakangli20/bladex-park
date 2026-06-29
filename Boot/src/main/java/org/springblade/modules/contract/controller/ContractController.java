@@ -166,10 +166,20 @@ public class ContractController extends BladeController {
 	}
 
 	/**
+	 * 查询押金退还付款单
+	 */
+	@GetMapping("/payment/deposit-refund")
+	@ApiOperationSupport(order = 11)
+	@Operation(summary = "查询押金退还付款单", description = "传入contractId")
+	public R<ContractPayment> getDepositRefundPayment(@RequestParam Long contractId) {
+		return R.data(contractService.getDepositRefundPayment(contractId));
+	}
+
+	/**
 	 * 获取或创建押金退还付款单
 	 */
 	@PostMapping("/payment/deposit-refund")
-	@ApiOperationSupport(order = 11)
+	@ApiOperationSupport(order = 12)
 	@Operation(summary = "获取或创建押金退还付款单", description = "传入contractId")
 	public R<ContractPayment> depositRefundPayment(@RequestParam Long contractId) {
 		return R.data(contractService.ensureDepositRefundPayment(contractId));
@@ -179,7 +189,7 @@ public class ContractController extends BladeController {
 	 * 缴费分页
 	 */
 	@GetMapping("/payment/list")
-	@ApiOperationSupport(order = 12)
+	@ApiOperationSupport(order = 13)
 	@Operation(summary = "缴费分页", description = "传入payment")
 	public R<IPage<ContractPayment>> paymentList(ContractPayment payment, Query query) {
 		IPage<ContractPayment> pages = contractService.selectPaymentPage(Condition.getPage(query), payment);
@@ -190,7 +200,7 @@ public class ContractController extends BladeController {
 	 * 确认缴费
 	 */
 	@PostMapping("/payment/confirm")
-	@ApiOperationSupport(order = 13)
+	@ApiOperationSupport(order = 14)
 	@Operation(summary = "确认缴费", description = "传入paymentId")
 	public R confirmPayment(@RequestParam Long paymentId, @RequestBody ContractPayment payment) {
 		return R.status(contractService.confirmPayment(paymentId, payment));
@@ -200,7 +210,7 @@ public class ContractController extends BladeController {
 	 * 催缴
 	 */
 	@PostMapping("/payment/remind")
-	@ApiOperationSupport(order = 14)
+	@ApiOperationSupport(order = 15)
 	@Operation(summary = "催缴", description = "传入paymentId")
 	public R remind(@RequestParam Long paymentId) {
 		return R.status(contractService.remindPayment(paymentId));
@@ -210,7 +220,7 @@ public class ContractController extends BladeController {
 	 * 合同日志
 	 */
 	@GetMapping("/log")
-	@ApiOperationSupport(order = 15)
+	@ApiOperationSupport(order = 16)
 	@Operation(summary = "合同日志", description = "传入contractId")
 	public R<List<ContractLog>> log(@RequestParam Long contractId) {
 		return R.data(contractService.selectLogByContractId(contractId));

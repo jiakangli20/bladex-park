@@ -13,7 +13,6 @@ import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import org.springblade.core.boot.ctrl.BladeController;
 import org.springblade.core.secure.annotation.PreAuth;
-import org.springblade.core.secure.constant.AuthConstant;
 import org.springblade.core.tenant.annotation.NonDS;
 import org.springblade.core.tenant.annotation.TenantIgnore;
 import org.springblade.core.tool.api.R;
@@ -46,7 +45,7 @@ public class ContractPrintController extends BladeController {
 	private final IContractNoticeService contractNoticeService;
 
 	@GetMapping("/payment-notice/{paymentId}")
-	@PreAuth(AuthConstant.PERMIT_ALL)
+	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 1)
 	@Operation(summary = "付款通知单", description = "传入paymentId")
 	public void paymentNotice(@Parameter(description = "账单ID") @PathVariable Long paymentId, HttpServletResponse response) {
@@ -54,7 +53,7 @@ public class ContractPrintController extends BladeController {
 	}
 
 	@GetMapping("/invoice-apply/{paymentId}")
-	@PreAuth(AuthConstant.PERMIT_ALL)
+	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 2)
 	@Operation(summary = "开票申请单", description = "传入paymentId")
 	public void invoiceApply(@Parameter(description = "账单ID") @PathVariable Long paymentId, HttpServletResponse response) {
@@ -62,7 +61,7 @@ public class ContractPrintController extends BladeController {
 	}
 
 	@GetMapping("/reminder-notice/{paymentId}")
-	@PreAuth(AuthConstant.PERMIT_ALL)
+	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 3)
 	@Operation(summary = "催款通知书", description = "传入paymentId")
 	public void reminderNotice(@Parameter(description = "账单ID") @PathVariable Long paymentId, HttpServletResponse response) {
@@ -70,7 +69,7 @@ public class ContractPrintController extends BladeController {
 	}
 
 	@GetMapping("/contract-approval/{contractId}")
-	@PreAuth(AuthConstant.PERMIT_ALL)
+	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 4)
 	@Operation(summary = "合同会签审批表", description = "传入contractId")
 	public void contractApproval(@Parameter(description = "合同ID") @PathVariable Long contractId, HttpServletResponse response) {
@@ -78,7 +77,7 @@ public class ContractPrintController extends BladeController {
 	}
 
 	@GetMapping("/contract-text/fixed/{contractId}")
-	@PreAuth(AuthConstant.PERMIT_ALL)
+	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 5)
 	@Operation(summary = "合同正文固定租金版", description = "传入contractId")
 	public void contractTextFixed(@Parameter(description = "合同ID") @PathVariable Long contractId, HttpServletResponse response) {
@@ -86,7 +85,7 @@ public class ContractPrintController extends BladeController {
 	}
 
 	@GetMapping("/contract-text/floating/{contractId}")
-	@PreAuth(AuthConstant.PERMIT_ALL)
+	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 6)
 	@Operation(summary = "合同正文浮动租金版", description = "传入contractId")
 	public void contractTextFloating(@Parameter(description = "合同ID") @PathVariable Long contractId, HttpServletResponse response) {
@@ -94,7 +93,7 @@ public class ContractPrintController extends BladeController {
 	}
 
 	@GetMapping("/project-approval/{paymentId}")
-	@PreAuth(AuthConstant.PERMIT_ALL)
+	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 7)
 	@Operation(summary = "项目审批表", description = "传入paymentId")
 	public void projectApproval(@Parameter(description = "账单ID") @PathVariable Long paymentId, HttpServletResponse response) {
@@ -102,7 +101,7 @@ public class ContractPrintController extends BladeController {
 	}
 
 	@GetMapping("/overdue-notice/{paymentId}")
-	@PreAuth(AuthConstant.PERMIT_ALL)
+	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 8)
 	@Operation(summary = "租金逾期处理通知书", description = "传入paymentId")
 	public void overdueNotice(@Parameter(description = "账单ID") @PathVariable Long paymentId, HttpServletResponse response) {
@@ -110,7 +109,7 @@ public class ContractPrintController extends BladeController {
 	}
 
 	@GetMapping("/legal-letter/{paymentId}")
-	@PreAuth(AuthConstant.PERMIT_ALL)
+	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 9)
 	@Operation(summary = "律师函", description = "传入paymentId")
 	public void legalLetter(@Parameter(description = "账单ID") @PathVariable Long paymentId, HttpServletResponse response) {
@@ -118,7 +117,7 @@ public class ContractPrintController extends BladeController {
 	}
 
 	@GetMapping("/move-out-notice/{contractId}")
-	@PreAuth(AuthConstant.PERMIT_ALL)
+	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 10)
 	@Operation(summary = "限期搬离通知书", description = "传入contractId")
 	public void moveOutNotice(@Parameter(description = "合同ID") @PathVariable Long contractId, HttpServletResponse response) {
@@ -126,7 +125,7 @@ public class ContractPrintController extends BladeController {
 	}
 
 	@GetMapping("/move-out-notice/payment/{paymentId}")
-	@PreAuth(AuthConstant.PERMIT_ALL)
+	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 11)
 	@Operation(summary = "限期搬离通知书", description = "传入paymentId")
 	public void moveOutNoticeByPayment(@Parameter(description = "账单ID") @PathVariable Long paymentId, HttpServletResponse response) {
@@ -134,7 +133,7 @@ public class ContractPrintController extends BladeController {
 	}
 
 	@GetMapping("/termination-approval/{contractId}")
-	@PreAuth(AuthConstant.PERMIT_ALL)
+	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 12)
 	@Operation(summary = "退租审批表", description = "传入contractId")
 	public void terminationApproval(@Parameter(description = "合同ID") @PathVariable Long contractId, HttpServletResponse response) {
@@ -142,7 +141,7 @@ public class ContractPrintController extends BladeController {
 	}
 
 	@GetMapping("/termination-agreement/{contractId}")
-	@PreAuth(AuthConstant.PERMIT_ALL)
+	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 13)
 	@Operation(summary = "合同解除补充协议", description = "传入contractId")
 	public void terminationAgreement(@Parameter(description = "合同ID") @PathVariable Long contractId, HttpServletResponse response) {
@@ -150,7 +149,7 @@ public class ContractPrintController extends BladeController {
 	}
 
 	@GetMapping("/room-review/{contractId}")
-	@PreAuth(AuthConstant.PERMIT_ALL)
+	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 14)
 	@Operation(summary = "房屋验收单", description = "传入contractId")
 	public void roomReview(@Parameter(description = "合同ID") @PathVariable Long contractId, HttpServletResponse response) {
@@ -158,7 +157,7 @@ public class ContractPrintController extends BladeController {
 	}
 
 	@PostMapping("/generate")
-	@PreAuth(AuthConstant.PERMIT_ALL)
+	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 15)
 	@Operation(summary = "生成通知文件", description = "传入noticeType、paymentId或contractId")
 	public R<ContractNoticeFileVO> generate(@RequestParam String noticeType,
@@ -167,9 +166,20 @@ public class ContractPrintController extends BladeController {
 		return R.data(contractNoticeService.uploadNotice(noticeType, paymentId, contractId));
 	}
 
-	@PostMapping("/miniapp/send")
-	@PreAuth(AuthConstant.PERMIT_ALL)
+	@GetMapping("/preview")
+	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 16)
+	@Operation(summary = "通知文件预览", description = "传入noticeType、paymentId或contractId")
+	public R<Kv> preview(@RequestParam String noticeType,
+						 @RequestParam(required = false) Long paymentId,
+						 @RequestParam(required = false) Long contractId,
+						 @RequestParam(required = false) String formDataJson) {
+		return R.data(contractNoticeService.buildNoticePreview(noticeType, paymentId, contractId, formDataJson));
+	}
+
+	@PostMapping("/miniapp/send")
+	@PreAuth("hasAuth()")
+	@ApiOperationSupport(order = 17)
 	@Operation(summary = "小程序发送预留接口", description = "传入noticeType、paymentId或contractId")
 	public R<Kv> miniAppSend(@RequestParam String noticeType,
 							 @RequestParam(required = false) Long paymentId,

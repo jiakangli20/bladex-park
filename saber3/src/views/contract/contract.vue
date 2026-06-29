@@ -418,7 +418,7 @@
                     v-if="row.printFileUrl"
                     text
                     type="primary"
-                    @click="openWorkflowFile(row.printFileUrl)"
+                    @click="openWorkflowFile(row.printFileUrl, row)"
                   >
                     查看
                   </el-button>
@@ -666,12 +666,22 @@
           </el-button>
         </template>
       </el-dialog>
+
+      <notice-preview-dialog
+        v-model="noticePreview.visible"
+        :title="noticePreview.title"
+        :html="noticePreview.html"
+        :loading="noticePreview.loading"
+        :download-url="noticePreview.downloadUrl"
+        @download="downloadNoticePreviewFile"
+      />
     </div>
   </basic-container>
 </template>
 
 <script>
 import { Base64 } from 'js-base64';
+import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
 import {
   confirmPayment,
   getDetail,
@@ -686,12 +696,16 @@ import {
   terminate,
   uploadSignedContract,
 } from '@/api/contract/contract';
-import { downloadBlob } from '@/api/common';
+import { noticePrintUrl } from '@/api/contract/print';
 import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
 import { paymentStatusDic, statusDic } from '@/option/contract/contract';
 import { mapGetters } from 'vuex';
 import { getToken } from '@/utils/auth';
-import { downloadFile } from '@/utils/util';
+import {
+  createNoticePreviewState,
+  downloadNoticeFile,
+  openNoticePreview,
+} from '@/utils/contract-notice';
 
 const CONTRACT_APPROVAL_BUSINESS_TYPE = 'contract_approval';
 const CONTRACT_PAYMENT_BUSINESS_TYPE = 'contract_payment';
@@ -708,12 +722,12 @@ const WORKFLOW_TYPES = {
     nameKeywords: ['合同审批', '合同'],
   },
   contract_payment: {
-    title: '发起付款/开票流程',
+    title: '发起付款流程',
     summaryTitle: '账单信息',
-    processPlaceholder: '请选择已部署的付款/开票流程',
-    formKeys: ['invoice'],
+    processPlaceholder: '请选择已部署的付款流程',
+    formKeys: ['pay', 'invoice'],
     defaultKeys: ['pay'],
-    nameKeywords: ['开票', '付款'],
+    nameKeywords: ['付款', '缴费', '付款通知'],
   },
   contract_room_review: {
     title: '发起房屋验收',
@@ -743,6 +757,9 @@ const WORKFLOW_TYPES = {
 
 export default {
   name: 'ContractList',
+  components: {
+    NoticePreviewDialog,
+  },
   data() {
     return {
       query: {
@@ -819,6 +836,7 @@ export default {
         breachPenalty: 0,
         terminationReason: '',
       },
+      noticePreview: createNoticePreviewState(),
     };
   },
   computed: {
@@ -1231,6 +1249,8 @@ export default {
     buildPaymentWorkflowPayload(type, contract = {}, payment = {}) {
       const selectedContract = contract || {};
       const selectedPayment = payment || {};
+      const processKey = this.approvalForm.processDefKey || '';
+      const isInvoiceWorkflow = processKey.includes('invoice');
       return {
         processDefKey: this.approvalForm.processDefKey,
         params: {
@@ -1259,6 +1279,7 @@ export default {
           unpaidAmount: this.unpaidAmount(selectedPayment),
           payDeadline: selectedPayment.payDeadline,
           overdueDays: this.overdueDays(selectedPayment),
+          templateKey: isInvoiceWorkflow ? 'invoice-apply' : 'payment-notice',
           applicant: this.userInfo.nick_name,
           applicantDept: this.userInfo.dept_name,
           applyTime: this.formatDate(new Date()),
@@ -1579,23 +1600,55 @@ export default {
           this.workflowLoading = false;
         });
     },
-    openWorkflowFile(url) {
-      if (!url) return;
-      downloadBlob(url).then(res => {
-        const disposition = res.headers && res.headers['content-disposition'];
-        const filename = this.resolveDownloadFilename(disposition, '合同流程文件');
-        const contentType = (res.headers && res.headers['content-type']) || 'application/octet-stream';
-        downloadFile(res.data, filename, contentType);
-      });
+    openWorkflowFile(url, row) {
+      if (!url || !row) return;
+      const noticeType = this.workflowNoticeType(row, url);
+      openNoticePreview(
+        this,
+        this.noticePreview,
+        {
+          noticeType,
+          contractId: row.contractId,
+          paymentId: row.paymentId,
+          formDataJson: row.formDataJson || '',
+        },
+        noticePrintUrl(noticeType, {
+          contractId: row.contractId,
+          paymentId: row.paymentId,
+        }) || url,
+        '合同流程文件',
+        row.processName || '审批表预览'
+      );
     },
-    resolveDownloadFilename(disposition, fallbackName) {
-      if (!disposition) return fallbackName;
-      const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-      if (utf8Match && utf8Match[1]) {
-        return decodeURIComponent(utf8Match[1]);
+    workflowNoticeType(row, url) {
+      const currentUrl = String(url || '');
+      if (currentUrl.includes('termination-agreement')) return 'termination-agreement';
+      if (currentUrl.includes('room-review')) return 'room-review';
+      if (currentUrl.includes('project-approval')) return 'project-approval';
+      if (currentUrl.includes('payment-notice')) return 'payment-notice';
+      if (currentUrl.includes('invoice-apply')) return 'invoice-apply';
+      if (currentUrl.includes('overdue-notice')) return 'overdue-notice';
+      if (currentUrl.includes('move-out-notice')) return 'move-out-notice';
+      if (currentUrl.includes('legal-letter')) return 'legal-letter';
+      switch (row.businessType) {
+        case CONTRACT_PAYMENT_BUSINESS_TYPE:
+          return row.processDefKey && String(row.processDefKey).includes('invoice')
+            ? 'invoice-apply'
+            : 'payment-notice';
+        case CONTRACT_ROOM_REVIEW_BUSINESS_TYPE:
+          return 'room-review';
+        case CONTRACT_TERMINATION_BUSINESS_TYPE:
+          return 'termination-approval';
+        case CONTRACT_OVERDUE_LEGAL_BUSINESS_TYPE:
+          return 'legal-letter';
+        case CONTRACT_APPROVAL_BUSINESS_TYPE:
+        default:
+          return 'contract-approval';
       }
-      const filenameMatch = disposition.match(/filename="?([^";]+)"?/i);
-      return filenameMatch && filenameMatch[1] ? decodeURIComponent(filenameMatch[1]) : fallbackName;
+    },
+    downloadNoticePreviewFile() {
+      if (!this.noticePreview.downloadUrl) return;
+      downloadNoticeFile(this.noticePreview.downloadUrl, this.noticePreview.fallbackName);
     },
     handleConfirmPayment(row) {
       this.$prompt('请输入实收金额', '确认缴费', {
@@ -1766,7 +1819,7 @@ export default {
     workflowBusinessTypeText(value) {
       const map = {
         contract_approval: '合同审批',
-        contract_payment: '付款/开票流程',
+        contract_payment: '付款流程',
         contract_room_review: '房屋验收',
         contract_termination: '退租审批',
         contract_overdue_legal: '逾期律师函',

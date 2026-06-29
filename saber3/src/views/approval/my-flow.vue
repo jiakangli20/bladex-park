@@ -364,6 +364,7 @@
 
 <script>
 import { mapGetters } from 'vuex';
+import { downloadBlob } from '@/api/common';
 import {
   approveApprovalProject,
   archiveApprovalProject,
@@ -380,6 +381,7 @@ import {
   transferApprovalProject,
 } from '@/api/approval/approval';
 import { getCustomerDetail, getCustomerList } from '@/api/business/customer';
+import { downloadFile } from '@/utils/util';
 
 const statusOptions = [
   { value: '0', label: '草稿', type: 'info' },
@@ -925,7 +927,21 @@ export default {
         this.$message.warning('暂无文件地址');
         return;
       }
-      window.open(url, '_blank');
+      downloadBlob(url).then(res => {
+        const disposition = res.headers && res.headers['content-disposition'];
+        const filename = this.resolveDownloadFilename(disposition, '审批附件');
+        const contentType = (res.headers && res.headers['content-type']) || 'application/octet-stream';
+        downloadFile(res.data, filename, contentType);
+      });
+    },
+    resolveDownloadFilename(disposition, fallbackName) {
+      if (!disposition) return fallbackName;
+      const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+      if (utf8Match && utf8Match[1]) {
+        return decodeURIComponent(utf8Match[1]);
+      }
+      const filenameMatch = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      return filenameMatch && filenameMatch[1] ? decodeURIComponent(filenameMatch[1]) : fallbackName;
     },
     canCurrentUserAct(row) {
       if (row.processStatus !== '1') return false;

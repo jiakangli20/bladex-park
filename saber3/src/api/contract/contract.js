@@ -110,6 +110,16 @@ export const getPayment = contractId => {
   });
 };
 
+export const getDepositRefundPayment = contractId => {
+  return request({
+    url: '/blade-contract/contract/payment/deposit-refund',
+    method: 'get',
+    params: {
+      contractId,
+    },
+  });
+};
+
 export const ensureDepositRefundPayment = contractId => {
   return request({
     url: '/blade-contract/contract/payment/deposit-refund',

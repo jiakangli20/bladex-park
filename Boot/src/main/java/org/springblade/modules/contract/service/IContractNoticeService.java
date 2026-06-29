@@ -92,6 +92,17 @@ public interface IContractNoticeService {
 	Map<String, String> uploadTerminationPackage(Long contractId, String formDataJson);
 
 	/**
+	 * 构建通知文件预览数据.
+	 *
+	 * @param noticeType   通知类型
+	 * @param paymentId    账单ID
+	 * @param contractId   合同ID
+	 * @param formDataJson 表单快照
+	 * @return 预览数据
+	 */
+	Kv buildNoticePreview(String noticeType, Long paymentId, Long contractId, String formDataJson);
+
+	/**
 	 * 构建小程序发送载荷.
 	 *
 	 * @param noticeType 通知类型

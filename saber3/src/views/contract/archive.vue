@@ -169,7 +169,7 @@
                 </el-table-column>
                 <el-table-column prop="printFileUrl" label="文件" width="110" align="center">
                   <template #default="{ row }">
-                    <el-button v-if="row.printFileUrl" type="primary" text @click="openWorkflowFile(row.printFileUrl)">
+                    <el-button v-if="row.printFileUrl" type="primary" text @click="openWorkflowFile(row.printFileUrl, row)">
                       查看
                     </el-button>
                     <span v-else>-</span>
@@ -294,6 +294,15 @@
       </template>
     </el-dialog>
 
+    <notice-preview-dialog
+      v-model="noticePreview.visible"
+      :title="noticePreview.title"
+      :html="noticePreview.html"
+      :loading="noticePreview.loading"
+      :download-url="noticePreview.downloadUrl"
+      @download="downloadNoticePreviewFile"
+    />
+
     <el-dialog
       v-model="supplementVisible"
       title="上传补充协议"
@@ -372,6 +381,7 @@
 </template>
 
 <script>
+import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
 import {
   contractApprovalPrintUrl,
   contractTextPrintUrl,
@@ -382,7 +392,7 @@ import {
   removeSupplementAgreement,
   saveSupplementAgreement,
 } from '@/api/contract/archive';
-import { downloadBlob } from '@/api/common';
+import { noticePrintUrl } from '@/api/contract/print';
 import {
   approvalStatusDic,
   paymentStatusDic,
@@ -390,12 +400,19 @@ import {
   terminationApprovalStatusDic,
   terminationStatusDic,
 } from '@/option/contract/archive';
-import { downloadFile } from '@/utils/util';
 import { statusDic } from '@/option/contract/contract';
 import { mapGetters } from 'vuex';
 import { getToken } from '@/utils/auth';
+import {
+  createNoticePreviewState,
+  downloadNoticeFile,
+  openNoticePreview,
+} from '@/utils/contract-notice';
 
 export default {
+  components: {
+    NoticePreviewDialog,
+  },
   data() {
     return {
       query: {},
@@ -421,6 +438,7 @@ export default {
       printVisible: false,
       printTitle: '合同打印',
       printHtml: '',
+      noticePreview: createNoticePreviewState(),
       supplementVisible: false,
       supplementLoading: false,
       supplementUploadFileList: [],
@@ -496,26 +514,51 @@ export default {
           this.workflowLoading = false;
         });
     },
-    openWorkflowFile(url) {
-      if (!url) return;
-      this.downloadPrintFile(url);
+    openWorkflowFile(url, row) {
+      if (!url || !row) return;
+      const noticeType = this.archiveWorkflowNoticeType(row, url);
+      openNoticePreview(
+        this,
+        this.noticePreview,
+        {
+          noticeType,
+          contractId: row.contractId,
+          paymentId: row.paymentId,
+          formDataJson: row.formDataJson || '',
+        },
+        noticePrintUrl(noticeType, {
+          contractId: row.contractId,
+          paymentId: row.paymentId,
+        }) || url,
+        '合同流程文件',
+        row.processName || '审批表预览'
+      );
     },
     downloadPrintFile(url, fallbackName = '合同文件') {
-      downloadBlob(url).then(res => {
-        const disposition = res.headers && res.headers['content-disposition'];
-        const filename = this.resolveDownloadFilename(disposition, fallbackName);
-        const contentType = (res.headers && res.headers['content-type']) || 'application/octet-stream';
-        downloadFile(res.data, filename, contentType);
-      });
+      downloadNoticeFile(url, fallbackName);
     },
-    resolveDownloadFilename(disposition, fallbackName) {
-      if (!disposition) return fallbackName;
-      const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-      if (utf8Match && utf8Match[1]) {
-        return decodeURIComponent(utf8Match[1]);
+    archiveWorkflowNoticeType(row, url) {
+      const currentUrl = String(url || '');
+      if (currentUrl.includes('termination-agreement')) return 'termination-agreement';
+      if (currentUrl.includes('room-review')) return 'room-review';
+      if (currentUrl.includes('payment-notice')) return 'payment-notice';
+      if (currentUrl.includes('invoice-apply')) return 'invoice-apply';
+      if (currentUrl.includes('legal-letter')) return 'legal-letter';
+      if (currentUrl.includes('overdue-notice')) return 'overdue-notice';
+      if (currentUrl.includes('project-approval')) return 'project-approval';
+      if (row.businessType === 'contract_payment') {
+        return row.processDefKey && String(row.processDefKey).includes('invoice')
+          ? 'invoice-apply'
+          : 'payment-notice';
       }
-      const filenameMatch = disposition.match(/filename="?([^";]+)"?/i);
-      return filenameMatch && filenameMatch[1] ? decodeURIComponent(filenameMatch[1]) : fallbackName;
+      if (row.businessType === 'contract_room_review') return 'room-review';
+      if (row.businessType === 'contract_overdue_legal') return 'legal-letter';
+      if (row.businessType === 'contract_termination') return 'termination-approval';
+      return 'contract-approval';
+    },
+    downloadNoticePreviewFile() {
+      if (!this.noticePreview.downloadUrl) return;
+      downloadNoticeFile(this.noticePreview.downloadUrl, this.noticePreview.fallbackName);
     },
     loadSupplements(contractId) {
       if (!contractId) return;
@@ -663,7 +706,17 @@ export default {
     },
     handleExportApproval(row) {
       if (!row || !row.contractId) return;
-      this.downloadPrintFile(contractApprovalPrintUrl(row.contractId), `${row.contractNo || '合同'}会签审批表.xlsx`);
+      openNoticePreview(
+        this,
+        this.noticePreview,
+        {
+          noticeType: 'contract-approval',
+          contractId: row.contractId,
+        },
+        contractApprovalPrintUrl(row.contractId),
+        `${row.contractNo || '合同'}会签审批表.xlsx`,
+        '合同会签审批表'
+      );
     },
     handlePrint(row) {
       if (!row || !row.contractId) return;
@@ -758,7 +811,7 @@ export default {
     workflowBusinessTypeText(value) {
       const map = {
         contract_approval: '合同审批',
-        contract_payment: '付款/开票流程',
+        contract_payment: '付款流程',
         contract_room_review: '房屋验收',
         contract_termination: '退租审批',
         contract_overdue_legal: '逾期律师函',

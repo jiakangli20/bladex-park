@@ -13,66 +13,69 @@
 	<select id="selectFinanceOverview" resultType="java.util.HashMap">
 		SELECT
 			COALESCE(SUM(CASE
-				WHEN (fee_type IS NULL OR fee_type != 'deposit_refund')
-				 AND COALESCE(pay_status, '0') != '1'
-				 AND pay_deadline &lt;= CURDATE()
-				THEN COALESCE(amount_due, 0) - COALESCE(amount_paid, 0)
+				WHEN (p.fee_type IS NULL OR p.fee_type != 'deposit_refund')
+				 AND COALESCE(p.pay_status, '0') != '1'
+				 AND p.pay_deadline &lt;= CURDATE()
+				THEN COALESCE(p.amount_due, 0) - COALESCE(p.amount_paid, 0)
 				ELSE 0
 			END), 0) AS dueReceivableAmount,
 			COALESCE(SUM(CASE
-				WHEN fee_type = 'deposit_refund'
-				 AND COALESCE(pay_status, '0') != '1'
-				 AND pay_deadline &lt;= CURDATE()
-				THEN COALESCE(amount_due, 0) - COALESCE(amount_paid, 0)
+				WHEN p.fee_type = 'deposit_refund'
+				 AND COALESCE(p.pay_status, '0') != '1'
+				 AND p.pay_deadline &lt;= CURDATE()
+				THEN COALESCE(p.amount_due, 0) - COALESCE(p.amount_paid, 0)
 				ELSE 0
 			END), 0) AS duePayableAmount,
 			COALESCE(SUM(CASE
-				WHEN (fee_type IS NULL OR fee_type != 'deposit_refund')
-				 AND COALESCE(pay_status, '0') != '1'
-				 AND pay_deadline &gt; CURDATE()
-				 AND pay_deadline &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
-				THEN COALESCE(amount_due, 0) - COALESCE(amount_paid, 0)
+				WHEN (p.fee_type IS NULL OR p.fee_type != 'deposit_refund')
+				 AND COALESCE(p.pay_status, '0') != '1'
+				 AND p.pay_deadline &gt; CURDATE()
+				 AND p.pay_deadline &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+				THEN COALESCE(p.amount_due, 0) - COALESCE(p.amount_paid, 0)
 				ELSE 0
 			END), 0) AS next30ReceivableAmount,
 			COALESCE(SUM(CASE
-				WHEN fee_type = 'deposit_refund'
-				 AND COALESCE(pay_status, '0') != '1'
-				 AND pay_deadline &gt; CURDATE()
-				 AND pay_deadline &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
-				THEN COALESCE(amount_due, 0) - COALESCE(amount_paid, 0)
+				WHEN p.fee_type = 'deposit_refund'
+				 AND COALESCE(p.pay_status, '0') != '1'
+				 AND p.pay_deadline &gt; CURDATE()
+				 AND p.pay_deadline &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+				THEN COALESCE(p.amount_due, 0) - COALESCE(p.amount_paid, 0)
 				ELSE 0
 			END), 0) AS next30PayableAmount,
 			COALESCE(SUM(CASE
-				WHEN (fee_type IS NULL OR fee_type != 'deposit_refund')
-				 AND COALESCE(pay_status, '0') != '1'
-				 AND pay_deadline &lt; CURDATE()
-				THEN COALESCE(amount_due, 0) - COALESCE(amount_paid, 0)
+				WHEN (p.fee_type IS NULL OR p.fee_type != 'deposit_refund')
+				 AND COALESCE(p.pay_status, '0') != '1'
+				 AND p.pay_deadline &lt; CURDATE()
+				THEN COALESCE(p.amount_due, 0) - COALESCE(p.amount_paid, 0)
 				ELSE 0
 			END), 0) AS overdueTenantDebtAmount,
 			COALESCE(COUNT(DISTINCT CASE
-				WHEN (fee_type IS NULL OR fee_type != 'deposit_refund')
-				 AND COALESCE(pay_status, '0') != '1'
-				 AND pay_deadline &lt;= CURDATE()
-				THEN customer_name
+				WHEN (p.fee_type IS NULL OR p.fee_type != 'deposit_refund')
+				 AND COALESCE(p.pay_status, '0') != '1'
+				 AND p.pay_deadline &lt;= CURDATE()
+				THEN c.customer_name
 				ELSE NULL
 			END), 0) AS dueTenantCount,
 			COALESCE(SUM(CASE
-				WHEN (fee_type IS NULL OR fee_type != 'deposit_refund')
-				 AND COALESCE(pay_status, '0') != '1'
-				 AND pay_deadline = CURDATE()
-				THEN COALESCE(amount_due, 0) - COALESCE(amount_paid, 0)
+				WHEN (p.fee_type IS NULL OR p.fee_type != 'deposit_refund')
+				 AND COALESCE(p.pay_status, '0') != '1'
+				 AND p.pay_deadline = CURDATE()
+				THEN COALESCE(p.amount_due, 0) - COALESCE(p.amount_paid, 0)
 				ELSE 0
 			END), 0) AS todayOtherReceivableAmount,
 			COALESCE(SUM(CASE
-				WHEN fee_type = 'deposit_refund'
-				 AND COALESCE(pay_status, '0') != '1'
-				 AND pay_deadline = CURDATE()
-				THEN COALESCE(amount_due, 0) - COALESCE(amount_paid, 0)
+				WHEN p.fee_type = 'deposit_refund'
+				 AND COALESCE(p.pay_status, '0') != '1'
+				 AND p.pay_deadline = CURDATE()
+				THEN COALESCE(p.amount_due, 0) - COALESCE(p.amount_paid, 0)
 				ELSE 0
 			END), 0) AS todayOtherPayableAmount
-		FROM biz_contract_payment
+		FROM biz_contract_payment p
+		LEFT JOIN biz_contract c ON c.contract_id = p.contract_id
 		WHERE 1 = 1
-		<include refid="parkFilter"/>
+		<if test="parkId != null">
+			AND p.park_id = #{parkId}
+		</if>
 	</select>
 
 	<select id="selectContractExecution" resultType="java.util.HashMap">

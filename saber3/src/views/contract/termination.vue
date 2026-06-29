@@ -141,7 +141,7 @@
                 v-if="row.printFileUrl"
                 text
                 type="primary"
-                @click="openWorkflowFile(row.printFileUrl)"
+                @click="openWorkflowFile(row.printFileUrl, row)"
               >
                 审批表
               </el-button>
@@ -149,7 +149,7 @@
                 v-if="terminationAgreementUrl(row)"
                 text
                 type="primary"
-                @click="openWorkflowFile(terminationAgreementUrl(row))"
+                @click="openWorkflowFile(terminationAgreementUrl(row), row)"
               >
                 解除协议
               </el-button>
@@ -229,19 +229,37 @@
           </el-button>
         </template>
       </el-dialog>
+
+      <notice-preview-dialog
+        v-model="noticePreview.visible"
+        :title="noticePreview.title"
+        :html="noticePreview.html"
+        :loading="noticePreview.loading"
+        :download-url="noticePreview.downloadUrl"
+        @download="downloadNoticePreviewFile"
+      />
     </div>
   </basic-container>
 </template>
 
 <script>
 import { Base64 } from 'js-base64';
-import { ensureDepositRefundPayment, getWorkflowRecordPage } from '@/api/contract/contract';
-import { downloadBlob } from '@/api/common';
+import {
+  ensureDepositRefundPayment,
+  getDepositRefundPayment,
+  getWorkflowRecordPage,
+} from '@/api/contract/contract';
 import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
 import { approvalStatusDic } from '@/option/contract/archive';
 import { statusDic } from '@/option/contract/contract';
 import { mapGetters } from 'vuex';
-import { downloadFile } from '@/utils/util';
+import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
+import { noticePrintUrl } from '@/api/contract/print';
+import {
+  createNoticePreviewState,
+  downloadNoticeFile,
+  openNoticePreview,
+} from '@/utils/contract-notice';
 
 const TERMINATION_BUSINESS_TYPE = 'contract_termination';
 const ROOM_REVIEW_BUSINESS_TYPE = 'contract_room_review';
@@ -260,14 +278,17 @@ const WORKFLOW_CONFIGS = {
     title: '发起押金退还',
     summaryTitle: '押金退还信息',
     placeholder: '请选择已部署的付款审批流程',
-    formKeys: ['invoice'],
+    formKeys: ['pay', 'invoice'],
     defaultKeys: ['pay'],
-    nameKeywords: ['付款', '开票', '押金退还', '押金退款'],
+    nameKeywords: ['付款', '缴费', '押金退还', '押金退款'],
   },
 };
 
 export default {
   name: 'ContractTermination',
+  components: {
+    NoticePreviewDialog,
+  },
   data() {
     return {
       query: {
@@ -291,6 +312,7 @@ export default {
       workflowForm: {
         processDefKey: '',
       },
+      noticePreview: createNoticePreviewState(),
     };
   },
   computed: {
@@ -391,11 +413,49 @@ export default {
         .then(res => {
           const result = res.data.data || {};
           this.page.total = result.total || 0;
-          this.data = result.records || [];
+          return this.enrichTerminationRecords(result.records || []);
+        })
+        .then(records => {
+          this.data = records || [];
         })
         .finally(() => {
           this.loading = false;
         });
+    },
+    enrichTerminationRecords(records = []) {
+      const targets = records.filter(item => String(item.contractStatus) === '4' && item.contractId);
+      if (!targets.length) {
+        return Promise.resolve(records);
+      }
+      return Promise.all(
+        targets.map(item =>
+          getDepositRefundPayment(item.contractId)
+            .then(res => {
+              const payment = res.data.data || {};
+              return {
+                contractId: item.contractId,
+                depositRefundPayStatus: String(payment.payStatus || ''),
+                depositRefundPaymentId: payment.paymentId || '',
+                depositRefundApprovalStatus: payment.paymentApprovalStatus || '',
+              };
+            })
+            .catch(() => ({
+              contractId: item.contractId,
+              depositRefundPayStatus: '',
+              depositRefundPaymentId: '',
+              depositRefundApprovalStatus: '',
+            }))
+        )
+      ).then(paymentStates => {
+        const paymentStateMap = paymentStates.reduce((result, item) => {
+          result[item.contractId] = item;
+          return result;
+        }, {});
+        return records.map(item => ({
+          ...item,
+          ...(paymentStateMap[item.contractId] || {}),
+        }));
+      });
     },
     cleanParams(params) {
       return Object.keys(params || {}).reduce((result, key) => {
@@ -518,8 +578,12 @@ export default {
         row &&
           row.contractId &&
           row.processStatus === 'approved' &&
-          String(row.contractStatus) === '4'
+          String(row.contractStatus) === '4' &&
+          !this.isDepositRefundCompleted(row)
       );
+    },
+    isDepositRefundCompleted(row) {
+      return String(row?.depositRefundPayStatus || '') === '1';
     },
     goWorkflow() {
       if (!this.workflowRecord.contractId) {
@@ -575,6 +639,8 @@ export default {
     buildDepositRefundPayload() {
       const row = this.workflowRecord || {};
       const payment = this.workflowPayment || {};
+      const processKey = this.workflowForm.processDefKey || '';
+      const isInvoiceWorkflow = processKey.includes('invoice');
       return {
         processDefKey: this.workflowForm.processDefKey,
         params: {
@@ -599,7 +665,7 @@ export default {
           amountDue: payment.amountDue || row.deposit,
           amountPaid: payment.amountPaid,
           payDeadline: payment.payDeadline,
-          templateKey: 'invoice-apply',
+          templateKey: isInvoiceWorkflow ? 'invoice-apply' : 'payment-notice',
           refundType: 'deposit_refund',
           applicant: this.userInfo.nick_name,
           applicantDept: this.userInfo.dept_name,
@@ -614,23 +680,49 @@ export default {
       this.workflowProcessOptions = [];
       this.workflowForm.processDefKey = '';
     },
-    openWorkflowFile(url) {
-      if (!url) return;
-      downloadBlob(url).then(res => {
-        const disposition = res.headers && res.headers['content-disposition'];
-        const filename = this.resolveDownloadFilename(disposition, '退租流程文件');
-        const contentType = (res.headers && res.headers['content-type']) || 'application/octet-stream';
-        downloadFile(res.data, filename, contentType);
-      });
-    },
-    resolveDownloadFilename(disposition, fallbackName) {
-      if (!disposition) return fallbackName;
-      const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-      if (utf8Match && utf8Match[1]) {
-        return decodeURIComponent(utf8Match[1]);
+    openWorkflowFile(url, row) {
+      if (!url || !row) return;
+      const noticeType = this.noticeTypeByUrl(url, row);
+      if (!noticeType) {
+        downloadNoticeFile(url, '退租流程文件');
+        return;
       }
-      const filenameMatch = disposition.match(/filename="?([^";]+)"?/i);
-      return filenameMatch && filenameMatch[1] ? decodeURIComponent(filenameMatch[1]) : fallbackName;
+      openNoticePreview(
+        this,
+        this.noticePreview,
+        {
+          noticeType,
+          contractId: row.contractId,
+          formDataJson: row.formDataJson || '',
+        },
+        noticePrintUrl(noticeType, { contractId: row.contractId }),
+        '退租流程文件',
+        '审批表预览'
+      );
+    },
+    noticeTypeByUrl(url, row) {
+      if (url === this.terminationAgreementUrl(row) || String(url).includes('termination-agreement')) {
+        return 'termination-agreement';
+      }
+      if (String(url).includes('room-review')) {
+        return 'room-review';
+      }
+      if (String(url).includes('payment-notice')) {
+        return 'payment-notice';
+      }
+      if (String(url).includes('invoice-apply')) {
+        return 'invoice-apply';
+      }
+      if (row.businessType === PAYMENT_BUSINESS_TYPE) {
+        return row.processDefKey && String(row.processDefKey).includes('invoice')
+          ? 'invoice-apply'
+          : 'payment-notice';
+      }
+      return 'termination-approval';
+    },
+    downloadNoticePreviewFile() {
+      if (!this.noticePreview.downloadUrl) return;
+      downloadNoticeFile(this.noticePreview.downloadUrl, this.noticePreview.fallbackName);
     },
     terminationAgreementUrl(row) {
       return this.attachmentUrl(row, TERMINATION_AGREEMENT_KEY);
@@ -650,6 +742,7 @@ export default {
       if (row.processStatus === 'rejected') return '退租驳回';
       if (row.processStatus === 'canceled') return '退租取消';
       if (String(row.contractStatus) === '8') return '房屋验收中';
+      if (this.isDepositRefundCompleted(row)) return '退租已完成';
       if (String(row.contractStatus) === '4') return '待押金退还';
       if (String(row.contractStatus) === '7') return '待房屋验收';
       if (row.processStatus === 'approved') return '退租已通过';
@@ -659,6 +752,7 @@ export default {
       if (!row) return 'info';
       if (row.processStatus === 'rejected') return 'danger';
       if (row.processStatus === 'running' || String(row.contractStatus) === '8') return 'warning';
+      if (this.isDepositRefundCompleted(row)) return 'success';
       if (String(row.contractStatus) === '4') return 'success';
       if (String(row.contractStatus) === '7') return 'primary';
       return 'info';

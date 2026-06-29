@@ -40,14 +40,16 @@ import org.springblade.core.tenant.annotation.NonDS;
 import org.springblade.core.tool.api.R;
 import org.springblade.modules.park.constant.ParkConstant;
 import org.springblade.modules.park.pojo.entity.Floor;
+import org.springblade.modules.park.pojo.entity.Room;
 import org.springblade.modules.park.service.IFloorService;
+import org.springblade.modules.park.service.IRoomService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 
 /**
- * 楼层只读控制器
+ * 楼层管理控制器
  *
  * @author Chill
  */
@@ -60,6 +62,7 @@ import java.util.Map;
 public class FloorController extends BladeController {
 
 	private final IFloorService floorService;
+	private final IRoomService roomService;
 
 	/**
 	 * 分页
@@ -122,10 +125,30 @@ public class FloorController extends BladeController {
 	}
 
 	/**
+	 * 新增或修改房源
+	 */
+	@PostMapping("/room/submit")
+	@ApiOperationSupport(order = 7)
+	@Operation(summary = "新增或修改房源", description = "传入room")
+	public R submitRoom(@RequestBody Room room) {
+		return R.status(roomService.submit(room));
+	}
+
+	/**
+	 * 删除房源
+	 */
+	@PostMapping("/room/remove")
+	@ApiOperationSupport(order = 8)
+	@Operation(summary = "删除房源", description = "传入ids")
+	public R removeRoom(@Parameter(description = "主键集合", required = true) @RequestParam String ids) {
+		return R.status(roomService.removeRoom(ids));
+	}
+
+	/**
 	 * 同步单建筑楼层
 	 */
 	@PostMapping("/sync/{buildingId}")
-	@ApiOperationSupport(order = 7)
+	@ApiOperationSupport(order = 9)
 	@Operation(summary = "同步单建筑楼层", description = "传入buildingId")
 	public R sync(@PathVariable Long buildingId) {
 		floorService.syncBuildingFloors(buildingId, AuthUtil.getUserName());
@@ -136,7 +159,7 @@ public class FloorController extends BladeController {
 	 * 同步全部建筑楼层
 	 */
 	@PostMapping("/sync-all")
-	@ApiOperationSupport(order = 8)
+	@ApiOperationSupport(order = 10)
 	@Operation(summary = "同步全部建筑楼层")
 	public R syncAll() {
 		floorService.syncAllBuildingFloors(AuthUtil.getUserName());

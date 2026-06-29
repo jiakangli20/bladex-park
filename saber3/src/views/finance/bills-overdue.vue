@@ -230,8 +230,11 @@ export default {
         buildingNameQuery: routeQuery.buildingNameQuery || '',
         customerName: routeQuery.customerName || '',
       };
-      if (routeQuery.deadlineStartDate && routeQuery.deadlineEndDate) {
-        this.query.deadlineRange = [routeQuery.deadlineStartDate, routeQuery.deadlineEndDate];
+      if (this.hasRouteDate(routeQuery.deadlineStartDate) && this.hasRouteDate(routeQuery.deadlineEndDate)) {
+        this.query.deadlineRange = [
+          this.normalizeRouteDate(routeQuery.deadlineStartDate),
+          this.normalizeRouteDate(routeQuery.deadlineEndDate),
+        ];
       } else if (!routeQuery.deadlineStartDate && !routeQuery.deadlineEndDate) {
         this.query.deadlineRange = [];
       }
@@ -270,20 +273,20 @@ export default {
         settleStatus: this.query.settleStatus,
       };
       if (this.query.periodStartDate) {
-        params.periodStartBegin = this.query.periodStartDate;
-        params.periodStartEnd = this.query.periodStartDate;
+        params.periodStartBegin = this.toDayStart(this.query.periodStartDate);
+        params.periodStartEnd = this.toDayEnd(this.query.periodStartDate);
       }
       if (this.query.periodEndDate) {
-        params.periodEndBegin = this.query.periodEndDate;
-        params.periodEndEnd = this.query.periodEndDate;
+        params.periodEndBegin = this.toDayStart(this.query.periodEndDate);
+        params.periodEndEnd = this.toDayEnd(this.query.periodEndDate);
       }
       if (Array.isArray(this.query.createRange) && this.query.createRange.length === 2) {
-        params.createStartDate = this.query.createRange[0];
-        params.createEndDate = this.query.createRange[1];
+        params.createStartDate = this.toDayStart(this.query.createRange[0]);
+        params.createEndDate = this.toDayEnd(this.query.createRange[1]);
       }
       if (Array.isArray(this.query.deadlineRange) && this.query.deadlineRange.length === 2) {
-        params.deadlineStartDate = this.query.deadlineRange[0];
-        params.deadlineEndDate = this.query.deadlineRange[1];
+        params.deadlineStartDate = this.toDayStart(this.query.deadlineRange[0]);
+        params.deadlineEndDate = this.toDayEnd(this.query.deadlineRange[1]);
       }
       return Object.keys(params).reduce((result, key) => {
         if (params[key] !== '' && params[key] !== null && params[key] !== undefined) {
@@ -291,6 +294,21 @@ export default {
         }
         return result;
       }, {});
+    },
+    hasRouteDate(value) {
+      return typeof value === 'string' && value.trim() !== '';
+    },
+    normalizeRouteDate(value) {
+      if (!this.hasRouteDate(value)) return '';
+      return value.trim().slice(0, 10);
+    },
+    toDayStart(value) {
+      const date = this.normalizeRouteDate(value);
+      return date ? `${date} 00:00:00` : '';
+    },
+    toDayEnd(value) {
+      const date = this.normalizeRouteDate(value);
+      return date ? `${date} 23:59:59` : '';
     },
     searchChange() {
       this.page.currentPage = 1;

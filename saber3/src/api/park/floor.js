@@ -57,6 +57,24 @@ export const remove = ids => {
   });
 };
 
+export const submitRoom = row => {
+  return request({
+    url: '/blade-park/floor/room/submit',
+    method: 'post',
+    data: row,
+  });
+};
+
+export const removeRoom = ids => {
+  return request({
+    url: '/blade-park/floor/room/remove',
+    method: 'post',
+    params: {
+      ids,
+    },
+  });
+};
+
 export const syncBuilding = buildingId => {
   return request({
     url: `/blade-park/floor/sync/${buildingId}`,

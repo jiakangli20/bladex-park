@@ -1,5 +1,6 @@
 <template>
   <div class="avue-top">
+    <logo />
     <div class="top-bar__left">
       <div
         class="avue-breadcrumb"
@@ -118,6 +119,7 @@
 </template>
 <script>
 import { mapGetters } from 'vuex';
+import logo from '../logo.vue';
 import topLock from './top-lock.vue';
 import topMenu from './top-menu.vue';
 import topSearch from './top-search.vue';
@@ -134,6 +136,7 @@ import func from '@/utils/func';
 
 export default {
   components: {
+    logo,
     topLock,
     topMenu,
     topSearch,

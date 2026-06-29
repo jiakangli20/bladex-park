@@ -450,14 +450,15 @@ export default {
       const today = this.formatDate(new Date());
       const tomorrow = this.formatDate(new Date(Date.now() + DAY_MS));
       const next30Days = this.formatDate(new Date(Date.now() + 30 * DAY_MS));
+      const unsettled = 'unsettled';
       const detailMap = {
         dueReceivableAmount: {
           path: '/finance/bills-all',
-          query: { direction: 'receivable', hideFuture: 'true', settleStatus: 'unsettled' },
+          query: { direction: 'receivable', hideFuture: 'true', settleStatus: unsettled },
         },
         duePayableAmount: {
           path: '/finance/bills-all',
-          query: { direction: 'payable', hideFuture: 'true', settleStatus: 'unsettled' },
+          query: { direction: 'payable', hideFuture: 'true', settleStatus: unsettled },
         },
         next30ReceivableAmount: {
           path: '/finance/bills-all',
@@ -465,7 +466,7 @@ export default {
             direction: 'receivable',
             deadlineStartDate: tomorrow,
             deadlineEndDate: next30Days,
-            settleStatus: 'unsettled',
+            settleStatus: unsettled,
           },
         },
         next30PayableAmount: {
@@ -474,15 +475,16 @@ export default {
             direction: 'payable',
             deadlineStartDate: tomorrow,
             deadlineEndDate: next30Days,
-            settleStatus: 'unsettled',
+            settleStatus: unsettled,
           },
         },
         overdueTenantDebtAmount: {
           path: '/finance/bills-overdue',
+          query: { settleStatus: unsettled },
         },
         dueTenantCount: {
           path: '/finance/bills-all',
-          query: { direction: 'receivable', hideFuture: 'true', settleStatus: 'unsettled' },
+          query: { direction: 'receivable', hideFuture: 'true', settleStatus: unsettled },
         },
         todayOtherReceivableAmount: {
           path: '/finance/bills-all',
@@ -490,7 +492,7 @@ export default {
             direction: 'receivable',
             deadlineStartDate: today,
             deadlineEndDate: today,
-            settleStatus: 'unsettled',
+            settleStatus: unsettled,
           },
         },
         todayOtherPayableAmount: {
@@ -499,7 +501,7 @@ export default {
             direction: 'payable',
             deadlineStartDate: today,
             deadlineEndDate: today,
-            settleStatus: 'unsettled',
+            settleStatus: unsettled,
           },
         },
       };
@@ -825,6 +827,17 @@ export default {
   margin-top: -8px;
 }
 
+.device-tabs :deep(.el-tabs__nav-scroll) {
+  width: 100%;
+}
+
+.device-tabs :deep(.el-tabs__nav) {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  float: none;
+  width: 100%;
+}
+
 .device-tabs :deep(.el-tabs__nav-wrap::after) {
   display: none;
 }
@@ -835,10 +848,12 @@ export default {
 
 .device-tabs :deep(.el-tabs__item) {
   height: 30px;
-  padding: 0 30px;
+  justify-content: center;
+  padding: 0;
   border-radius: 16px;
   color: #303133;
   line-height: 30px;
+  text-align: center;
 }
 
 .device-tabs :deep(.el-tabs__active-bar) {
@@ -853,7 +868,9 @@ export default {
 .device-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
   gap: 18px;
+  padding: 2px 18px 0;
 }
 
 .chart {

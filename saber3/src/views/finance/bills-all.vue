@@ -220,8 +220,11 @@ export default {
       if (routeQuery.direction === 'payable' || routeQuery.direction === 'receivable') {
         this.direction = routeQuery.direction;
       }
-      if (routeQuery.deadlineStartDate && routeQuery.deadlineEndDate) {
-        nextQuery.deadlineRange = [routeQuery.deadlineStartDate, routeQuery.deadlineEndDate];
+      if (this.hasRouteDate(routeQuery.deadlineStartDate) && this.hasRouteDate(routeQuery.deadlineEndDate)) {
+        nextQuery.deadlineRange = [
+          this.normalizeRouteDate(routeQuery.deadlineStartDate),
+          this.normalizeRouteDate(routeQuery.deadlineEndDate),
+        ];
       }
       this.query = nextQuery;
     },
@@ -258,8 +261,8 @@ export default {
         params.feeType = 'deposit_refund';
       }
       if (Array.isArray(this.query.deadlineRange) && this.query.deadlineRange.length === 2) {
-        params.deadlineStartDate = this.query.deadlineRange[0];
-        params.deadlineEndDate = this.query.deadlineRange[1];
+        params.deadlineStartDate = this.toDayStart(this.query.deadlineRange[0]);
+        params.deadlineEndDate = this.toDayEnd(this.query.deadlineRange[1]);
       }
       return Object.keys(params).reduce((result, key) => {
         if (params[key] !== '' && params[key] !== null && params[key] !== undefined) {
@@ -267,6 +270,21 @@ export default {
         }
         return result;
       }, {});
+    },
+    hasRouteDate(value) {
+      return typeof value === 'string' && value.trim() !== '';
+    },
+    normalizeRouteDate(value) {
+      if (!this.hasRouteDate(value)) return '';
+      return value.trim().slice(0, 10);
+    },
+    toDayStart(value) {
+      const date = this.normalizeRouteDate(value);
+      return date ? `${date} 00:00:00` : '';
+    },
+    toDayEnd(value) {
+      const date = this.normalizeRouteDate(value);
+      return date ? `${date} 23:59:59` : '';
     },
     changeDirection(value) {
       const nextDirection = value && value.paneName ? value.paneName : value;

@@ -135,6 +135,14 @@ public interface IContractService extends IService<Contract> {
 	List<ContractPayment> selectPaymentByContractId(Long contractId);
 
 	/**
+	 * 查询押金退还付款单
+	 *
+	 * @param contractId 合同ID
+	 * @return 押金退还付款单
+	 */
+	ContractPayment getDepositRefundPayment(Long contractId);
+
+	/**
 	 * 获取或创建押金退还付款单
 	 *
 	 * @param contractId 合同ID

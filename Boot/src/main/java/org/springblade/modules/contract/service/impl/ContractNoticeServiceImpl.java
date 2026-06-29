@@ -13,6 +13,8 @@ import org.springblade.core.tool.support.Kv;
 import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.Func;
 import org.springblade.core.tool.utils.StringUtil;
+import org.springblade.modules.business.mapper.CustomerMapper;
+import org.springblade.modules.business.pojo.entity.Customer;
 import org.springblade.modules.contract.mapper.ContractMapper;
 import org.springblade.modules.contract.mapper.ContractPaymentMapper;
 import org.springblade.modules.contract.pojo.entity.Contract;
@@ -63,6 +65,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 
 	private final ContractPaymentMapper contractPaymentMapper;
 	private final ContractMapper contractMapper;
+	private final CustomerMapper customerMapper;
 	private final OssBuilder ossBuilder;
 	private final IContractTemplateRenderService contractTemplateRenderService;
 
@@ -163,36 +166,185 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 
 	@Override
 	public Kv buildMiniAppPayload(String noticeType, Long paymentId, Long contractId) {
-		ContractNoticeFileVO document = uploadNotice(noticeType, paymentId, contractId);
-		NoticeContext context = resolveContext(noticeType, paymentId, contractId);
+		String normalizedNoticeType = normalizeNoticeType(noticeType);
+		ContractNoticeFileVO document = uploadNotice(normalizedNoticeType, paymentId, contractId);
+		NoticeContext context = resolveContext(normalizedNoticeType, paymentId, contractId);
 		return Kv.create()
-			.set("noticeType", normalizeNoticeType(noticeType))
+			.set("noticeType", normalizedNoticeType)
 			.set("noticeName", document.getNoticeName())
+			.set("noticeTitle", noticeDisplayName(normalizedNoticeType))
 			.set("fileName", document.getFileName())
 			.set("fileUrl", document.getFileUrl())
 			.set("generatedAt", document.getGeneratedAt())
 			.set("sendStatus", "pending")
 			.set("channel", "miniapp")
-			.set("businessType", context.payment == null ? "contract" : "contract_payment")
-			.set("payload", buildMiniAppData(context, document));
+			.set("businessType", resolveMiniAppBusinessType(normalizedNoticeType))
+			.set("contractId", context.contract == null ? null : context.contract.getContractId())
+			.set("paymentId", context.payment == null ? null : context.payment.getPaymentId())
+			.set("businessKey", context.payment == null ? context.contract == null ? null : context.contract.getContractId() : context.payment.getPaymentId())
+			.set("receiver", buildMiniAppReceiver(context))
+			.set("document", buildMiniAppDocument(normalizedNoticeType, context, document))
+			.set("payload", buildMiniAppData(normalizedNoticeType, context, document));
 	}
 
-	private Map<String, Object> buildMiniAppData(NoticeContext context, ContractNoticeFileVO document) {
+	@Override
+	public Kv buildNoticePreview(String noticeType, Long paymentId, Long contractId, String formDataJson) {
+		Map<String, Object> formData = parseFormData(formDataJson);
+		NoticeContext context = resolveContext(noticeType, paymentId, contractId, formData);
+		PreviewData previewData = buildPreviewData(normalizeNoticeType(noticeType), context);
+		ContractNoticeFileVO document = buildNotice(noticeType, paymentId, contractId, formData);
+		return Kv.create()
+			.set("noticeType", normalizeNoticeType(noticeType))
+			.set("noticeName", document.getNoticeName())
+			.set("fileName", document.getFileName())
+			.set("contentType", document.getContentType())
+			.set("generatedAt", document.getGeneratedAt())
+			.set("summary", previewData.summary)
+			.set("fields", previewData.fields)
+			.set("missingFields", previewData.missingFields)
+			.set("html", buildPreviewHtml(document.getNoticeName(), previewData.summary, previewData.fields, previewData.missingFields));
+	}
+
+	private Map<String, Object> buildMiniAppData(String noticeType, NoticeContext context, ContractNoticeFileVO document) {
 		Map<String, Object> payload = new LinkedHashMap<>();
+		payload.put("noticeType", noticeType);
+		payload.put("noticeTitle", noticeDisplayName(noticeType));
+		payload.put("businessScene", resolveMiniAppBusinessType(noticeType));
 		payload.put("contractId", context.contract == null ? null : context.contract.getContractId());
 		payload.put("paymentId", context.payment == null ? null : context.payment.getPaymentId());
+		payload.put("customerId", context.customer == null ? null : context.customer.getCustomerId());
+		payload.put("parkId", context.contract == null ? null : context.contract.getParkId());
+		payload.put("parkName", context.parkName());
 		payload.put("contractNo", context.contractNo());
+		payload.put("contractName", context.contract == null ? null : context.contract.getContractName());
+		payload.put("contractStatus", context.contractStatusName());
 		payload.put("customerName", context.customerName());
 		payload.put("roomName", context.roomName());
+		payload.put("roomDisplay", context.roomDisplay());
 		payload.put("buildingName", context.buildingName());
 		payload.put("feeName", context.feeName());
 		payload.put("periodText", context.periodText());
+		payload.put("periodStart", formatDate(context.payment == null ? null : context.payment.getPeriodStart()));
+		payload.put("periodEnd", formatDate(context.payment == null ? null : context.payment.getPeriodEnd()));
 		payload.put("payDeadline", formatDate(context.payment == null ? null : context.payment.getPayDeadline()));
+		payload.put("amountDue", formatMoney(context.payment == null ? null : context.payment.getAmountDue()));
+		payload.put("amountPaid", formatMoney(context.payment == null ? null : context.payment.getAmountPaid()));
 		payload.put("unpaidAmount", formatMoney(context.unpaidAmount()));
 		payload.put("overdueDays", context.overdueDays());
+		payload.put("contactName", context.customer == null ? null : context.customer.getContactName());
+		payload.put("contactPhone", customerContactPhone(context));
+		payload.put("contactEmail", context.customer == null ? null : context.customer.getContactEmail());
+		payload.put("receiverOpenId", context.customer == null ? null : context.customer.getWxOpenid());
+		payload.put("receiverUnionId", context.customer == null ? null : context.customer.getWxUnionid());
 		payload.put("fileName", document.getFileName());
 		payload.put("fileUrl", document.getFileUrl());
+		payload.put("downloadPath", buildMiniAppDownloadPath(noticeType, context));
+		payload.put("previewPath", buildMiniAppPreviewPath(noticeType, context));
+		payload.put("pagePath", buildMiniAppPagePath(noticeType, context));
+		payload.put("templateSource", resolveTemplateSource(noticeType));
+		payload.put("sendMode", "reserved");
 		return payload;
+	}
+
+	private Map<String, Object> buildMiniAppReceiver(NoticeContext context) {
+		Map<String, Object> receiver = new LinkedHashMap<>();
+		receiver.put("customerId", context.customer == null ? null : context.customer.getCustomerId());
+		receiver.put("customerName", context.customerName());
+		receiver.put("contactName", context.customer == null ? null : context.customer.getContactName());
+		receiver.put("contactPhone", customerContactPhone(context));
+		receiver.put("contactEmail", context.customer == null ? null : context.customer.getContactEmail());
+		receiver.put("wxOpenid", context.customer == null ? null : context.customer.getWxOpenid());
+		receiver.put("wxUnionid", context.customer == null ? null : context.customer.getWxUnionid());
+		return receiver;
+	}
+
+	private Map<String, Object> buildMiniAppDocument(String noticeType, NoticeContext context, ContractNoticeFileVO document) {
+		Map<String, Object> data = new LinkedHashMap<>();
+		data.put("noticeType", noticeType);
+		data.put("noticeTitle", noticeDisplayName(noticeType));
+		data.put("fileName", document.getFileName());
+		data.put("fileUrl", document.getFileUrl());
+		data.put("contentType", document.getContentType());
+		data.put("generatedAt", document.getGeneratedAt());
+		data.put("downloadPath", buildMiniAppDownloadPath(noticeType, context));
+		data.put("previewPath", buildMiniAppPreviewPath(noticeType, context));
+		data.put("templateSource", resolveTemplateSource(noticeType));
+		return data;
+	}
+
+	private String resolveMiniAppBusinessType(String noticeType) {
+		return switch (normalizeNoticeType(noticeType)) {
+			case NOTICE_PAYMENT, NOTICE_INVOICE -> "contract_payment";
+			case NOTICE_REMINDER, NOTICE_OVERDUE -> "contract_overdue_notice";
+			case NOTICE_LEGAL, NOTICE_PROJECT_APPROVAL -> "contract_overdue_legal";
+			case NOTICE_MOVE_OUT -> "contract_move_out";
+			case NOTICE_TERMINATION, NOTICE_TERMINATION_AGREEMENT, NOTICE_ROOM_REVIEW -> "contract_termination";
+			case NOTICE_CONTRACT_APPROVAL, NOTICE_CONTRACT_FIXED, NOTICE_CONTRACT_FLOATING -> "contract_approval";
+			default -> "contract";
+		};
+	}
+
+	private String buildMiniAppDownloadPath(String noticeType, NoticeContext context) {
+		String normalized = normalizeNoticeType(noticeType);
+		Long paymentId = context.payment == null ? null : context.payment.getPaymentId();
+		Long contractId = context.contract == null ? null : context.contract.getContractId();
+		return switch (normalized) {
+			case NOTICE_PAYMENT -> paymentId == null ? null : "/blade-contract/print/payment-notice/" + paymentId;
+			case NOTICE_REMINDER -> paymentId == null ? null : "/blade-contract/print/reminder-notice/" + paymentId;
+			case NOTICE_INVOICE -> paymentId == null ? null : "/blade-contract/print/invoice-apply/" + paymentId;
+			case NOTICE_CONTRACT_APPROVAL -> contractId == null ? null : "/blade-contract/print/contract-approval/" + contractId;
+			case NOTICE_CONTRACT_FIXED -> contractId == null ? null : "/blade-contract/print/contract-text/fixed/" + contractId;
+			case NOTICE_CONTRACT_FLOATING -> contractId == null ? null : "/blade-contract/print/contract-text/floating/" + contractId;
+			case NOTICE_PROJECT_APPROVAL -> paymentId == null ? null : "/blade-contract/print/project-approval/" + paymentId;
+			case NOTICE_OVERDUE -> paymentId == null ? null : "/blade-contract/print/overdue-notice/" + paymentId;
+			case NOTICE_LEGAL -> paymentId == null ? null : "/blade-contract/print/legal-letter/" + paymentId;
+			case NOTICE_MOVE_OUT -> paymentId != null
+				? "/blade-contract/print/move-out-notice/payment/" + paymentId
+				: contractId == null ? null : "/blade-contract/print/move-out-notice/" + contractId;
+			case NOTICE_TERMINATION -> contractId == null ? null : "/blade-contract/print/termination-approval/" + contractId;
+			case NOTICE_TERMINATION_AGREEMENT -> contractId == null ? null : "/blade-contract/print/termination-agreement/" + contractId;
+			case NOTICE_ROOM_REVIEW -> contractId == null ? null : "/blade-contract/print/room-review/" + contractId;
+			default -> null;
+		};
+	}
+
+	private String buildMiniAppPreviewPath(String noticeType, NoticeContext context) {
+		StringBuilder builder = new StringBuilder("/blade-contract/print/preview?noticeType=").append(normalizeNoticeType(noticeType));
+		if (context.payment != null && context.payment.getPaymentId() != null) {
+			builder.append("&paymentId=").append(context.payment.getPaymentId());
+		}
+		if (context.contract != null && context.contract.getContractId() != null) {
+			builder.append("&contractId=").append(context.contract.getContractId());
+		}
+		return builder.toString();
+	}
+
+	private String buildMiniAppPagePath(String noticeType, NoticeContext context) {
+		StringBuilder builder = new StringBuilder("/pages/contract/notice/detail?noticeType=").append(normalizeNoticeType(noticeType));
+		if (context.payment != null && context.payment.getPaymentId() != null) {
+			builder.append("&paymentId=").append(context.payment.getPaymentId());
+		}
+		if (context.contract != null && context.contract.getContractId() != null) {
+			builder.append("&contractId=").append(context.contract.getContractId());
+		}
+		return builder.toString();
+	}
+
+	private String resolveTemplateSource(String noticeType) {
+		return switch (normalizeNoticeType(noticeType)) {
+			case NOTICE_PAYMENT -> TEMPLATE_PAYMENT;
+			case NOTICE_REMINDER -> TEMPLATE_REMINDER;
+			case NOTICE_INVOICE -> TEMPLATE_INVOICE;
+			case NOTICE_CONTRACT_APPROVAL -> TEMPLATE_CONTRACT_APPROVAL;
+			case NOTICE_CONTRACT_FIXED -> TEMPLATE_CONTRACT_FIXED;
+			case NOTICE_CONTRACT_FLOATING -> TEMPLATE_CONTRACT_FLOATING;
+			case NOTICE_PROJECT_APPROVAL -> TEMPLATE_PROJECT_APPROVAL;
+			case NOTICE_OVERDUE, NOTICE_LEGAL, NOTICE_MOVE_OUT -> TEMPLATE_OVERDUE;
+			case NOTICE_TERMINATION -> TEMPLATE_TERMINATION_APPROVAL;
+			case NOTICE_TERMINATION_AGREEMENT -> TEMPLATE_TERMINATION_AGREEMENT;
+			case NOTICE_ROOM_REVIEW -> TEMPLATE_ROOM_REVIEW;
+			default -> "";
+		};
 	}
 
 	private ContractNoticeFileVO buildPaymentNotice(NoticeContext context) {
@@ -379,6 +531,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		String normalized = normalizeNoticeType(noticeType);
 		ContractPayment payment = null;
 		Contract contract = null;
+		Customer customer = null;
 		if (NOTICE_TERMINATION.equals(normalized) || NOTICE_ROOM_REVIEW.equals(normalized) || Func.isNotEmpty(contractId)) {
 			if (Func.isNotEmpty(contractId)) {
 				contract = contractMapper.selectContractById(contractId);
@@ -401,7 +554,10 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		if (needsPayment(normalized) && payment == null) {
 			throw new ServiceException("账单不存在");
 		}
-		return new NoticeContext(normalized, payment, contract, formData);
+		if (contract != null && contract.getCustomerId() != null) {
+			customer = customerMapper.selectCustomerById(contract.getCustomerId());
+		}
+		return new NoticeContext(normalized, payment, contract, customer, formData);
 	}
 
 	private boolean needsPayment(String noticeType) {
@@ -428,17 +584,55 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 
 	private Map<String, String> createPaymentNoticeFields(NoticeContext context) {
 		Map<String, String> fields = createCommonFields(context);
-		fields.put("日期", formatChineseDate(DateUtil.now()));
-		fields.put("单元", context.roomDisplay());
-		fields.put("租户", context.customerName());
+		fields.put("日期", firstNotBlank(
+			formValue(context, "a17827111407976730", "付款日期", "日期"),
+			formatChineseDate(DateUtil.now())
+		));
+		fields.put("单元", firstNotBlank(
+			formValue(context, "a17827097285474047", "单元", "Unit"),
+			context.roomDisplay()
+		));
+		fields.put("租户", firstNotBlank(
+			formValue(context, "a178270977083337055", "租户", "Tenant"),
+			context.customerName()
+		));
 		fields.put("缴费内容", context.feeName());
-		fields.put("租金", amountForFee(context, "rent", "租", "房租"));
-		fields.put("物业费", amountForFee(context, "property", "物业"));
-		fields.put("电费", amountForFee(context, "electric", "电"));
-		fields.put("计费周期", context.periodText());
-		fields.put("总计", formatMoney(context.payment == null ? null : context.payment.getAmountDue()));
-		fields.put("支付时间", formatDate(context.payment == null ? null : context.payment.getPayDeadline()));
-		fields.put("备注", "合同编号：" + context.contractNo() + "，" + context.feeName() + "：" + context.periodText());
+		fields.put("租金", firstNotBlank(
+			formValue(context, "a178271064539262003", "租金 Rent", "租金"),
+			amountForFee(context, "rent", "租", "房租")
+		));
+		fields.put("物业费", firstNotBlank(
+			formValue(context, "a17827106469118400", "物业费 Proper Management Fee", "物业费"),
+			amountForFee(context, "property", "物业")
+		));
+		fields.put("电费", firstNotBlank(
+			formValue(context, "a178271065006694738", "电费 Power Rate", "电费"),
+			amountForFee(context, "electric", "电")
+		));
+		fields.put("计费周期", firstNotBlank(
+			formValue(context, "a178271130194976385", "计费周期"),
+			context.periodText()
+		));
+		fields.put("总计", firstNotBlank(
+			formValue(context, "a178271012553233941", "总计(RMB)", "总计"),
+			formatMoney(context.payment == null ? null : context.payment.getAmountDue())
+		));
+		fields.put("账户信息", firstNotBlank(
+			formValue(context, "a178271014325490480", "账户信息", "BankInformation"),
+			"-"
+		));
+		fields.put("支付时间", firstNotBlank(
+			formValue(context, "a178271015785294970", "支付时间", "Payment"),
+			formatDate(context.payment == null ? null : context.payment.getPayDeadline())
+		));
+		fields.put("租户签收", firstNotBlank(
+			formValue(context, "a178271018429016785", "租户签收", "TenantSign"),
+			"-"
+		));
+		fields.put("备注", firstNotBlank(
+			formValue(context, "a178271019302862626", "备注", "Note"),
+			"合同编号：" + context.contractNo() + "，" + context.feeName() + "：" + context.periodText()
+		));
 		return fields;
 	}
 
@@ -472,19 +666,56 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	private Map<String, String> createProjectApprovalFields(NoticeContext context) {
 		Map<String, String> fields = createOverdueFields(context);
 		Contract contract = context.contract;
+		String applyTime = firstNotBlank(
+			formValue(context, "a178228601087185682", "申请时间", "applyTime"),
+			formatDate(DateUtil.now())
+		);
+		String applicant = firstNotBlank(
+			formValue(context, "a178228616434960037", "经办人", "applicant"),
+			contract == null ? null : firstNotBlank(contract.getFollowUser(), contract.getCreateBy())
+		);
+		String applicantDept = firstNotBlank(
+			formValue(context, "a178228619901214332", "部门", "applicantDept"),
+			"-"
+		);
+		String applyContent = firstNotBlank(
+			formValue(context, "a17822862555375219", "申请内容", "remark"),
+			"因" + context.customerName() + "未按期缴纳" + context.feeName()
+				+ "，欠费期间为" + context.periodText() + "，未缴金额" + formatMoney(context.unpaidAmount())
+				+ "元，已逾期" + context.overdueDays() + "天，申请启动催款、租金逾期处理通知及律师函审批。"
+		);
 		fields.put("项目名称", "逾期费用处理");
 		fields.put("申请单位", context.customerName());
-		fields.put("申请单位（个人）", context.customerName());
-		fields.put("申请时间", formatDate(DateUtil.now()));
+		fields.put("申请单位（个人）", firstNotBlank(
+			formValue(context, "a178228600913530003", "申请单位（个人）", "申请单位"),
+			context.customerName()
+		));
+		fields.put("申请时间", applyTime);
 		fields.put("合同编号", context.contractNo());
-		fields.put("租赁楼层、面积", context.roomDisplay() + " " + formatArea(contract == null ? null : contract.getRentArea()));
-		fields.put("合同有效期", formatDate(contract == null ? null : contract.getStartDate()) + " 至 " + formatDate(contract == null ? null : contract.getEndDate()));
-		fields.put("月租金（元）", formatMoney(contract == null ? null : contract.getMonthlyRent()));
-		fields.put("保证金（元）", formatMoney(contract == null ? null : contract.getDeposit()));
-		fields.put("经办人", contract == null ? "-" : Func.toStr(firstNotBlank(contract.getFollowUser(), contract.getCreateBy()), "-"));
-		fields.put("申请内容", "因" + context.customerName() + "未按期缴纳" + context.feeName()
-			+ "，欠费期间为" + context.periodText() + "，未缴金额" + formatMoney(context.unpaidAmount())
-			+ "元，已逾期" + context.overdueDays() + "天，申请启动催款、租金逾期处理通知及律师函审批。");
+		fields.put("租赁楼层", firstNotBlank(
+			formValue(context, "a178228601343895801", "租赁楼层"),
+			context.roomDisplay()
+		));
+		fields.put("租赁面积", firstNotBlank(
+			formValue(context, "a178228601442020074", "租赁面积"),
+			formatArea(contract == null ? null : contract.getRentArea())
+		));
+		fields.put("租赁楼层、面积", fields.get("租赁楼层") + " " + fields.get("租赁面积"));
+		fields.put("合同有效期", firstNotBlank(
+			formValue(context, "a178228603001881228", "合同有效期"),
+			formatDate(contract == null ? null : contract.getStartDate()) + " 至 " + formatDate(contract == null ? null : contract.getEndDate())
+		));
+		fields.put("月租金（元）", firstNotBlank(
+			formValue(context, "a178228612023052511", "月租金（元）", "单价（元）"),
+			formatMoney(contract == null ? null : contract.getMonthlyRent())
+		));
+		fields.put("保证金（元）", firstNotBlank(
+			formValue(context, "a178228613003148864", "保证金（元）"),
+			formatMoney(contract == null ? null : contract.getDeposit())
+		));
+		fields.put("经办人", Func.toStr(applicant, "-"));
+		fields.put("部门", applicantDept);
+		fields.put("申请内容", applyContent);
 		fields.put("备注", "账单ID：" + (context.payment == null ? "-" : context.payment.getPaymentId()));
 		return fields;
 	}
@@ -546,21 +777,56 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	private Map<String, String> createTerminationApprovalFields(NoticeContext context) {
 		Map<String, String> fields = new LinkedHashMap<>();
 		Contract contract = context.contract;
-		String applyDate = firstNotBlank(formValue(context, "applyTime", "申请时间", "applyDate"), formatDate(DateUtil.now()));
-		String terminationDate = firstNotBlank(formValue(context, "expectedTerminationDate", "退租日期", "申请退租日期", "terminationDate"), formatDate(DateUtil.now()));
-		fields.put("退租申请单位（个人）", context.customerName());
+		String applyDate = firstNotBlank(
+			formValue(context, "a178228909793494547", "a178228601087185682", "applyTime", "申请时间", "applyDate"),
+			formatDate(DateUtil.now())
+		);
+		String terminationDate = firstNotBlank(
+			formValue(context, "expectedTerminationDate", "退租日期", "申请退租日期", "terminationDate"),
+			formatDate(DateUtil.now())
+		);
+		fields.put("退租申请单位（个人）", firstNotBlank(
+			formValue(context, "a17822890872424035", "退租申请单位（个人）"),
+			context.customerName()
+		));
 		fields.put("申请时间", applyDate);
-		fields.put("申请人联系方式", "-");
-		fields.put("租赁楼层、面积", context.roomDisplay() + " " + formatArea(contract == null ? null : contract.getRentArea()));
-		fields.put("合同有效期", formatDate(contract == null ? null : contract.getStartDate()) + " 至 " + formatDate(contract == null ? null : contract.getEndDate()));
-		fields.put("月租金（元）", formatMoney(contract == null ? null : contract.getMonthlyRent()));
-		fields.put("保证金（元）", formatMoney(contract == null ? null : contract.getDeposit()));
-		fields.put("经办人", contract == null ? "-" : Func.toStr(firstNotBlank(contract.getFollowUser(), contract.getCreateBy()), "-"));
-		fields.put("部门", firstNotBlank(formValue(context, "applicantDept", "申请部门", "送审部门", "部门"), "-"));
+		fields.put("申请人联系方式", firstNotBlank(
+			formValue(context, "a178228912328564023", "申请人联系方式", "联系方式"),
+			customerContactPhone(context),
+			"-"
+		));
+		fields.put("租赁楼层、面积", firstNotBlank(
+			formValue(context, "a178228920866788220", "租赁楼层、面积"),
+			context.roomDisplay() + " " + formatArea(contract == null ? null : contract.getRentArea())
+		));
+		fields.put("合同有效期", firstNotBlank(
+			formValue(context, "a178228924615174011", "合同有效期"),
+			formatDate(contract == null ? null : contract.getStartDate()) + " 至 " + formatDate(contract == null ? null : contract.getEndDate())
+		));
+		fields.put("月租金（元）", firstNotBlank(
+			formValue(context, "a178228926731876751", "月租金（元）"),
+			formatMoney(contract == null ? null : contract.getMonthlyRent())
+		));
+		fields.put("保证金（元）", firstNotBlank(
+			formValue(context, "a178228928604722363", "保证金（元）"),
+			formatMoney(contract == null ? null : contract.getDeposit())
+		));
+		fields.put("经办人", firstNotBlank(
+			formValue(context, "a178228930092178582", "经办人", "applicant"),
+			contract == null ? null : Func.toStr(firstNotBlank(contract.getFollowUser(), contract.getCreateBy()), "-"),
+			"-"
+		));
+		fields.put("部门", firstNotBlank(
+			formValue(context, "a178228936466669312", "applicantDept", "申请部门", "送审部门", "部门"),
+			"-"
+		));
 		fields.put("申请退租日期", terminationDate);
 		fields.put("退租类型", firstNotBlank(formValue(context, "terminationTypeName", "退租类型"), "正常退租"));
 		fields.put("违约金（元）", firstNotBlank(formValue(context, "breachPenalty", "违约金"), "0"));
-		fields.put("申请内容", buildTerminationSummary(context));
+		fields.put("申请内容", firstNotBlank(
+			formValue(context, "a178228940119047948", "申请内容", "terminationReason", "退租原因", "reason"),
+			buildTerminationSummary(context)
+		));
 		return fields;
 	}
 
@@ -568,8 +834,8 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		Map<String, String> fields = new LinkedHashMap<>();
 		Contract contract = context.contract;
 		fields.put("承租单位", context.customerName());
-		fields.put("联系人", "-");
-		fields.put("联系电话", "-");
+		fields.put("联系人", firstNotBlank(context.customer == null ? null : context.customer.getContactName(), "-"));
+		fields.put("联系电话", firstNotBlank(customerContactPhone(context), "-"));
 		fields.put("房屋地址", context.roomDisplay());
 		fields.put("合同期限", formatChineseDate(contract == null ? null : contract.getStartDate()) + "至" + formatChineseDate(contract == null ? null : contract.getEndDate()));
 		fields.put("申请退租日期", formatChineseDate(DateUtil.now()));
@@ -606,9 +872,9 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		String signDate = formatChineseDate(contract == null ? null : contract.getSignDate());
 		String startDate = formatChineseDate(contract == null ? null : contract.getStartDate());
 		String endDate = formatChineseDate(contract == null ? null : contract.getEndDate());
-		String applyDate = formatChineseDateText(firstNotBlank(formValue(context, "applyTime", "申请时间", "applyDate"), formatDate(DateUtil.now())));
+		String applyDate = formatChineseDateText(firstNotBlank(formValue(context, "a178228909793494547", "applyTime", "申请时间", "applyDate"), formatDate(DateUtil.now())));
 		String terminationDate = formatChineseDateText(firstNotBlank(formValue(context, "expectedTerminationDate", "退租日期", "申请退租日期", "terminationDate"), formatDate(DateUtil.now())));
-		String reason = firstNotBlank(formValue(context, "terminationReason", "退租原因", "reason"), "退租申请");
+		String reason = firstNotBlank(formValue(context, "terminationReason", "退租原因", "reason", "a178228940119047948", "申请内容"), "退租申请");
 		String terminationType = firstNotBlank(formValue(context, "terminationType", "退租类型编码"), "normal");
 		String terminationClause = buildTerminationAgreementClause(applyDate, reason, terminationType);
 		String contractClause = "1、" + signDate + "，甲乙双方签订《君联大厦租赁合同》。根据合同约定，由乙方承租甲方位于"
@@ -643,9 +909,35 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		Contract contract = context.contract;
 		fields.put("申请单位（个人）", context.customerName());
 		fields.put("申请单位", context.customerName());
-		fields.put("申请时间", formatDate(contract == null ? null : contract.getCreateTime()));
-		fields.put("合同编号", context.contractNo());
-		fields.put("合同名称", contract == null ? "-" : Func.toStr(contract.getContractName(), "-"));
+		fields.put("申请时间", firstNotBlank(
+			formValue(context, "applyTime", "申请时间"),
+			formatDate(contract == null ? null : contract.getCreateTime())
+		));
+		fields.put("合同编号", firstNotBlank(
+			formValue(context, "a178229178559539772", "合同编号"),
+			context.contractNo()
+		));
+		fields.put("合同名称", firstNotBlank(
+			formValue(context, "a178229184751475686", "合同名称"),
+			contract == null ? "-" : Func.toStr(contract.getContractName(), "-")
+		));
+		fields.put("送审部门", firstNotBlank(
+			formValue(context, "a178229267333284477", "送审部门", "applicantDept"),
+			"-"
+		));
+		fields.put("部门", fields.get("送审部门"));
+		fields.put("合同甲方", firstNotBlank(
+			formValue(context, "a178229185420560527", "合同甲方"),
+			"苏州市吴中金融招商服务有限公司"
+		));
+		fields.put("合同乙方", firstNotBlank(
+			formValue(context, "a1782291855806355", "a178229185640367241", "合同乙方"),
+			context.customerName()
+		));
+		fields.put("合同事项", firstNotBlank(
+			formValue(context, "a178229189162468518", "合同事项"),
+			buildContractSummary(contract)
+		));
 		fields.put("项目编号", contract == null || contract.getProjectId() == null ? "-" : String.valueOf(contract.getProjectId()));
 		fields.put("所属园区", context.parkName());
 		fields.put("租赁楼层", context.roomDisplay());
@@ -658,12 +950,24 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		fields.put("单价", formatMoney(contract == null ? null : contract.getRentPrice()));
 		fields.put("保证金（元）", formatMoney(contract == null ? null : contract.getDeposit()));
 		fields.put("保证金", formatMoney(contract == null ? null : contract.getDeposit()));
-		fields.put("经办人", contract == null ? "-" : Func.toStr(firstNotBlank(contract.getFollowUser(), contract.getCreateBy()), "-"));
+		fields.put("经办人", firstNotBlank(
+			formValue(context, "applicant", "经办人"),
+			contract == null ? "-" : Func.toStr(firstNotBlank(contract.getFollowUser(), contract.getCreateBy()), "-")
+		));
 		fields.put("管理费", formatMoney(contract == null ? null : contract.getManagementFee()));
 		fields.put("公摊费", formatMoney(contract == null ? null : contract.getPublicFee()));
 		fields.put("租金递增", contract == null ? "-" : Func.toStr(contract.getRentIncreaseNode(), "-"));
 		fields.put("滞纳金", lateFeeText(contract));
-		fields.put("申请内容", buildContractSummary(contract));
+		fields.put("申请内容", firstNotBlank(
+			formValue(context, "a178229189162468518", "申请内容"),
+			buildContractSummary(contract)
+		));
+		fields.put("部门经理", firstNotBlank(formValue(context, "a178229195669534563", "部门经理"), "-"));
+		fields.put("风控审核", firstNotBlank(formValue(context, "a178229196550349962", "风控审核"), "-"));
+		fields.put("律师意见", firstNotBlank(formValue(context, "a178229196627971409", "律师意见"), "-"));
+		fields.put("综合管理部", firstNotBlank(formValue(context, "a178229196800255673", "综合管理部"), "-"));
+		fields.put("分管领导", firstNotBlank(formValue(context, "a178229196922319221", "分管领导"), "-"));
+		fields.put("总经理审批", firstNotBlank(formValue(context, "a17822920239039332", "总经理审批"), "-"));
 		fields.put("备注", contract == null ? "-" : Func.toStr(contract.getRemark(), "-"));
 		return fields;
 	}
@@ -736,25 +1040,88 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	private Map<String, String> createInvoiceFields(NoticeContext context) {
 		Map<String, String> fields = new LinkedHashMap<>();
 		String amount = formatMoney(context.payment == null ? null : context.payment.getAmountDue());
-		fields.put("合同号", context.contractNo());
-		fields.put("申请人", context.contract == null ? "-" : Func.toStr(context.contract.getCreateBy(), "-"));
-		fields.put("房租", amountForFee(context, "rent", "租", "房租"));
-		fields.put("物业", amountForFee(context, "property", "物业"));
-		fields.put("押金", amountForFee(context, "deposit", "押金", "保证金"));
-		fields.put("单位名称", context.customerName());
-		fields.put("税号", "-");
-		fields.put("联系电话", "-");
-		fields.put("单位地址", "-");
-		fields.put("单位地址电话", "-");
-		fields.put("开户行", "-");
-		fields.put("银行账号", "-");
-		fields.put("开户行及账号", "-");
-		fields.put("开票内容及所属期", context.feeName() + "（" + periodTextCompact(context) + "）");
-		fields.put("备注", "合同编号：" + context.contractNo() + "，账单：" + context.feeName());
+		fields.put("日期", firstNotBlank(
+			formValue(context, "a178229020187351487", "日期", "applyTime"),
+			formatDate(DateUtil.now())
+		));
+		fields.put("合同号", firstNotBlank(
+			formValue(context, "a17822901960254579", "合同号"),
+			context.contractNo()
+		));
+		fields.put("申请人", firstNotBlank(
+			formValue(context, "a178229026327048309", "申请人", "applicant"),
+			context.contract == null ? "-" : Func.toStr(context.contract.getCreateBy(), "-")
+		));
+		fields.put("房租", firstNotBlank(
+			formValue(context, "a178229043562386124"),
+			amountForFee(context, "rent", "租", "房租")
+		));
+		fields.put("物业", firstNotBlank(
+			formValue(context, "a178229053048579216"),
+			amountForFee(context, "property", "物业")
+		));
+		fields.put("押金", firstNotBlank(
+			formValue(context, "a178229053161649966"),
+			amountForFee(context, "deposit", "押金", "保证金")
+		));
+		fields.put("单位名称", firstNotBlank(
+			formValue(context, "a178229058644646132", "单位名称"),
+			context.customerName()
+		));
+		fields.put("税号", firstNotBlank(
+			formValue(context, "a178229059800215745", "税号"),
+			customerCreditCode(context),
+			"-"
+		));
+		fields.put("联系电话", firstNotBlank(customerContactPhone(context), "-"));
+		fields.put("单位地址", firstNotBlank(
+			formValue(context, "a178229061296035254", "单位地址"),
+			customerRegisteredAddress(context),
+			"-"
+		));
+		fields.put("单位地址电话", joinAddressAndPhone(customerRegisteredAddress(context), customerContactPhone(context)));
+		fields.put("开户行", firstNotBlank(
+			formValue(context, "a17822906220499539", "开户行", "bankName", "depositBank"),
+			"-"
+		));
+		fields.put("银行账号", firstNotBlank(
+			formValue(context, "bankAccount"),
+			extractBankAccount(formValue(context, "a17822906220499539", "开户行及账号")),
+			"-"
+		));
+		fields.put("开户行及账号", joinBankInfo(
+			firstNotBlank(formValue(context, "a17822906220499539", "开户行及账号", "开户行", "bankName", "depositBank"), null),
+			firstNotBlank(formValue(context, "bankAccount"), extractBankAccount(formValue(context, "a17822906220499539", "开户行及账号")), null)
+		));
+		fields.put("开票内容及所属期", firstNotBlank(
+			formValue(context, "a17822906368403586", "开票内容及所属期"),
+			context.feeName() + "（" + periodTextCompact(context) + "）"
+		));
+		fields.put("备注", firstNotBlank(
+			formValue(context, "a178229065580035292", "备注"),
+			"合同编号：" + context.contractNo() + "，账单：" + context.feeName()
+		));
+		fields.put("分管领导", firstNotBlank(formValue(context, "a17822907200094136", "分管领导"), "-"));
+		fields.put("部门经理", firstNotBlank(formValue(context, "a178229072168040692", "部门经理"), "-"));
 		if (StringUtil.isBlank(fields.get("房租")) && StringUtil.isBlank(fields.get("物业")) && StringUtil.isBlank(fields.get("押金"))) {
 			fields.put(context.feeName(), amount);
 		}
 		return fields;
+	}
+
+	private String extractBankAccount(String value) {
+		if (StringUtil.isBlank(value)) {
+			return null;
+		}
+		String text = value.trim();
+		String[] segments = text.split("[\\s/：:]+");
+		for (int index = segments.length - 1; index >= 0; index--) {
+			String segment = segments[index];
+			if (segment.matches(".*\\d{6,}.*")) {
+				return segment.replaceAll("[^0-9]", "");
+			}
+		}
+		return null;
 	}
 
 	private String amountForFee(NoticeContext context, String... keywords) {
@@ -844,7 +1211,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		if (StringUtil.isNotBlank(expectedTerminationDate)) {
 			parts.add("申请退租日期：" + expectedTerminationDate);
 		}
-		String reason = firstNotBlank(formValue(context, "terminationReason", "退租原因", "reason"), null);
+		String reason = firstNotBlank(formValue(context, "terminationReason", "退租原因", "reason", "a178228940119047948", "申请内容"), null);
 		if (StringUtil.isNotBlank(reason)) {
 			parts.add("退租原因：" + reason);
 		}
@@ -955,6 +1322,163 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 
 	private boolean isNested(Object value) {
 		return value instanceof Map<?, ?> || value instanceof Collection<?>;
+	}
+
+	private PreviewData buildPreviewData(String noticeType, NoticeContext context) {
+		Map<String, String> fields = switch (noticeType) {
+			case NOTICE_PAYMENT -> createPaymentNoticeFields(context);
+			case NOTICE_REMINDER, NOTICE_OVERDUE, NOTICE_LEGAL, NOTICE_MOVE_OUT -> createOverdueFields(context);
+			case NOTICE_INVOICE -> createInvoiceFields(context);
+			case NOTICE_CONTRACT_APPROVAL -> createContractApprovalFields(context);
+			case NOTICE_CONTRACT_FIXED -> createContractTextFields(context, false);
+			case NOTICE_CONTRACT_FLOATING -> createContractTextFields(context, true);
+			case NOTICE_PROJECT_APPROVAL -> createProjectApprovalFields(context);
+			case NOTICE_TERMINATION, NOTICE_TERMINATION_AGREEMENT -> createTerminationApprovalFields(context);
+			case NOTICE_ROOM_REVIEW -> createRoomReviewFields(context);
+			default -> new LinkedHashMap<>();
+		};
+		Map<String, String> summary = buildPreviewSummary(noticeType, context, fields);
+		List<String> missingFields = fields.entrySet().stream()
+			.filter(entry -> isMissingValue(entry.getValue()))
+			.map(Map.Entry::getKey)
+			.toList();
+		return new PreviewData(summary, fields, missingFields);
+	}
+
+	private Map<String, String> buildPreviewSummary(String noticeType, NoticeContext context, Map<String, String> fields) {
+		Map<String, String> summary = new LinkedHashMap<>();
+		summary.put("文书类型", noticeDisplayName(noticeType));
+		summary.put("合同编号", context.contractNo());
+		summary.put("企业名称", context.customerName());
+		summary.put("房源信息", context.roomDisplay());
+		if (context.payment != null) {
+			summary.put("费用类型", context.feeName());
+			summary.put("账期", context.periodText());
+			summary.put("应收金额", formatMoney(context.payment.getAmountDue()));
+		}
+		if (NOTICE_CONTRACT_FIXED.equals(noticeType) || NOTICE_CONTRACT_FLOATING.equals(noticeType)) {
+			summary.put("合同版本", NOTICE_CONTRACT_FLOATING.equals(noticeType) ? "浮动租金版" : "固定租金版");
+		}
+		if (NOTICE_TERMINATION.equals(noticeType) || NOTICE_TERMINATION_AGREEMENT.equals(noticeType)) {
+			summary.put("退租日期", firstNotBlank(
+				formValue(context, "expectedTerminationDate", "退租日期", "申请退租日期", "terminationDate"),
+				fields.get("申请退租日期"),
+				"-"
+			));
+		}
+		summary.put("缺失字段数", String.valueOf(fields.entrySet().stream().filter(entry -> isMissingValue(entry.getValue())).count()));
+		return summary;
+	}
+
+	private String noticeDisplayName(String noticeType) {
+		return switch (noticeType) {
+			case NOTICE_PAYMENT -> "付款通知单";
+			case NOTICE_REMINDER -> "催款通知书";
+			case NOTICE_INVOICE -> "开票申请单";
+			case NOTICE_CONTRACT_APPROVAL -> "合同会签审批表";
+			case NOTICE_CONTRACT_FIXED -> "合同正文固定租金版";
+			case NOTICE_CONTRACT_FLOATING -> "合同正文浮动租金版";
+			case NOTICE_PROJECT_APPROVAL -> "项目审批表";
+			case NOTICE_OVERDUE -> "租金逾期处理通知书";
+			case NOTICE_LEGAL -> "律师函";
+			case NOTICE_MOVE_OUT -> "限期搬离通知书";
+			case NOTICE_TERMINATION -> "退租审批表";
+			case NOTICE_TERMINATION_AGREEMENT -> "合同解除补充协议";
+			case NOTICE_ROOM_REVIEW -> "房屋退租交接验收单";
+			default -> "审批文件";
+		};
+	}
+
+	private boolean isMissingValue(String value) {
+		if (StringUtil.isBlank(value)) {
+			return true;
+		}
+		String normalized = value.trim();
+		return "-".equals(normalized)
+			|| "/".equals(normalized)
+			|| "    年  月  日".equals(normalized);
+	}
+
+	private String buildPreviewHtml(String title, Map<String, String> summary, Map<String, String> fields, List<String> missingFields) {
+		String summaryHtml = summary.entrySet().stream()
+			.map(entry -> "<div class=\"summary-item\"><span>" + escapeHtml(entry.getKey()) + "</span><strong>"
+				+ escapeHtml(entry.getValue()) + "</strong></div>")
+			.reduce("", String::concat);
+		String fieldRows = fields.entrySet().stream()
+			.map(entry -> "<tr><th>" + escapeHtml(entry.getKey()) + "</th><td>" + escapeHtml(entry.getValue()) + "</td></tr>")
+			.reduce("", String::concat);
+		String missingHtml = missingFields.isEmpty()
+			? "<div class=\"notice-success\">字段已完整回填</div>"
+			: "<div class=\"notice-warning\"><strong>待补字段：</strong>" + escapeHtml(String.join("、", missingFields)) + "</div>";
+		return "<!doctype html><html><head><meta charset=\"utf-8\"><title>" + escapeHtml(title)
+			+ "</title><style>"
+			+ "body{margin:0;padding:24px;background:#f6f8fb;color:#303133;font-family:Arial,\"Microsoft YaHei\",sans-serif;}"
+			+ ".sheet{max-width:980px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:24px;}"
+			+ "h2{margin:0 0 18px;text-align:center;font-size:24px;color:#1f2937;}"
+			+ ".summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px;}"
+			+ ".summary-item{padding:12px 14px;border:1px solid #e5e7eb;border-radius:10px;background:#f8fafc;display:flex;flex-direction:column;gap:6px;}"
+			+ ".summary-item span{font-size:12px;color:#6b7280;}.summary-item strong{font-size:15px;color:#111827;}"
+			+ ".notice-success,.notice-warning{margin-bottom:16px;padding:12px 14px;border-radius:10px;font-size:13px;}"
+			+ ".notice-success{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;}"
+			+ ".notice-warning{background:#fff7ed;border:1px solid #fdba74;color:#c2410c;}"
+			+ "table{width:100%;border-collapse:collapse;font-size:13px;}th,td{border:1px solid #dcdfe6;padding:10px 12px;text-align:left;vertical-align:top;}"
+			+ "th{width:220px;background:#f8fafc;color:#4b5563;font-weight:600;}td{color:#1f2937;word-break:break-word;}"
+			+ "@media (max-width: 900px){body{padding:12px;}.sheet{padding:16px;}.summary-grid{grid-template-columns:1fr;}}"
+			+ "</style></head><body><div class=\"sheet\"><h2>" + escapeHtml(title) + "</h2>"
+			+ "<div class=\"summary-grid\">" + summaryHtml + "</div>" + missingHtml
+			+ "<table><tbody>" + fieldRows + "</tbody></table></div></body></html>";
+	}
+
+	private String escapeHtml(String value) {
+		String safeValue = Func.toStr(value, "");
+		return safeValue
+			.replace("&", "&amp;")
+			.replace("<", "&lt;")
+			.replace(">", "&gt;")
+			.replace("\"", "&quot;")
+			.replace("'", "&#39;");
+	}
+
+	private String customerCreditCode(NoticeContext context) {
+		return context.customer == null ? null : context.customer.getCreditCode();
+	}
+
+	private String customerContactPhone(NoticeContext context) {
+		return context.customer == null ? null : context.customer.getContactPhone();
+	}
+
+	private String customerRegisteredAddress(NoticeContext context) {
+		return context.customer == null ? null : context.customer.getRegisteredAddress();
+	}
+
+	private String joinAddressAndPhone(String address, String phone) {
+		String safeAddress = firstNotBlank(address, null);
+		String safePhone = firstNotBlank(phone, null);
+		if (safeAddress == null && safePhone == null) {
+			return "-";
+		}
+		if (safeAddress == null) {
+			return safePhone;
+		}
+		if (safePhone == null) {
+			return safeAddress;
+		}
+		return safeAddress + " / " + safePhone;
+	}
+
+	private String joinBankInfo(String bankName, String bankAccount) {
+		String safeBankName = firstNotBlank(bankName, null);
+		String safeBankAccount = firstNotBlank(bankAccount, null);
+		if (safeBankName == null && safeBankAccount == null) {
+			return "-";
+		}
+		if (safeBankName == null) {
+			return safeBankAccount;
+		}
+		if (safeBankAccount == null) {
+			return safeBankName;
+		}
+		return safeBankName + " / " + safeBankAccount;
 	}
 
 	private String lateFeeText(Contract contract) {
@@ -1228,12 +1752,14 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		private final String noticeType;
 		private final ContractPayment payment;
 		private final Contract contract;
+		private final Customer customer;
 		private final Map<String, Object> formData;
 
-		private NoticeContext(String noticeType, ContractPayment payment, Contract contract, Map<String, Object> formData) {
+		private NoticeContext(String noticeType, ContractPayment payment, Contract contract, Customer customer, Map<String, Object> formData) {
 			this.noticeType = noticeType;
 			this.payment = payment;
 			this.contract = contract;
+			this.customer = customer;
 			this.formData = formData == null ? Collections.emptyMap() : formData;
 		}
 
@@ -1326,6 +1852,9 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 
 	private static String formatDateValue(Date date) {
 		return date == null ? "-" : DateUtil.format(date, DateUtil.PATTERN_DATE);
+	}
+
+	private record PreviewData(Map<String, String> summary, Map<String, String> fields, List<String> missingFields) {
 	}
 
 }
