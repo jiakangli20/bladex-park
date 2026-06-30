@@ -9,24 +9,39 @@
           </div>
         </section>
 
-        <avue-crud
-          ref="crud"
-          v-model="form"
-          v-model:page="page"
-          :option="option"
-          :data="data"
-          :table-loading="loading"
-          :permission="permissionList"
-          @row-del="rowDel"
-          @search-change="searchChange"
-          @search-reset="searchReset"
-          @selection-change="selectionChange"
-          @current-change="currentChange"
-          @size-change="sizeChange"
-          @refresh-change="refreshChange"
-          @on-load="onLoad"
-        >
-          <template #menu-left>
+        <section class="park-search">
+          <el-form :inline="true" :model="query">
+            <el-form-item label="园区名称">
+              <el-input
+                v-model="query.name"
+                clearable
+                placeholder="请输入园区名称"
+                @keyup.enter="searchChange"
+              />
+            </el-form-item>
+            <el-form-item label="园区编号">
+              <el-input
+                v-model="query.code"
+                clearable
+                placeholder="请输入园区编号"
+                @keyup.enter="searchChange"
+              />
+            </el-form-item>
+            <el-form-item label="状态">
+              <el-select v-model="query.status" clearable placeholder="请选择">
+                <el-option label="启用" value="0" />
+                <el-option label="停用" value="1" />
+              </el-select>
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" icon="el-icon-search" @click="searchChange">查询</el-button>
+              <el-button icon="el-icon-delete" @click="searchReset">重置</el-button>
+            </el-form-item>
+          </el-form>
+        </section>
+
+        <section class="park-toolbar">
+          <div class="park-toolbar-left">
             <el-button
               v-if="permission.park_add"
               type="primary"
@@ -45,37 +60,90 @@
             >
               批量删除
             </el-button>
-          </template>
+          </div>
+          <el-tooltip content="刷新" placement="top">
+            <el-button icon="el-icon-refresh" circle @click="refreshChange" />
+          </el-tooltip>
+        </section>
 
-          <template #menu="{ row }">
-            <div class="park-row-actions">
-              <el-button
-                v-if="permission.park_view"
-                text
-                type="primary"
-                icon="el-icon-view"
-                @click="openViewPage(row)"
-              >
-                查看
-              </el-button>
-              <el-button
-                v-if="permission.park_edit"
-                text
-                type="primary"
-                icon="el-icon-edit"
-                @click="openEditPage(row)"
-              >
-                编辑
-              </el-button>
-            </div>
-          </template>
+        <el-table
+          ref="parkTable"
+          v-loading="loading"
+          :data="data"
+          border
+          fit
+          row-key="id"
+          class="park-table"
+          @selection-change="selectionChange"
+        >
+          <el-table-column type="selection" width="44" align="center" />
+          <el-table-column prop="name" label="园区名称" min-width="150" align="center" show-overflow-tooltip />
+          <el-table-column prop="code" label="园区编号" min-width="120" align="center" show-overflow-tooltip />
+          <el-table-column prop="status" label="状态" width="90" align="center">
+            <template #default="{ row }">
+              <el-switch
+                class="park-status-switch"
+                :model-value="row.status === '0' || row.status === 0"
+                :loading="statusChangingMap[row.id]"
+                :disabled="!permission.park_edit"
+                :width="44"
+                @change="checked => toggleStatus(row, checked)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column prop="managementArea" label="管理面积(㎡)" min-width="130" align="center">
+            <template #default="{ row }">{{ formatArea(row.managementArea) }}</template>
+          </el-table-column>
+          <el-table-column prop="rentableArea" label="可招商面积(㎡)" min-width="145" align="center">
+            <template #default="{ row }">{{ formatArea(row.rentableArea) }}</template>
+          </el-table-column>
+          <el-table-column prop="totalRoomCount" label="总房源数" min-width="105" align="center">
+            <template #default="{ row }">{{ row.totalRoomCount || 0 }}</template>
+          </el-table-column>
+          <el-table-column prop="rentableRoomCount" label="可招商房源" min-width="120" align="center">
+            <template #default="{ row }">{{ row.rentableRoomCount || 0 }}</template>
+          </el-table-column>
+          <el-table-column prop="contactPhone" label="联系电话" min-width="112" align="center" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.contactPhone || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="150" align="center">
+            <template #default="{ row }">
+              <div class="park-table-actions">
+                <el-button
+                  v-if="permission.park_view"
+                  text
+                  type="primary"
+                  icon="el-icon-view"
+                  @click="openViewPage(row)"
+                >
+                  查看
+                </el-button>
+                <el-button
+                  v-if="permission.park_edit"
+                  text
+                  type="primary"
+                  icon="el-icon-edit"
+                  @click="openEditPage(row)"
+                >
+                  编辑
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
 
-          <template #status="{ row }">
-            <el-tag :type="row.status === '0' || row.status === 0 ? 'success' : 'info'">
-              {{ row.status === '0' || row.status === 0 ? '启用' : '停用' }}
-            </el-tag>
-          </template>
-        </avue-crud>
+        <div class="park-pagination">
+          <el-pagination
+            background
+            :current-page="page.currentPage"
+            :page-sizes="[10, 20, 30, 40, 50, 100]"
+            :page-size="page.pageSize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="page.total"
+            @size-change="sizeChange"
+            @current-change="currentChange"
+          />
+        </div>
       </div>
     </template>
 
@@ -379,7 +447,6 @@ import { mapGetters } from 'vuex';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getToken } from '@/utils/auth';
 import { add, getDetail, getList, getStatistics, remove, update } from '@/api/park/park';
-import { tableOption } from '@/option/park/park';
 
 const parkFormFields = [
   'id',
@@ -436,7 +503,6 @@ const createDefaultParkForm = () => ({
 export default {
   data() {
     return {
-      form: {},
       query: {},
       loading: true,
       page: {
@@ -451,12 +517,12 @@ export default {
         totalRoomCount: 0,
         rentableRoomCount: 0,
       },
-      option: tableOption,
       data: [],
       editPageVisible: false,
       editMode: 'add',
       editLoading: false,
       saving: false,
+      statusChangingMap: {},
       editForm: createDefaultParkForm(),
       editRules: {
         name: [{ required: true, message: '请输入园区名称', trigger: 'blur' }],
@@ -504,14 +570,6 @@ export default {
         },
       ];
     },
-    permissionList() {
-      return {
-        addBtn: false,
-        viewBtn: false,
-        delBtn: false,
-        editBtn: false,
-      };
-    },
     ids() {
       const ids = [];
       this.selectionList.forEach(ele => {
@@ -522,6 +580,7 @@ export default {
   },
   created() {
     this.loadStatistics();
+    this.onLoad(this.page);
   },
   methods: {
     formatArea(value) {
@@ -619,6 +678,28 @@ export default {
           });
       });
     },
+    toggleStatus(row, checked) {
+      if (!row || !row.id || this.statusChangingMap[row.id]) return;
+      const nextStatus = checked ? '0' : '1';
+      this.statusChangingMap = {
+        ...this.statusChangingMap,
+        [row.id]: true,
+      };
+      update({
+        ...row,
+        status: nextStatus,
+      })
+        .then(() => {
+          row.status = nextStatus;
+          ElMessage.success(nextStatus === '0' ? '已启用' : '已停用');
+          this.refreshStatistics();
+        })
+        .finally(() => {
+          const nextMap = { ...this.statusChangingMap };
+          delete nextMap[row.id];
+          this.statusChangingMap = nextMap;
+        });
+    },
     beforeImageUpload(file) {
       const isImage = file.type && file.type.indexOf('image/') === 0;
       if (!isImage) {
@@ -645,7 +726,7 @@ export default {
     },
     onLoad(page, params = {}) {
       this.loading = true;
-      getList(page.currentPage, page.pageSize, Object.assign(params, this.query)).then(res => {
+      getList(page.currentPage, page.pageSize, { ...this.query, ...params }).then(res => {
         const resData = res.data.data;
         this.page.total = resData.total;
         this.data = resData.records;
@@ -653,17 +734,6 @@ export default {
         this.selectionClear();
       }).catch(() => {
         this.loading = false;
-      });
-    },
-    rowDel(row) {
-      ElMessageBox.confirm('确定将选择数据删除?', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }).then(() => remove(row.id)).then(() => {
-        this.onLoad(this.page);
-        this.refreshStatistics();
-        ElMessage.success('操作成功!');
       });
     },
     handleDelete() {
@@ -679,17 +749,15 @@ export default {
         this.onLoad(this.page);
         this.refreshStatistics();
         ElMessage.success('操作成功!');
-        this.$refs.crud && this.$refs.crud.toggleSelection();
       });
     },
-    searchChange(params, done) {
-      this.query = params;
+    searchChange() {
       this.page.currentPage = 1;
-      this.onLoad(this.page, params);
-      done();
+      this.onLoad(this.page);
     },
     searchReset() {
       this.query = {};
+      this.page.currentPage = 1;
       this.onLoad(this.page);
     },
     selectionChange(list) {
@@ -697,13 +765,16 @@ export default {
     },
     selectionClear() {
       this.selectionList = [];
-      this.$refs.crud && this.$refs.crud.toggleSelection();
+      this.$refs.parkTable && this.$refs.parkTable.clearSelection();
     },
     currentChange(currentPage) {
       this.page.currentPage = currentPage;
+      this.onLoad(this.page);
     },
     sizeChange(pageSize) {
       this.page.pageSize = pageSize;
+      this.page.currentPage = 1;
+      this.onLoad(this.page);
     },
     refreshChange() {
       this.onLoad(this.page, this.query);
@@ -718,45 +789,84 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  width: 100%;
 }
 
-.park-page :deep(.avue-crud__search) {
+.park-search,
+.park-toolbar {
   border-radius: 10px;
-  overflow: hidden;
 }
 
-.park-page :deep(.avue-crud .el-button) {
-  border-radius: 6px;
+.park-search {
+  padding: 16px 18px 4px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
 }
 
-.park-page :deep(.avue-crud__menu) {
-  overflow: visible;
-  padding: 2px 0 0;
-  background: transparent;
-  border-radius: 0;
+.park-search :deep(.el-form-item) {
+  margin-right: 20px;
+  margin-bottom: 12px;
 }
 
-.park-page :deep(.avue-crud__left) {
+.park-search :deep(.el-input),
+.park-search :deep(.el-select) {
+  width: 190px;
+}
+
+.park-toolbar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.park-toolbar-left {
+  display: flex;
   gap: 10px;
 }
 
-.park-row-actions {
-  display: inline-flex;
+.park-table {
+  width: 100%;
+  border-radius: 0;
+}
+
+.park-page :deep(.el-table th),
+.park-page :deep(.el-table td),
+.park-page :deep(.el-table .cell) {
+  text-align: center;
+}
+
+.park-page :deep(.el-table .cell) {
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+}
+
+.park-table-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   white-space: nowrap;
 }
 
-.park-row-actions .el-button + .el-button {
+.park-table-actions .el-button + .el-button {
   margin-left: 0;
 }
 
-.park-page :deep(.avue-crud__table),
-.park-page :deep(.avue-crud__table .el-card),
-.park-page :deep(.avue-crud__table .el-card__body),
+.park-pagination {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 0 0;
+}
+
+.park-status-switch {
+  --el-switch-on-color: #19be4b;
+  --el-switch-off-color: #dcdfe6;
+}
+
 .park-page :deep(.el-table),
 .park-page :deep(.el-table__inner-wrapper),
 .park-page :deep(.el-table__header-wrapper),
@@ -898,7 +1008,7 @@ export default {
   width: 260px;
 }
 
-.park-page :deep(.avue-crud__menu .el-button),
+.park-page :deep(.el-button),
 .park-edit-page :deep(.el-upload .el-button) {
   border-radius: 6px;
 }

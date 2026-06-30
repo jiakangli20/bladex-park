@@ -1,24 +1,42 @@
 <template>
   <basic-container>
     <div class="building-page">
-      <avue-crud
-        ref="crud"
-        v-model="form"
-        v-model:page="page"
-        :option="option"
-        :data="data"
-        :table-loading="loading"
-        :permission="permissionList"
-        @row-del="rowDel"
-        @search-change="searchChange"
-        @search-reset="searchReset"
-        @selection-change="selectionChange"
-        @current-change="currentChange"
-        @size-change="sizeChange"
-        @refresh-change="refreshChange"
-        @on-load="onLoad"
-      >
-        <template #menu-left>
+      <section class="summary-grid">
+        <div v-for="item in buildingSummaryCards" :key="item.key" class="summary-card">
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+        </div>
+      </section>
+
+      <section class="building-search">
+        <el-form :inline="true" :model="query">
+          <el-form-item label="建筑名称">
+            <el-input
+              v-model="query.name"
+              clearable
+              placeholder="请输入建筑名称"
+              @keyup.enter="searchChange"
+            />
+          </el-form-item>
+          <el-form-item label="所属园区">
+            <el-select v-model="query.parkId" clearable filterable placeholder="请选择所属园区">
+              <el-option
+                v-for="park in parkList"
+                :key="park.id"
+                :label="park.name"
+                :value="park.id"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" icon="el-icon-search" @click="searchChange">查询</el-button>
+            <el-button icon="el-icon-delete" @click="searchReset">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </section>
+
+      <section class="building-toolbar">
+        <div class="building-toolbar-left">
           <el-button
             v-if="permission.building_add"
             type="primary"
@@ -37,41 +55,93 @@
           >
             批量删除
           </el-button>
-        </template>
+        </div>
+        <el-tooltip content="刷新" placement="top">
+          <el-button icon="el-icon-refresh" circle @click="refreshChange" />
+        </el-tooltip>
+      </section>
 
-        <template #menu="{ row }">
-          <div class="building-row-actions">
-            <el-button
-              v-if="permission.building_view"
-              text
-              type="primary"
-              icon="el-icon-view"
-              @click="openViewDrawer(row)"
-            >
-              查看
-            </el-button>
-            <el-button
-              v-if="permission.building_edit"
-              text
-              type="primary"
-              icon="el-icon-edit"
-              @click="openEditDrawer(row)"
-            >
-              编辑
-            </el-button>
-          </div>
-        </template>
+      <el-table
+        ref="buildingTable"
+        v-loading="loading"
+        :data="data"
+        border
+        fit
+        row-key="id"
+        class="building-table"
+        @selection-change="selectionChange"
+      >
+        <el-table-column type="selection" width="44" align="center" />
+        <el-table-column prop="name" label="建筑名称" min-width="150" align="center" show-overflow-tooltip />
+        <el-table-column label="所属园区" min-width="140" align="center" show-overflow-tooltip>
+          <template #default="{ row }">{{ parkNameText(row) }}</template>
+        </el-table-column>
+        <el-table-column prop="code" label="建筑编号" min-width="120" align="center" show-overflow-tooltip />
+        <el-table-column prop="status" label="状态" width="90" align="center">
+          <template #default="{ row }">
+            <el-switch
+              class="building-status-switch"
+              :model-value="row.status === '0' || row.status === 0"
+              :loading="statusChangingMap[row.id]"
+              :disabled="!permission.building_edit"
+              :width="44"
+              @change="checked => toggleStatus(row, checked)"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column prop="area" label="建筑面积(㎡)" min-width="130" align="center">
+          <template #default="{ row }">{{ formatArea(row.area) }}</template>
+        </el-table-column>
+        <el-table-column prop="rentableArea" label="可租面积(㎡)" min-width="130" align="center">
+          <template #default="{ row }">{{ formatArea(row.rentableArea) }}</template>
+        </el-table-column>
+        <el-table-column prop="managementArea" label="管理面积(㎡)" min-width="130" align="center">
+          <template #default="{ row }">{{ formatArea(row.managementArea) }}</template>
+        </el-table-column>
+        <el-table-column prop="roomCount" label="房间总数" min-width="105" align="center">
+          <template #default="{ row }">{{ row.roomCount || 0 }}</template>
+        </el-table-column>
+        <el-table-column prop="rentRate" label="出租率(%)" min-width="105" align="center">
+          <template #default="{ row }">{{ formatRate(row.rentRate) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" min-width="150" align="center">
+          <template #default="{ row }">
+            <div class="building-table-actions">
+              <el-button
+                v-if="permission.building_view"
+                text
+                type="primary"
+                icon="el-icon-view"
+                @click="openViewDrawer(row)"
+              >
+                查看
+              </el-button>
+              <el-button
+                v-if="permission.building_edit"
+                text
+                type="primary"
+                icon="el-icon-edit"
+                @click="openEditDrawer(row)"
+              >
+                编辑
+              </el-button>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
 
-        <template #status="{ row }">
-          <el-tag :type="row.status === '0' || row.status === 0 ? 'success' : 'info'">
-            {{ row.status === '0' || row.status === 0 ? '启用' : '停用' }}
-          </el-tag>
-        </template>
-
-        <template #buildingTag="{ row }">
-          {{ buildBuildingTag(row) }}
-        </template>
-      </avue-crud>
+      <div class="building-pagination">
+        <el-pagination
+          background
+          :current-page="page.currentPage"
+          :page-sizes="[10, 20, 30, 40, 50, 100]"
+          :page-size="page.pageSize"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="page.total"
+          @size-change="sizeChange"
+          @current-change="currentChange"
+        />
+      </div>
     </div>
 
     <el-drawer
@@ -382,7 +452,6 @@ import { mapGetters } from 'vuex';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getList, getDetail, remove, submit } from '@/api/park/building';
 import { getList as getParkList } from '@/api/park/park';
-import { tableOption } from '@/option/park/building';
 
 const statusOptions = [
   { label: '启用', value: '0' },
@@ -442,7 +511,6 @@ const createDefaultBuildingForm = () => ({
 export default {
   data() {
     return {
-      form: {},
       query: {},
       loading: true,
       page: {
@@ -451,7 +519,6 @@ export default {
         total: 0,
       },
       selectionList: [],
-      option: tableOption,
       data: [],
       parkList: [],
       floorAreaList: [],
@@ -459,6 +526,7 @@ export default {
       drawerMode: 'add',
       drawerLoading: false,
       saving: false,
+      statusChangingMap: {},
       drawerForm: createDefaultBuildingForm(),
       drawerRules: {
         parkId: [{ required: true, message: '请选择所属园区', trigger: 'change' }],
@@ -478,14 +546,6 @@ export default {
   },
   computed: {
     ...mapGetters(['permission']),
-    permissionList() {
-      return {
-        addBtn: false,
-        viewBtn: false,
-        delBtn: false,
-        editBtn: false,
-      };
-    },
     drawerTitle() {
       if (this.drawerMode === 'view') return '查看建筑';
       return this.drawerForm.id ? '编辑建筑' : '新增建筑';
@@ -499,9 +559,38 @@ export default {
     totalFloorArea() {
       return this.floorAreaList.reduce((total, item) => total + Number(item.area || 0), 0);
     },
+    buildingSummaryCards() {
+      const total = this.data.length;
+      const managementArea = this.sumBy(this.data, 'managementArea');
+      const rentedArea = this.sumBy(this.data, 'rentedArea');
+      const vacantArea = Math.max(managementArea - rentedArea, 0);
+      return [
+        {
+          key: 'buildingCount',
+          label: '建筑数量',
+          value: `${total} 栋`,
+        },
+        {
+          key: 'managementArea',
+          label: '管理面积',
+          value: `${this.formatArea(managementArea)} ㎡`,
+        },
+        {
+          key: 'rentedArea',
+          label: '在租面积',
+          value: `${this.formatArea(rentedArea)} ㎡`,
+        },
+        {
+          key: 'vacantArea',
+          label: '待租面积',
+          value: `${this.formatArea(vacantArea)} ㎡`,
+        },
+      ];
+    },
   },
   created() {
     this.loadParkList();
+    this.onLoad(this.page);
   },
   watch: {
     'drawerForm.floors'(value) {
@@ -518,10 +607,6 @@ export default {
       getParkList(1, 999, {}).then(res => {
         const records = (res.data.data && res.data.data.records) || [];
         this.parkList = records;
-        const parkColumn = this.option.column.find(item => item.prop === 'parkId');
-        if (parkColumn) {
-          parkColumn.dicData = records;
-        }
       });
     },
     buildDrawerForm(data = {}) {
@@ -622,7 +707,7 @@ export default {
     },
     onLoad(page, params = {}) {
       this.loading = true;
-      getList(page.currentPage, page.pageSize, Object.assign(params, this.query)).then(res => {
+      getList(page.currentPage, page.pageSize, { ...this.query, ...params }).then(res => {
         const resData = res.data.data;
         this.page.total = resData.total;
         this.data = resData.records || [];
@@ -630,16 +715,6 @@ export default {
         this.selectionClear();
       }).catch(() => {
         this.loading = false;
-      });
-    },
-    rowDel(row) {
-      ElMessageBox.confirm('确定将选择数据删除?', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }).then(() => remove(row.id)).then(() => {
-        this.onLoad(this.page);
-        ElMessage.success('操作成功!');
       });
     },
     handleDelete() {
@@ -654,8 +729,28 @@ export default {
       }).then(() => remove(this.ids)).then(() => {
         this.onLoad(this.page);
         ElMessage.success('操作成功!');
-        this.$refs.crud && this.$refs.crud.toggleSelection();
       });
+    },
+    toggleStatus(row, checked) {
+      if (!row || !row.id || this.statusChangingMap[row.id]) return;
+      const nextStatus = checked ? '0' : '1';
+      this.statusChangingMap = {
+        ...this.statusChangingMap,
+        [row.id]: true,
+      };
+      submit({
+        ...row,
+        status: nextStatus,
+      })
+        .then(() => {
+          row.status = nextStatus;
+          ElMessage.success(nextStatus === '0' ? '已启用' : '已停用');
+        })
+        .finally(() => {
+          const nextMap = { ...this.statusChangingMap };
+          delete nextMap[row.id];
+          this.statusChangingMap = nextMap;
+        });
     },
     normalizePayload(row) {
       return Object.assign({}, row, {
@@ -691,14 +786,13 @@ export default {
       }
       return Number((area / floorCount).toFixed(2));
     },
-    searchChange(params, done) {
-      this.query = params;
+    searchChange() {
       this.page.currentPage = 1;
-      this.onLoad(this.page, params);
-      done();
+      this.onLoad(this.page);
     },
     searchReset() {
       this.query = {};
+      this.page.currentPage = 1;
       this.onLoad(this.page);
     },
     selectionChange(list) {
@@ -706,21 +800,36 @@ export default {
     },
     selectionClear() {
       this.selectionList = [];
-      this.$refs.crud && this.$refs.crud.toggleSelection();
+      this.$refs.buildingTable && this.$refs.buildingTable.clearSelection();
     },
     currentChange(currentPage) {
       this.page.currentPage = currentPage;
+      this.onLoad(this.page);
     },
     sizeChange(pageSize) {
       this.page.pageSize = pageSize;
+      this.page.currentPage = 1;
+      this.onLoad(this.page);
     },
     refreshChange() {
       this.onLoad(this.page, this.query);
     },
-    buildBuildingTag(row) {
-      return [row.buildingType, row.memo].filter(Boolean).join(' / ') || '-';
+    parkNameText(row) {
+      if (row.parkName) return row.parkName;
+      const park = this.parkList.find(item => String(item.id) === String(row.parkId));
+      return park ? park.name : '-';
+    },
+    sumBy(list, field) {
+      return (list || []).reduce((total, item) => total + Number(item[field] || 0), 0);
     },
     formatArea(value) {
+      const num = Number(value || 0);
+      return num.toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      });
+    },
+    formatRate(value) {
       const num = Number(value || 0);
       return num.toLocaleString(undefined, {
         minimumFractionDigits: 0,
@@ -736,68 +845,113 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  width: 100%;
 }
 
-.building-page :deep(.avue-crud__search) {
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.summary-card {
+  min-height: 76px;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
   border-radius: 10px;
-  overflow: hidden;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-.building-page :deep(.avue-crud__search .el-col) {
-  width: auto;
-  max-width: none;
-  flex: 0 0 auto;
+.summary-card span {
+  color: #606266;
+  font-size: 13px;
 }
 
-.building-page :deep(.avue-crud__search .avue-form__menu--left) {
-  margin-left: 28px;
+.summary-card strong {
+  margin-top: 5px;
+  color: #1f2937;
+  font-size: 22px;
+  font-weight: 600;
 }
 
-.building-page :deep(.avue-crud__search .el-form-item) {
-  margin-bottom: 0;
+.building-search,
+.building-toolbar {
+  border-radius: 10px;
 }
 
-.building-page :deep(.avue-crud__search .el-input),
-.building-page :deep(.avue-crud__search .el-select) {
-  width: 220px;
+.building-search {
+  padding: 16px 18px 4px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
 }
 
-.building-page :deep(.avue-crud__search .el-button + .el-button) {
-  margin-left: 10px;
+.building-search :deep(.el-form-item) {
+  margin-right: 20px;
+  margin-bottom: 12px;
 }
 
-.building-page :deep(.avue-crud .el-button) {
-  border-radius: 6px;
+.building-search :deep(.el-input),
+.building-search :deep(.el-select) {
+  width: 190px;
 }
 
-.building-page :deep(.avue-crud__menu) {
-  overflow: visible;
-  padding: 2px 0 0;
-  background: transparent;
-  border-radius: 0;
-}
-
-.building-page :deep(.avue-crud__left) {
+.building-toolbar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.building-toolbar-left {
+  display: flex;
   gap: 10px;
 }
 
-.building-row-actions {
-  display: inline-flex;
+.building-table {
+  width: 100%;
+  border-radius: 0;
+}
+
+.building-page :deep(.el-table th),
+.building-page :deep(.el-table td),
+.building-page :deep(.el-table .cell) {
+  text-align: center;
+}
+
+.building-page :deep(.el-table .cell) {
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+}
+
+.building-table-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   white-space: nowrap;
 }
 
-.building-row-actions .el-button + .el-button {
+.building-table-actions .el-button + .el-button {
   margin-left: 0;
 }
 
-.building-page :deep(.avue-crud__table),
-.building-page :deep(.avue-crud__table .el-card),
-.building-page :deep(.avue-crud__table .el-card__body),
+.building-pagination {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 0 0;
+}
+
+.building-status-switch {
+  --el-switch-on-color: #19be4b;
+  --el-switch-off-color: #dcdfe6;
+}
+
 .building-page :deep(.el-table),
 .building-page :deep(.el-table__inner-wrapper),
 .building-page :deep(.el-table__header-wrapper),
@@ -904,7 +1058,7 @@ export default {
   padding: 10px 20px;
 }
 
-.building-page :deep(.avue-crud__menu .el-button),
+.building-page :deep(.el-button),
 .building-drawer-footer .el-button {
   border-radius: 6px;
 }

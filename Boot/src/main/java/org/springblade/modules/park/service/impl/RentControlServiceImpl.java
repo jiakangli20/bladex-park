@@ -267,10 +267,13 @@ public class RentControlServiceImpl implements IRentControlService {
 			item.put("floor", rowFloorNo);
 			item.put("totalRooms", rooms.size());
 			item.put("vacantRooms", rooms.stream().filter(room -> "0".equals(room.getStatus())).count());
-			item.put("rentedRooms", rooms.stream().filter(room -> "1".equals(room.getStatus())).count());
+			item.put("clearingRooms", rooms.stream().filter(room -> "1".equals(room.getStatus())).count());
 			item.put("reservedRooms", rooms.stream().filter(room -> "2".equals(room.getStatus())).count());
-			item.put("renovatingRooms", rooms.stream().filter(room -> "3".equals(room.getStatus())).count());
-			item.put("disabledRooms", rooms.stream().filter(room -> "4".equals(room.getStatus())).count());
+			item.put("exitingRooms", rooms.stream().filter(room -> "3".equals(room.getStatus())).count());
+			item.put("expiring90Rooms", rooms.stream().filter(room -> "4".equals(room.getStatus())).count());
+			item.put("expiring30Rooms", rooms.stream().filter(room -> "5".equals(room.getStatus())).count());
+			item.put("expiredRooms", rooms.stream().filter(room -> "6".equals(room.getStatus())).count());
+			item.put("rentedRooms", rooms.stream().filter(room -> "7".equals(room.getStatus())).count());
 			item.put("totalArea", totalArea);
 			item.put("usedArea", usedArea);
 			item.put("rooms", rooms);
@@ -285,7 +288,7 @@ public class RentControlServiceImpl implements IRentControlService {
 			.filter(Objects::nonNull)
 			.reduce(BigDecimal.ZERO, BigDecimal::add);
 		BigDecimal rentedArea = roomList.stream()
-			.filter(room -> "1".equals(room.getStatus()))
+			.filter(this::isOccupiedStatus)
 			.map(Room::getArea)
 			.filter(Objects::nonNull)
 			.reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -299,7 +302,7 @@ public class RentControlServiceImpl implements IRentControlService {
 			.filter(Objects::nonNull)
 			.reduce(BigDecimal.ZERO, BigDecimal::add);
 		BigDecimal avgRentPrice = roomList.isEmpty() ? BigDecimal.ZERO : rentTotal.divide(BigDecimal.valueOf(roomList.size()), 2, RoundingMode.HALF_UP);
-		long rentedCount = roomList.stream().filter(room -> "1".equals(room.getStatus())).count();
+		long rentedCount = roomList.stream().filter(this::isOccupiedStatus).count();
 
 		Map<String, Object> overview = new LinkedHashMap<>();
 		overview.put("rentedRoomCount", rentedCount);
@@ -353,11 +356,18 @@ public class RentControlServiceImpl implements IRentControlService {
 	private Map<String, Long> buildStatusSummary(List<RoomVO> roomList) {
 		Map<String, Long> summary = new HashMap<>();
 		summary.put("vacant", roomList.stream().filter(room -> "0".equals(room.getStatus())).count());
-		summary.put("rented", roomList.stream().filter(room -> "1".equals(room.getStatus())).count());
+		summary.put("clearing", roomList.stream().filter(room -> "1".equals(room.getStatus())).count());
 		summary.put("reserved", roomList.stream().filter(room -> "2".equals(room.getStatus())).count());
-		summary.put("renovating", roomList.stream().filter(room -> "3".equals(room.getStatus())).count());
-		summary.put("disabled", roomList.stream().filter(room -> "4".equals(room.getStatus())).count());
+		summary.put("exiting", roomList.stream().filter(room -> "3".equals(room.getStatus())).count());
+		summary.put("expiring90", roomList.stream().filter(room -> "4".equals(room.getStatus())).count());
+		summary.put("expiring30", roomList.stream().filter(room -> "5".equals(room.getStatus())).count());
+		summary.put("expired", roomList.stream().filter(room -> "6".equals(room.getStatus())).count());
+		summary.put("rented", roomList.stream().filter(room -> "7".equals(room.getStatus())).count());
 		return summary;
+	}
+
+	private boolean isOccupiedStatus(Room room) {
+		return room != null && List.of("1", "3", "4", "5", "6", "7").contains(room.getStatus());
 	}
 
 	private String buildFloorKey(Long selectedBuildingId, Long buildingId, Integer floorNo) {

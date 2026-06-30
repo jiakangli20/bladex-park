@@ -124,7 +124,7 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements IR
 		if (room == null) {
 			throw new ServiceException("房源不存在");
 		}
-		if (!List.of("0", "1", "2", "3", "4").contains(status)) {
+		if (!List.of("0", "1", "2", "3").contains(status)) {
 			throw new ServiceException("房源状态不正确");
 		}
 		return baseMapper.updateRoomStatus(id, status, AuthUtil.getUserName()) > 0;

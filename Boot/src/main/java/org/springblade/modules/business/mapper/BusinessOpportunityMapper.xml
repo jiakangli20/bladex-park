@@ -152,7 +152,7 @@
 				<if test="opportunity.tenantEntryStatus != null and opportunity.tenantEntryStatus != ''">and tenant_entry_status = #{opportunity.tenantEntryStatus}</if>
 				<if test="opportunity.tenantEntryCandidate != null and opportunity.tenantEntryCandidate">
 					and (tenant_entry_process_ins_id is null or tenant_entry_process_ins_id = '')
-					and (tenant_entry_status is null or tenant_entry_status in ('rejected', 'canceled'))
+					and (tenant_entry_status is null or tenant_entry_status = '' or tenant_entry_status in ('rejected', 'canceled'))
 				</if>
 				<if test="opportunity.channel != null and opportunity.channel != ''">and channel = #{opportunity.channel}</if>
 				<if test="opportunity.followUserId != null">and follow_user_id = #{opportunity.followUserId}</if>

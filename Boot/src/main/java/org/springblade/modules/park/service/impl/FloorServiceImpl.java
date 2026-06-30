@@ -244,6 +244,9 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 		int reservedCount = 0;
 		int renovatingCount = 0;
 		int disabledCount = 0;
+		int expiring90Count = 0;
+		int expiring30Count = 0;
+		int expiredCount = 0;
 		for (Floor item : floors) {
 			totalArea = totalArea.add(zeroIfNull(item.getArea()));
 			usedArea = usedArea.add(zeroIfNull(item.getUsedArea()));
@@ -253,6 +256,9 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 			reservedCount += zeroIfNull(item.getReservedCount());
 			renovatingCount += zeroIfNull(item.getRenovatingCount());
 			disabledCount += zeroIfNull(item.getDisabledCount());
+			expiring90Count += zeroIfNull(item.getExpiring90Count());
+			expiring30Count += zeroIfNull(item.getExpiring30Count());
+			expiredCount += zeroIfNull(item.getExpiredCount());
 		}
 		Map<String, Object> statistics = new LinkedHashMap<>();
 		statistics.put("floorCount", floors.size());
@@ -264,7 +270,11 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 		statistics.put("reservedCount", reservedCount);
 		statistics.put("renovatingCount", renovatingCount);
 		statistics.put("disabledCount", disabledCount);
-		statistics.put("occupancyRate", totalCount == 0 ? BigDecimal.ZERO : BigDecimal.valueOf(rentedCount)
+		statistics.put("expiring90Count", expiring90Count);
+		statistics.put("expiring30Count", expiring30Count);
+		statistics.put("expiredCount", expiredCount);
+		int occupiedCount = rentedCount + renovatingCount + disabledCount + expiring90Count + expiring30Count + expiredCount;
+		statistics.put("occupancyRate", totalCount == 0 ? BigDecimal.ZERO : BigDecimal.valueOf(occupiedCount)
 			.multiply(BigDecimal.valueOf(100))
 			.divide(BigDecimal.valueOf(totalCount), 2, RoundingMode.HALF_UP));
 		return statistics;
@@ -350,7 +360,13 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 			floor.setOccupancyRate(BigDecimal.ZERO);
 			return;
 		}
-		floor.setOccupancyRate(BigDecimal.valueOf(zeroIfNull(floor.getRentedCount()))
+		int occupiedCount = zeroIfNull(floor.getRentedCount())
+			+ zeroIfNull(floor.getRenovatingCount())
+			+ zeroIfNull(floor.getDisabledCount())
+			+ zeroIfNull(floor.getExpiring90Count())
+			+ zeroIfNull(floor.getExpiring30Count())
+			+ zeroIfNull(floor.getExpiredCount());
+		floor.setOccupancyRate(BigDecimal.valueOf(occupiedCount)
 			.multiply(BigDecimal.valueOf(100))
 			.divide(BigDecimal.valueOf(totalCount), 2, RoundingMode.HALF_UP));
 	}

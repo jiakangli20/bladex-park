@@ -5,10 +5,10 @@ spring:
       ##redis 单机环境配置
       ##将docker脚本部署的redis服务映射为宿主机ip
       ##生产环境推荐使用阿里云高可用redis服务并设置密码
-      host: 172.30.0.63
+      host: 192.168.19.16
       port: 6379
-      password: bladexadmin
-      database: 0
+      password: Zzredis@260312
+      database: 1
       ssl:
         enabled: false
       ##redis 集群环境配置
@@ -16,9 +16,9 @@ spring:
       #  nodes: 127.0.0.1:7001,127.0.0.1:7002,127.0.0.1:7003
       #  commandTimeout: 5000
   datasource:
-    url: jdbc:mysql://172.30.0.33:3306/bladex_boot?useSSL=false&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&transformedBitIsBoolean=true&serverTimezone=GMT%2B8&nullCatalogMeansCurrent=true&allowPublicKeyRetrieval=true
-    username: bladexadmin
-    password: bladexadmin
+    url: jdbc:mysql://192.168.19.16:3306/wzjk?useSSL=false&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&transformedBitIsBoolean=true&serverTimezone=GMT%2B8&nullCatalogMeansCurrent=true&allowPublicKeyRetrieval=true
+    username: root
+    password: Root@260310
 
 #第三方登陆
 social:
@@ -53,5 +53,5 @@ blade:
     enabled: false
     ##将docker脚本部署的redis服务映射为宿主机ip
     ##生产环境推荐使用阿里云高可用redis服务并设置密码
-    address: redis://172.30.0.63:6379
-    password: bladexadmin
+    address: redis://192.168.19.16:6379
+    password: Zzredis@260312

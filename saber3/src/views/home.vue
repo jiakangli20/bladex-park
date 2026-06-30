@@ -301,9 +301,7 @@ export default {
           tone: 'red',
         },
       ],
-      policies: [
-        { title: '会计服务', date: '2026-06-10 10:29:52', path: '/enterprise/policy-service' },
-      ],
+      policies: [],
       calendarWeeks: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
       today: this.buildToday(),
       missingApis: [],
@@ -431,13 +429,7 @@ export default {
     },
     normalizePolicies(list = []) {
       if (!Array.isArray(list) || list.length === 0) {
-        return [
-          {
-            title: '会计服务',
-            date: '2026-06-10 10:29:52',
-            path: '/enterprise/policy-service',
-          },
-        ];
+        return [];
       }
       return list.slice(0, 4).map(item => ({
         title: item.title || '未命名政策',

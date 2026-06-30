@@ -115,6 +115,14 @@ public class Room implements Serializable {
 	@Schema(description = "状态")
 	private String status;
 
+	@TableField(exist = false)
+	@Schema(description = "基础状态")
+	private String baseStatus;
+
+	@TableField(exist = false)
+	@Schema(description = "基础状态名称")
+	private String baseStatusName;
+
 	@Schema(description = "同步状态")
 	private String syncStatus;
 

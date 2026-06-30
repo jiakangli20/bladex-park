@@ -214,11 +214,11 @@
     <select id="selectStats" resultMap="contractStatsResultMap">
         SELECT
             COUNT(1) AS total_count,
-            SUM(CASE WHEN contract_status = '0' THEN 1 ELSE 0 END) AS pending_count,
-            SUM(CASE WHEN contract_status = '1' THEN 1 ELSE 0 END) AS active_count,
-            SUM(CASE WHEN contract_status = '2' THEN 1 ELSE 0 END) AS expired_count,
-            SUM(CASE WHEN contract_status = '3' THEN 1 ELSE 0 END) AS renewed_count,
-            SUM(CASE WHEN contract_status = '4' THEN 1 ELSE 0 END) AS terminated_count,
+            IFNULL(SUM(CASE WHEN contract_status = '0' THEN 1 ELSE 0 END), 0) AS pending_count,
+            IFNULL(SUM(CASE WHEN contract_status = '1' THEN 1 ELSE 0 END), 0) AS active_count,
+            IFNULL(SUM(CASE WHEN contract_status = '2' THEN 1 ELSE 0 END), 0) AS expired_count,
+            IFNULL(SUM(CASE WHEN contract_status = '3' THEN 1 ELSE 0 END), 0) AS renewed_count,
+            IFNULL(SUM(CASE WHEN contract_status = '4' THEN 1 ELSE 0 END), 0) AS terminated_count,
             IFNULL(SUM(monthly_rent), 0) AS monthly_rent_total,
             IFNULL(SUM(deposit), 0) AS deposit_total
         FROM biz_contract

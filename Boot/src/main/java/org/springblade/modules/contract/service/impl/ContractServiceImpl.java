@@ -174,7 +174,36 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	@Override
 	public ContractStatsVO stats(Long parkId) {
 		ContractStatsVO stats = baseMapper.selectStats(parkId);
-		return stats == null ? new ContractStatsVO() : stats;
+		return normalizeStats(stats);
+	}
+
+	private ContractStatsVO normalizeStats(ContractStatsVO stats) {
+		ContractStatsVO normalized = stats == null ? new ContractStatsVO() : stats;
+		if (normalized.getTotalCount() == null) {
+			normalized.setTotalCount(0L);
+		}
+		if (normalized.getPendingCount() == null) {
+			normalized.setPendingCount(0L);
+		}
+		if (normalized.getActiveCount() == null) {
+			normalized.setActiveCount(0L);
+		}
+		if (normalized.getExpiredCount() == null) {
+			normalized.setExpiredCount(0L);
+		}
+		if (normalized.getRenewedCount() == null) {
+			normalized.setRenewedCount(0L);
+		}
+		if (normalized.getTerminatedCount() == null) {
+			normalized.setTerminatedCount(0L);
+		}
+		if (normalized.getMonthlyRentTotal() == null) {
+			normalized.setMonthlyRentTotal(BigDecimal.ZERO);
+		}
+		if (normalized.getDepositTotal() == null) {
+			normalized.setDepositTotal(BigDecimal.ZERO);
+		}
+		return normalized;
 	}
 
 	@Override

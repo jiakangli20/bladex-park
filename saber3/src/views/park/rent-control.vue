@@ -271,7 +271,7 @@
         <el-form-item label="状态">
           <el-select v-model="roomForm.status">
             <el-option
-              v-for="item in statusOptions"
+              v-for="item in baseStatusOptions"
               :key="item.value"
               :label="item.label"
               :value="item.value"
@@ -416,11 +416,20 @@ export default {
         { label: '建筑', value: 'building' },
       ],
       statusOptions: [
-        { label: '空置中', value: '0' },
-        { label: '已出租', value: '1' },
-        { label: '已预定', value: '2' },
-        { label: '装修中', value: '3' },
-        { label: '停用', value: '4' },
+        { label: '空置', value: '0' },
+        { label: '待清退/短租', value: '1' },
+        { label: '预留', value: '2' },
+        { label: '待退出', value: '3' },
+        { label: '90天内到期', value: '4' },
+        { label: '30天内到期', value: '5' },
+        { label: '已到期', value: '6' },
+        { label: '已出租', value: '7' },
+      ],
+      baseStatusOptions: [
+        { label: '空置', value: '0' },
+        { label: '待清退/短租', value: '1' },
+        { label: '预留', value: '2' },
+        { label: '待退出', value: '3' },
       ],
       orientationOptions: ['朝南', '朝北', '朝东', '朝西', '南北通透'],
       treeProps: {
@@ -725,11 +734,11 @@ export default {
       return value === null || value === undefined || value === '' ? '-' : value;
     },
     normalizeStatus(status) {
-      return ['0', '1', '2', '3', '4'].includes(String(status)) ? String(status) : '0';
+      return ['0', '1', '2', '3', '4', '5', '6', '7'].includes(String(status)) ? String(status) : '0';
     },
     statusLabel(status) {
       const option = this.statusOptions.find(item => item.value === this.normalizeStatus(status));
-      return option ? option.label : '空置中';
+      return option ? option.label : '空置';
     },
     floorRowKey(floor, index) {
       return `${floor.buildingId || 'building'}-${floor.floor || index}`;
@@ -759,6 +768,7 @@ export default {
     },
     handleEditRoom(room) {
       this.roomForm = Object.assign(this.emptyRoomForm(), room);
+      this.roomForm.status = this.normalizeBaseStatus(room.baseStatus || room.status);
       this.roomImageFileList = this.parseRoomImageFiles(this.roomForm.sceneImages);
       this.roomDetail = Object.assign({}, room);
       this.roomDetailVisible = false;
@@ -780,12 +790,13 @@ export default {
         });
     },
     handleChangeRoomStatus(room) {
-      ElMessageBox.prompt('请输入目标状态：0空置中、1已出租、2已预定、3装修中、4停用', '状态流转', {
+      const currentStatus = this.normalizeBaseStatus(room.baseStatus || room.status);
+      ElMessageBox.prompt('请输入目标状态：0空置、1待清退/短租、2预留、3待退出', '状态流转', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
-        inputValue: this.normalizeStatus(room.status),
-        inputPattern: /^[0-4]$/,
-        inputErrorMessage: '状态值必须为 0-4',
+        inputValue: currentStatus,
+        inputPattern: /^[0-3]$/,
+        inputErrorMessage: '状态值必须为 0-3',
       })
         .then(({ value }) => changeRoomStatus(room.id, value))
         .then(() => {
@@ -793,6 +804,9 @@ export default {
           this.roomDetailVisible = false;
           this.loadBoard();
         });
+    },
+    normalizeBaseStatus(status) {
+      return ['0', '1', '2', '3'].includes(String(status)) ? String(status) : '0';
     },
     handleSyncRoom(room) {
       syncRoomMini(room.id).then(() => {
@@ -1135,21 +1149,30 @@ export default {
 .status-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
   color: #606266;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .status-legend span {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 7px;
+  height: 28px;
+  padding: 0 11px 0 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #fff;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .status-legend i {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  border-radius: 2px;
 }
 
 .floor-row {
@@ -1218,43 +1241,67 @@ export default {
 }
 
 .status-0 {
-  background: #67c23a;
+  background: #fff000;
 }
 
 .status-1 {
-  background: #409eff;
+  background: #ff4d4f;
 }
 
 .status-2 {
-  background: #e6a23c;
+  background: #00b7e8;
 }
 
 .status-3 {
-  background: #909399;
+  background: #f4b400;
 }
 
 .status-4 {
-  background: #f56c6c;
+  background: #8b5cf6;
+}
+
+.status-5 {
+  background: #ef7d22;
+}
+
+.status-6 {
+  background: #8b1e1e;
+}
+
+.status-7 {
+  background: #22c55e;
 }
 
 .room-tile.status-0 {
-  border-left: 4px solid #67c23a;
+  border-left: 4px solid #fff000;
 }
 
 .room-tile.status-1 {
-  border-left: 4px solid #409eff;
+  border-left: 4px solid #ff4d4f;
 }
 
 .room-tile.status-2 {
-  border-left: 4px solid #e6a23c;
+  border-left: 4px solid #00b7e8;
 }
 
 .room-tile.status-3 {
-  border-left: 4px solid #909399;
+  border-left: 4px solid #f4b400;
 }
 
 .room-tile.status-4 {
-  border-left: 4px solid #f56c6c;
+  border-left: 4px solid #8b5cf6;
+}
+
+.room-tile.status-5 {
+  border-left: 4px solid #ef7d22;
+}
+
+.room-tile.status-6 {
+  border-left: 4px solid #8b1e1e;
+}
+
+.room-tile.status-7 {
+  border-left: 4px solid #22c55e;
 }
 
 .workorder-head {

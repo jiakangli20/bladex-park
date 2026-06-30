@@ -47,17 +47,21 @@ public class RoomWrapper extends BaseEntityWrapper<Room, RoomVO> {
 	public RoomVO entityVO(Room room) {
 		RoomVO roomVO = Objects.requireNonNull(BeanUtil.copyProperties(room, RoomVO.class));
 		roomVO.setStatusName(statusName(roomVO.getStatus()));
+		roomVO.setBaseStatusName(statusName(roomVO.getBaseStatus()));
 		roomVO.setSyncStatusName("1".equals(roomVO.getSyncStatus()) ? "已同步" : "待同步");
 		return roomVO;
 	}
 
 	private String statusName(String status) {
 		return switch (status == null ? "0" : status) {
-			case "1" -> "已出租";
-			case "2" -> "已预定";
-			case "3" -> "装修中";
-			case "4" -> "停用";
-			default -> "空置中";
+			case "1" -> "待清退/短租";
+			case "2" -> "预留";
+			case "3" -> "待退出";
+			case "4" -> "90天内到期";
+			case "5" -> "30天内到期";
+			case "6" -> "已到期";
+			case "7" -> "已出租";
+			default -> "空置";
 		};
 	}
 

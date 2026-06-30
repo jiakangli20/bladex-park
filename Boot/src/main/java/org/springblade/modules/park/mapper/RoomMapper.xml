@@ -21,6 +21,7 @@
         <result column="scene_images" property="sceneImages"/>
         <result column="floor_plan_images" property="floorPlanImages"/>
         <result column="status" property="status"/>
+        <result column="base_status" property="baseStatus"/>
         <result column="sync_status" property="syncStatus"/>
         <result column="sync_time" property="syncTime"/>
         <result column="memo" property="memo"/>
@@ -32,12 +33,57 @@
 
     <resultMap id="roomVOResultMap" type="org.springblade.modules.park.pojo.vo.RoomVO" extends="roomResultMap"/>
 
+    <sql id="roomDisplayStatus">
+        CASE
+            WHEN IFNULL(contract_room_status.has_exiting, 0) = 1 THEN '3'
+            WHEN IFNULL(contract_room_status.has_expired, 0) = 1 THEN '6'
+            WHEN IFNULL(contract_room_status.has_expiring30, 0) = 1 THEN '5'
+            WHEN IFNULL(contract_room_status.has_expiring90, 0) = 1 THEN '4'
+            WHEN IFNULL(contract_room_status.has_active, 0) = 1 THEN '7'
+            ELSE r.status
+        END
+    </sql>
+
     <sql id="roomColumns">
         r.id, r.park_id, p.name AS park_name, r.building_id, b.name AS building_name,
         r.name, r.floor, r.area, r.rent_price, r.property_fee, r.house_type,
         r.orientation, r.address, r.facilities, r.highlights, r.scene_images,
-        r.floor_plan_images, r.status, r.sync_status, r.sync_time, r.memo,
+        r.floor_plan_images, r.status AS base_status,
+        <include refid="roomDisplayStatus"/> AS status,
+        r.sync_status, r.sync_time, r.memo,
         r.create_by, r.create_time, r.update_by, r.update_time
+    </sql>
+
+    <sql id="contractStatusJoin">
+        LEFT JOIN (
+            SELECT room_id,
+                   MAX(CASE WHEN contract_status IN ('6', '7', '8') THEN 1 ELSE 0 END) AS has_exiting,
+                   MAX(CASE WHEN contract_status = '2' OR (contract_status = '1' AND end_date &lt; CURDATE()) THEN 1 ELSE 0 END) AS has_expired,
+                   MAX(CASE WHEN contract_status = '1' AND end_date &gt;= CURDATE() AND end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) AS has_expiring30,
+                   MAX(CASE WHEN contract_status = '1' AND end_date &gt; DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 90 DAY) THEN 1 ELSE 0 END) AS has_expiring90,
+                   MAX(CASE WHEN contract_status = '1' THEN 1 ELSE 0 END) AS has_active
+            FROM (
+                SELECT c.room_id AS room_id, c.contract_status, c.end_date
+                FROM biz_contract c
+                WHERE c.del_flag = '0'
+                  AND c.room_id IS NOT NULL
+                UNION ALL
+                SELECT CAST(REPLACE(TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(c.room_ids, ',', numbers.n), ',', -1)), 'room_', '') AS UNSIGNED) AS room_id,
+                       c.contract_status,
+                       c.end_date
+                FROM biz_contract c
+                INNER JOIN (
+                    SELECT 1 AS n UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
+                    UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
+                ) numbers ON numbers.n &lt;= 1 + LENGTH(COALESCE(c.room_ids, '')) - LENGTH(REPLACE(COALESCE(c.room_ids, ''), ',', ''))
+                WHERE c.del_flag = '0'
+                  AND c.room_ids IS NOT NULL
+                  AND c.room_ids != ''
+            ) contract_room
+            WHERE room_id IS NOT NULL
+              AND room_id &gt; 0
+            GROUP BY room_id
+        ) contract_room_status ON contract_room_status.room_id = r.id
     </sql>
 
     <sql id="roomWhere">
@@ -47,7 +93,9 @@
             <if test="room.buildingId != null">AND r.building_id = #{room.buildingId}</if>
             <if test="room.name != null and room.name != ''">AND r.name LIKE CONCAT('%', #{room.name}, '%')</if>
             <if test="room.floor != null">AND r.floor = #{room.floor}</if>
-            <if test="room.status != null and room.status != ''">AND r.status = #{room.status}</if>
+            <if test="room.status != null and room.status != ''">
+                AND <include refid="roomDisplayStatus"/> = #{room.status}
+            </if>
             <if test="room.orientation != null and room.orientation != ''">AND r.orientation = #{room.orientation}</if>
             <if test="room.minArea != null">AND r.area <![CDATA[ >= ]]> #{room.minArea}</if>
             <if test="room.maxArea != null">AND r.area <![CDATA[ <= ]]> #{room.maxArea}</if>
@@ -62,6 +110,7 @@
         FROM ics_room r
         LEFT JOIN ics_building b ON b.id = r.building_id
         LEFT JOIN ics_park p ON p.id = r.park_id
+        <include refid="contractStatusJoin"/>
         WHERE r.id = #{id}
     </select>
 
@@ -71,6 +120,7 @@
         FROM ics_room r
         LEFT JOIN ics_building b ON b.id = r.building_id
         LEFT JOIN ics_park p ON p.id = r.park_id
+        <include refid="contractStatusJoin"/>
         <include refid="roomWhere"/>
         ORDER BY r.id DESC
     </select>
@@ -81,6 +131,7 @@
         FROM ics_room r
         LEFT JOIN ics_building b ON b.id = r.building_id
         LEFT JOIN ics_park p ON p.id = r.park_id
+        <include refid="contractStatusJoin"/>
         <include refid="roomWhere"/>
         ORDER BY r.id DESC
     </select>

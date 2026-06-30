@@ -99,9 +99,11 @@
                   <template #default="{ row: room }">{{ formatNumber(room.propertyFee) }}</template>
                 </el-table-column>
                 <el-table-column prop="orientation" label="朝向" width="100" align="center" />
-                <el-table-column prop="status" label="状态" width="100" align="center">
+                <el-table-column prop="status" label="状态" width="120" align="center">
                   <template #default="{ row: room }">
-                    <el-tag :type="roomStatusType(room.status)">{{ roomStatusLabel(room.status) }}</el-tag>
+                    <el-tag :class="roomStatusClass(room.status)" effect="plain">
+                      {{ roomStatusLabel(room.status) }}
+                    </el-tag>
                   </template>
                 </el-table-column>
                 <el-table-column prop="syncStatus" label="小程序同步" width="120" align="center">
@@ -135,14 +137,21 @@
         <el-table-column prop="occupancyRate" label="出租率" width="100" align="center">
           <template #default="{ row }">{{ formatNumber(row.occupancyRate) }}%</template>
         </el-table-column>
-        <el-table-column label="房态统计" min-width="220" align="center">
+        <el-table-column label="房态统计" min-width="180" align="center">
           <template #default="{ row }">
             <div class="status-tags">
-              <el-tag size="small" type="success">空 {{ row.vacantCount || 0 }}</el-tag>
-              <el-tag size="small">租 {{ row.rentedCount || 0 }}</el-tag>
-              <el-tag size="small" type="warning">订 {{ row.reservedCount || 0 }}</el-tag>
-              <el-tag size="small" type="info">装 {{ row.renovatingCount || 0 }}</el-tag>
-              <el-tag size="small" type="danger">停 {{ row.disabledCount || 0 }}</el-tag>
+              <template v-if="visibleRoomStatusTags(row).length">
+                <el-tag
+                  v-for="item in visibleRoomStatusTags(row)"
+                  :key="item.status"
+                  size="small"
+                  :class="roomStatusClass(item.status)"
+                  effect="plain"
+                >
+                  {{ item.label }} {{ item.count }}
+                </el-tag>
+              </template>
+              <span v-else class="status-empty">暂无房态</span>
             </div>
           </template>
         </el-table-column>
@@ -234,7 +243,9 @@
         <div v-if="form.rooms && form.rooms.length" class="drawer-room-list">
           <div v-for="room in form.rooms" :key="room.id || room.name" class="drawer-room-item">
             <span class="drawer-room-name">{{ room.name || '-' }}</span>
-            <el-tag size="small" :type="roomStatusType(room.status)">{{ roomStatusLabel(room.status) }}</el-tag>
+            <el-tag size="small" :class="roomStatusClass(room.status)" effect="plain">
+              {{ roomStatusLabel(room.status) }}
+            </el-tag>
             <el-button
               v-if="!formReadonly && room.id"
               link
@@ -364,11 +375,14 @@ export default {
         { label: '停用', value: '1' },
       ],
       roomStatusOptions: [
-        { label: '空置中', value: '0' },
-        { label: '已出租', value: '1' },
-        { label: '已预定', value: '2' },
-        { label: '装修中', value: '3' },
-        { label: '停用', value: '4' },
+        { label: '空置', value: '0', countKey: 'vacantCount' },
+        { label: '待清退/短租', value: '1', countKey: 'rentedCount' },
+        { label: '预留', value: '2', countKey: 'reservedCount' },
+        { label: '待退出', value: '3', countKey: 'renovatingCount' },
+        { label: '90天内到期', value: '4', countKey: 'expiring90Count' },
+        { label: '30天内到期', value: '5', countKey: 'expiring30Count' },
+        { label: '已到期', value: '6', countKey: 'expiredCount' },
+        { label: '已出租', value: '7', countKey: 'disabledCount' },
       ],
       orientationOptions: ['朝南', '朝北', '朝东', '朝西', '南北通透'],
     };
@@ -657,6 +671,9 @@ export default {
             reservedCount: latest.reservedCount,
             renovatingCount: latest.renovatingCount,
             disabledCount: latest.disabledCount,
+            expiring90Count: latest.expiring90Count,
+            expiring30Count: latest.expiring30Count,
+            expiredCount: latest.expiredCount,
             occupancyRate: latest.occupancyRate,
           });
         }
@@ -700,17 +717,19 @@ export default {
     },
     roomStatusLabel(status) {
       const option = this.roomStatusOptions.find(item => item.value === String(status));
-      return option ? option.label : '空置中';
+      return option ? option.label : '空置';
     },
-    roomStatusType(status) {
-      const typeMap = {
-        0: 'success',
-        1: 'primary',
-        2: 'warning',
-        3: 'info',
-        4: 'danger',
-      };
-      return typeMap[String(status)] || 'success';
+    roomStatusClass(status) {
+      return `room-tag-${['0', '1', '2', '3', '4', '5', '6', '7'].includes(String(status)) ? status : '0'}`;
+    },
+    visibleRoomStatusTags(row = {}) {
+      return this.roomStatusOptions
+        .map(item => ({
+          ...item,
+          status: item.value,
+          count: Number(row[item.countKey]) || 0,
+        }))
+        .filter(item => item.count > 0);
     },
     cleanParams(params) {
       const result = {};
@@ -858,7 +877,55 @@ export default {
 .room-form :deep(.el-input),
 .room-form :deep(.el-select),
 .room-form :deep(.el-input-number) {
-  width: 100%;
+	width: 100%;
+}
+
+.room-tag-0 {
+  --el-tag-bg-color: rgba(255, 240, 0, 0.18);
+  --el-tag-border-color: #fff000;
+  --el-tag-text-color: #8a6f00;
+}
+
+.room-tag-1 {
+  --el-tag-bg-color: rgba(255, 77, 79, 0.12);
+  --el-tag-border-color: #ff4d4f;
+  --el-tag-text-color: #c62828;
+}
+
+.room-tag-2 {
+  --el-tag-bg-color: rgba(0, 183, 232, 0.14);
+  --el-tag-border-color: #00b7e8;
+  --el-tag-text-color: #0277a8;
+}
+
+.room-tag-3 {
+  --el-tag-bg-color: rgba(244, 180, 0, 0.16);
+  --el-tag-border-color: #f4b400;
+  --el-tag-text-color: #a15c00;
+}
+
+.room-tag-4 {
+  --el-tag-bg-color: rgba(139, 92, 246, 0.12);
+  --el-tag-border-color: #8b5cf6;
+  --el-tag-text-color: #5b3bb8;
+}
+
+.room-tag-5 {
+  --el-tag-bg-color: rgba(239, 125, 34, 0.14);
+  --el-tag-border-color: #ef7d22;
+  --el-tag-text-color: #b45309;
+}
+
+.room-tag-6 {
+  --el-tag-bg-color: rgba(139, 30, 30, 0.12);
+  --el-tag-border-color: #8b1e1e;
+  --el-tag-text-color: #8b1e1e;
+}
+
+.room-tag-7 {
+  --el-tag-bg-color: rgba(34, 197, 94, 0.14);
+  --el-tag-border-color: #22c55e;
+  --el-tag-text-color: #15803d;
 }
 
 .status-tags {
@@ -866,6 +933,12 @@ export default {
   flex-wrap: wrap;
   justify-content: center;
   gap: 6px;
+}
+
+.status-empty {
+  color: #909399;
+  font-size: 13px;
+  line-height: 24px;
 }
 
 .page-footer {

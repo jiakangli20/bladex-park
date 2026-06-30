@@ -114,7 +114,7 @@ public class Floor implements Serializable {
 	private Integer totalCount;
 
 	@TableField(exist = false)
-	@Schema(description = "已租数量")
+	@Schema(description = "待清退/短租数量")
 	private Integer rentedCount;
 
 	@TableField(exist = false)
@@ -126,12 +126,24 @@ public class Floor implements Serializable {
 	private Integer reservedCount;
 
 	@TableField(exist = false)
-	@Schema(description = "装修中数量")
+	@Schema(description = "待退出数量")
 	private Integer renovatingCount;
 
 	@TableField(exist = false)
-	@Schema(description = "停用数量")
+	@Schema(description = "已出租数量")
 	private Integer disabledCount;
+
+	@TableField(exist = false)
+	@Schema(description = "90天内到期数量")
+	private Integer expiring90Count;
+
+	@TableField(exist = false)
+	@Schema(description = "30天内到期数量")
+	private Integer expiring30Count;
+
+	@TableField(exist = false)
+	@Schema(description = "已到期数量")
+	private Integer expiredCount;
 
 	@TableField(exist = false)
 	@Schema(description = "出租率")
