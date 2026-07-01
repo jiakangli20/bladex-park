@@ -151,7 +151,7 @@
                   待办任务
                 </h2>
               </div>
-              <el-button text type="primary" @click="go('/approval/todo')">更多</el-button>
+              <el-button text type="primary" @click="go('/plugin/workflow/pages/process/todo')">更多</el-button>
             </div>
             <div class="todo-list">
               <button
@@ -217,7 +217,7 @@ export default {
         {
           label: '审批待处理',
           value: 0,
-          path: '/approval/todo',
+          path: '/plugin/workflow/pages/process/todo',
           icon: 'Finished',
           tone: 'purple',
         },
@@ -263,7 +263,7 @@ export default {
         { title: '新增客户', path: '/settlement/customer', icon: 'UserFilled', tone: 'blue' },
         { title: '楼层管理', path: '/park/floor', icon: 'OfficeBuilding', tone: 'cyan' },
         { title: '新建合同', path: '/contract/archive', icon: 'DocumentAdd', tone: 'orange' },
-        { title: '我的审批', path: '/approval/my-flow', icon: 'Finished', tone: 'purple' },
+        { title: '我的审批', path: '/plugin/workflow/pages/process/my-done', icon: 'Finished', tone: 'purple' },
         { title: '物业工单', path: '/enterprise/property-workorder', icon: 'Tools', tone: 'green' },
         { title: '租控管理', path: '/park/rent-control', icon: 'Tickets', tone: 'indigo' },
       ],
@@ -272,7 +272,7 @@ export default {
           title: '审批待处理提醒',
           count: 0,
           desc: '暂无待处理审批',
-          path: '/approval/todo',
+          path: '/plugin/workflow/pages/process/todo',
           icon: 'Finished',
           tone: 'purple',
         },
@@ -296,7 +296,7 @@ export default {
           title: '审批超时提醒',
           count: 0,
           desc: '暂无超时待处理项目',
-          path: '/approval/todo?timeout=1',
+          path: '/plugin/workflow/pages/process/todo?timeout=1',
           icon: 'Bell',
           tone: 'red',
         },

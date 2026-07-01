@@ -118,24 +118,21 @@ export default {
           .dispatch('GetTopMenu')
           .then(topMenus => {
             const activeTopMenu = this.findActiveTopMenu(topMenus);
-            if (activeTopMenu) {
-              this.$store.dispatch('GetMenu', activeTopMenu.id).then(data => {
-                if (this.$refs.top && activeTopMenu.id) {
-                  this.$refs.top.setActiveMenu(activeTopMenu.id);
-                }
-                if (this.menuAll.length !== 0) {
-                  this.$router.$avueRouter.formatRoutes(this.menuAll, true);
-                }
-                if (!data.length && this.$route.path !== this.tagWel.path && !validatenull(activeTopMenu.path)) {
-                  this.$router.push({ path: activeTopMenu.path });
-                }
-              });
-              return;
-            }
-            doOpen(topMenus[0] || item);
+            this.$store.dispatch('GetMenu', activeTopMenu && activeTopMenu.id).then(data => {
+              if (this.$refs.top) {
+                this.$refs.top.setActiveMenu(activeTopMenu && activeTopMenu.id);
+              }
+              if (data.length !== 0) {
+                this.$router.$avueRouter.formatRoutes(this.menuAll.length ? this.menuAll : data, true);
+              }
+            });
           })
           .catch(() => {
-            doOpen(item);
+            this.$store.dispatch('GetMenu').then(data => {
+              if (data.length !== 0) {
+                this.$router.$avueRouter.formatRoutes(data, true);
+              }
+            });
           });
       } else {
         doOpen(item);

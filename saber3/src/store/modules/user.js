@@ -19,7 +19,7 @@ import {
   getButtons,
   registerUser,
 } from '@/api/user';
-import { getRoutes, getMainMenu } from '@/api/system/menu';
+import { getRoutes, getMainMenu, getTopMenu } from '@/api/system/menu';
 import { formatPath } from '@/router/avue-router';
 import { ElMessage } from 'element-plus';
 import { encrypt } from '@/utils/sm2';
@@ -35,46 +35,16 @@ const formatRouteMenu = data => {
   return routeMenu;
 };
 
-const matchPath = (menuItem, path) => {
-  if (!menuItem || !path) return false;
-  const menuPath = menuItem[menuProps.path];
-  if (menuPath && (path === menuPath || path.indexOf(`${menuPath}/`) === 0)) return true;
-  return (menuItem[childrenKey] || []).some(child => matchPath(child, path));
-};
-
-const findTopMenu = (menuList = [], topMenuId, currentPath) => {
-  if (topMenuId) {
-    const menu = menuList.find(item => String(item.id) === String(topMenuId));
-    if (menu) return menu;
-  }
-  if (currentPath) {
-    const menu = menuList.find(item => matchPath(item, currentPath));
-    if (menu) return menu;
-  }
-  return menuList[0] || {};
-};
-
 const isFixedHomeMenu = menuItem => menuItem && menuItem[menuProps.path] === fixedHomePath;
 
-const topMenuOrder = ['园区管理', '入驻管理', '合同管理', '企业服务', '财务管理', '协同办公'];
-const getMenuName = menuItem => String(menuItem?.[menuProps.label] || menuItem?.name || '').trim();
-
-const getVisibleTopMenus = (menuList = []) =>
-  menuList
-    .filter(item => !isFixedHomeMenu(item))
-    .map((item, index) => ({ item, index }))
-    .sort((left, right) => {
-      const leftOrder = topMenuOrder.indexOf(getMenuName(left.item));
-      const rightOrder = topMenuOrder.indexOf(getMenuName(right.item));
-      const safeLeftOrder = leftOrder === -1 ? Number.MAX_SAFE_INTEGER : leftOrder;
-      const safeRightOrder = rightOrder === -1 ? Number.MAX_SAFE_INTEGER : rightOrder;
-
-      if (safeLeftOrder !== safeRightOrder) {
-        return safeLeftOrder - safeRightOrder;
-      }
-      return left.index - right.index;
-    })
-    .map(({ item }) => item);
+const formatTopMenuList = data =>
+  deepClone(data || [])
+    .filter(item => item && !isFixedHomeMenu(item))
+    .map(item => ({
+      ...item,
+      [menuProps.icon]: item[menuProps.icon] || menuProps.iconDefault,
+      [childrenKey]: item[childrenKey] || [],
+    }));
 
 const user = {
   state: {
@@ -313,19 +283,10 @@ const user = {
     },
     GetTopMenu({ commit, state }) {
       return new Promise(resolve => {
-        if (state.routesLoaded && (state.menuAll || []).length) {
-          const topMenu = getVisibleTopMenus(state.menuAll);
-          commit('SET_TOP_MENU', topMenu);
-          resolve(topMenu);
-          return;
-        }
-        getRoutes()
-          .then(routeRes => {
-            const routeMenu = formatRouteMenu(routeRes.data.data);
-            const topMenu = getVisibleTopMenus(routeMenu);
+        getTopMenu()
+          .then(res => {
+            const topMenu = formatTopMenuList(res.data.data);
             commit('SET_TOP_MENU', topMenu);
-            commit('SET_MENU_ALL_NULL');
-            commit('SET_MENU_ALL', routeMenu);
             resolve(topMenu);
           })
           .catch(() => {
@@ -347,17 +308,22 @@ const user = {
     GetMenu({ commit, dispatch, state }, topMenuId) {
       return new Promise(resolve => {
         const applyMenu = routeMenu => {
-          const currentPath = window.location.pathname;
-          const topMenu = getVisibleTopMenus(routeMenu);
-          const currentTop =
-            !topMenuId && currentPath === fixedHomePath ? {} : findTopMenu(topMenu, topMenuId, currentPath);
-          const sideMenu = currentTop[childrenKey] || [];
-          commit('SET_TOP_MENU', topMenu);
+          const sideMenu = routeMenu.filter(item => !isFixedHomeMenu(item));
           commit('SET_MENU', sideMenu);
           commit('SET_MENU_ALL_NULL');
           commit('SET_MENU_ALL', routeMenu);
           dispatch('GetButtons');
-          resolve(topMenuId ? sideMenu : routeMenu);
+          if (!topMenuId) {
+            resolve(routeMenu);
+            return;
+          }
+          getRoutes(topMenuId)
+            .then(res => {
+              resolve(formatRouteMenu(res.data.data));
+            })
+            .catch(() => {
+              resolve([]);
+            });
         };
         if (state.routesLoaded && (state.menuAll || []).length) {
           applyMenu(state.menuAll);

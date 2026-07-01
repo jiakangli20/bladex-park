@@ -230,14 +230,14 @@
       </el-form>
       <section v-if="form.id" class="floor-room-editor">
         <div class="drawer-section-title">
-          <span>房源管理</span>
+          <span>房间管理</span>
           <el-button
             v-if="!formReadonly"
             type="primary"
             :icon="Plus"
             @click="openRoomCreate(form)"
           >
-            新增房源
+            新增房间
           </el-button>
         </div>
         <div v-if="form.rooms && form.rooms.length" class="drawer-room-list">
@@ -257,7 +257,7 @@
             </el-button>
           </div>
         </div>
-        <el-empty v-else description="暂无房源" :image-size="72" />
+        <el-empty v-else description="暂无房间" :image-size="72" />
       </section>
       <template #footer>
         <el-button @click="drawerVisible = false">取消</el-button>
@@ -265,24 +265,44 @@
       </template>
     </el-drawer>
 
-    <el-dialog
-      v-model="roomDialogVisible"
-      title="新增房源"
-      width="560px"
+    <el-drawer
+      v-model="roomFormVisible"
+      title="新增房间"
+      size="520px"
       append-to-body
       @closed="resetRoomForm"
     >
       <el-form ref="roomFormRef" :model="roomForm" :rules="roomRules" label-width="110px" class="room-form">
-        <el-form-item label="所属楼层">
-          <el-input :model-value="roomFloorLabel" disabled />
+        <el-form-item label="所属建筑" prop="buildingId">
+          <el-select v-model="roomForm.buildingId" filterable placeholder="请选择建筑" @change="handleRoomBuildingChange">
+            <el-option
+              v-for="building in buildingOptions"
+              :key="building.id"
+              :label="buildingLabel(building)"
+              :value="building.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="房间名称" prop="name">
           <el-input v-model="roomForm.name" maxlength="50" placeholder="请输入房间名称" />
         </el-form-item>
-        <el-form-item label="面积(㎡)">
-          <el-input-number v-model="roomForm.area" :min="0" :precision="2" controls-position="right" />
+        <el-form-item label="楼层" prop="floor">
+          <el-input-number
+            v-model="roomForm.floor"
+            :min="1"
+            :max="currentBuildingFloors || undefined"
+            controls-position="right"
+            @change="syncFloorAreaInfo"
+          />
         </el-form-item>
-        <el-form-item label="月租金">
+        <el-form-item label="面积(㎡)" prop="area">
+          <el-input-number v-model="roomForm.area" :min="0" :precision="2" controls-position="right" />
+          <div v-if="currentFloorArea !== null" class="form-tip">
+            当前楼层总面积 {{ formatNumber(currentFloorArea) }}㎡，已用 {{ formatNumber(currentFloorUsedArea) }}㎡，剩余
+            {{ formatNumber(currentFloorRemainArea) }}㎡
+          </div>
+        </el-form-item>
+        <el-form-item label="月租金(元)">
           <el-input-number v-model="roomForm.rentPrice" :min="0" :precision="2" controls-position="right" />
         </el-form-item>
         <el-form-item label="物业费">
@@ -298,38 +318,70 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="roomForm.status">
-            <el-option v-for="item in roomStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
+            <el-option
+              v-for="item in baseStatusOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="房源地址">
           <el-input v-model="roomForm.address" maxlength="100" placeholder="请输入房源地址" />
+        </el-form-item>
+        <el-form-item label="配套设施">
+          <el-input v-model="roomForm.facilities" type="textarea" :rows="2" />
+        </el-form-item>
+        <el-form-item label="核心卖点">
+          <el-input v-model="roomForm.highlights" type="textarea" :rows="2" />
+        </el-form-item>
+        <el-form-item label="房间照片">
+          <el-upload
+            v-model:file-list="roomImageFileList"
+            action="/api/blade-resource/oss/endpoint/put-file-attach"
+            :headers="uploadHeaders"
+            list-type="picture-card"
+            accept="image/*"
+            multiple
+            :limit="9"
+            :before-upload="beforeRoomImageUpload"
+            :on-success="handleRoomImageUploadSuccess"
+            :on-remove="handleRoomImageRemove"
+            :on-error="handleRoomImageUploadError"
+            :on-exceed="handleRoomImageExceed"
+          >
+            <el-button v-if="roomImageFileList.length < 9" :icon="Upload" text>上传</el-button>
+          </el-upload>
+          <div class="form-tip">支持 jpg、png 等图片格式，最多上传 9 张，单张不超过 10MB。</div>
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="roomForm.memo" type="textarea" :rows="3" maxlength="200" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="roomDialogVisible = false">取消</el-button>
+        <el-button @click="roomFormVisible = false">取消</el-button>
         <el-button type="primary" :loading="roomSaving" @click="submitRoomForm">保存</el-button>
       </template>
-    </el-dialog>
+    </el-drawer>
   </basic-container>
 </template>
 
 <script>
 import { mapGetters } from 'vuex';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Delete, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue';
+import { Delete, Edit, Plus, Refresh, Search, Upload, View } from '@element-plus/icons-vue';
 import { getSimpleList as getBuildingList } from '@/api/park/building';
 import {
   getDetail,
   getList,
+  getSimpleList as getFloorSimpleList,
   getStatistics,
   remove,
   removeRoom,
   submit,
   submitRoom,
 } from '@/api/park/floor';
+import { getToken } from '@/utils/auth';
 
 export default {
   data() {
@@ -339,14 +391,19 @@ export default {
       Plus,
       Refresh,
       Search,
+      Upload,
       View,
       loading: false,
       saving: false,
       roomSaving: false,
       drawerVisible: false,
-      roomDialogVisible: false,
+      roomFormVisible: false,
       formMode: 'add',
       activeRoomFloorId: undefined,
+      currentBuildingFloors: null,
+      currentFloorArea: null,
+      currentFloorUsedArea: 0,
+      currentFloorRemainArea: null,
       data: [],
       selectionList: [],
       buildingOptions: [],
@@ -362,13 +419,20 @@ export default {
       },
       form: this.emptyForm(),
       roomForm: this.emptyRoomForm(),
+      roomImageFileList: [],
+      uploadHeaders: {
+        'Blade-Auth': `bearer ${getToken()}`,
+        'Blade-Requested-With': 'BladeHttpRequest',
+      },
       formRules: {
         buildingId: [{ required: true, message: '请选择所属建筑', trigger: 'change' }],
         floorNo: [{ required: true, message: '请输入楼层号', trigger: 'change' }],
         status: [{ required: true, message: '请选择状态', trigger: 'change' }],
       },
       roomRules: {
+        buildingId: [{ required: true, message: '请选择所属建筑', trigger: 'change' }],
         name: [{ required: true, message: '请输入房间名称', trigger: 'blur' }],
+        floor: [{ required: true, message: '请输入楼层', trigger: 'change' }],
       },
       floorStatusOptions: [
         { label: '启用', value: '0' },
@@ -383,6 +447,12 @@ export default {
         { label: '30天内到期', value: '5', countKey: 'expiring30Count' },
         { label: '已到期', value: '6', countKey: 'expiredCount' },
         { label: '已出租', value: '7', countKey: 'disabledCount' },
+      ],
+      baseStatusOptions: [
+        { label: '空置', value: '0' },
+        { label: '待清退/短租', value: '1' },
+        { label: '预留', value: '2' },
+        { label: '待退出', value: '3' },
       ],
       orientationOptions: ['朝南', '朝北', '朝东', '朝西', '南北通透'],
     };
@@ -400,11 +470,6 @@ export default {
     },
     formReadonly() {
       return this.formMode === 'view';
-    },
-    roomFloorLabel() {
-      const building = this.findBuilding(this.roomForm.buildingId);
-      const buildingName = building ? this.buildingLabel(building) : this.form.buildingName || '未选择建筑';
-      return `${buildingName} / ${this.roomForm.floor || '-'}F`;
     },
     formBuildingFloors() {
       const building = this.findBuilding(this.form.buildingId);
@@ -537,7 +602,7 @@ export default {
     },
     openRoomCreate(floor = this.form) {
       if (!floor || !floor.id || !floor.buildingId || !floor.floorNo) {
-        ElMessage.warning('请先保存楼层信息后再新增房源');
+        ElMessage.warning('请先保存楼层信息后再新增房间');
         return;
       }
       this.activeRoomFloorId = floor.id;
@@ -547,7 +612,10 @@ export default {
         floor: floor.floorNo,
         status: '0',
       });
-      this.roomDialogVisible = true;
+      this.roomImageFileList = [];
+      this.syncCurrentBuildingFloors();
+      this.syncFloorAreaInfo();
+      this.roomFormVisible = true;
     },
     handleFormBuildingChange(buildingId) {
       const building = this.findBuilding(buildingId);
@@ -558,6 +626,43 @@ export default {
       if (building && !this.form.area && building.area && building.floors) {
         this.form.area = Number((Number(building.area) / Number(building.floors)).toFixed(2));
       }
+    },
+    handleRoomBuildingChange() {
+      const building = this.findBuilding(this.roomForm.buildingId);
+      this.roomForm.parkId = building ? building.parkId : undefined;
+      this.syncCurrentBuildingFloors();
+      if (this.currentBuildingFloors && this.roomForm.floor > this.currentBuildingFloors) {
+        this.roomForm.floor = undefined;
+      }
+      this.syncFloorAreaInfo();
+    },
+    syncCurrentBuildingFloors() {
+      const building = this.findBuilding(this.roomForm.buildingId);
+      this.currentBuildingFloors = building && building.floors ? Number(building.floors) : null;
+    },
+    syncFloorAreaInfo() {
+      this.currentFloorArea = null;
+      this.currentFloorUsedArea = 0;
+      this.currentFloorRemainArea = null;
+      if (!this.roomForm.buildingId || !this.roomForm.floor) {
+        return;
+      }
+      const buildingId = this.roomForm.buildingId;
+      const floorNo = this.roomForm.floor;
+      getFloorSimpleList({ buildingId, floorNo }).then(res => {
+        if (String(this.roomForm.buildingId) !== String(buildingId) || String(this.roomForm.floor) !== String(floorNo)) {
+          return;
+        }
+        const floor = (res.data.data || [])[0];
+        if (!floor || floor.area === null || floor.area === undefined) {
+          return;
+        }
+        const totalArea = Number(floor.area || 0);
+        const usedArea = Math.max(Number(floor.usedArea || 0), 0);
+        this.currentFloorArea = totalArea;
+        this.currentFloorUsedArea = usedArea;
+        this.currentFloorRemainArea = Math.max(totalArea - usedArea, 0);
+      });
     },
     submitForm() {
       this.$refs.floorFormRef.validate(valid => {
@@ -617,7 +722,7 @@ export default {
       if (!room || !room.id) {
         return;
       }
-      ElMessageBox.confirm(`确定删除房源“${room.name || ''}”?`, {
+      ElMessageBox.confirm(`确定删除房间“${room.name || ''}”?`, {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
@@ -633,15 +738,28 @@ export default {
         if (!valid) {
           return;
         }
+        if (this.hasUploadingRoomImages()) {
+          ElMessage.warning('房间照片正在上传，请稍后保存');
+          return;
+        }
+        this.syncRoomImageField();
         if (!this.roomForm.buildingId || !this.roomForm.floor) {
-          ElMessage.warning('缺少楼层信息，请重新打开新增房源');
+          ElMessage.warning('缺少楼层信息，请重新打开新增房间');
+          return;
+        }
+        if (
+          this.currentFloorRemainArea !== null &&
+          this.roomForm.area !== undefined &&
+          Number(this.roomForm.area || 0) > Number(this.currentFloorRemainArea || 0)
+        ) {
+          ElMessage.warning(`房间面积不能超过当前楼层剩余面积 ${this.formatNumber(this.currentFloorRemainArea)}㎡`);
           return;
         }
         this.roomSaving = true;
         submitRoom(this.roomForm)
           .then(() => {
             ElMessage.success('保存成功');
-            this.roomDialogVisible = false;
+            this.roomFormVisible = false;
             this.refreshFloorAfterRoomChange(this.activeRoomFloorId);
           })
           .finally(() => {
@@ -702,6 +820,11 @@ export default {
     resetRoomForm() {
       this.roomForm = this.emptyRoomForm();
       this.activeRoomFloorId = undefined;
+      this.roomImageFileList = [];
+      this.currentBuildingFloors = null;
+      this.currentFloorArea = null;
+      this.currentFloorUsedArea = 0;
+      this.currentFloorRemainArea = null;
       if (this.$refs.roomFormRef) {
         this.$refs.roomFormRef.clearValidate();
       }
@@ -730,6 +853,64 @@ export default {
           count: Number(row[item.countKey]) || 0,
         }))
         .filter(item => item.count > 0);
+    },
+    beforeRoomImageUpload(file) {
+      const isImage = file.type && file.type.indexOf('image/') === 0;
+      const isValidSize = file.size / 1024 / 1024 <= 10;
+      if (!isImage) {
+        ElMessage.warning('请上传图片文件');
+      }
+      if (!isValidSize) {
+        ElMessage.warning('单张图片不能超过 10MB');
+      }
+      return isImage && isValidSize;
+    },
+    handleRoomImageUploadSuccess(response, uploadFile, uploadFiles) {
+      const success = response && (response.success || response.code === 200 || response.code === 0);
+      const data = response && response.data;
+      const url = typeof data === 'string' ? data : (data && (data.link || data.url)) || '';
+      if (!success || !url) {
+        this.roomImageFileList = (uploadFiles || []).filter(file => file.uid !== uploadFile.uid);
+        this.syncRoomImageField();
+        ElMessage.error((response && response.msg) || '上传失败');
+        return;
+      }
+      uploadFile.url = url;
+      uploadFile.name = (data && (data.originalName || data.name)) || uploadFile.name;
+      uploadFile.status = 'success';
+      this.roomImageFileList = this.normalizeRoomImageFiles(uploadFiles || []);
+      this.syncRoomImageField();
+      ElMessage.success('上传成功');
+    },
+    handleRoomImageRemove(file, uploadFiles) {
+      this.roomImageFileList = this.normalizeRoomImageFiles(uploadFiles || []);
+      this.syncRoomImageField();
+    },
+    handleRoomImageUploadError() {
+      ElMessage.error('上传失败');
+    },
+    handleRoomImageExceed() {
+      ElMessage.warning('房间照片最多上传 9 张');
+    },
+    hasUploadingRoomImages() {
+      return this.roomImageFileList.some(file => file.status && file.status !== 'success');
+    },
+    syncRoomImageField() {
+      this.roomForm.sceneImages = this.roomImageFileList.map(file => file.url).filter(Boolean).join(',');
+    },
+    normalizeRoomImageFiles(files) {
+      return (Array.isArray(files) ? files : [])
+        .map((file, index) => {
+          const responseData = file.response && file.response.data;
+          const url = file.url || (typeof responseData === 'string' ? responseData : responseData && (responseData.link || responseData.url)) || '';
+          return {
+            uid: file.uid || `${Date.now()}-${index}`,
+            name: file.name || (url ? url.split('/').pop() : `房间照片${index + 1}`),
+            url,
+            status: file.status || 'success',
+          };
+        })
+        .filter(file => file.url || file.status !== 'success');
     },
     cleanParams(params) {
       const result = {};
@@ -877,7 +1058,14 @@ export default {
 .room-form :deep(.el-input),
 .room-form :deep(.el-select),
 .room-form :deep(.el-input-number) {
-	width: 100%;
+  width: 100%;
+}
+
+.form-tip {
+  margin-top: 6px;
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .room-tag-0 {

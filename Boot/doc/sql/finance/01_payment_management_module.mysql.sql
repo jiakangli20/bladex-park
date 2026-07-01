@@ -1,4 +1,4 @@
--- 财务管理-缴费管理迁移脚本
+-- 逾期管理-缴费管理迁移脚本
 -- 执行库：bladex_boot
 -- 说明：
 -- 1. 缴费管理为合同账单主流程，复用 biz_contract_payment / biz_contract_log。
@@ -7,7 +7,7 @@
 
 INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `component`, `sort`, `category`, `action`, `is_open`, `remark`, `is_deleted`)
 VALUES
-  (1890000000006000000, 0, 'finance', '财务管理', 'menu', '/finance', 'iconfont icon-shujukanban', '', 45, 1, 0, 1, '财务管理', 0),
+  (1890000000006000000, 0, 'finance', '逾期管理', 'menu', '/finance', 'iconfont icon-shujukanban', '', 45, 1, 0, 1, '逾期管理', 0),
   (1890000000006000100, 1890000000006000000, 'finance_payment', '缴费管理', 'menu', '/finance/payment', 'iconfont iconicon_savememo', 'views/finance/payment', 1, 1, 0, 1, '财务缴费管理主流程', 0),
   (1890000000006000101, 1890000000006000100, 'finance_payment_list', '账单列表', 'list', '/api/blade-ics/payment/page', 'list', '', 1, 2, 0, 1, NULL, 0),
   (1890000000006000102, 1890000000006000100, 'finance_payment_view', '账单详情', 'view', '/api/blade-ics/payment/detail', 'file-text', '', 2, 2, 2, 1, NULL, 0),

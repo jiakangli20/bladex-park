@@ -230,11 +230,11 @@ ON DUPLICATE KEY UPDATE
   `attachment_url` = VALUES(`attachment_url`),
   `operate_time` = VALUES(`operate_time`);
 
--- 业务一级菜单：财务管理。
+-- 业务一级菜单：逾期管理。
 -- 审批中心已弃用，流程配置 / 待办 / 已办 / 抄送统一走协同办公 workflow 原生插件。
 INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `component`, `sort`, `category`, `action`, `is_open`, `remark`, `is_deleted`)
 VALUES
-  (1890000000006000000, 0, 'finance', '财务管理', 'menu', '/finance', 'iconfont icon-shujukanban', '', 45, 1, 0, 1, '财务管理', 0)
+  (1890000000006000000, 0, 'finance', '逾期管理', 'menu', '/finance', 'iconfont icon-shujukanban', '', 45, 1, 0, 1, '逾期管理', 0)
 ON DUPLICATE KEY UPDATE
   `parent_id` = VALUES(`parent_id`),
   `name` = VALUES(`name`),

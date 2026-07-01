@@ -1,4 +1,4 @@
--- 财务管理-收款通知模块
+-- 逾期管理-收款通知模块
 -- 执行库：bladex_boot
 -- 说明：
 -- 1. 收款通知复用 biz_contract_payment 账单数据，biz_payment_notice 只记录通知状态、文件地址和发送回执。
