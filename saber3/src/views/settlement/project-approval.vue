@@ -94,7 +94,7 @@
               </el-option>
             </el-select>
           </el-form-item>
-          <el-form-item label="入驻商机">
+          <el-form-item label="商机企业">
             <el-select
               v-model="startForm.opportunityId"
               filterable
@@ -102,7 +102,7 @@
               clearable
               :remote-method="searchOpportunity"
               :loading="opportunityLoading"
-              placeholder="请选择待审核商机"
+              placeholder="可选择商机企业带入数据，也可不选直接发起"
               style="width: 100%"
             >
               <el-option
@@ -115,11 +115,12 @@
                 <span class="option-extra">{{ item.contactName || item.contactPhone || '' }}</span>
               </el-option>
             </el-select>
+            <div class="start-form-tip">不选择商机时，将进入空白入驻审批表，由发起人在下一页填写企业信息。</div>
           </el-form-item>
         </el-form>
         <template #footer>
           <el-button @click="startVisible = false">取消</el-button>
-          <el-button type="primary" :disabled="!startForm.processDefKey || !startForm.opportunityId" @click="goStart">下一步</el-button>
+          <el-button type="primary" :disabled="!startForm.processDefKey" @click="goStart">下一步</el-button>
         </template>
       </el-dialog>
 
@@ -350,13 +351,16 @@ export default {
       });
     },
     goStart() {
+      const formParams = {
+        processDefKey: this.startForm.processDefKey,
+        businessType: TENANT_ENTRY_BUSINESS_TYPE,
+      };
+      if (this.startForm.opportunityId) {
+        formParams.opportunityId = this.startForm.opportunityId;
+      }
       const params = {
         processDefKey: this.startForm.processDefKey,
-        params: {
-          opportunityId: this.startForm.opportunityId,
-          processDefKey: this.startForm.processDefKey,
-          businessType: TENANT_ENTRY_BUSINESS_TYPE,
-        },
+        params: formParams,
       };
       this.pushExternal('start', params);
       this.startVisible = false;
@@ -503,6 +507,13 @@ export default {
   float: right;
   color: #909399;
   font-size: 12px;
+}
+
+.start-form-tip {
+  margin-top: 6px;
+  color: #909399;
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .approval-html {

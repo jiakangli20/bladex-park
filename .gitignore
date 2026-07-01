@@ -35,6 +35,14 @@ pnpm-debug.log*
 # Local Maven credentials
 settings.xml
 
+# Deployment packages and generated server bundles
+模块迁移/部署/packaging/
+*.tar.gz
+
+# Office temporary lock files
+.~*
+~$*
+
 # AI/local workspace
 .claude/
 .codex-run/
