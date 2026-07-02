@@ -105,8 +105,24 @@
                 </el-row>
                 <el-row :gutter="18">
                   <el-col :span="12">
-                    <el-form-item label="乙方企业" prop="customerId">
+                    <el-form-item label="企业来源">
+                      <el-radio-group v-model="customerMode" @change="handleCustomerModeChange">
+                        <el-radio-button label="existing">已入驻企业</el-radio-button>
+                        <el-radio-button label="manual">手工录入</el-radio-button>
+                      </el-radio-group>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="12">
+                    <el-form-item label="联系人">
+                      <el-input :model-value="customerContactText" disabled />
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+                <el-row :gutter="18">
+                  <el-col :span="12">
+                    <el-form-item label="乙方企业" prop="customerName">
                       <el-select
+                        v-if="customerMode === 'existing'"
                         v-model="form.customerId"
                         filterable
                         remote
@@ -130,11 +146,13 @@
                           </div>
                         </el-option>
                       </el-select>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="12">
-                    <el-form-item label="联系人">
-                      <el-input :model-value="customerContactText" disabled />
+                      <el-input
+                        v-else
+                        v-model="form.customerName"
+                        maxlength="200"
+                        placeholder="请输入乙方企业"
+                        @input="handleManualCustomerInput"
+                      />
                     </el-form-item>
                   </el-col>
                 </el-row>
@@ -646,6 +664,7 @@ export default {
       renewalSourceContract: {},
       submitLoading: false,
       customerLoading: false,
+      customerMode: 'existing',
       roomLoading: false,
       customerOptions: [],
       selectedCustomer: {},
@@ -684,7 +703,7 @@ export default {
       form: this.emptyForm(),
       rules: {
         contractName: [{ required: true, message: '请输入合同名称', trigger: 'blur' }],
-        customerId: [{ required: true, message: '请选择乙方企业', trigger: 'change' }],
+        customerName: [{ required: true, message: '请输入或选择乙方企业', trigger: ['blur', 'change'] }],
         parkId: [{ required: true, message: '请选择所属园区', trigger: 'change' }],
         buildingId: [{ required: true, message: '请选择楼宇', trigger: 'change' }],
         roomId: [{ required: true, message: '请选择房源', trigger: 'change' }],
@@ -834,8 +853,12 @@ export default {
         this.currentTemplateKey = templateKey;
         this.pageMode = 'create';
       }
-      if (query.mode === 'create' || query.mode === 'renew' || query.customerId) {
+      if (query.mode === 'create' || query.mode === 'renew' || query.customerId || query.customerName) {
         this.pageMode = 'create';
+      }
+      if (query.customerName && !query.customerId) {
+        this.customerMode = 'manual';
+        this.form.customerName = query.customerName;
       }
       if (query.mode === 'renew' && query.sourceContractId) {
         this.renewalMode = true;
@@ -843,6 +866,7 @@ export default {
         this.loadRenewalSource(query.sourceContractId, query);
       }
       if (query.customerId) {
+        this.customerMode = 'existing';
         this.form.customerId = query.customerId;
         this.prefillCustomer(query.customerId);
       }
@@ -910,10 +934,13 @@ export default {
       }
       this.roomQuery.parkId = contract.parkId || '';
       this.roomQuery.buildingId = contract.buildingId || '';
-      this.selectedCustomer = {
-        customerId: contract.customerId,
-        enterpriseName: contract.customerName,
-      };
+      this.customerMode = contract.customerId ? 'existing' : 'manual';
+      this.selectedCustomer = contract.customerId
+        ? {
+            customerId: contract.customerId,
+            enterpriseName: contract.customerName,
+          }
+        : {};
       if (
         contract.customerId &&
         !this.customerOptions.some(item => String(item.customerId) === String(contract.customerId))
@@ -959,6 +986,7 @@ export default {
       this.currentTemplateKey = row.key;
       this.form = this.emptyForm();
       this.selectedCustomer = {};
+      this.customerMode = 'existing';
       this.pageMode = 'create';
       this.activeAnchor = 'basic';
       this.$nextTick(() => {
@@ -969,6 +997,27 @@ export default {
     },
     backToList() {
       this.pageMode = 'list';
+    },
+    handleCustomerModeChange(mode) {
+      if (mode === 'manual') {
+        const customerName = this.form.customerName;
+        this.form.customerId = '';
+        this.selectedCustomer = {};
+        this.form.customerName = customerName;
+      } else {
+        this.form.customerName = this.selectedCustomer.enterpriseName || '';
+      }
+      this.$nextTick(() => {
+        if (this.$refs.contractForm) {
+          this.$refs.contractForm.clearValidate('customerName');
+        }
+      });
+    },
+    handleManualCustomerInput(value) {
+      this.form.customerName = value;
+      if (!this.form.contractName && value) {
+        this.form.contractName = `${value} 租赁合同`;
+      }
     },
     searchCustomers(keyword) {
       this.customerLoading = true;
@@ -1013,6 +1062,7 @@ export default {
       if (!customerId) {
         this.selectedCustomer = {};
         this.form.customerName = '';
+        this.clearCustomerNameValidate();
         return;
       }
       const cached = this.customerOptions.find(
@@ -1027,11 +1077,13 @@ export default {
     },
     applyCustomer(customer) {
       this.selectedCustomer = customer || {};
+      this.customerMode = 'existing';
       this.form.customerId = customer.customerId || this.form.customerId;
       this.form.customerName = customer.enterpriseName || '';
       if (!this.form.contractName && customer.enterpriseName) {
         this.form.contractName = `${customer.enterpriseName} 租赁合同`;
       }
+      this.clearCustomerNameValidate();
       if (customer.parkId) {
         if (!this.form.parkId) {
           this.form.parkId = customer.parkId;
@@ -1042,6 +1094,13 @@ export default {
         this.roomQuery.parkId = this.roomQuery.parkId || customer.parkId;
         this.loadRooms();
       }
+    },
+    clearCustomerNameValidate() {
+      this.$nextTick(() => {
+        if (this.$refs.contractForm) {
+          this.$refs.contractForm.clearValidate('customerName');
+        }
+      });
     },
     handleParkChange(parkId) {
       this.form.parkName = this.parkName(parkId);
@@ -1174,6 +1233,10 @@ export default {
       }
     },
     submitContract() {
+      this.form.customerName = String(this.form.customerName || '').trim();
+      if (this.customerMode === 'manual') {
+        this.form.customerId = '';
+      }
       this.$refs.contractForm.validate(valid => {
         if (!valid) return;
         this.submitLoading = true;
@@ -1196,8 +1259,8 @@ export default {
         contractNo: this.form.contractNo,
         contractName: this.form.contractName,
         parentContractId: this.form.parentContractId,
-        customerId: this.form.customerId,
-        customerName: this.form.customerName,
+        customerId: this.customerMode === 'existing' ? this.form.customerId : undefined,
+        customerName: String(this.form.customerName || '').trim(),
         parkId: this.form.parkId,
         buildingId: this.form.buildingId,
         buildingName: this.form.buildingName,

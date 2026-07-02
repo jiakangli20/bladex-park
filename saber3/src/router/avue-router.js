@@ -15,6 +15,23 @@ function getMenuChildren(menu, propsDefault) {
   return children.filter(child => isMenuNode(child));
 }
 
+function getViewComponent(componentPath) {
+  return componentPath ? modules[`../${componentPath}.vue`] : undefined;
+}
+
+function getDefaultChildRoute({ componentPath, icon, name, meta, query }) {
+  const result = getViewComponent(componentPath);
+  if (!result) return null;
+  return {
+    component: result,
+    icon,
+    name: `${name}_index`,
+    meta,
+    query,
+    path: '',
+  };
+}
+
 // 将多级路由扁平化为二级路由，支持 keep-alive 跨层级缓存
 function flattenRouteChildren(children) {
   const result = [];
@@ -117,7 +134,7 @@ RouterPlugin.install = function (option = {}) {
               return modules['../page/index/layout.vue'];
               // 判断是否为最终的页面视图
             } else {
-              let result = modules[`../${component}.vue`];
+              let result = getViewComponent(component);
               if (!result) {
                 isComponent = false;
               }
@@ -138,7 +155,7 @@ RouterPlugin.install = function (option = {}) {
                 if (first) {
                   oMenu[propsDefault.path] = `${path}`;
                   let componentPath = oMenu.component || component;
-                  let result = modules[`../${componentPath}.vue`];
+                  let result = getViewComponent(componentPath);
                   if (!result) {
                     isComponent = false;
                   }
@@ -158,7 +175,20 @@ RouterPlugin.install = function (option = {}) {
                 return [];
               })()
             : (() => {
-                return this.formatRoutes(children, false);
+                const childRoutes = this.formatRoutes(children, false) || [];
+                if (first) {
+                  const defaultChildRoute = getDefaultChildRoute({
+                    componentPath: oMenu.component || component,
+                    icon,
+                    name,
+                    meta,
+                    query: oMenu[propsDefault.query] || query,
+                  });
+                  if (defaultChildRoute) {
+                    childRoutes.unshift(defaultChildRoute);
+                  }
+                }
+                return childRoutes;
               })(),
         };
         const isIframeRoute =
@@ -213,6 +243,9 @@ export const formatPath = (ele, first) => {
   };
   ele[propsDefault.children] = getMenuChildren(ele, propsDefault);
   const isChild = ele[propsDefault.children].length !== 0;
+  if (isChild && first && ele[propsDefault.path] === website.fistPage.path && !ele.component) {
+    ele.component = 'views' + ele[propsDefault.path];
+  }
   if (!isChild && first) {
     ele.component = 'views' + ele[propsDefault.path];
     if (isURL(ele[propsDefault.href])) {

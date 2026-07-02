@@ -32,8 +32,17 @@ public class WfMultiInstanceHandler {
 		String assignee = taskUser.getAssignee();
 		LinkedHashSet<String> userIds = taskUser.getCandidateUserIds();
 		if (ObjectUtil.isNotEmpty(userList)) {
-			userList.forEach(user -> candidateUserIds.add(String.valueOf(user.getId())));
-		} else if (ObjectUtil.isNotEmpty(userIds)) {
+			userList.stream()
+				.filter(Objects::nonNull)
+				.map(WfUser::getId)
+				.filter(Objects::nonNull)
+				.map(String::valueOf)
+				.forEach(candidateUserIds::add);
+		}
+		if (ObjectUtil.isNotEmpty(candidateUserIds)) {
+			return candidateUserIds;
+		}
+		if (ObjectUtil.isNotEmpty(userIds)) {
 			candidateUserIds.addAll(userIds);
 		} else if (StringUtil.isNotBlank(assignee)) {
 			candidateUserIds.add(assignee);

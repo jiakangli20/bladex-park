@@ -83,6 +83,9 @@ SOURCE Boot/doc/sql/business/20_merchant_ad_service_process.mysql.sql
 SELECT 'business/21_policy_service_module.mysql.sql' AS executing_script;
 SOURCE Boot/doc/sql/business/21_policy_service_module.mysql.sql
 
+SELECT 'business/22_migrate_home_to_desk.mysql.sql' AS executing_script;
+SOURCE Boot/doc/sql/business/22_migrate_home_to_desk.mysql.sql
+
 SELECT 'contract/bladex_contract_base_menu.mysql.sql' AS executing_script;
 SOURCE Boot/doc/sql/contract/bladex_contract_base_menu.mysql.sql
 

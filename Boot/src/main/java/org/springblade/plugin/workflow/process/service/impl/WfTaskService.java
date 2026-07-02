@@ -202,15 +202,32 @@ public class WfTaskService implements IWfTaskService {
             userList.addAll(customUserList);
         }
 
+        userList = validUsers(userList);
+
         // 替换代理人员
-        userList = wfProxyService.getProxyUsers(userList, processInsId);
+        userList = validUsers(wfProxyService.getProxyUsers(userList, processInsId));
         assignee = wfProxyService.getProxyUser(assignee, processInsId);
 
         taskUser.setUserList(new ArrayList<>(userList));
         taskUser.setAssignee(assignee);
-        taskUser.setCandidateUserIds(userList.stream().map(u -> String.valueOf(u.getId())).collect(Collectors.toCollection(LinkedHashSet::new)));
+        taskUser.setCandidateUserIds(userList.stream()
+            .filter(Objects::nonNull)
+            .map(WfUser::getId)
+            .filter(Objects::nonNull)
+            .map(String::valueOf)
+            .collect(Collectors.toCollection(LinkedHashSet::new)));
 
         return taskUser;
+    }
+
+    private LinkedHashSet<WfUser> validUsers(Collection<WfUser> users) {
+        if (ObjectUtil.isEmpty(users)) {
+            return new LinkedHashSet<>();
+        }
+        return users.stream()
+            .filter(Objects::nonNull)
+            .filter(user -> user.getId() != null)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     @Override
@@ -242,7 +259,7 @@ public class WfTaskService implements IWfTaskService {
             if (taskUser != null) {
                 assignee = taskUser.getAssignee();
                 List<WfUser> userList = taskUser.getUserList();
-                if (StringUtils.isBlank(assignee) && userList.size() == 1) {
+                if (StringUtils.isBlank(assignee) && userList.size() == 1 && userList.get(0) != null && userList.get(0).getId() != null) {
                     assignee = userList.get(0).getId() + "";
                 }
             }

@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 流程代理 服务实现类
@@ -83,6 +84,9 @@ public class WfProxyServiceImpl extends ServiceImpl<WfProxyMapper, WfProxy> impl
 
 	@Override
 	public LinkedHashSet<WfUser> getProxyUsers(LinkedHashSet<WfUser> users, String processInsId) {
+		if (users == null || users.isEmpty()) {
+			return new LinkedHashSet<>();
+		}
 		try {
 			ProcessInstance processInstance = runtimeService.createProcessInstanceQuery()
 				.processInstanceId(processInsId)
@@ -90,7 +94,7 @@ public class WfProxyServiceImpl extends ServiceImpl<WfProxyMapper, WfProxy> impl
 			if (processInstance == null) return users;
 			LocalDateTime now = LocalDateTime.now();
 			LinkedHashSet<WfUser> userList = new LinkedHashSet<>();
-			users.forEach(user -> {
+			users.stream().filter(Objects::nonNull).filter(user -> user.getId() != null).forEach(user -> {
 				LambdaQueryWrapper<WfProxy> queryWrapper = new LambdaQueryWrapper<WfProxy>()
 					.eq(WfProxy::getUserId, user.getId())
 					.eq(WfProxy::getStatus, "1");

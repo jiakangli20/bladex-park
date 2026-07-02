@@ -6,6 +6,7 @@ package org.springblade.modules.contract.service.impl;
 
 import lombok.SneakyThrows;
 import org.apache.poi.hwpf.HWPFDocument;
+import org.apache.poi.hwpf.usermodel.Paragraph;
 import org.apache.poi.hwpf.usermodel.Range;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DataFormatter;
@@ -52,6 +53,7 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 	private static final String CONTENT_TYPE_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 	private static final String CONTENT_TYPE_XLS = "application/vnd.ms-excel";
 	private static final String CONTENT_TYPE_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+	private static final String EXACT_REPLACEMENT_PREFIX = "__exact__:";
 
 	@Override
 	@SneakyThrows
@@ -127,11 +129,23 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		if (range == null || replacements.isEmpty()) {
 			return;
 		}
+		replaceDocParagraphs(range, replacements);
 		replacements.forEach((key, value) -> {
-			if (StringUtil.isNotBlank(key)) {
+			if (StringUtil.isNotBlank(key) && !isExactReplacement(key)) {
 				range.replaceText(key, value == null ? "" : value);
 			}
 		});
+	}
+
+	private void replaceDocParagraphs(Range range, Map<String, String> replacements) {
+		for (int index = 0; index < range.numParagraphs(); index++) {
+			Paragraph paragraph = range.getParagraph(index);
+			String text = trimParagraphEnd(paragraph.text());
+			String replacement = findExactWholeTextReplacement(text, replacements);
+			if (replacement != null && StringUtil.isNotBlank(text)) {
+				paragraph.replaceText(text, replacement);
+			}
+		}
 	}
 
 	private void fillDocxTable(XWPFTable table, Map<String, String> fields, Map<String, String> replacements) {
@@ -214,13 +228,16 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		if (StringUtil.isBlank(text) || replacements.isEmpty()) {
 			return text;
 		}
-		String wholeTextReplacement = findWholeTextReplacement(text, replacements);
+		String wholeTextReplacement = findExactWholeTextReplacement(text, replacements);
 		if (wholeTextReplacement != null) {
 			return wholeTextReplacement;
 		}
 		String result = text;
 		for (Map.Entry<String, String> entry : replacements.entrySet()) {
 			String key = entry.getKey();
+			if (isExactReplacement(key)) {
+				continue;
+			}
 			result = result.replace("${" + key + "}", entry.getValue())
 				.replace("{{" + key + "}}", entry.getValue())
 				.replace(key, entry.getValue());
@@ -228,18 +245,29 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		return result;
 	}
 
-	private String findWholeTextReplacement(String text, Map<String, String> replacements) {
+	private String findExactWholeTextReplacement(String text, Map<String, String> replacements) {
 		String normalizedText = normalizeReplacementText(text);
 		if (StringUtil.isBlank(normalizedText)) {
 			return null;
 		}
 		for (Map.Entry<String, String> entry : replacements.entrySet()) {
-			String normalizedKey = normalizeReplacementText(entry.getKey());
+			if (!isExactReplacement(entry.getKey())) {
+				continue;
+			}
+			String normalizedKey = normalizeReplacementText(replacementKey(entry.getKey()));
 			if (StringUtil.isNotBlank(normalizedKey) && normalizedText.equals(normalizedKey)) {
 				return entry.getValue();
 			}
 		}
 		return null;
+	}
+
+	private boolean isExactReplacement(String key) {
+		return key != null && key.startsWith(EXACT_REPLACEMENT_PREFIX);
+	}
+
+	private String replacementKey(String key) {
+		return isExactReplacement(key) ? key.substring(EXACT_REPLACEMENT_PREFIX.length()) : key;
 	}
 
 	private String matchFieldLabel(String text, Map<String, String> fields) {
@@ -347,7 +375,15 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		return text == null ? "" : text
 			.replaceAll("\\s+", "")
 			.replace("\u00a0", "")
+			.replace("\u0007", "")
 			.trim();
+	}
+
+	private String trimParagraphEnd(String text) {
+		if (text == null) {
+			return "";
+		}
+		return text.replaceAll("[\\r\\n\\u0007]+$", "");
 	}
 
 	private Path resolveTemplate(String templateRelativePath) {

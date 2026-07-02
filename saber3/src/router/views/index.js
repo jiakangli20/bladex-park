@@ -3,14 +3,18 @@ import Store from '@/store/';
 
 export default [
   {
+    path: '/home',
+    redirect: '/desk',
+  },
+  {
     path: '/ics/home',
-    redirect: '/home',
+    redirect: '/desk',
   },
   {
     path: '/wel',
     component: () =>
       Store.getters.isMacOs ? import('@/mac/index.vue') : import('@/page/index/index.vue'),
-    redirect: '/home',
+    redirect: '/desk',
     children: [
       {
         path: 'index',
@@ -18,7 +22,7 @@ export default [
         meta: {
           i18n: 'dashboard',
         },
-        redirect: '/home',
+        redirect: '/desk',
       },
       {
         path: 'dashboard',
@@ -90,6 +94,20 @@ export default [
           i18n: 'info',
         },
         component: () => import(/* webpackChunkName: "views" */ '@/views/system/userinfo.vue'),
+      },
+    ],
+  },
+  {
+    path: '/contract/create-template',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        name: '合同创建',
+        meta: {
+          menu: false,
+        },
+        component: () => import('@/views/contract/create-template.vue'),
       },
     ],
   },

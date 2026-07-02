@@ -358,6 +358,10 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	}
 
 	private void validateNewRelations(Contract contract) {
+		contract.setCustomerName(Func.toStr(contract.getCustomerName(), "").trim());
+		if (Func.isBlank(contract.getCustomerName())) {
+			throw new ServiceException("请输入乙方企业");
+		}
 		if (contract.getParkId() == null || contract.getParkId() <= 0) {
 			throw new ServiceException("请选择所属园区");
 		}

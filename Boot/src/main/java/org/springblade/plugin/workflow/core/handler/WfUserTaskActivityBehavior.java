@@ -45,6 +45,10 @@ public class WfUserTaskActivityBehavior extends UserTaskActivityBehavior {
 		assignee = taskUser.getAssignee();
 
 		if (ObjectUtil.isNotEmpty(userList) && StringUtil.isBlank(assignee)) {
+			userList = userList.stream()
+				.filter(Objects::nonNull)
+				.filter(user -> user.getId() != null)
+				.toList();
 			if (userList.size() == 1) { // 唯一审核人
 				assignee = String.valueOf(userList.get(0).getId());
 			}

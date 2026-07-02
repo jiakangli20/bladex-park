@@ -62,12 +62,14 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	private static final String TEMPLATE_ROOM_REVIEW = "君联大厦招商管理办法2023/附件15：房屋退租交接验收单（思锐泰）.xlsx";
 	private static final String TEMPLATE_CONTRACT_FIXED = "君联合同/科技服务中心租赁合同（固定租金）202508版 - 解锁.docx";
 	private static final String TEMPLATE_CONTRACT_FLOATING = "君联合同/科技服务中心租赁合同（浮动租金）202508版 - 解锁.docx";
+	private static final String EXACT_REPLACEMENT_PREFIX = "__exact__:";
 
 	private final ContractPaymentMapper contractPaymentMapper;
 	private final ContractMapper contractMapper;
 	private final CustomerMapper customerMapper;
 	private final OssBuilder ossBuilder;
 	private final IContractTemplateRenderService contractTemplateRenderService;
+	private final ContractDocumentPreviewService contractDocumentPreviewService;
 
 	@Override
 	public ContractNoticeFileVO buildNotice(String noticeType, Long paymentId, Long contractId) {
@@ -202,7 +204,8 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			.set("summary", previewData.summary)
 			.set("fields", previewData.fields)
 			.set("missingFields", previewData.missingFields)
-			.set("html", buildPreviewHtml(document.getNoticeName(), previewData.summary, previewData.fields, previewData.missingFields));
+			.set("previewMode", "document")
+			.set("html", contractDocumentPreviewService.render(document, previewData.summary, previewData.missingFields));
 	}
 
 	private Map<String, Object> buildMiniAppData(String noticeType, NoticeContext context, ContractNoticeFileVO document) {
@@ -740,7 +743,8 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		replacements.put("年 月 日— 年 月 日", context.periodText());
 		replacements.put("第一期租金", context.feeName());
 		replacements.put("合计人民币", "合计人民币 " + fields.get("合计人民币") + " 元");
-		replacements.put("苏州市吴中金融招商服务有限公司\n年 月 日", "苏州市吴中金融招商服务有限公司\n" + fields.get("通知日期"));
+		replacements.put(exactReplacementKey("苏州市吴中金融招商服务有限公司\n年 月 日"), "苏州市吴中金融招商服务有限公司\n" + fields.get("通知日期"));
+		replacements.put(exactReplacementKey("年 月 日"), fields.get("通知日期"));
 		return replacements;
 	}
 
@@ -750,7 +754,8 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		replacements.put("贵司承租的位于苏州市吴中区石湖西路140号君联大厦 ___室办公物业第 期租金于2021年 月 日到期，我司已经于_____年_ _月 日送达了《催款通知书》，但贵司在《催款通知书》指定的期间内仍未进行支付。",
 			"贵司承租的位于" + context.roomDisplay() + "办公物业" + context.feeName() + "于" + fields.get("到期日")
 				+ "到期，我司已经于" + fields.get("催款通知送达日期") + "送达了《催款通知书》，但贵司在《催款通知书》指定的期间内仍未进行支付。");
-		replacements.put("苏州市吴中金融招商服务有限公司\n年 月 日", "苏州市吴中金融招商服务有限公司\n" + fields.get("通知日期"));
+		replacements.put(exactReplacementKey("苏州市吴中金融招商服务有限公司\n年 月 日"), "苏州市吴中金融招商服务有限公司\n" + fields.get("通知日期"));
+		replacements.put(exactReplacementKey("年 月 日"), fields.get("通知日期"));
 		return replacements;
 	}
 
@@ -1397,6 +1402,10 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		return "-".equals(normalized)
 			|| "/".equals(normalized)
 			|| "    年  月  日".equals(normalized);
+	}
+
+	private String exactReplacementKey(String key) {
+		return EXACT_REPLACEMENT_PREFIX + key;
 	}
 
 	private String buildPreviewHtml(String title, Map<String, String> summary, Map<String, String> fields, List<String> missingFields) {

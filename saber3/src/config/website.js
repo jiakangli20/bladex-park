@@ -36,7 +36,7 @@ export default {
   //首页配置
   fistPage: {
     name: '首页',
-    path: '/home',
+    path: '/desk',
   },
   //配置菜单的属性
   menu: {
