@@ -17,7 +17,6 @@ import org.springblade.modules.business.mapper.CustomerMapper;
 import org.springblade.modules.business.pojo.entity.Customer;
 import org.springblade.modules.contract.mapper.ContractMapper;
 import org.springblade.modules.contract.mapper.ContractPaymentMapper;
-import org.springblade.modules.contract.mapper.ContractWorkflowRecordMapper;
 import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
@@ -69,7 +68,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	private final ContractPaymentMapper contractPaymentMapper;
 	private final ContractMapper contractMapper;
 	private final CustomerMapper customerMapper;
-	private final ContractWorkflowRecordMapper contractWorkflowRecordMapper;
+	private final ContractWorkflowTraceService contractWorkflowTraceService;
 	private final OssBuilder ossBuilder;
 	private final IContractTemplateRenderService contractTemplateRenderService;
 	private final ContractDocumentPreviewService contractDocumentPreviewService;
@@ -562,47 +561,61 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		if (contract == null) {
 			throw new ServiceException("合同不存在");
 		}
-			if (needsPayment(normalized) && payment == null) {
-				throw new ServiceException("账单不存在");
-			}
-			formData = resolveLatestFormData(normalized, contract, formData);
-			if (contract != null && contract.getCustomerId() != null) {
-				customer = customerMapper.selectCustomerById(contract.getCustomerId());
-			}
-			return new NoticeContext(normalized, payment, contract, customer, formData);
+		if (needsPayment(normalized) && payment == null) {
+			throw new ServiceException("账单不存在");
 		}
+		formData = resolveLatestFormData(normalized, contract, payment, formData);
+		if (contract != null && contract.getCustomerId() != null) {
+			customer = customerMapper.selectCustomerById(contract.getCustomerId());
+		}
+		return new NoticeContext(normalized, payment, contract, customer, formData);
+	}
 
-		private Map<String, Object> resolveLatestFormData(String noticeType, Contract contract, Map<String, Object> formData) {
-			if (formData != null && !formData.isEmpty()) {
-				return formData;
-			}
-			if (contract == null || contract.getContractId() == null) {
-				return Collections.emptyMap();
-			}
-			String businessType = noticeWorkflowBusinessType(noticeType);
-			if (StringUtil.isBlank(businessType)) {
-				return Collections.emptyMap();
-			}
-			ContractWorkflowRecord record = contractWorkflowRecordMapper.selectLatest(contract.getContractId(), businessType);
-			if (record == null) {
-				return Collections.emptyMap();
-			}
-			return parseFormData(record.getFormDataJson());
+	private Map<String, Object> resolveLatestFormData(String noticeType, Contract contract, ContractPayment payment, Map<String, Object> formData) {
+		if (formData != null && !formData.isEmpty()) {
+			return formData;
 		}
+		if (contract == null || contract.getContractId() == null) {
+			return Collections.emptyMap();
+		}
+		String businessType = noticeWorkflowBusinessType(noticeType);
+		if (StringUtil.isBlank(businessType)) {
+			return Collections.emptyMap();
+		}
+		Long paymentId = payment == null ? null : payment.getPaymentId();
+		ContractWorkflowRecord record = contractWorkflowTraceService.latestRecord(noticeType, businessType, contract.getContractId(), paymentId);
+		if (record == null) {
+			return Collections.emptyMap();
+		}
+		return parseFormData(record.getFormDataJson());
+	}
 
-		private String noticeWorkflowBusinessType(String noticeType) {
-			return switch (normalizeNoticeType(noticeType)) {
-				case NOTICE_TERMINATION, NOTICE_TERMINATION_AGREEMENT -> "contract_termination";
-				case NOTICE_ROOM_REVIEW -> "contract_room_review";
-				case NOTICE_PROJECT_APPROVAL, NOTICE_LEGAL -> "contract_overdue_legal";
-				case NOTICE_CONTRACT_APPROVAL, NOTICE_CONTRACT_FIXED, NOTICE_CONTRACT_FLOATING -> "contract_approval";
-				default -> null;
-			};
-		}
+	private String noticeWorkflowBusinessType(String noticeType) {
+		return switch (normalizeNoticeType(noticeType)) {
+			case NOTICE_PAYMENT, NOTICE_INVOICE -> "contract_payment";
+			case NOTICE_TERMINATION, NOTICE_TERMINATION_AGREEMENT -> "contract_termination";
+			case NOTICE_ROOM_REVIEW -> "contract_room_review";
+			case NOTICE_PROJECT_APPROVAL, NOTICE_REMINDER, NOTICE_OVERDUE, NOTICE_LEGAL, NOTICE_MOVE_OUT -> "contract_overdue_legal";
+			case NOTICE_CONTRACT_APPROVAL, NOTICE_CONTRACT_FIXED, NOTICE_CONTRACT_FLOATING -> "contract_approval";
+			default -> null;
+		};
+	}
 
-		private boolean needsPayment(String noticeType) {
-			return Set.of(NOTICE_PAYMENT, NOTICE_REMINDER, NOTICE_INVOICE, NOTICE_PROJECT_APPROVAL, NOTICE_OVERDUE, NOTICE_LEGAL).contains(normalizeNoticeType(noticeType));
+	private boolean needsPayment(String noticeType) {
+		return Set.of(NOTICE_PAYMENT, NOTICE_REMINDER, NOTICE_INVOICE, NOTICE_PROJECT_APPROVAL, NOTICE_OVERDUE, NOTICE_LEGAL).contains(normalizeNoticeType(noticeType));
+	}
+
+	private Map<String, String> workflowApprovalFields(NoticeContext context) {
+		if (context == null || context.contract == null || context.contract.getContractId() == null) {
+			return Collections.emptyMap();
 		}
+		String businessType = noticeWorkflowBusinessType(context.noticeType);
+		if (StringUtil.isBlank(businessType)) {
+			return Collections.emptyMap();
+		}
+		Long paymentId = context.payment == null ? null : context.payment.getPaymentId();
+		return contractWorkflowTraceService.approvalFields(context.noticeType, businessType, context.contract.getContractId(), paymentId);
+	}
 
 	private Map<String, String> createCommonFields(NoticeContext context) {
 		Map<String, String> fields = new LinkedHashMap<>();
@@ -619,6 +632,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		fields.put("未缴金额", formatMoney(context.unpaidAmount()));
 		fields.put("逾期天数", String.valueOf(context.overdueDays()));
 		fields.put("合同状态", context.contractStatusName());
+		fields.putAll(workflowApprovalFields(context));
 		return fields;
 	}
 
@@ -896,6 +910,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			formValue(context, "a178228940119047948", "申请内容", "terminationReason", "退租原因", "reason"),
 			buildTerminationSummary(context)
 		));
+		fields.putAll(workflowApprovalFields(context));
 		return fields;
 	}
 
@@ -904,20 +919,21 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		Contract contract = context.contract;
 		fields.put("承租单位", context.customerName());
 		fields.put("联系人", firstNotBlank(context.customer == null ? null : context.customer.getContactName(), "-"));
-			fields.put("联系电话", firstNotBlank(customerContactPhone(context), "-"));
-			fields.put("房屋地址", context.roomDisplay());
-			fields.put("合同期限", formatChineseDate(contract == null ? null : contract.getStartDate()) + "至" + formatChineseDate(contract == null ? null : contract.getEndDate()));
-			fields.put("申请退租日期", formatChineseDateText(firstNotBlank(
-				formValue(context, "returnDate", "expectedTerminationDate", "申请退租日期", "退租日期"),
-				formatDate(DateUtil.now())
-			)));
-			fields.put("退租理由", firstNotBlank(
-				formValue(context, "handoverResult", "terminationReason", "退租理由", "退租原因"),
-				"退租审批通过，进入房屋退租交接验收"
-			));
-			fields.put("应退租赁押金", formatMoney(contract == null ? null : contract.getDeposit()));
-			return fields;
-		}
+		fields.put("联系电话", firstNotBlank(customerContactPhone(context), "-"));
+		fields.put("房屋地址", context.roomDisplay());
+		fields.put("合同期限", formatChineseDate(contract == null ? null : contract.getStartDate()) + "至" + formatChineseDate(contract == null ? null : contract.getEndDate()));
+		fields.put("申请退租日期", formatChineseDateText(firstNotBlank(
+			formValue(context, "returnDate", "expectedTerminationDate", "申请退租日期", "退租日期"),
+			formatDate(DateUtil.now())
+		)));
+		fields.put("退租理由", firstNotBlank(
+			formValue(context, "handoverResult", "terminationReason", "退租理由", "退租原因"),
+			"退租审批通过，进入房屋退租交接验收"
+		));
+		fields.put("应退租赁押金", formatMoney(contract == null ? null : contract.getDeposit()));
+		fields.putAll(workflowApprovalFields(context));
+		return fields;
+	}
 
 	private Map<String, String> createTerminationReplacements(NoticeContext context) {
 		Map<String, String> replacements = new LinkedHashMap<>();
@@ -1059,6 +1075,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		fields.put("分管领导", firstNotBlank(formValue(context, "a178229196922319221", "分管领导"), "-"));
 		fields.put("总经理审批", firstNotBlank(formValue(context, "a17822920239039332", "总经理审批"), "-"));
 		fields.put("备注", contract == null ? "-" : Func.toStr(contract.getRemark(), "-"));
+		fields.putAll(workflowApprovalFields(context));
 		return fields;
 	}
 
@@ -1250,6 +1267,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		if (StringUtil.isBlank(fields.get("房租")) && StringUtil.isBlank(fields.get("物业")) && StringUtil.isBlank(fields.get("押金"))) {
 			fields.put(context.feeName(), amount);
 		}
+		fields.putAll(workflowApprovalFields(context));
 		return fields;
 	}
 

@@ -46,3 +46,5 @@ settings.xml
 # AI/local workspace
 .claude/
 .codex-run/
+.playwright-cli/
+output/

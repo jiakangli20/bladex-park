@@ -1,5 +1,7 @@
 -- 逾期管理 - 逾期提醒菜单
 
+SET NAMES utf8mb4;
+
 INSERT INTO `blade_menu`
 (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `sort`, `category`, `action`, `is_open`, `component`, `remark`, `is_deleted`)
 SELECT 1890000000006000500,

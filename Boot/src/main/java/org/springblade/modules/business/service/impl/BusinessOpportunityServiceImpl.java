@@ -329,14 +329,15 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (Func.isEmpty(opportunity)) {
 			throw new ServiceException("商机不存在");
 		}
-		Map<String, Object> variables = loadProcessVariables(processInsId);
+		String resolvedProcessInsId = firstNotBlank(processInsId, opportunity.getTenantEntryProcessInsId());
+		Map<String, Object> variables = loadProcessVariables(resolvedProcessInsId);
 		variables.put("applyUserName", firstNotBlank(opportunity.getCreateBy(), currentUserName()));
-		String html = tenantEntryWorkflowService.buildApprovalHtml(opportunity, variables);
+		String html = tenantEntryWorkflowService.buildApprovalHtml(opportunity, variables, resolvedProcessInsId);
 		Map<String, Object> result = new HashMap<>(8);
 		result.put("fileName", "企业入驻审批表-" + opportunity.getEnterpriseName() + ".html");
 		result.put("contentType", "text/html;charset=utf-8");
 		result.put("html", html);
-		result.put("processInsId", processInsId);
+		result.put("processInsId", resolvedProcessInsId);
 		result.put("generatedAt", DateUtil.formatDateTime(new Date()));
 		return result;
 	}

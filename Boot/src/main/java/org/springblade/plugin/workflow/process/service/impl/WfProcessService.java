@@ -640,22 +640,28 @@ public class WfProcessService implements IWfProcessService {
 		process.setAssigneeName(WfTaskUtil.getNickName());
 		process.setTaskDefinitionKey(task.getTaskDefinitionKey());
 
-		// 最后操作人
-		taskService.setVariable(taskId, WfProcessConstant.TASK_VARIABLE_LATEST_TASK_ASSIGNEE, WfTaskUtil.getTaskUser());
-		if (process.isPass()) { // 审核通过
-			this.passTask(process, task);
-		} else { // 审核不通过
-			this.rejectTask(process);
-		}
+		String taskUser = WfTaskUtil.getTaskUser();
+		identityService.setAuthenticatedUserId(taskUser);
+		try {
+			// 最后操作人
+			taskService.setVariable(taskId, WfProcessConstant.TASK_VARIABLE_LATEST_TASK_ASSIGNEE, taskUser);
+			if (process.isPass()) { // 审核通过
+				this.passTask(process, task);
+			} else { // 审核不通过
+				this.rejectTask(process);
+			}
 
-		// 处理抄送
-		if (StringUtil.isNotBlank(process.getCopyUser())) {
-			wfCopyService.resolveCopyUser((WfCopyDTO) new WfCopyDTO()
-					.setCopyUser(process.getCopyUser())
-					.setTask(task));
+			// 处理抄送
+			if (StringUtil.isNotBlank(process.getCopyUser())) {
+				wfCopyService.resolveCopyUser((WfCopyDTO) new WfCopyDTO()
+						.setCopyUser(process.getCopyUser())
+						.setTask(task));
+			}
+			// 删除草稿箱
+			wfDraftService.deleteByTaskId(taskId, taskUser);
+		} finally {
+			identityService.setAuthenticatedUserId(null);
 		}
-		// 删除草稿箱
-		wfDraftService.deleteByTaskId(taskId, WfTaskUtil.getTaskUser());
 
 		return R.success("操作成功");
 	}
@@ -818,76 +824,82 @@ public class WfProcessService implements IWfProcessService {
 			taskService.claim(taskId, WfTaskUtil.getTaskUser());
 		}
 
-		ActivityInstance targetRealActivityInstance = runtimeService
-			.createActivityInstanceQuery()
-			.processInstanceId(task.getProcessInstanceId())
-			.activityId(nodeId).list().get(0);
-		if (targetRealActivityInstance.getActivityType().equals(BpmnXMLConstants.ELEMENT_EVENT_START)) {
-			process.setProcessInstanceId(task.getProcessInstanceId());
-			this.terminateProcess(process);
-		} else {
-			if (StringUtil.isNoneBlank(comment)) { // 增加评论
-				taskService.addComment(taskId, task.getProcessInstanceId(), WfProcessConstant.COMMENT_TYPE_ROLLBACK, comment);
-			}
-			List<AttachmentEntityImpl> attachment = process.getAttachment();
-			if (ObjectUtil.isNotEmpty(attachment)) { // 增加评论附件
-				attachment.forEach(att -> taskService.saveAttachment(taskService.createAttachment(WfProcessConstant.COMMENT_TYPE_ROLLBACK, taskId, task.getProcessInstanceId(), att.getName(), comment, att.getUrl())));
-			}
-			taskService.setVariable(taskId, WfProcessConstant.TASK_VARIABLE_PROCESS_TERMINATE, WfProcessConstant.STATUS_REJECT); // 添加驳回标记
-			// 最后操作人
-			taskService.setVariable(taskId, WfProcessConstant.TASK_VARIABLE_LATEST_TASK_ASSIGNEE, WfTaskUtil.getTaskUser());
-
-			BpmnModel model = repositoryService.getBpmnModel(task.getProcessDefinitionId());
-
-			// 被驳回的节点是否配置了 重新提交回到驳回人
-			if (model != null) {
-				String backToRejecter = WfModelUtil.getUserTaskExtensionAttribute(process.getNodeId(), model, WfExtendConstant.BACK_TO_REJECTER);
-				if (StringUtil.isNotBlank(backToRejecter) && "true".equals(backToRejecter)) {
-					taskService.setVariable(taskId, WfExtendConstant.BACK_TO_REJECTER, task.getTaskDefinitionKey());
+		String taskUser = WfTaskUtil.getTaskUser();
+		identityService.setAuthenticatedUserId(taskUser);
+		try {
+			ActivityInstance targetRealActivityInstance = runtimeService
+				.createActivityInstanceQuery()
+				.processInstanceId(task.getProcessInstanceId())
+				.activityId(nodeId).list().get(0);
+			if (targetRealActivityInstance.getActivityType().equals(BpmnXMLConstants.ELEMENT_EVENT_START)) {
+				process.setProcessInstanceId(task.getProcessInstanceId());
+				this.terminateProcess(process);
+			} else {
+				if (StringUtil.isNoneBlank(comment)) { // 增加评论
+					taskService.addComment(taskId, task.getProcessInstanceId(), WfProcessConstant.COMMENT_TYPE_ROLLBACK, comment);
 				}
-			}
+				List<AttachmentEntityImpl> attachment = process.getAttachment();
+				if (ObjectUtil.isNotEmpty(attachment)) { // 增加评论附件
+					attachment.forEach(att -> taskService.saveAttachment(taskService.createAttachment(WfProcessConstant.COMMENT_TYPE_ROLLBACK, taskId, task.getProcessInstanceId(), att.getName(), comment, att.getUrl())));
+				}
+				taskService.setVariable(taskId, WfProcessConstant.TASK_VARIABLE_PROCESS_TERMINATE, WfProcessConstant.STATUS_REJECT); // 添加驳回标记
+				// 最后操作人
+				taskService.setVariable(taskId, WfProcessConstant.TASK_VARIABLE_LATEST_TASK_ASSIGNEE, taskUser);
+
+				BpmnModel model = repositoryService.getBpmnModel(task.getProcessDefinitionId());
+
+				// 被驳回的节点是否配置了 重新提交回到驳回人
+				if (model != null) {
+					String backToRejecter = WfModelUtil.getUserTaskExtensionAttribute(process.getNodeId(), model, WfExtendConstant.BACK_TO_REJECTER);
+					if (StringUtil.isNotBlank(backToRejecter) && "true".equals(backToRejecter)) {
+						taskService.setVariable(taskId, WfExtendConstant.BACK_TO_REJECTER, task.getTaskDefinitionKey());
+					}
+				}
 
 //			this.dispatchTaskTo(task.getProcessInstanceId(), nodeId);
 
-			UserTask userTask = WfModelUtil.getUserTaskByKey(task.getTaskDefinitionKey(), model);
-            UserTask targetUserTask = WfModelUtil.getUserTaskByKey(nodeId, model);
-            SubProcess targetSubProcess = null;
-            if (targetUserTask != null) {
-                targetSubProcess = targetUserTask.getSubProcess();
-            }
-            boolean isParallelGateway = false;
-            boolean isSubProcess = false;
-            if (userTask != null) {
-                isParallelGateway = WfModelUtil.isInParallelGateway(userTask, model);
-				if (!isParallelGateway) {
-					SubProcess subProcess = userTask.getSubProcess();
-					// 子流程驳回。1、子流程内部驳回，只驳回单个节点。2、子流程驳回到外部，驳回所有节点。
-					if (subProcess != null) {
-						// 当前任务与驳回目标节点不在子流程中或者不在同一子流程中。
-						if (targetSubProcess != null && targetSubProcess.getId().equals(subProcess.getId())) {
-							isSubProcess = true;
+				UserTask userTask = WfModelUtil.getUserTaskByKey(task.getTaskDefinitionKey(), model);
+	            UserTask targetUserTask = WfModelUtil.getUserTaskByKey(nodeId, model);
+	            SubProcess targetSubProcess = null;
+	            if (targetUserTask != null) {
+	                targetSubProcess = targetUserTask.getSubProcess();
+	            }
+	            boolean isParallelGateway = false;
+	            boolean isSubProcess = false;
+	            if (userTask != null) {
+	                isParallelGateway = WfModelUtil.isInParallelGateway(userTask, model);
+					if (!isParallelGateway) {
+						SubProcess subProcess = userTask.getSubProcess();
+						// 子流程驳回。1、子流程内部驳回，只驳回单个节点。2、子流程驳回到外部，驳回所有节点。
+						if (subProcess != null) {
+							// 当前任务与驳回目标节点不在子流程中或者不在同一子流程中。
+							if (targetSubProcess != null && targetSubProcess.getId().equals(subProcess.getId())) {
+								isSubProcess = true;
+							}
 						}
 					}
 				}
-            }
-			if (isParallelGateway && !WfModelUtil.isInParallelGateway(targetUserTask, model)) {
-                this.dispatchTaskTo(task.getProcessInstanceId(), nodeId);
-            } else if (isSubProcess) {
-				runtimeService.createChangeActivityStateBuilder()
+				if (isParallelGateway && !WfModelUtil.isInParallelGateway(targetUserTask, model)) {
+	                this.dispatchTaskTo(task.getProcessInstanceId(), nodeId);
+	            } else if (isSubProcess) {
+					runtimeService.createChangeActivityStateBuilder()
 						.moveExecutionToActivityId(task.getExecutionId(), nodeId).changeState();
-			} else {
-                runtimeService.createChangeActivityStateBuilder()
+				} else {
+	                runtimeService.createChangeActivityStateBuilder()
                         .processInstanceId(task.getProcessInstanceId())
                         .moveActivityIdTo(task.getTaskDefinitionKey(), nodeId).changeState();
-            }
-			// 添加指定标记，防止并行网关中指定时查询错误。
-			List<Task> taskList = taskService.createTaskQuery()
-				.processInstanceId(task.getProcessInstanceId())
-				.taskDefinitionKey(nodeId)
-				.list();
-			if (!taskList.isEmpty()) {
-				taskList.forEach(t -> taskService.setVariableLocal(t.getId(), WfProcessConstant.TASK_VARIABLE_APPOINT, "1"));
+	            }
+				// 添加指定标记，防止并行网关中指定时查询错误。
+				List<Task> taskList = taskService.createTaskQuery()
+					.processInstanceId(task.getProcessInstanceId())
+					.taskDefinitionKey(nodeId)
+					.list();
+				if (!taskList.isEmpty()) {
+					taskList.forEach(t -> taskService.setVariableLocal(t.getId(), WfProcessConstant.TASK_VARIABLE_APPOINT, "1"));
+				}
 			}
+		} finally {
+			identityService.setAuthenticatedUserId(null);
 		}
 
 		return R.success("退回成功");
@@ -913,19 +925,25 @@ public class WfProcessService implements IWfProcessService {
 		}
 		// 添加终止标记
 		taskService.setVariable(taskId, WfProcessConstant.TASK_VARIABLE_PROCESS_TERMINATE, "true");
-		// 最后操作人
-		taskService.setVariable(taskId, WfProcessConstant.TASK_VARIABLE_LATEST_TASK_ASSIGNEE, WfTaskUtil.getTaskUser());
+		String taskUser = WfTaskUtil.getTaskUser();
+		identityService.setAuthenticatedUserId(taskUser);
+		try {
+			// 最后操作人
+			taskService.setVariable(taskId, WfProcessConstant.TASK_VARIABLE_LATEST_TASK_ASSIGNEE, taskUser);
 
-		// 增加评论
-		if (StringUtil.isNoneBlank(task.getProcessInstanceId(), comment)) {
-			taskService.addComment(taskId, task.getProcessInstanceId(), WfProcessConstant.COMMENT_TYPE_TERMINATE, comment);
+			// 增加评论
+			if (StringUtil.isNoneBlank(task.getProcessInstanceId(), comment)) {
+				taskService.addComment(taskId, task.getProcessInstanceId(), WfProcessConstant.COMMENT_TYPE_TERMINATE, comment);
+			}
+			// 评论附件
+			List<AttachmentEntityImpl> attachment = process.getAttachment();
+			if (ObjectUtil.isNotEmpty(attachment)) {
+				attachment.forEach(att -> taskService.saveAttachment(taskService.createAttachment(WfProcessConstant.COMMENT_TYPE_TERMINATE, taskId, task.getProcessInstanceId(), att.getName(), comment, att.getUrl())));
+			}
+			this.dispatchTaskTo(task.getProcessInstanceId(), endEvent.getId());
+		} finally {
+			identityService.setAuthenticatedUserId(null);
 		}
-		// 评论附件
-		List<AttachmentEntityImpl> attachment = process.getAttachment();
-		if (ObjectUtil.isNotEmpty(attachment)) {
-			attachment.forEach(att -> taskService.saveAttachment(taskService.createAttachment(WfProcessConstant.COMMENT_TYPE_TERMINATE, taskId, task.getProcessInstanceId(), att.getName(), comment, att.getUrl())));
-		}
-		this.dispatchTaskTo(task.getProcessInstanceId(), endEvent.getId());
 		return R.success("终止成功");
 	}
 

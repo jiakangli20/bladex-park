@@ -17,6 +17,7 @@ import org.springblade.modules.business.pojo.entity.BusinessOpportunity;
 import org.springblade.modules.business.pojo.entity.Customer;
 import org.springblade.modules.business.service.ICustomerService;
 import org.springblade.modules.business.service.ITenantEntryWorkflowService;
+import org.springblade.modules.approval.service.impl.WorkflowApprovalTraceService;
 import org.springblade.plugin.workflow.core.constant.WfProcessConstant;
 import org.springblade.plugin.workflow.core.user.WfUser;
 import org.springblade.plugin.workflow.core.user.WfUserService;
@@ -59,6 +60,7 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 	private final CustomerMapper customerMapper;
 	private final ICustomerService customerService;
 	private final WfUserService wfUserService;
+	private final WorkflowApprovalTraceService workflowApprovalTraceService;
 	private final ObjectProvider<IWfCopyService> wfCopyServiceProvider;
 
 	@Override
@@ -185,14 +187,16 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 			+ "?processInsId=" + processInstance.getId();
 	}
 
-	public String buildApprovalHtml(BusinessOpportunity opportunity, Map<String, Object> variables) {
+	public String buildApprovalHtml(BusinessOpportunity opportunity, Map<String, Object> variables, String processInsId) {
 		StringBuilder html = new StringBuilder();
+		Map<String, String> approvalFields = workflowApprovalTraceService.approvalFields(processInsId);
 		String applicant = firstNotBlank(getString(variables, "applicant", null), getString(variables, WfProcessConstant.TASK_VARIABLE_APPLY_USER_NAME, opportunity.getCreateBy()));
 		String dept = getString(variables, "applicantDept", "");
 		String applyTime = normalizeDisplayDate(firstNotBlank(getString(variables, "applyTime", null), DateUtil.format(new Date(), DateUtil.PATTERN_DATE)));
 		String principalName = firstNotBlank(getString(variables, "principalName", null), opportunity.getContactName());
 		String principalPhone = firstNotBlank(getString(variables, "principalPhone", null), opportunity.getContactPhone());
 		String leaseFloorArea = firstNotBlank(getString(variables, "leaseFloorArea", null), formatArea(opportunity));
+		String approvalTimeline = approvalValue(approvalFields, "审批流转信息", "流转信息", "审批记录");
 		html.append("<style>")
 			.append("@page{size:A4 portrait;margin:10mm 12mm;}")
 			.append("@media print{body{margin:0;}}")
@@ -214,9 +218,12 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 		appendFullRow(html, "合同有效期", firstNotBlank(getString(variables, "contractPeriod", null), opportunity.getLeaseTermLabel()), 42);
 		appendCells(html, "经办人", firstNotBlank(getString(variables, "handlerName", null), applicant), "部门", firstNotBlank(getString(variables, "handlerDept", null), dept));
 		appendFullRow(html, "审批事项", getString(variables, "approvalMatter", ""), 58);
-		appendSignRow(html, "部门审批：");
-		appendSignRow(html, "分管领导审批：");
-		appendSignRow(html, "总经理审批：");
+		appendSignRow(html, "部门审批：", approvalValue(approvalFields, "部门审批", "部门经理", "经理审批"));
+		appendSignRow(html, "分管领导审批：", approvalValue(approvalFields, "分管领导审批", "分管领导"));
+		appendSignRow(html, "总经理审批：", approvalValue(approvalFields, "总经理审批", "总经理"));
+		if (StringUtil.isNotBlank(approvalTimeline)) {
+			appendFullRow(html, "审批流转信息", approvalTimeline, 78);
+		}
 		html.append("</table>");
 		html.append("</div>");
 		return html.toString();
@@ -238,10 +245,12 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 			.append("</tr>");
 	}
 
-	private void appendSignRow(StringBuilder html, String key) {
+	private void appendSignRow(StringBuilder html, String key, String value) {
 		html.append("<tr style=\"height:62px;\">")
 			.append(th(key))
-			.append("<td colspan=\"3\" style=\"border:1px solid #111;padding:6px;vertical-align:bottom;text-align:center;\">签字：</td>")
+			.append("<td colspan=\"3\" style=\"border:1px solid #111;padding:6px;vertical-align:middle;text-align:left;white-space:pre-wrap;\">")
+			.append(escapeHtml(firstNotBlank(value, "签字：")))
+			.append("</td>")
 			.append("</tr>");
 	}
 
@@ -283,8 +292,29 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 		return StringUtil.isBlank(userName) ? AuthUtil.getNickName() : userName;
 	}
 
-	private String firstNotBlank(String first, String second) {
-		return StringUtil.isNotBlank(first) ? first : second;
+	private String approvalValue(Map<String, String> fields, String... keys) {
+		if (fields == null || fields.isEmpty() || keys == null) {
+			return "";
+		}
+		for (String key : keys) {
+			String value = fields.get(key);
+			if (StringUtil.isNotBlank(value)) {
+				return value;
+			}
+		}
+		return "";
+	}
+
+	private String firstNotBlank(String... values) {
+		if (values == null) {
+			return null;
+		}
+		for (String value : values) {
+			if (StringUtil.isNotBlank(value)) {
+				return value;
+			}
+		}
+		return null;
 	}
 
 	private String value(String value) {
