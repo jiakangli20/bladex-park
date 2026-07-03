@@ -45,6 +45,7 @@ import org.springblade.modules.contract.pojo.vo.ContractArchiveDetailVO;
 import org.springblade.modules.contract.pojo.vo.ContractArchiveVO;
 import org.springblade.modules.contract.pojo.vo.TerminationArchiveVO;
 import org.springblade.modules.contract.service.IContractArchiveService;
+import org.springblade.modules.contract.service.IContractNoticeService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -74,6 +75,7 @@ public class ContractArchiveServiceImpl implements IContractArchiveService {
 	private final ContractPaymentMapper contractPaymentMapper;
 	private final ContractLogMapper contractLogMapper;
 	private final ContractSupplementAgreementMapper contractSupplementAgreementMapper;
+	private final IContractNoticeService contractNoticeService;
 
 	@Override
 	public IPage<ContractArchiveVO> selectArchivePage(IPage<ContractArchiveVO> page, ContractArchiveVO contract) {
@@ -100,13 +102,10 @@ public class ContractArchiveServiceImpl implements IContractArchiveService {
 
 	@Override
 	public Kv exportApproval(Long contractId) {
-		ContractArchiveVO contract = requireContract(contractId);
-		String fileName = "合同审批表-" + value(firstNonBlank(contract.getContractNo(), String.valueOf(contract.getContractId()))) + ".html";
-		return Kv.create()
-			.set("fileName", fileName)
-			.set("contentType", "text/html;charset=utf-8")
-			.set("html", buildApprovalHtml(contract))
-			.set("generatedAt", DateUtil.formatDateTime(new Date()));
+		requireContract(contractId);
+		return contractNoticeService
+			.buildNoticePreview(IContractNoticeService.NOTICE_CONTRACT_APPROVAL, null, contractId, null)
+			.set("downloadUrl", "/blade-contract/print/contract-approval/" + contractId);
 	}
 
 	@Override

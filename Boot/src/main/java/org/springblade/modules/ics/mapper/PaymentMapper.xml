@@ -117,6 +117,8 @@
 			SELECT payment_id, MAX(record_id) AS record_id
 			FROM biz_contract_workflow_record
 			WHERE business_type = 'contract_payment'
+			  AND COALESCE(process_def_key, '') != 'invoice'
+			  AND COALESCE(form_key, '') != 'invoice'
 			  AND del_flag = '0'
 			GROUP BY payment_id
 		) latest_pay_cwr ON latest_pay_cwr.payment_id = p.payment_id

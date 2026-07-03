@@ -72,6 +72,16 @@ export const getOverdueReminderSummary = params => {
   });
 };
 
+export const getOverdueDisposalDetail = paymentId => {
+  return request({
+    url: '/blade-ics/payment/overdue-disposal-detail',
+    method: 'get',
+    params: {
+      paymentId,
+    },
+  });
+};
+
 export const confirmPayment = (paymentId, row) => {
   return request({
     url: '/blade-ics/payment/confirm',
@@ -106,6 +116,16 @@ export const remindOverduePayment = paymentId => {
 export const getPaymentLogs = contractId => {
   return request({
     url: '/blade-ics/payment/log-list',
+    method: 'get',
+    params: {
+      contractId,
+    },
+  });
+};
+
+export const getOverduePaymentLogs = contractId => {
+  return request({
+    url: '/blade-ics/payment/overdue-log-list',
     method: 'get',
     params: {
       contractId,
@@ -171,6 +191,26 @@ export const generatePaymentNotice = paymentId => {
 export const sendPaymentNoticeMiniApp = paymentId => {
   return request({
     url: '/blade-ics/payment/notice-miniapp-send',
+    method: 'post',
+    params: {
+      paymentId,
+    },
+  });
+};
+
+export const sendPaymentNoticeSms = paymentId => {
+  return request({
+    url: '/blade-ics/payment/notice-sms-send',
+    method: 'post',
+    params: {
+      paymentId,
+    },
+  });
+};
+
+export const sendPaymentNoticeEmail = paymentId => {
+  return request({
+    url: '/blade-ics/payment/notice-email-send',
     method: 'post',
     params: {
       paymentId,

@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
+import org.springblade.modules.ics.pojo.vo.OverdueDisposalDetailVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticePlaceholderVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeSummaryVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeVO;
@@ -82,6 +83,14 @@ public interface IPaymentService {
 	List<ContractLog> logList(Long contractId);
 
 	/**
+	 * 逾期处置闭环详情.
+	 *
+	 * @param paymentId 账单ID
+	 * @return 闭环详情
+	 */
+	OverdueDisposalDetailVO overdueDisposalDetail(Long paymentId);
+
+	/**
 	 * 收款通知占位.
 	 *
 	 * @return 占位说明
@@ -136,5 +145,21 @@ public interface IPaymentService {
 	 * @return 通知详情
 	 */
 	PaymentNoticeVO sendMiniAppNotice(Long paymentId);
+
+	/**
+	 * 短信发送入口.
+	 *
+	 * @param paymentId 账单ID
+	 * @return 通知详情
+	 */
+	PaymentNoticeVO sendSmsNotice(Long paymentId);
+
+	/**
+	 * 邮件发送入口.
+	 *
+	 * @param paymentId 账单ID
+	 * @return 通知详情
+	 */
+	PaymentNoticeVO sendEmailNotice(Long paymentId);
 
 }

@@ -31,8 +31,8 @@
                 <el-option v-for="item in noticeStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
-            <el-form-item label="站内信发送状态">
-              <el-select v-model="query.inboxStatus" clearable placeholder="请选择站内信发送状态">
+            <el-form-item label="小程序发送状态">
+              <el-select v-model="query.miniappStatus" clearable placeholder="请选择小程序发送状态">
                 <el-option v-for="item in noticeStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
@@ -62,8 +62,8 @@
 
       <section class="notice-toolbar">
         <div></div>
-        <el-button type="primary" plain icon="el-icon-printer" :disabled="selectionList.length === 0" @click="printSelected">
-          打印
+        <el-button type="primary" plain icon="el-icon-view" :disabled="selectionList.length !== 1" @click="previewSelected">
+          预览
         </el-button>
       </section>
 
@@ -93,17 +93,19 @@
               <el-tag :type="noticeStatusType(row.emailStatus)" effect="plain">{{ noticeStatusText(row.emailStatus) }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="inboxStatus" label="站内信发送状态" width="140" align="center">
+          <el-table-column prop="miniappStatus" label="小程序发送状态" width="140" align="center">
             <template #default="{ row }">
-              <el-tag :type="noticeStatusType(row.inboxStatus)" effect="plain">{{ noticeStatusText(row.inboxStatus) }}</el-tag>
+              <el-tag :type="noticeStatusType(row.miniappStatus)" effect="plain">{{ noticeStatusText(row.miniappStatus) }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="generatedDate" label="生成日期" width="120" align="center" />
-          <el-table-column label="操作" width="180" align="center" fixed="right">
+          <el-table-column label="操作" width="286" align="center" fixed="right">
             <template #default="{ row }">
               <div class="notice-actions">
-                <el-button text type="primary" @click="handleResend(row)">重新发送</el-button>
-                <el-button text type="primary" @click="handleDownload(row)">下载</el-button>
+                <el-button text type="primary" @click="handleSendSms(row)">发短信</el-button>
+                <el-button text type="primary" @click="handleSendEmail(row)">发邮件</el-button>
+                <el-button text type="primary" @click="handleSendMiniApp(row)">发小程序</el-button>
+                <el-button text type="primary" @click="handlePreview(row)">预览</el-button>
               </div>
             </template>
           </el-table-column>
@@ -122,23 +124,45 @@
           />
         </div>
       </section>
+
+      <notice-preview-dialog
+        v-model="noticePreview.visible"
+        :title="noticePreview.title"
+        :html="noticePreview.html"
+        :loading="noticePreview.loading"
+        :download-url="noticePreview.downloadUrl"
+        :show-print="true"
+        @download="downloadNoticePreviewFile"
+        @print="printNoticePreview"
+      />
     </div>
   </basic-container>
 </template>
 
 <script>
+import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
+import { noticePrintUrl } from '@/api/contract/print';
 import {
   generatePaymentNotice,
   getPaymentNoticeBuildings,
   getPaymentNoticePage,
   getPaymentNoticeSummary,
-  resendPaymentNotice,
+  sendPaymentNoticeEmail,
+  sendPaymentNoticeMiniApp,
+  sendPaymentNoticeSms,
 } from '@/api/ics/payment';
-import { downloadBlob } from '@/api/common';
-import { downloadFile } from '@/utils/util';
+import {
+  createNoticePreviewState,
+  downloadNoticeFile,
+  openNoticePreview,
+} from '@/utils/contract-notice';
+import { printHtml } from '@/utils/print-html';
 
 export default {
   name: 'FinancePaymentNotice',
+  components: {
+    NoticePreviewDialog,
+  },
   data() {
     return {
       query: {},
@@ -152,6 +176,8 @@ export default {
         pageSize: 10,
         total: 0,
       },
+      noticePreview: createNoticePreviewState(),
+      previewRow: null,
       noticeStatusOptions: [
         { label: '未发送', value: 'pending' },
         { label: '发送成功', value: 'success' },
@@ -165,6 +191,7 @@ export default {
         { key: 'generated', label: '已生成', value: this.summary.generatedCount || 0 },
         { key: 'sms', label: '短信发送成功', value: this.summary.smsSuccessCount || 0 },
         { key: 'email', label: '邮箱发送成功', value: this.summary.emailSuccessCount || 0 },
+        { key: 'miniapp', label: '小程序发送成功', value: this.summary.miniappSuccessCount || 0 },
       ];
     },
   },
@@ -231,42 +258,89 @@ export default {
     selectionChange(selection) {
       this.selectionList = selection;
     },
-    handleResend(row) {
-      this.$confirm('确定重新发送该收款通知吗？', '提示', {
+    handleSendMiniApp(row) {
+      if (!row || !row.paymentId) return;
+      this.$confirm('确定发送该收款通知到小程序吗？', '提示', {
         type: 'warning',
       })
-        .then(() => resendPaymentNotice(row.paymentId))
+        .then(() => sendPaymentNoticeMiniApp(row.paymentId))
         .then(() => {
-          this.$message.success('收款通知已重新发送');
+          this.$message.success('收款通知已生成小程序发送记录');
           this.reload();
         })
         .catch(() => {});
     },
-    handleDownload(row) {
-      const directUrl = `/blade-contract/print/payment-notice/${row.paymentId}`;
-      const fallbackName = `${row.paymentNo || row.paymentId || '收款通知'}-付款通知单.docx`;
-      downloadBlob(directUrl).then(res => {
-        const disposition = res.headers && res.headers['content-disposition'];
-        const filename = this.resolveDownloadFilename(disposition, fallbackName);
-        const contentType = (res.headers && res.headers['content-type']) || 'application/octet-stream';
-        downloadFile(res.data, filename, contentType);
-        if (!row.fileUrl) {
+    handleSendSms(row) {
+      if (!row || !row.paymentId) return;
+      const tips = row.contactPhone
+        ? `将向 ${row.contactPhone} 发送短信通知。当前短信通道未接入，会记录发送失败，是否继续？`
+        : '当前客商缺少手机号，会记录短信发送失败，是否继续？';
+      this.$confirm(tips, '短信发送', {
+        type: 'warning',
+      })
+        .then(() => sendPaymentNoticeSms(row.paymentId))
+        .then(() => {
+          this.$message.warning('短信通道未接入，已记录发送失败');
+          this.reload();
+        })
+        .catch(() => {});
+    },
+    handleSendEmail(row) {
+      if (!row || !row.paymentId) return;
+      const tips = row.contactEmail
+        ? `将向 ${row.contactEmail} 发送邮件通知。当前邮箱通道未接入，会记录发送失败，是否继续？`
+        : '当前客商缺少邮箱，会记录邮件发送失败，是否继续？';
+      this.$confirm(tips, '邮件发送', {
+        type: 'warning',
+      })
+        .then(() => sendPaymentNoticeEmail(row.paymentId))
+        .then(() => {
+          this.$message.warning('邮箱通道未接入，已记录发送失败');
+          this.reload();
+        })
+        .catch(() => {});
+    },
+    handlePreview(row) {
+      if (!row || !row.paymentId) return;
+      const noticeType = 'invoice-apply';
+      this.previewRow = { ...row };
+      openNoticePreview(
+        this,
+        this.noticePreview,
+        {
+          noticeType,
+          paymentId: row.paymentId,
+          contractId: row.contractId,
+        },
+        noticePrintUrl(noticeType, {
+          paymentId: row.paymentId,
+          contractId: row.contractId,
+        }),
+        this.noticeFallbackName(row),
+        '开票申请单预览'
+      );
+    },
+    previewSelected() {
+      if (this.selectionList.length !== 1) return;
+      this.handlePreview(this.selectionList[0]);
+    },
+    noticeFallbackName(row) {
+      return `${(row && (row.paymentNo || row.paymentId)) || '收款通知'}-开票申请单.docx`;
+    },
+    downloadNoticePreviewFile() {
+      if (!this.noticePreview.downloadUrl) return;
+      downloadNoticeFile(this.noticePreview.downloadUrl, this.noticePreview.fallbackName).then(() => {
+        const row = this.previewRow;
+        if (row && !row.fileUrl) {
           generatePaymentNotice(row.paymentId).then(() => this.reload());
         }
       });
     },
-    printSelected() {
-      if (this.selectionList.length === 0) return;
-      this.selectionList.forEach(row => this.handleDownload(row));
-    },
-    resolveDownloadFilename(disposition, fallbackName) {
-      if (!disposition) return fallbackName;
-      const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-      if (utf8Match && utf8Match[1]) {
-        return decodeURIComponent(utf8Match[1]);
+    printNoticePreview() {
+      const printed = printHtml(this.noticePreview.html, this.noticePreview.title || '开票申请单预览');
+      if (!printed) {
+        this.$message.warning('暂无可打印的预览内容');
       }
-      const filenameMatch = disposition.match(/filename="?([^";]+)"?/i);
-      return filenameMatch && filenameMatch[1] ? decodeURIComponent(filenameMatch[1]) : fallbackName;
     },
     noticeStatusText(value) {
       const item = this.noticeStatusOptions.find(option => option.value === value);
@@ -318,7 +392,7 @@ export default {
 
 .notice-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   padding: 22px 18px;
 }
 
@@ -397,8 +471,13 @@ export default {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 6px;
   white-space: nowrap;
+}
+
+.notice-actions :deep(.el-button) {
+  min-width: 50px;
+  padding: 0 2px;
 }
 
 .notice-actions .el-button + .el-button {
@@ -421,6 +500,10 @@ export default {
 @media (max-width: 1200px) {
   .notice-search-grid {
     grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+
+  .notice-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

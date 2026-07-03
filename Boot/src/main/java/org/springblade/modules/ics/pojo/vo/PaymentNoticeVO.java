@@ -109,6 +109,11 @@ public class PaymentNoticeVO implements Serializable {
 	@Schema(description = "小程序发送状态")
 	private String miniappStatus;
 
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@Schema(description = "小程序发送时间")
+	private Date miniappSendTime;
+
 	@Schema(description = "发送次数")
 	private Integer sendCount;
 
@@ -122,6 +127,9 @@ public class PaymentNoticeVO implements Serializable {
 
 	@Schema(description = "文件地址")
 	private String fileUrl;
+
+	@Schema(description = "备注")
+	private String remark;
 
 	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
 	@JsonFormat(pattern = DateUtil.PATTERN_DATE)

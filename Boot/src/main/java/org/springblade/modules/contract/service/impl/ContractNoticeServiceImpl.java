@@ -17,8 +17,10 @@ import org.springblade.modules.business.mapper.CustomerMapper;
 import org.springblade.modules.business.pojo.entity.Customer;
 import org.springblade.modules.contract.mapper.ContractMapper;
 import org.springblade.modules.contract.mapper.ContractPaymentMapper;
+import org.springblade.modules.contract.mapper.ContractWorkflowRecordMapper;
 import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
+import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractNoticeService;
 import org.springblade.modules.contract.service.IContractTemplateRenderService;
@@ -51,7 +53,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ContractNoticeServiceImpl implements IContractNoticeService {
 
-	private static final String TEMPLATE_CONTRACT_APPROVAL = "君联大厦招商管理办法2023/附件二：合同会签审批表.xlsx";
+	private static final String TEMPLATE_CONTRACT_APPROVAL = "君联大厦招商管理办法2023/附件二：合同会签审批表.docx";
 	private static final String TEMPLATE_PAYMENT = "君联大厦招商管理办法2023/附件四：君联大厦付款通知单.docx";
 	private static final String TEMPLATE_REMINDER = "君联大厦招商管理办法2023/附件五：催款通知书.docx";
 	private static final String TEMPLATE_OVERDUE = "君联大厦招商管理办法2023/附件六：租金逾期处理通知书.docx";
@@ -67,6 +69,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	private final ContractPaymentMapper contractPaymentMapper;
 	private final ContractMapper contractMapper;
 	private final CustomerMapper customerMapper;
+	private final ContractWorkflowRecordMapper contractWorkflowRecordMapper;
 	private final OssBuilder ossBuilder;
 	private final IContractTemplateRenderService contractTemplateRenderService;
 	private final ContractDocumentPreviewService contractDocumentPreviewService;
@@ -169,8 +172,9 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	@Override
 	public Kv buildMiniAppPayload(String noticeType, Long paymentId, Long contractId) {
 		String normalizedNoticeType = normalizeNoticeType(noticeType);
-		ContractNoticeFileVO document = uploadNotice(normalizedNoticeType, paymentId, contractId);
 		NoticeContext context = resolveContext(normalizedNoticeType, paymentId, contractId);
+		ContractNoticeFileVO document = buildNotice(normalizedNoticeType, paymentId, contractId);
+		document.setFileUrl(buildMiniAppDownloadPath(normalizedNoticeType, context));
 		return Kv.create()
 			.set("noticeType", normalizedNoticeType)
 			.set("noticeName", document.getNoticeName())
@@ -484,10 +488,14 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		replacements.put("91320000051830610F", fields.get("税号"));
 		replacements.put("电话：52278888", "电话：" + fields.get("联系电话"));
 		replacements.put("地址：中华路50号弘业大厦", "地址：" + fields.get("单位地址"));
-		replacements.put("银行账号：527460884999", "银行账号：" + fields.get("银行账号"));
-		replacements.put("开户行：中国银行中华路支行", "开户行：" + fields.get("开户行"));
-		replacements.put("2025.3.25-2025.6.30", periodTextCompact(context));
-		return contractTemplateRenderService.render(
+			replacements.put("银行账号：527460884999", "银行账号：" + fields.get("银行账号"));
+			replacements.put("开户行：中国银行中华路支行", "开户行：" + fields.get("开户行"));
+			replacements.put("2025.3.25-2025.6.30", periodTextCompact(context));
+			replacements.put(exactReplacementKey("22581.6元"), moneyText(fields.get("房租")));
+			replacements.put(exactReplacementKey("3575.42元"), moneyText(fields.get("物业")));
+			replacements.put(exactReplacementKey("元"), moneyText(fields.get("押金")));
+			replacements.put(exactReplacementKey("（2025.3.25-2025.6.30）物业费（2025.3.25-2025.6.30）"), fields.get("开票内容及所属期"));
+			return contractTemplateRenderService.render(
 			NOTICE_INVOICE,
 			"开票申请单",
 			TEMPLATE_INVOICE,
@@ -554,18 +562,47 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		if (contract == null) {
 			throw new ServiceException("合同不存在");
 		}
-		if (needsPayment(normalized) && payment == null) {
-			throw new ServiceException("账单不存在");
+			if (needsPayment(normalized) && payment == null) {
+				throw new ServiceException("账单不存在");
+			}
+			formData = resolveLatestFormData(normalized, contract, formData);
+			if (contract != null && contract.getCustomerId() != null) {
+				customer = customerMapper.selectCustomerById(contract.getCustomerId());
+			}
+			return new NoticeContext(normalized, payment, contract, customer, formData);
 		}
-		if (contract != null && contract.getCustomerId() != null) {
-			customer = customerMapper.selectCustomerById(contract.getCustomerId());
-		}
-		return new NoticeContext(normalized, payment, contract, customer, formData);
-	}
 
-	private boolean needsPayment(String noticeType) {
-		return Set.of(NOTICE_PAYMENT, NOTICE_REMINDER, NOTICE_INVOICE, NOTICE_PROJECT_APPROVAL, NOTICE_OVERDUE, NOTICE_LEGAL).contains(normalizeNoticeType(noticeType));
-	}
+		private Map<String, Object> resolveLatestFormData(String noticeType, Contract contract, Map<String, Object> formData) {
+			if (formData != null && !formData.isEmpty()) {
+				return formData;
+			}
+			if (contract == null || contract.getContractId() == null) {
+				return Collections.emptyMap();
+			}
+			String businessType = noticeWorkflowBusinessType(noticeType);
+			if (StringUtil.isBlank(businessType)) {
+				return Collections.emptyMap();
+			}
+			ContractWorkflowRecord record = contractWorkflowRecordMapper.selectLatest(contract.getContractId(), businessType);
+			if (record == null) {
+				return Collections.emptyMap();
+			}
+			return parseFormData(record.getFormDataJson());
+		}
+
+		private String noticeWorkflowBusinessType(String noticeType) {
+			return switch (normalizeNoticeType(noticeType)) {
+				case NOTICE_TERMINATION, NOTICE_TERMINATION_AGREEMENT -> "contract_termination";
+				case NOTICE_ROOM_REVIEW -> "contract_room_review";
+				case NOTICE_PROJECT_APPROVAL, NOTICE_LEGAL -> "contract_overdue_legal";
+				case NOTICE_CONTRACT_APPROVAL, NOTICE_CONTRACT_FIXED, NOTICE_CONTRACT_FLOATING -> "contract_approval";
+				default -> null;
+			};
+		}
+
+		private boolean needsPayment(String noticeType) {
+			return Set.of(NOTICE_PAYMENT, NOTICE_REMINDER, NOTICE_INVOICE, NOTICE_PROJECT_APPROVAL, NOTICE_OVERDUE, NOTICE_LEGAL).contains(normalizeNoticeType(noticeType));
+		}
 
 	private Map<String, String> createCommonFields(NoticeContext context) {
 		Map<String, String> fields = new LinkedHashMap<>();
@@ -663,6 +700,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		fields.put("合计人民币", formatMoney(context.unpaidAmount().add(parseMoney(estimateLateFee(context)))));
 		fields.put("通知日期", formatChineseDate(DateUtil.now()));
 		fields.put("催款通知送达日期", formatChineseDate(DateUtil.now()));
+		fields.put("支付期限天数", "5");
 		return fields;
 	}
 
@@ -737,6 +775,9 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	private Map<String, String> createReminderNoticeReplacements(NoticeContext context, Map<String, String> fields) {
 		Map<String, String> replacements = new LinkedHashMap<>();
 		replacements.put("致：", "致：" + context.customerName());
+		replacements.put(exactReplacementKey("贵司承租的位于苏州市吴中区石湖西路140号君联大厦     办公物业第   期租金已于   年  月  日到期，我司特向贵司发出本催款通知书，请贵司在收到本通知书的10个工作日内足额及时缴纳租金及其他相关费用。"),
+			"贵司承租的位于" + context.roomDisplay() + "办公物业" + context.feeName() + "已于" + fields.get("到期日")
+				+ "到期，我司特向贵司发出本催款通知书，请贵司在收到本通知书的10个工作日内足额及时缴纳租金及其他相关费用。");
 		replacements.put("贵司承租的位于苏州市吴中区石湖西路140号君联大厦 办公物业第 期租金已于 年 月 日到期，我司特向贵司发出本催款通知书，请贵司在收到本通知书的10个工作日内足额及时缴纳租金及其他相关费用。",
 			"贵司承租的位于" + context.roomDisplay() + "办公物业" + context.feeName() + "已于" + fields.get("到期日")
 				+ "到期，我司特向贵司发出本催款通知书，请贵司在收到本通知书的10个工作日内足额及时缴纳租金及其他相关费用。");
@@ -750,19 +791,40 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 
 	private Map<String, String> createOverdueNoticeReplacements(NoticeContext context, Map<String, String> fields) {
 		Map<String, String> replacements = new LinkedHashMap<>();
+		String overdueIntro = "贵司承租的位于" + context.roomDisplay() + "办公物业" + context.feeName() + "于" + fields.get("到期日")
+			+ "到期，我司已经于" + fields.get("催款通知送达日期") + "送达了《催款通知书》，但贵司在《催款通知书》指定的期间内仍未进行支付。";
+		replacements.put(exactReplacementKey("致： _____________ ："), "致：" + context.customerName() + "：");
+		replacements.put(exactReplacementKey("致：  ："), "致：" + context.customerName() + "：");
 		replacements.put("致： _____________ ：", "致：" + context.customerName() + "：");
+		replacements.put(exactReplacementKey("贵司承租的位于苏州市吴中区石湖西路140号君联大厦室办公物业第期租金于2021年月日到期，我司已经于年月日送达了《催款通知书》，但贵司在《催款通知书》指定的期间内仍未进行支付。"),
+			overdueIntro);
+		replacements.put(exactReplacementKey("贵司承租的位于苏州市吴中区石湖西路140号君联大厦___室办公物业第期租金于2021年月日到期，我司已经于_____年__月日送达了《催款通知书》，但贵司在《催款通知书》指定的期间内仍未进行支付。"),
+			overdueIntro);
+		replacements.put(exactReplacementKey("贵司承租的位于苏州市吴中区石湖西路140号君联大厦 ___室办公物业第  期租金于2021年  月 日到期，我司已经于_____年_ _月   日送达了《催款通知书》，但贵司在《催款通知书》指定的期间内仍未进行支付。"),
+			overdueIntro);
+		replacements.put(exactReplacementKey("鉴于上述情况，我司特向贵司进行如下通知："), "鉴于上述情况，我司特向贵司进行如下通知：");
+		String paymentDeadlineNotice = "限贵司于收到本《租金逾期处理通知书》后" + fields.get("支付期限天数")
+			+ "个工作日内足额支付" + fields.get("费用期间") + "期间欠付" + context.feeName()
+			+ fields.get("应收金额") + "元；截至本通知生成日，预估违约金" + fields.get("违约金")
+			+ "元，合计应付" + fields.get("总计") + "元。";
+		replacements.put(exactReplacementKey("限贵司于收到本《租金逾期处理通知书》后5个工作日内足额支付欠付租金。"),
+			paymentDeadlineNotice);
+		replacements.put(exactReplacementKey("限贵司于收到本《租金逾期处理通知书》后个工作日内足额支付欠付租金。"),
+			paymentDeadlineNotice);
 		replacements.put("贵司承租的位于苏州市吴中区石湖西路140号君联大厦 ___室办公物业第 期租金于2021年 月 日到期，我司已经于_____年_ _月 日送达了《催款通知书》，但贵司在《催款通知书》指定的期间内仍未进行支付。",
-			"贵司承租的位于" + context.roomDisplay() + "办公物业" + context.feeName() + "于" + fields.get("到期日")
-				+ "到期，我司已经于" + fields.get("催款通知送达日期") + "送达了《催款通知书》，但贵司在《催款通知书》指定的期间内仍未进行支付。");
+			overdueIntro);
 		replacements.put(exactReplacementKey("苏州市吴中金融招商服务有限公司\n年 月 日"), "苏州市吴中金融招商服务有限公司\n" + fields.get("通知日期"));
 		replacements.put(exactReplacementKey("年 月 日"), fields.get("通知日期"));
+		replacements.put(exactReplacementKey("年  月  日"), fields.get("通知日期"));
 		return replacements;
 	}
 
 	private Map<String, String> createMoveOutNoticeReplacements(NoticeContext context, Map<String, String> fields) {
 		Map<String, String> replacements = createOverdueNoticeReplacements(context, fields);
 		replacements.put("租金逾期处理通知书", "限期搬离通知书");
+		replacements.put(exactReplacementKey("鉴于上述情况，我司特向贵司进行如下通知："), "鉴于贵司逾期未清偿欠款并拒不返还租赁物业，我司特向贵司进行如下通知：");
 		replacements.put("鉴于上述情况，我司特向贵司进行如下通知：", "鉴于贵司逾期未清偿欠款并拒不返还租赁物业，我司特向贵司进行如下通知：");
+		replacements.put("限贵司于收到本《租金逾期处理通知书》后5个工作日内足额支付欠付租金。", "限贵司于收到本《限期搬离通知书》后5个工作日内完成搬离、交还钥匙及相关资料。");
 		replacements.put("限贵司于收到本《租金逾期处理通知书》后 5 个工作日内足额支付欠付租金。", "限贵司于收到本《限期搬离通知书》后 5 个工作日内完成搬离、交还钥匙及相关资料。");
 		replacements.put("4、贵司在收到本租金逾期处理通知书后5个工作日内仍未足额支付欠付租金，贵司同我司签订的租赁合同将自动解除，且无需另行书面通知。", "4、贵司逾期仍拒不搬离的，我司将按照租赁合同及园区管理办法继续启动退租、交接及追偿程序。");
 		return replacements;
@@ -771,7 +833,9 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	private Map<String, String> createLegalLetterReplacements(NoticeContext context, Map<String, String> fields) {
 		Map<String, String> replacements = createOverdueNoticeReplacements(context, fields);
 		replacements.put("租金逾期处理通知书", "律师函");
+		replacements.put(exactReplacementKey("鉴于上述情况，我司特向贵司进行如下通知："), "鉴于贵司逾期未支付合同项下相关费用，经我司催告仍未结清，现正式函告如下：");
 		replacements.put("鉴于上述情况，我司特向贵司进行如下通知：", "鉴于贵司逾期未支付合同项下相关费用，经我司催告仍未结清，现正式函告如下：");
+		replacements.put("限贵司于收到本《租金逾期处理通知书》后5个工作日内足额支付欠付租金。", "请贵司于收到本函后立即结清全部欠付费用、违约金及相关损失。");
 		replacements.put("限贵司于收到本《租金逾期处理通知书》后 5 个工作日内足额支付欠付租金。", "请贵司于收到本函后立即结清全部欠付费用、违约金及相关损失。");
 		replacements.put("依照租赁合同的约定，我司将从贵司支付的履约保证金中扣除逾期支付违约金，金额为自本期租金逾期之日起，至贵司支付本期租金之日或合同解除之日的期间内每日逾期租金的万分之五。", "若贵司继续拒不履行付款义务，我司将依据租赁合同及相关法律规定启动追偿程序，并保留通过诉讼、仲裁等方式追究责任的权利。");
 		replacements.put("从即日起禁止贵司继续使用所承租物业，并依照租赁合同的约定对贵司采取停电、停水措施，贵司在足额支付相关租金及违约金后可恢复对租赁物业的正常使用。", "由此产生的诉讼费、律师费、保全费、差旅费等维权费用，将依法由贵司承担。");
@@ -840,17 +904,24 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		Contract contract = context.contract;
 		fields.put("承租单位", context.customerName());
 		fields.put("联系人", firstNotBlank(context.customer == null ? null : context.customer.getContactName(), "-"));
-		fields.put("联系电话", firstNotBlank(customerContactPhone(context), "-"));
-		fields.put("房屋地址", context.roomDisplay());
-		fields.put("合同期限", formatChineseDate(contract == null ? null : contract.getStartDate()) + "至" + formatChineseDate(contract == null ? null : contract.getEndDate()));
-		fields.put("申请退租日期", formatChineseDate(DateUtil.now()));
-		fields.put("退租理由", "退租审批通过，进入房屋退租交接验收");
-		fields.put("应退租赁押金", formatMoney(contract == null ? null : contract.getDeposit()));
-		return fields;
-	}
+			fields.put("联系电话", firstNotBlank(customerContactPhone(context), "-"));
+			fields.put("房屋地址", context.roomDisplay());
+			fields.put("合同期限", formatChineseDate(contract == null ? null : contract.getStartDate()) + "至" + formatChineseDate(contract == null ? null : contract.getEndDate()));
+			fields.put("申请退租日期", formatChineseDateText(firstNotBlank(
+				formValue(context, "returnDate", "expectedTerminationDate", "申请退租日期", "退租日期"),
+				formatDate(DateUtil.now())
+			)));
+			fields.put("退租理由", firstNotBlank(
+				formValue(context, "handoverResult", "terminationReason", "退租理由", "退租原因"),
+				"退租审批通过，进入房屋退租交接验收"
+			));
+			fields.put("应退租赁押金", formatMoney(contract == null ? null : contract.getDeposit()));
+			return fields;
+		}
 
 	private Map<String, String> createTerminationReplacements(NoticeContext context) {
 		Map<String, String> replacements = new LinkedHashMap<>();
+		Contract contract = context.contract;
 		String terminationDate = firstNotBlank(formValue(context, "expectedTerminationDate", "退租日期", "申请退租日期", "terminationDate"), formatDate(DateUtil.now()));
 		replacements.put("contractNo", context.contractNo());
 		replacements.put("customerName", context.customerName());
@@ -858,19 +929,27 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		replacements.put("applyDate", firstNotBlank(formValue(context, "applyTime", "申请时间", "applyDate"), formatDate(DateUtil.now())));
 		replacements.put("terminationDate", terminationDate);
 		replacements.put("terminationSummary", buildTerminationSummary(context));
+		String roomArea = context.roomDisplay() + " " + formatArea(contract == null ? null : contract.getRentArea());
+		replacements.put("　 楼     m2", roomArea);
+		replacements.put("楼     m2", roomArea);
+		replacements.put(exactReplacementKey("楼m2"), roomArea);
+		replacements.put(exactReplacementKey("自年月日至年月日止"), "自 " + formatChineseDate(contract == null ? null : contract.getStartDate()) + " 至 " + formatChineseDate(contract == null ? null : contract.getEndDate()) + "止");
 		return replacements;
 	}
 
 	private Map<String, String> createRoomReviewReplacements(NoticeContext context) {
 		Contract contract = context.contract;
 		Map<String, String> replacements = new LinkedHashMap<>();
-		replacements.put("苏州思锐泰企业管理咨询有限公司", context.customerName());
-		replacements.put("苏州市吴中区石湖西路 168号\n科技服务中心大楼 911 室", context.roomDisplay());
-		replacements.put("合同期限：   2025 年 3  月 11 日至2026  年3 月10   日", "合同期限：" + formatChineseDate(contract == null ? null : contract.getStartDate()) + "至" + formatChineseDate(contract == null ? null : contract.getEndDate()));
-		replacements.put("申请退租日期：    年  月  日", "申请退租日期：" + formatChineseDate(DateUtil.now()));
-		replacements.put("应退租赁押金：", "应退租赁押金：" + formatMoney(contract == null ? null : contract.getDeposit()));
-		return replacements;
-	}
+			replacements.put("苏州思锐泰企业管理咨询有限公司", context.customerName());
+			replacements.put("苏州市吴中区石湖西路 168号\n科技服务中心大楼 911 室", context.roomDisplay());
+			replacements.put("合同期限：   2025 年 3  月 11 日至2026  年3 月10   日", "合同期限：" + formatChineseDate(contract == null ? null : contract.getStartDate()) + "至" + formatChineseDate(contract == null ? null : contract.getEndDate()));
+			replacements.put("申请退租日期：    年  月  日", "申请退租日期：" + formatChineseDateText(firstNotBlank(
+				formValue(context, "returnDate", "expectedTerminationDate", "申请退租日期", "退租日期"),
+				formatDate(DateUtil.now())
+			)));
+			replacements.put("应退租赁押金：", "应退租赁押金：" + formatMoney(contract == null ? null : contract.getDeposit()));
+			return replacements;
+		}
 
 	private Map<String, String> createTerminationAgreementReplacements(NoticeContext context) {
 		Contract contract = context.contract;
@@ -892,20 +971,26 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		Map<String, String> replacements = new LinkedHashMap<>();
 		replacements.put("乙方（承租方）：", "乙方（承租方）：" + context.customerName());
 		replacements.put("乙方：                        （盖章）", "乙方：" + context.customerName() + "（盖章）");
+		replacements.put(exactReplacementKey("1、年月日，甲乙双方签订《君联大厦租赁合同》。根据合同约定，由乙方承租甲方位于苏州市吴中区石湖西路140号君联大厦室物业。租赁期限为个月，自年月日起至年月日止。"), contractClause);
 		replacements.put("1、年月日，甲乙双方签订《君联大厦租赁合同》。根据合同约定，由乙方承租甲方位于苏州市吴中区石湖西路140号君联大厦室物业。租赁期限为个月，自年月日起至年月日止。", contractClause);
 		replacements.put("1、   年 月 日，甲乙双方签订", "1、" + signDate + "，甲乙双方签订");
 		replacements.put("君联 大厦 室物业", context.roomDisplay() + "物业");
 		replacements.put("租赁期限为 个月", "租赁期限为 " + contractMonths(contract) + " 个月");
 		replacements.put("自 年 月 日起至 年 月 日止", "自 " + startDate + "起至 " + endDate + "止");
+		replacements.put(exactReplacementKey("2、年月日，因原因，乙方向甲方申请提前退租、解除租赁合同，已构成违约。"), terminationClause);
 		replacements.put("2、年月日，因原因，乙方向甲方申请提前退租、解除租赁合同，已构成违约。", terminationClause);
+		replacements.put(exactReplacementKey("1、双方一致确认：《君联大厦租赁合同》于年月日解除；"), releaseClause);
 		replacements.put("1、双方一致确认：《君联大厦租赁合同》于年月日解除；", releaseClause);
+		replacements.put(exactReplacementKey("2、乙方承诺于年月日前将租赁物业腾空归还甲方，同时在年月日前完成注册地址迁出手续。若乙方按期完成腾房、迁址的，甲方收取的租金、物业服务费；"), returnClause);
 		replacements.put("2、乙方承诺于年月日前将租赁物业腾空归还甲方，同时在年月日前完成注册地址迁出手续。若乙方按期完成腾房、迁址的，甲方收取的租金、物业服务费；", returnClause);
+		replacements.put(exactReplacementKey("若乙方逾期腾房或迁址的，甲方有权向乙方收取年月日至实际腾房/迁址之日（以后到为准）的房租、物业服务费并有权按照租赁合同8.2.2条约定向乙方主张通知不足2个月的补足租金和3个月租金的违约金。"), overdueClause);
 		replacements.put("若乙方逾期腾房或迁址的，甲方有权向乙方收取年月日至实际腾房/迁址之日（以后到为准）的房租、物业服务费并有权按照租赁合同8.2.2条约定向乙方主张通知不足2个月的补足租金和3个月租金的违约金。", overdueClause);
 		replacements.put("于 年 月 日解除", "于 " + terminationDate + "解除");
 		replacements.put("于 年 月 日 前 将", "于 " + terminationDate + " 前将");
 		replacements.put("在 年 月 日 前完成", "在 " + terminationDate + " 前完成");
 		replacements.put("甲方收取 的租金、物业服务费", "甲方按合同及审批结果结算租金、物业服务费");
 		replacements.put("年 月 日至实际腾房/迁址之日", terminationDate + "至实际腾房/迁址之日");
+		replacements.put(exactReplacementKey("年月日"), formatChineseDate(DateUtil.now()));
 		return replacements;
 	}
 
@@ -939,10 +1024,10 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			formValue(context, "a1782291855806355", "a178229185640367241", "合同乙方"),
 			context.customerName()
 		));
-		fields.put("合同事项", firstNotBlank(
-			formValue(context, "a178229189162468518", "合同事项"),
-			buildContractSummary(contract)
-		));
+			fields.put("合同事项", firstNotBlank(
+				formValue(context, "a178229189162468518", "合同事项"),
+				buildCompactContractSummary(contract)
+			));
 		fields.put("项目编号", contract == null || contract.getProjectId() == null ? "-" : String.valueOf(contract.getProjectId()));
 		fields.put("所属园区", context.parkName());
 		fields.put("租赁楼层", context.roomDisplay());
@@ -963,10 +1048,10 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		fields.put("公摊费", formatMoney(contract == null ? null : contract.getPublicFee()));
 		fields.put("租金递增", contract == null ? "-" : Func.toStr(contract.getRentIncreaseNode(), "-"));
 		fields.put("滞纳金", lateFeeText(contract));
-		fields.put("申请内容", firstNotBlank(
-			formValue(context, "a178229189162468518", "申请内容"),
-			buildContractSummary(contract)
-		));
+			fields.put("申请内容", firstNotBlank(
+				formValue(context, "a178229189162468518", "申请内容"),
+				buildCompactContractSummary(contract)
+			));
 		fields.put("部门经理", firstNotBlank(formValue(context, "a178229195669534563", "部门经理"), "-"));
 		fields.put("风控审核", firstNotBlank(formValue(context, "a178229196550349962", "风控审核"), "-"));
 		fields.put("律师意见", firstNotBlank(formValue(context, "a178229196627971409", "律师意见"), "-"));
@@ -985,6 +1070,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		fields.put("乙方", context.customerName());
 		fields.put("承租方", context.customerName());
 		fields.put("租赁房源", context.roomDisplay());
+		fields.put("租赁地址", contractLeaseAddress(context));
 		fields.put("房间号", context.roomName());
 		fields.put("租赁面积", formatAreaNumber(contract == null ? null : contract.getRentArea()));
 		fields.put("租赁月数", String.valueOf(contractMonths(contract)));
@@ -999,6 +1085,9 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		fields.put("付款周期", paymentCycleMonths(contract));
 		fields.put("第一期付款日期", formatChineseDate(contract == null ? null : contract.getStartDate()));
 		fields.put("第二期付款日期", formatChineseDate(nextPaymentDate(contract)));
+		fields.put("物业费付款周期", paymentCycleMonths(contract));
+		fields.put("第一期物业费付款日期", formatChineseDate(contract == null ? null : contract.getStartDate()));
+		fields.put("第二期物业费付款日期", formatChineseDate(nextPaymentDate(contract)));
 		fields.put("保证金月数", "3");
 		fields.put("保证金", formatMoney(contract == null ? null : contract.getDeposit()));
 		fields.put("保证金大写", moneyUpper(contract == null ? null : contract.getDeposit()));
@@ -1019,6 +1108,22 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 
 	private Map<String, String> createContractTextReplacements(NoticeContext context, Map<String, String> fields, boolean floatingRent) {
 		Map<String, String> replacements = new LinkedHashMap<>();
+		replacements.put(exactReplacementKey("本租赁合同由下列双方于年月日签订:"), "本租赁合同由下列双方于" + fields.get("签订日期") + "签订:");
+		replacements.put(exactReplacementKey("本租赁合同由下列双方于签订:"), "本租赁合同由下列双方于" + fields.get("签订日期") + "签订:");
+		replacements.put(exactReplacementKey("乙方（承租方）：（以下简称“承租方”）"), "乙方（承租方）：" + fields.get("乙方") + "（以下简称“承租方”）");
+		replacements.put(exactReplacementKey("1.1出租方已经取得产权方同意，按照本合同项下的条款将位于苏州市吴中区石湖西路168号科技服务中心大楼室（以下称“该物业”）岀租给承租方。"),
+			"1.1出租方已经取得产权方同意，按照本合同项下的条款将位于" + fields.get("租赁地址") + "（以下称“该物业”）出租给承租方。");
+		replacements.put(exactReplacementKey("1.1出租方已经取得产权方同意，按照本合同项下的条款将位于苏州市吴中区石湖西路168号科技服务中心大楼（以下称“该物业”）岀租给承租方。"),
+			"1.1出租方已经取得产权方同意，按照本合同项下的条款将位于" + fields.get("租赁地址") + "（以下称“该物业”）出租给承租方。");
+		replacements.put(exactReplacementKey("1.2本租赁合同的租赁面积为平方米。"), "1.2本租赁合同的租赁面积为" + fields.get("租赁面积") + "平方米。");
+		replacements.put(exactReplacementKey("2.1租赁期为个月，自年月日起至年月日止。"),
+			"2.1租赁期为" + fields.get("租赁月数") + "个月，自" + fields.get("起租日期") + "起至" + fields.get("结束日期") + "止。");
+		replacements.put(exactReplacementKey("2.1租赁期为，自起至止。"),
+			"2.1租赁期为" + fields.get("租赁月数") + "个月，自" + fields.get("起租日期") + "起至" + fields.get("结束日期") + "止。");
+		replacements.put(exactReplacementKey("2.2出租方应于年月日前将该物业交付承租方，其中在年月日至年月日属于出租方提供给承租方的免租装修期。免租装修期内，承租方无需支付租金，但承租方应承担免租装修期间该物业的物业管理费和水电费等实际发生的费用。"),
+			"2.2出租方应于" + fields.get("交付日期") + "前将该物业交付承租方，其中在" + fields.get("免租开始日期") + "至" + fields.get("免租结束日期") + "属于出租方提供给承租方的免租装修期。免租装修期内，承租方无需支付租金，但承租方应承担免租装修期间该物业的物业管理费和水电费等实际发生的费用。");
+		replacements.put(exactReplacementKey("2.2出租方应于前将该物业交付承租方，其中属于出租方提供给承租方的免租装修期。免租装修期内，承租方无需支付租金，但承租方应承担免租装修期间该物业的物业管理费和水电费等实际发生的费用。"),
+			"2.2出租方应于" + fields.get("交付日期") + "前将该物业交付承租方，其中在" + fields.get("免租开始日期") + "至" + fields.get("免租结束日期") + "属于出租方提供给承租方的免租装修期。免租装修期内，承租方无需支付租金，但承租方应承担免租装修期间该物业的物业管理费和水电费等实际发生的费用。");
 		replacements.put("合同编号：", "合同编号：" + fields.get("合同编号"));
 		replacements.put("本租赁合同由下列双方于 年 月 日签订:", "本租赁合同由下列双方于" + fields.get("签订日期") + "签订:");
 		replacements.put("乙方（承租方）： （以下简称“承租方”）", "乙方（承租方）：" + fields.get("乙方") + "（以下简称“承租方”）");
@@ -1027,17 +1132,51 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		replacements.put("租赁期为 个月，自 年 月 日起至 年 月 日止。", "租赁期为 " + fields.get("租赁月数") + " 个月，自" + fields.get("起租日期") + "起至" + fields.get("结束日期") + "止。");
 		replacements.put("出租方应于 年 月 日前将该物业交付承租方，其中在 年 月 日至 年 月 日属于出租方提供给承租方的免租装修期。", "出租方应于" + fields.get("交付日期") + "前将该物业交付承租方，其中在" + fields.get("免租开始日期") + "至" + fields.get("免租结束日期") + "属于出租方提供给承租方的免租装修期。");
 		if (floatingRent) {
+			replacements.put(exactReplacementKey("4.1.1该物业自年月日至年月日租金单价为元/M2/月（以租赁面积计，下同），合计元/月（大写：人民币）。自年月日至年月日租金单价为元/ M2/月（以租赁面积计，下同），合计元/月（大写：人民币）。"),
+				"4.1.1该物业自" + fields.get("第一阶段开始日期") + "至" + fields.get("第一阶段结束日期") + "租金单价为" + fields.get("第一阶段租金单价")
+					+ "元/M2/月（以租赁面积计，下同），合计" + fields.get("第一阶段月租金") + "元/月（大写：人民币" + fields.get("第一阶段月租金大写")
+					+ "）。自" + fields.get("第二阶段开始日期") + "至" + fields.get("第二阶段结束日期") + "租金单价为" + fields.get("第二阶段租金单价")
+					+ "元/M2/月（以租赁面积计，下同），合计" + fields.get("第二阶段月租金") + "元/月（大写：人民币" + fields.get("第二阶段月租金大写") + "）。");
+			replacements.put(exactReplacementKey("4.1.1该物业租金单价为元/M2/月（以租赁面积计，下同），合计元/月（大写：人民币）。租金单价为元/ M2/月（以租赁面积计，下同），合计元/月（大写：人民币）。"),
+				"4.1.1该物业自" + fields.get("第一阶段开始日期") + "至" + fields.get("第一阶段结束日期") + "租金单价为" + fields.get("第一阶段租金单价")
+					+ "元/M2/月（以租赁面积计，下同），合计" + fields.get("第一阶段月租金") + "元/月（大写：人民币" + fields.get("第一阶段月租金大写")
+					+ "）。自" + fields.get("第二阶段开始日期") + "至" + fields.get("第二阶段结束日期") + "租金单价为" + fields.get("第二阶段租金单价")
+					+ "元/M2/月（以租赁面积计，下同），合计" + fields.get("第二阶段月租金") + "元/月（大写：人民币" + fields.get("第二阶段月租金大写") + "）。");
 			replacements.put("该物业自 年 月 日至 年 月 日租金单价为 元/M2/月（以租赁面积计，下同），合计 元/月（大写：人民币 ）。自 年 月 日至 年 月 日租金单价为 元/ M2/月（以租赁面积计，下同），合计 元/月（大写：人民币 ）。",
 				"该物业自" + fields.get("第一阶段开始日期") + "至" + fields.get("第一阶段结束日期") + "租金单价为" + fields.get("第一阶段租金单价")
 					+ "元/M2/月（以租赁面积计，下同），合计" + fields.get("第一阶段月租金") + "元/月（大写：人民币" + fields.get("第一阶段月租金大写")
 					+ "）。自" + fields.get("第二阶段开始日期") + "至" + fields.get("第二阶段结束日期") + "租金单价为" + fields.get("第二阶段租金单价")
 					+ "元/ M2/月（以租赁面积计，下同），合计" + fields.get("第二阶段月租金") + "元/月（大写：人民币" + fields.get("第二阶段月租金大写") + "）。");
 		} else {
+			replacements.put(exactReplacementKey("4.1.1该物业租金单价为元/M2/月（以租赁面积计，下同），合计元/月（大写：人民币）。"),
+				"4.1.1该物业租金单价为" + fields.get("租金单价") + "元/M2/月（以租赁面积计，下同），合计" + fields.get("月租金") + "元/月（大写：人民币" + fields.get("月租金大写") + "）。");
 			replacements.put("该物业租金单价为 元/M2/月（以租赁面积计，下同），合计 元/月（大写：人民币 ）。",
 				"该物业租金单价为 " + fields.get("租金单价") + " 元/M2/月（以租赁面积计，下同），合计 " + fields.get("月租金") + " 元/月（大写：人民币 " + fields.get("月租金大写") + "）。");
 		}
+		replacements.put(exactReplacementKey("4.1.2租金支付方式为先付后用，租金应按每个月为一期支付，承租方应在年月日或之前支付第一期租金；年月日或之前支付第二期租金；以后以此类推，每次提前30日支付下一期租金。"),
+			"4.1.2租金支付方式为先付后用，租金应按每" + fields.get("付款周期") + "个月为一期支付，承租方应在" + fields.get("第一期付款日期")
+				+ "或之前支付第一期租金；" + fields.get("第二期付款日期") + "或之前支付第二期租金；以后以此类推，每次提前30日支付下一期租金。");
+		replacements.put(exactReplacementKey("4.1.2租金支付方式为先付后用，租金应按为一期支付，承租方应在或之前支付第一期租金；或之前支付第二期租金；以后以此类推，每次提前30日支付下一期租金。"),
+			"4.1.2租金支付方式为先付后用，租金应按每" + fields.get("付款周期") + "个月为一期支付，承租方应在" + fields.get("第一期付款日期")
+				+ "或之前支付第一期租金；" + fields.get("第二期付款日期") + "或之前支付第二期租金；以后以此类推，每次提前30日支付下一期租金。");
+		replacements.put(exactReplacementKey("4.2.2物业服务费支付方式为先付后用，物业服务费应按每个月为一期支付，承租方应在"),
+			"4.2.2物业服务费支付方式为先付后用，物业服务费应按每" + fields.get("物业费付款周期") + "个月为一期支付，承租方应在");
+		replacements.put(exactReplacementKey("4.2.2物业服务费支付方式为先付后用，物业服务费应按为一期支付，承租方应在"),
+			"4.2.2物业服务费支付方式为先付后用，物业服务费应按每" + fields.get("物业费付款周期") + "个月为一期支付，承租方应在");
+		replacements.put(exactReplacementKey("年月日或之前支付第一期物业服务费；年月日或之前支付第二期物业费；以后以此类推，每次提前30日支付下一期物业服务费。"),
+			fields.get("第一期物业费付款日期") + "或之前支付第一期物业服务费；" + fields.get("第二期物业费付款日期") + "或之前支付第二期物业费；以后以此类推，每次提前30日支付下一期物业服务费。");
+		replacements.put(exactReplacementKey("或之前支付第一期物业服务费；或之前支付第二期物业费；以后以此类推，每次提前30日支付下一期物业服务费。"),
+			fields.get("第一期物业费付款日期") + "或之前支付第一期物业服务费；" + fields.get("第二期物业费付款日期") + "或之前支付第二期物业费；以后以此类推，每次提前30日支付下一期物业服务费。");
+		replacements.put(exactReplacementKey("4.3.1在年月日前，承租方应向出租方支付相当于个月房租的履约保证金"),
+			"4.3.1在" + fields.get("第一期付款日期") + "前，承租方应向出租方支付相当于" + fields.get("保证金月数") + "个月房租的履约保证金");
+		replacements.put(exactReplacementKey("4.3.1在前，承租方应向出租方支付相当于个月房租的履约保证金"),
+			"4.3.1在" + fields.get("第一期付款日期") + "前，承租方应向出租方支付相当于" + fields.get("保证金月数") + "个月房租的履约保证金");
+		replacements.put(exactReplacementKey("（即元，大写：人民币）。"), "（即" + fields.get("保证金") + "元，大写：人民币" + fields.get("保证金大写") + "）。");
+		replacements.put(exactReplacementKey("（即元，大写：）。"), "（即" + fields.get("保证金") + "元，大写：人民币" + fields.get("保证金大写") + "）。");
 		replacements.put("租金应按每 个月为一期支付，承租方应在 年 月 日或之前支付第一期租金； 年 月 日或之前支付第二期租金；", "租金应按每 " + fields.get("付款周期") + " 个月为一期支付，承租方应在 " + fields.get("第一期付款日期") + " 或之前支付第一期租金； " + fields.get("第二期付款日期") + " 或之前支付第二期租金；");
 		replacements.put("在 年 月 日前，承租方应向出租方支付相当于 个月房租的履约保证金\n（即 元，大写：人民币 ）。", "在 " + fields.get("第一期付款日期") + " 前，承租方应向出租方支付相当于 " + fields.get("保证金月数") + " 个月房租的履约保证金\n（即 " + fields.get("保证金") + " 元，大写：人民币 " + fields.get("保证金大写") + "）。");
+		replacements.put(exactReplacementKey("以下为编号《科技服务中心租赁合同》签字盖章页"), "以下为编号" + fields.get("合同编号") + "《科技服务中心租赁合同》签字盖章页");
+		replacements.put("以下为编号《科技服务中心租赁合同》签字盖章页", "以下为编号" + fields.get("合同编号") + "《科技服务中心租赁合同》签字盖章页");
 		replacements.put("以下为编号 《科技服务中心租赁合同》签字盖章页", "以下为编号 " + fields.get("合同编号") + "《科技服务中心租赁合同》签字盖章页");
 		return replacements;
 	}
@@ -1202,6 +1341,30 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			parts.add("月租金：" + formatMoney(contract.getMonthlyRent()) + "元");
 		}
 		return parts.isEmpty() ? "-" : String.join("；", parts);
+	}
+
+	private String buildCompactContractSummary(Contract contract) {
+		if (contract == null) {
+			return "-";
+		}
+		List<String> parts = new ArrayList<>();
+		if (Func.isNotBlank(contract.getRoomName())) {
+			String room = contract.getRoomName();
+			if (Func.isNotBlank(contract.getBuildingName())) {
+				room = room + "/" + contract.getBuildingName();
+			}
+			parts.add(room);
+		}
+		if (contract.getRentArea() != null) {
+			parts.add(formatArea(contract.getRentArea()));
+		}
+		if (contract.getStartDate() != null || contract.getEndDate() != null) {
+			parts.add(formatDate(contract.getStartDate()) + "至" + formatDate(contract.getEndDate()));
+		}
+		if (contract.getMonthlyRent() != null) {
+			parts.add("月租" + formatMoney(contract.getMonthlyRent()) + "元");
+		}
+		return parts.isEmpty() ? "-" : String.join("，", parts);
 	}
 
 	private String buildTerminationSummary(NoticeContext context) {
@@ -1460,6 +1623,21 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		return context.customer == null ? null : context.customer.getRegisteredAddress();
 	}
 
+	private String contractLeaseAddress(NoticeContext context) {
+		String roomDisplay = context == null ? null : context.roomDisplay();
+		if (StringUtil.isBlank(roomDisplay) || "-".equals(roomDisplay)) {
+			return "苏州市吴中区石湖西路168号科技服务中心大楼";
+		}
+		String normalizedRoom = roomDisplay.replace(" / ", " ");
+		if (normalizedRoom.contains("苏州市") || normalizedRoom.contains("石湖西路")) {
+			return normalizedRoom;
+		}
+		if (normalizedRoom.contains("科技服务中心")) {
+			return "苏州市吴中区石湖西路168号" + normalizedRoom;
+		}
+		return "苏州市吴中区石湖西路168号科技服务中心大楼 " + normalizedRoom;
+	}
+
 	private String joinAddressAndPhone(String address, String phone) {
 		String safeAddress = firstNotBlank(address, null);
 		String safePhone = firstNotBlank(phone, null);
@@ -1506,7 +1684,11 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	}
 
 	private String normalizeNoticeType(String noticeType) {
-		return Func.toStr(noticeType, "").trim().toLowerCase(Locale.ROOT);
+		String normalized = Func.toStr(noticeType, "").trim().toLowerCase(Locale.ROOT);
+		return switch (normalized) {
+			case "project-approval-law" -> NOTICE_PROJECT_APPROVAL;
+			default -> normalized;
+		};
 	}
 
 	private String buildFileName(String title, NoticeContext context) {
@@ -1531,6 +1713,14 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			return "-";
 		}
 		return value.setScale(2, RoundingMode.HALF_UP).toPlainString();
+	}
+
+	private String moneyText(String value) {
+		if (StringUtil.isBlank(value) || "-".equals(value.trim())) {
+			return "0.00元";
+		}
+		String normalized = value.trim();
+		return normalized.endsWith("元") ? normalized : normalized + "元";
 	}
 
 	private String formatAreaNumber(BigDecimal value) {

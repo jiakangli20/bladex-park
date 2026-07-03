@@ -193,19 +193,27 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 		String principalName = firstNotBlank(getString(variables, "principalName", null), opportunity.getContactName());
 		String principalPhone = firstNotBlank(getString(variables, "principalPhone", null), opportunity.getContactPhone());
 		String leaseFloorArea = firstNotBlank(getString(variables, "leaseFloorArea", null), formatArea(opportunity));
-		html.append("<div style=\"font-family:SimSun,'Microsoft YaHei',Arial,sans-serif;line-height:1.7;padding:24px;color:#111;\">");
-		html.append("<style>@media print{body{margin:0}.approval-table{page-break-inside:avoid}}</style>");
-		html.append("<h2 style=\"text-align:center;margin:0 0 14px;font-size:22px;font-weight:600;\">企业入驻审批表</h2>");
-		html.append("<table class=\"approval-table\" style=\"width:100%;border-collapse:collapse;table-layout:fixed;font-size:14px;\">");
+		html.append("<style>")
+			.append("@page{size:A4 portrait;margin:10mm 12mm;}")
+			.append("@media print{body{margin:0;}}")
+			.append(".tenant-entry-approval{font-family:SimSun,'Microsoft YaHei',Arial,sans-serif;line-height:1.35;padding:0;color:#111;}")
+			.append(".tenant-entry-approval h2{text-align:center;margin:0 0 8px;font-size:20px;font-weight:600;}")
+			.append(".tenant-entry-approval table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px;page-break-inside:auto;}")
+			.append(".tenant-entry-approval tr{page-break-inside:avoid;page-break-after:auto;}")
+			.append("@media screen{.tenant-entry-approval{line-height:1.7;padding:24px;}.tenant-entry-approval h2{margin:0 0 14px;font-size:22px;}.tenant-entry-approval table{font-size:14px;}}")
+			.append("</style>");
+		html.append("<div class=\"tenant-entry-approval\">");
+		html.append("<h2>企业入驻审批表</h2>");
+		html.append("<table class=\"approval-table\">");
 		appendCells(html, "企业名称", firstNotBlank(getString(variables, "enterpriseName", null), opportunity.getEnterpriseName()), "申请时间", applyTime);
-		appendFullRow(html, "股东信息", firstNotBlank(getString(variables, "shareholderInfo", null), firstNotBlank(opportunity.getEquityStructure(), opportunity.getEnterpriseType())), 80);
-		appendFullRow(html, "经营范围", firstNotBlank(getString(variables, "businessScope", null), opportunity.getBusinessScope()), 136);
+		appendFullRow(html, "股东信息", firstNotBlank(getString(variables, "shareholderInfo", null), firstNotBlank(opportunity.getEquityStructure(), opportunity.getEnterpriseType())), 58);
+		appendFullRow(html, "经营范围", firstNotBlank(getString(variables, "businessScope", null), opportunity.getBusinessScope()), 90);
 		appendCells(html, "负责人", principalName, "联系方式", principalPhone);
 		appendCells(html, "租赁楼层、面积", leaseFloorArea, "免租期", getString(variables, "rentFreePeriod", ""));
 		appendCells(html, "单价（元）", getString(variables, "unitPrice", ""), "保证金（元）", getString(variables, "deposit", ""));
-		appendFullRow(html, "合同有效期", firstNotBlank(getString(variables, "contractPeriod", null), opportunity.getLeaseTermLabel()), 54);
+		appendFullRow(html, "合同有效期", firstNotBlank(getString(variables, "contractPeriod", null), opportunity.getLeaseTermLabel()), 42);
 		appendCells(html, "经办人", firstNotBlank(getString(variables, "handlerName", null), applicant), "部门", firstNotBlank(getString(variables, "handlerDept", null), dept));
-		appendFullRow(html, "审批事项", getString(variables, "approvalMatter", ""), 82);
+		appendFullRow(html, "审批事项", getString(variables, "approvalMatter", ""), 58);
 		appendSignRow(html, "部门审批：");
 		appendSignRow(html, "分管领导审批：");
 		appendSignRow(html, "总经理审批：");
@@ -215,7 +223,7 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 	}
 
 	private void appendCells(StringBuilder html, String key1, String val1, String key2, String val2) {
-		html.append("<tr style=\"height:48px;\">")
+		html.append("<tr style=\"height:40px;\">")
 			.append(th(key1))
 			.append(td(val1, 1))
 			.append(th(key2))
@@ -231,19 +239,19 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 	}
 
 	private void appendSignRow(StringBuilder html, String key) {
-		html.append("<tr style=\"height:86px;\">")
+		html.append("<tr style=\"height:62px;\">")
 			.append(th(key))
-			.append("<td colspan=\"3\" style=\"border:1px solid #111;padding:8px;vertical-align:bottom;text-align:center;\">签字：</td>")
+			.append("<td colspan=\"3\" style=\"border:1px solid #111;padding:6px;vertical-align:bottom;text-align:center;\">签字：</td>")
 			.append("</tr>");
 	}
 
 	private String th(String value) {
-		return "<th style=\"width:18%;border:1px solid #111;padding:8px;text-align:center;font-weight:400;vertical-align:middle;\">"
+		return "<th style=\"width:18%;border:1px solid #111;padding:6px;text-align:center;font-weight:400;vertical-align:middle;\">"
 			+ escapeHtml(value) + "</th>";
 	}
 
 	private String td(String value, int colspan) {
-		return "<td colspan=\"" + colspan + "\" style=\"border:1px solid #111;padding:8px;vertical-align:middle;white-space:pre-wrap;\">"
+		return "<td colspan=\"" + colspan + "\" style=\"border:1px solid #111;padding:6px;vertical-align:middle;white-space:pre-wrap;\">"
 			+ escapeHtml(value(value)) + "</td>";
 	}
 

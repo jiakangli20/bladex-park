@@ -872,6 +872,12 @@ export default {
   white-space: nowrap;
 }
 
+.table-actions :deep(.el-button) {
+  min-width: 40px;
+  padding: 0 3px;
+  margin-left: 0;
+}
+
 .workflow-dialog {
   display: flex;
   flex-direction: column;

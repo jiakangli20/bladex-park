@@ -14,8 +14,8 @@
             <el-input v-model="query.enterpriseName" clearable placeholder="请输入企业名称" @keyup.enter="searchChange" />
           </el-form-item>
           <el-form-item label="流程状态">
-            <el-select v-model="query.scope" placeholder="请选择状态" @change="searchChange">
-              <el-option v-for="item in scopeOptions" :key="item.value" :label="item.label" :value="item.value" />
+            <el-select v-model="query.processIsFinished" clearable placeholder="全部状态" @change="searchChange">
+              <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
           <el-form-item>
@@ -146,6 +146,7 @@ import {
 } from '@/views/plugin/workflow/api/process/process';
 import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
 import { exportTenantEntryApprovalForm, getOpportunityList } from '@/api/business/opportunity';
+import { printHtml } from '@/utils/print-html';
 
 const DEFAULT_PROCESS_KEY = 'tenant_entry-1';
 const TENANT_ENTRY_BUSINESS_TYPE = 'tenant_entry';
@@ -160,6 +161,7 @@ export default {
       query: {
         enterpriseName: '',
         scope: 'send',
+        processIsFinished: '',
       },
       page: {
         currentPage: 1,
@@ -178,6 +180,12 @@ export default {
         { value: 'myDone', label: '我的已办' },
         { value: 'done', label: '已办结' },
         { value: 'copy', label: '抄送我' },
+      ],
+      statusOptions: [
+        { value: 'unfinished', label: '审批中' },
+        { value: 'finished', label: '已完成' },
+        { value: 'reject', label: '被驳回' },
+        { value: 'recall', label: '已撤回' },
       ],
       startVisible: false,
       startForm: {
@@ -204,12 +212,22 @@ export default {
   },
   methods: {
     applyRouteQuery() {
-      const { scope } = this.$route.query || {};
+      const { scope, processIsFinished, processStatus } = this.$route.query || {};
       if (scope && this.scopeOptions.some(item => item.value === scope)) {
         this.query.scope = scope;
       }
+      const routeStatus = processIsFinished || processStatus;
+      if (routeStatus && this.statusOptions.some(item => item.value === routeStatus)) {
+        this.query.processIsFinished = routeStatus;
+      } else if (scope === 'todo') {
+        this.query.processIsFinished = 'unfinished';
+      } else if (scope === 'done') {
+        this.query.processIsFinished = 'finished';
+      } else if (scope) {
+        this.query.processIsFinished = '';
+      }
     },
-    requestByScope(scope, current = this.page.currentPage, size = this.page.pageSize) {
+    requestByScope(scope, current = this.page.currentPage, size = this.page.pageSize, extraParams = {}) {
       const params = scope === 'copy'
         ? { title: '入驻' }
         : { processDefinitionName: '入驻' };
@@ -220,7 +238,7 @@ export default {
         done: doneList,
         copy: copyList,
       };
-      return apiMap[scope](current, size, params);
+      return apiMap[scope](current, size, { ...params, ...extraParams });
     },
     loadSummary() {
       this.summaryCards.forEach(card => {
@@ -232,12 +250,13 @@ export default {
     },
     onLoad() {
       this.loading = true;
-      this.requestByScope(this.query.scope)
+      this.requestByScope(this.query.scope, this.page.currentPage, this.page.pageSize, this.processStatusParams())
         .then(res => {
           const result = res.data.data || {};
           const records = this.filterTenantEntryRecords(result.records || [], this.query.scope);
           this.data = records
             .map(item => this.normalizeRow(item))
+            .filter(item => this.matchesStatus(item))
             .filter(item => !this.query.enterpriseName || item.enterpriseName.includes(this.query.enterpriseName));
           this.page.total = Number(result.total) || this.data.length;
         })
@@ -255,8 +274,8 @@ export default {
         processInstanceId,
         enterpriseName: vars.enterpriseName || row.enterpriseName || this.titleEnterpriseName(row.title) || row.processDefinitionName || '-',
         opportunityId: vars.opportunityId || row.businessId || row.businessKey,
-        taskName: row.taskName || row.title || row.processDefinitionName || '-',
-        statusLabel: this.scopeText(this.query.scope),
+        taskName: this.realCurrentNode(row),
+        statusLabel: this.realStatusText(row),
         startUsername: row.startUsername || row.initiator || row.assigneeName || '-',
       };
     },
@@ -281,22 +300,81 @@ export default {
       const match = title.match(/^(.+?)\s*入驻审核/);
       return match ? match[1] : '';
     },
-    scopeText(scope) {
-      const item = this.scopeOptions.find(option => option.value === scope);
-      return item ? item.label : '审批中';
+    realStatusValue(row = {}) {
+      const value = row.processIsFinished ?? row.processStatus ?? row.state;
+      if (value === undefined || value === null || value === '') {
+        if (row.scope === 'done') return 'finished';
+        if (row.scope === 'todo') return 'unfinished';
+        return '';
+      }
+      return `${value}`;
+    },
+    realStatusText(row = {}) {
+      const value = this.realStatusValue(row);
+      const map = {
+        1: '审批中',
+        unfinished: '审批中',
+        running: '审批中',
+        active: '审批中',
+        2: '被驳回',
+        99: '已完成',
+        finished: '已完成',
+        finish: '已完成',
+        completed: '已完成',
+        complete: '已完成',
+        approved: '已完成',
+        done: '已完成',
+        3: '已撤回',
+        recall: '已撤回',
+        withdraw: '已撤销',
+        97: '已撤销',
+        98: '已终结',
+        terminate: '已终结',
+        terminated: '已终结',
+        96: '已删除',
+        deleted: '已删除',
+        reject: '被驳回',
+        rejected: '被驳回',
+      };
+      return map[value] || row.statusLabel || '审批中';
+    },
+    realCurrentNode(row = {}) {
+      const status = this.realStatusValue(row);
+      if (['99', 'finished', 'finish', 'completed', 'complete', 'approved', 'done'].includes(status)) {
+        return '流程结束';
+      }
+      return row.taskName || row.currentNodeName || row.title || row.processDefinitionName || '-';
     },
     statusTag(row) {
-      if (row.scope === 'todo') return 'warning';
-      if (row.scope === 'done') return 'success';
+      const value = this.realStatusValue(row);
+      if (['1', 'unfinished', 'running', 'active'].includes(value)) return 'warning';
+      if (['99', 'finished', 'finish', 'completed', 'complete', 'approved', 'done'].includes(value)) return 'success';
+      if (['2', 'reject', 'rejected'].includes(value)) return 'danger';
+      if (['3', 'recall', 'withdraw', '97', '98', 'terminate', 'terminated', '96', 'deleted'].includes(value)) return 'info';
       if (row.scope === 'copy') return 'info';
       return 'primary';
+    },
+    matchesStatus(row) {
+      if (!this.query.processIsFinished) return true;
+      const value = this.realStatusValue(row);
+      const statusMap = {
+        unfinished: ['1', 'unfinished', 'running', 'active'],
+        finished: ['99', 'finished', 'finish', 'completed', 'complete', 'approved', 'done'],
+        reject: ['2', 'reject', 'rejected'],
+        recall: ['3', 'recall'],
+      };
+      return (statusMap[this.query.processIsFinished] || []).includes(value);
+    },
+    processStatusParams() {
+      if (!this.query.processIsFinished || this.query.scope === 'copy') return {};
+      return { processIsFinished: this.query.processIsFinished };
     },
     searchChange() {
       this.page.currentPage = 1;
       this.onLoad();
     },
     searchReset() {
-      this.query = { enterpriseName: '', scope: 'send' };
+      this.query = { enterpriseName: '', scope: 'send', processIsFinished: '' };
       this.page.currentPage = 1;
       this.onLoad();
     },
@@ -399,11 +477,11 @@ export default {
       });
     },
     printApprovalForm() {
-      const win = window.open('', '_blank');
-      win.document.write(this.approvalHtml);
-      win.document.close();
-      win.focus();
-      win.print();
+      if (!this.approvalHtml) {
+        this.$message.warning('暂无可打印的入驻审批表');
+        return;
+      }
+      printHtml(this.approvalHtml, '企业入驻审批表');
     },
   },
 };

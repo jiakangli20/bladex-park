@@ -260,6 +260,16 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 				}
 			}
 			if (BUSINESS_TYPE_CONTRACT_PAYMENT.equals(record.getBusinessType()) && record.getPaymentId() != null) {
+				if (isInvoiceWorkflow(record)) {
+					String invoiceUrl = uploadNotice(IContractNoticeService.NOTICE_INVOICE, record.getPaymentId(), null);
+					if (StringUtil.isNotBlank(invoiceUrl)) {
+						record.setAttachmentJson(JsonUtil.toJson(Map.of(IContractNoticeService.NOTICE_INVOICE, invoiceUrl)));
+						record.setPrintFileUrl(limit(invoiceUrl, 500));
+						return;
+					}
+					record.setPrintFileUrl(limit(firstNotBlank(record.getPrintFileUrl(), buildPrintFileUrl(record)), 500));
+					return;
+				}
 				Map<String, String> paymentFiles = uploadPaymentPackage(record.getPaymentId());
 				if (!paymentFiles.isEmpty()) {
 					record.setAttachmentJson(JsonUtil.toJson(paymentFiles));
@@ -308,6 +318,9 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		if (BUSINESS_TYPE_CONTRACT_APPROVAL.equals(businessType)) {
 			updateContractApprovalState(record, type);
 		} else if (BUSINESS_TYPE_CONTRACT_PAYMENT.equals(businessType)) {
+			if (isInvoiceWorkflow(record)) {
+				return;
+			}
 			updatePaymentState(record, type);
 		} else if (BUSINESS_TYPE_CONTRACT_TERMINATION.equals(businessType)) {
 			updateTerminationState(record, type);
@@ -512,6 +525,12 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			return firstNotBlank(uploadNotice(IContractNoticeService.NOTICE_CONTRACT_APPROVAL, null, record.getContractId()), "/blade-contract/print/contract-approval/" + record.getContractId());
 		}
 		if (BUSINESS_TYPE_CONTRACT_PAYMENT.equals(record.getBusinessType()) && record.getPaymentId() != null) {
+			if (isInvoiceWorkflow(record)) {
+				return firstNotBlank(
+					uploadNotice(IContractNoticeService.NOTICE_INVOICE, record.getPaymentId(), null),
+					"/blade-contract/print/invoice-apply/" + record.getPaymentId()
+				);
+			}
 			return firstNotBlank(
 				uploadNotice(IContractNoticeService.NOTICE_PAYMENT, record.getPaymentId(), null),
 				uploadNotice(IContractNoticeService.NOTICE_INVOICE, record.getPaymentId(), null),
@@ -556,6 +575,24 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			log.warn("付款审批文件包生成失败，paymentId={}", paymentId, exception);
 			return Map.of();
 		}
+	}
+
+	private boolean isInvoiceWorkflow(ContractWorkflowRecord record) {
+		if (record == null) {
+			return false;
+		}
+		return containsIgnoreCase(record.getProcessDefKey(), "invoice")
+			|| containsIgnoreCase(record.getFormKey(), "invoice")
+			|| containsIgnoreCase(record.getTemplateKey(), IContractNoticeService.NOTICE_INVOICE)
+			|| containsIgnoreCase(record.getPrintFileUrl(), "/invoice-apply/")
+			|| containsIgnoreCase(record.getFormDataJson(), "\"templateKey\":\"" + IContractNoticeService.NOTICE_INVOICE + "\"")
+			|| containsIgnoreCase(record.getFormDataJson(), "\"formKey\":\"invoice\"");
+	}
+
+	private boolean containsIgnoreCase(String source, String search) {
+		return StringUtil.isNotBlank(source)
+			&& StringUtil.isNotBlank(search)
+			&& source.toLowerCase().contains(search.toLowerCase());
 	}
 
 	private Map<String, String> uploadOverduePackage(Long paymentId) {

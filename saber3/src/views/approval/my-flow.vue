@@ -382,6 +382,7 @@ import {
 } from '@/api/approval/approval';
 import { getCustomerDetail, getCustomerList } from '@/api/business/customer';
 import { downloadFile } from '@/utils/util';
+import { printHtml } from '@/utils/print-html';
 
 const statusOptions = [
   { value: '0', label: '草稿', type: 'info' },
@@ -876,11 +877,7 @@ export default {
       });
     },
     printApprovalForm() {
-      const win = window.open('', '_blank');
-      if (!win) return;
-      win.document.write(this.buildApprovalHtml(this.formData));
-      win.document.close();
-      win.print();
+      printHtml(this.buildApprovalHtml(this.formData), '审批表');
     },
     buildApprovalRows(data) {
       const project = data.project || {};

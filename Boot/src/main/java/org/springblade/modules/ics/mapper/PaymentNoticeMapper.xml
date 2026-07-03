@@ -26,10 +26,12 @@
 		<result column="email_status" property="emailStatus"/>
 		<result column="inbox_status" property="inboxStatus"/>
 		<result column="miniapp_status" property="miniappStatus"/>
+		<result column="miniapp_send_time" property="miniappSendTime"/>
 		<result column="send_count" property="sendCount"/>
 		<result column="last_send_time" property="lastSendTime"/>
 		<result column="file_name" property="fileName"/>
 		<result column="file_url" property="fileUrl"/>
+		<result column="remark" property="remark"/>
 		<result column="generated_date" property="generatedDate"/>
 	</resultMap>
 
@@ -38,6 +40,7 @@
 		<result column="sms_success_count" property="smsSuccessCount"/>
 		<result column="email_success_count" property="emailSuccessCount"/>
 		<result column="inbox_success_count" property="inboxSuccessCount"/>
+		<result column="miniapp_success_count" property="miniappSuccessCount"/>
 	</resultMap>
 
 	<sql id="selectNoticeVo">
@@ -65,10 +68,12 @@
 			COALESCE(n.email_status, 'pending') AS email_status,
 			COALESCE(n.inbox_status, 'pending') AS inbox_status,
 			COALESCE(n.miniapp_status, 'pending') AS miniapp_status,
+			n.miniapp_send_time,
 			COALESCE(n.send_count, 0) AS send_count,
 			n.last_send_time,
 			n.file_name,
 			n.file_url,
+			n.remark,
 			DATE(COALESCE(n.create_time, p.create_time, p.pay_deadline)) AS generated_date
 		FROM biz_contract_payment p
 		LEFT JOIN biz_contract c ON c.contract_id = p.contract_id
@@ -99,6 +104,9 @@
 		<if test="query != null and query.inboxStatus != null and query.inboxStatus != ''">
 			AND COALESCE(n.inbox_status, 'pending') = #{query.inboxStatus}
 		</if>
+		<if test="query != null and query.miniappStatus != null and query.miniappStatus != ''">
+			AND COALESCE(n.miniapp_status, 'pending') = #{query.miniappStatus}
+		</if>
 		<if test="query != null and query.buildingName != null and query.buildingName != ''">
 			AND c.building_name = #{query.buildingName}
 		</if>
@@ -123,7 +131,8 @@
 			COUNT(1) AS generated_count,
 			SUM(CASE WHEN COALESCE(n.sms_status, 'pending') = 'success' THEN 1 ELSE 0 END) AS sms_success_count,
 			SUM(CASE WHEN COALESCE(n.email_status, 'pending') = 'success' THEN 1 ELSE 0 END) AS email_success_count,
-			SUM(CASE WHEN COALESCE(n.inbox_status, 'pending') = 'success' THEN 1 ELSE 0 END) AS inbox_success_count
+			SUM(CASE WHEN COALESCE(n.inbox_status, 'pending') = 'success' THEN 1 ELSE 0 END) AS inbox_success_count,
+			SUM(CASE WHEN COALESCE(n.miniapp_status, 'pending') = 'success' THEN 1 ELSE 0 END) AS miniapp_success_count
 		FROM biz_contract_payment p
 		LEFT JOIN biz_contract c ON c.contract_id = p.contract_id
 		LEFT JOIN biz_customer bc ON bc.customer_id = c.customer_id

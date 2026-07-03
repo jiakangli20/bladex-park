@@ -22,6 +22,7 @@ import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.ics.constant.IcsConstant;
+import org.springblade.modules.ics.pojo.vo.OverdueDisposalDetailVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticePlaceholderVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeSummaryVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeVO;
@@ -157,6 +158,22 @@ public class PaymentController extends BladeController {
 		return R.data(paymentService.logList(contractId));
 	}
 
+	@GetMapping("/overdue-log-list")
+	@PreAuth(menu = "finance_overdue_reminder_log")
+	@ApiOperationSupport(order = 25)
+	@Operation(summary = "逾期处置合同日志", description = "传入contractId")
+	public R<List<ContractLog>> overdueLogList(@Parameter(description = "合同ID") @RequestParam Long contractId) {
+		return R.data(paymentService.logList(contractId));
+	}
+
+	@GetMapping("/overdue-disposal-detail")
+	@PreAuth(menu = "finance_overdue_reminder")
+	@ApiOperationSupport(order = 24)
+	@Operation(summary = "逾期处置闭环详情", description = "传入paymentId")
+	public R<OverdueDisposalDetailVO> overdueDisposalDetail(@Parameter(description = "账单ID") @RequestParam Long paymentId) {
+		return R.data(paymentService.overdueDisposalDetail(paymentId));
+	}
+
 	@GetMapping("/notice-placeholder")
 	@ApiOperationSupport(order = 9)
 	@Operation(summary = "收款通知占位", description = "当前阶段暂不开发通知单主流程")
@@ -204,9 +221,25 @@ public class PaymentController extends BladeController {
 		return R.data(paymentService.sendMiniAppNotice(paymentId));
 	}
 
-	@PostMapping("/notice-generate")
+	@PostMapping("/notice-sms-send")
 	@PreAuth(menu = "finance_payment_notice")
 	@ApiOperationSupport(order = 35)
+	@Operation(summary = "短信发送入口", description = "传入paymentId")
+	public R<PaymentNoticeVO> noticeSmsSend(@Parameter(description = "账单ID") @RequestParam Long paymentId) {
+		return R.data(paymentService.sendSmsNotice(paymentId));
+	}
+
+	@PostMapping("/notice-email-send")
+	@PreAuth(menu = "finance_payment_notice")
+	@ApiOperationSupport(order = 36)
+	@Operation(summary = "邮件发送入口", description = "传入paymentId")
+	public R<PaymentNoticeVO> noticeEmailSend(@Parameter(description = "账单ID") @RequestParam Long paymentId) {
+		return R.data(paymentService.sendEmailNotice(paymentId));
+	}
+
+	@PostMapping("/notice-generate")
+	@PreAuth(menu = "finance_payment_notice")
+	@ApiOperationSupport(order = 37)
 	@Operation(summary = "生成收款通知文件", description = "传入paymentId")
 	public R<ContractNoticeFileVO> noticeGenerate(@Parameter(description = "账单ID") @RequestParam Long paymentId) {
 		return R.data(paymentService.generatePaymentNoticeFile(paymentId));

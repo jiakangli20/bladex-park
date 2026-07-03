@@ -29,20 +29,7 @@
       </section>
 
       <section class="reminder-toolbar">
-        <div class="toolbar-left">
-          <el-button type="primary" plain icon="el-icon-document" :disabled="!singleSelected" @click="handleGenerateNotice(singleSelected, 'overdue-notice')">
-            生成逾期通知
-          </el-button>
-          <el-button type="warning" plain icon="el-icon-s-promotion" :disabled="!singleSelected" @click="handleStartOverdueApproval(singleSelected)">
-            发起律师函审批
-          </el-button>
-          <el-button type="danger" plain icon="el-icon-position" :disabled="!singleSelected" @click="handleStartTermination(singleSelected)">
-            发起退租审批
-          </el-button>
-          <el-button type="danger" plain icon="el-icon-warning" :disabled="!singleSelected" @click="handleRefusalDispose(singleSelected)">
-            拒不返还处理
-          </el-button>
-        </div>
+        <div class="toolbar-left"></div>
         <el-tooltip content="刷新" placement="top">
           <el-button icon="el-icon-refresh" circle @click="reload" />
         </el-tooltip>
@@ -55,13 +42,17 @@
           border
           row-key="paymentId"
           class="reminder-table"
-          @selection-change="selectionChange"
         >
-          <el-table-column type="selection" width="48" align="center" />
           <el-table-column label="账单编号" width="118" align="center">
             <template #default="{ row }">ZD{{ row.paymentId }}</template>
           </el-table-column>
-          <el-table-column prop="customerName" label="租客名称" min-width="150" align="center" show-overflow-tooltip />
+          <el-table-column prop="customerName" label="租客名称" min-width="150" align="center" show-overflow-tooltip>
+            <template #default="{ row }">
+              <el-button text type="primary" class="customer-link" @click="openReminderDrawer(row)">
+                {{ row.customerName || '-' }}
+              </el-button>
+            </template>
+          </el-table-column>
           <el-table-column prop="contractNo" label="合同编号" min-width="150" align="center" show-overflow-tooltip />
           <el-table-column label="房源信息" min-width="150" align="center" show-overflow-tooltip>
             <template #default="{ row }">{{ row.roomName || row.buildingName || '-' }}</template>
@@ -99,41 +90,9 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="340" align="center" fixed="right">
+          <el-table-column label="操作" width="88" align="center" fixed="right">
             <template #default="{ row }">
-              <div class="table-actions">
-                <el-button text type="primary" @click="openContract(row)">合同</el-button>
-                <el-button text type="warning" :disabled="row.overdueApprovalStatus === 'running'" @click="handleStartOverdueApproval(row)">
-                  律师函审批
-                </el-button>
-                <el-dropdown trigger="click" @command="command => handleNoticeCommand(row, command)">
-                  <el-button text type="primary">通知文件</el-button>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item command="project-approval">项目审批表</el-dropdown-item>
-                      <el-dropdown-item command="payment-notice">付款通知单</el-dropdown-item>
-                      <el-dropdown-item command="reminder-notice">催款通知书</el-dropdown-item>
-                      <el-dropdown-item command="overdue-notice">逾期处理通知书</el-dropdown-item>
-                      <el-dropdown-item command="legal-letter">律师函</el-dropdown-item>
-                      <el-dropdown-item command="move-out-notice">限期搬离通知书</el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-                <el-dropdown trigger="click" @command="command => handleMiniAppCommand(row, command)">
-                  <el-button text type="primary">发小程序</el-button>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item command="reminder-notice">催款通知书</el-dropdown-item>
-                      <el-dropdown-item command="overdue-notice">逾期处理通知书</el-dropdown-item>
-                      <el-dropdown-item command="legal-letter">律师函</el-dropdown-item>
-                      <el-dropdown-item command="move-out-notice">限期搬离通知书</el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-                <el-button text type="danger" :disabled="row.terminationApprovalStatus === 'running'" @click="handleRefusalDispose(row)">
-                  拒不返还
-                </el-button>
-              </div>
+              <el-button text type="primary" @click="openReminderDrawer(row)">处理</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -151,6 +110,174 @@
           />
         </div>
       </section>
+
+      <el-drawer
+        v-model="drawerVisible"
+        title="逾期处置"
+        size="760px"
+        append-to-body
+        class="overdue-action-drawer"
+      >
+        <div v-if="drawerRow" class="drawer-body">
+          <section class="drawer-profile">
+            <div class="drawer-profile__main">
+              <span>租客名称</span>
+              <strong>{{ drawerRow.customerName || '-' }}</strong>
+              <em>{{ drawerRow.contractNo || '暂无合同编号' }}</em>
+            </div>
+            <el-tag :type="approvalStatusType(drawerRow.overdueApprovalStatus)" effect="plain">
+              {{ approvalStatusText(drawerRow.overdueApprovalStatus) }}
+            </el-tag>
+          </section>
+
+          <section class="drawer-section">
+            <div class="drawer-section-title">账单信息</div>
+            <div class="drawer-field-grid">
+              <div v-for="item in drawerSummaryItems" :key="item.label" class="drawer-field">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="drawer-section">
+            <div class="drawer-section-title">处置操作</div>
+            <div class="drawer-action-grid">
+              <el-button type="primary" plain @click="openContract(drawerRow)">查看合同</el-button>
+              <el-button type="primary" plain @click="handleRemind(drawerRow)">记录催缴</el-button>
+              <el-button type="primary" plain @click="handleGenerateNotice(drawerRow, 'overdue-notice')">生成逾期通知</el-button>
+              <el-button
+                type="warning"
+                plain
+                :disabled="drawerRow.overdueApprovalStatus === 'running'"
+                @click="handleStartOverdueApproval(drawerRow)"
+              >
+                发起律师函审批
+              </el-button>
+              <el-button
+                type="danger"
+                plain
+                :disabled="drawerRow.terminationApprovalStatus === 'running'"
+                @click="handleStartTermination(drawerRow)"
+              >
+                发起退租审批
+              </el-button>
+              <el-button
+                type="danger"
+                plain
+                :disabled="drawerRow.terminationApprovalStatus === 'running'"
+                @click="handleRefusalDispose(drawerRow)"
+              >
+                拒不返还处理
+              </el-button>
+              <el-button v-if="permissionList.logBtn" plain @click="openLogDialog(drawerRow)">联动日志</el-button>
+            </div>
+          </section>
+
+          <section class="drawer-section">
+            <div class="drawer-section-title">通知文件</div>
+            <div class="drawer-action-grid">
+              <el-button
+                v-for="item in drawerNoticeTypes"
+                :key="item.value"
+                plain
+                @click="previewNotice(drawerRow, item.value)"
+              >
+                {{ item.label }}
+              </el-button>
+            </div>
+          </section>
+
+          <section class="drawer-section">
+            <div class="drawer-section-title">小程序发送</div>
+            <div class="drawer-action-grid">
+              <el-button
+                v-for="item in drawerMiniAppTypes"
+                :key="item.value"
+                plain
+                type="primary"
+                @click="handleSendMiniApp(drawerRow, item.value)"
+              >
+                {{ item.label }}
+              </el-button>
+            </div>
+          </section>
+
+          <section class="drawer-section">
+            <div class="drawer-section-title">处置闭环</div>
+            <div v-loading="disposalLoading" class="disposal-board">
+              <div v-for="item in disposalStatusCards" :key="item.key" class="disposal-card">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+                <em>{{ item.tip }}</em>
+              </div>
+            </div>
+          </section>
+
+          <section class="drawer-section">
+            <div class="drawer-section-title">通知文件记录</div>
+            <div class="record-list">
+              <div v-for="item in disposalDetail.documentRecords" :key="item.logId" class="record-item">
+                <div>
+                  <strong>{{ item.actionDesc || item.action }}</strong>
+                  <span>{{ item.operator || '-' }} / {{ item.operateTime || '-' }}</span>
+                </div>
+                <el-tag effect="plain" type="success">已生成</el-tag>
+              </div>
+              <el-empty v-if="!disposalDetail.documentRecords.length" description="暂无生成记录" />
+            </div>
+          </section>
+
+          <section class="drawer-section">
+            <div class="drawer-section-title">小程序发送记录</div>
+            <div class="record-list">
+              <div v-for="item in disposalDetail.miniAppRecords" :key="item.logId" class="record-item">
+                <div>
+                  <strong>{{ item.actionDesc || item.action }}</strong>
+                  <span>{{ item.operator || '-' }} / {{ item.operateTime || '-' }}</span>
+                </div>
+                <el-tag effect="plain" type="primary">已生成</el-tag>
+              </div>
+              <el-empty v-if="!disposalDetail.miniAppRecords.length" description="暂无小程序发送记录" />
+            </div>
+          </section>
+
+          <section class="drawer-section">
+            <div class="drawer-section-title">审批记录</div>
+            <div class="record-list">
+              <div v-for="item in disposalDetail.workflowRecords" :key="item.recordId" class="record-item">
+                <div>
+                  <strong>{{ workflowBusinessTypeText(item.businessType) }}</strong>
+                  <span>{{ item.processName || item.processDefKey || '-' }} / {{ item.currentNode || '流程已结束' }}</span>
+                </div>
+                <el-tag :type="approvalStatusType(item.processStatus)" effect="plain">
+                  {{ approvalStatusText(item.processStatus) }}
+                </el-tag>
+              </div>
+              <el-empty v-if="!disposalDetail.workflowRecords.length" description="暂无审批记录" />
+            </div>
+          </section>
+        </div>
+      </el-drawer>
+
+      <el-dialog v-model="logDialogVisible" title="合同联动日志" width="680px" append-to-body>
+        <div v-loading="drawerLogLoading" class="drawer-log-list">
+          <el-timeline v-if="drawerLogs.length">
+            <el-timeline-item
+              v-for="item in drawerLogs"
+              :key="item.logId"
+              :timestamp="item.operateTime"
+              placement="top"
+            >
+              <div class="drawer-log-item">
+                <div class="drawer-log-title">{{ item.actionDesc || item.action }}</div>
+                <div class="drawer-log-operator">{{ item.operator || '-' }}</div>
+              </div>
+            </el-timeline-item>
+          </el-timeline>
+          <el-empty v-else description="暂无合同联动日志" />
+        </div>
+      </el-dialog>
 
       <el-dialog v-model="workflowVisible" :title="workflowDialogTitle" width="760px" append-to-body @close="resetWorkflowDialog">
         <section class="workflow-section">
@@ -215,6 +342,8 @@ import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue
 import { noticePrintUrl } from '@/api/contract/print';
 import {
   generateContractNotice,
+  getOverdueDisposalDetail,
+  getOverduePaymentLogs,
   getOverdueReminderPage,
   getOverdueReminderSummary,
   remindOverduePayment,
@@ -269,7 +398,18 @@ export default {
       loading: false,
       data: [],
       summary: {},
-      selectionList: [],
+      drawerVisible: false,
+      drawerRow: null,
+      drawerLogs: [],
+      drawerLogLoading: false,
+      logDialogVisible: false,
+      disposalLoading: false,
+      disposalDetail: {
+        paymentNotice: null,
+        documentRecords: [],
+        miniAppRecords: [],
+        workflowRecords: [],
+      },
       workflowVisible: false,
       workflowLoading: false,
       workflowType: OVERDUE_WORKFLOW,
@@ -282,12 +422,14 @@ export default {
     };
   },
   computed: {
-    ...mapGetters(['userInfo']),
+    ...mapGetters(['permission', 'userInfo']),
+    permissionList() {
+      return {
+        logBtn: this.validData(this.permission.finance_overdue_reminder_log, false),
+      };
+    },
     feeTypeOptions() {
       return feeTypeDic;
-    },
-    singleSelected() {
-      return this.selectionList.length === 1 ? this.selectionList[0] : null;
     },
     summaryCards() {
       const running = this.data.filter(item => item.overdueApprovalStatus === 'running').length;
@@ -323,11 +465,95 @@ export default {
         { label: '未缴金额', value: this.formatMoney(this.unpaidAmount(row)) },
       ];
     },
+    drawerSummaryItems() {
+      const row = this.drawerRow || {};
+      if (!row.paymentId) return [];
+      return [
+        { label: '账单编号', value: `ZD${row.paymentId}` },
+        { label: '房源信息', value: row.roomName || row.buildingName || '-' },
+        { label: '费用类型', value: row.feeName || '-' },
+        { label: '账期', value: `${row.periodStart || '--'} 至 ${row.periodEnd || '--'}` },
+        { label: '应收金额', value: this.formatMoney(row.amountDue) },
+        { label: '已缴金额', value: this.formatMoney(row.amountPaid) },
+        { label: '未缴金额', value: this.formatMoney(this.unpaidAmount(row)) },
+        { label: '应缴日期', value: row.payDeadline || '-' },
+        { label: '逾期天数', value: `${this.overdueDays(row)}天` },
+        { label: '催缴状态', value: row.remindStatus === '1' ? '已催缴' : '未催缴' },
+        { label: '律师函审批', value: this.approvalStatusText(row.overdueApprovalStatus) },
+        { label: '退租审批', value: this.approvalStatusText(row.terminationApprovalStatus) },
+      ];
+    },
+    drawerNoticeTypes() {
+      return [
+        { label: '项目审批表', value: 'project-approval' },
+        { label: '付款通知单', value: 'payment-notice' },
+        { label: '催款通知书', value: 'reminder-notice' },
+        { label: '逾期处理通知书', value: 'overdue-notice' },
+        { label: '律师函', value: 'legal-letter' },
+        { label: '限期搬离通知书', value: 'move-out-notice' },
+      ];
+    },
+    drawerMiniAppTypes() {
+      return [
+        { label: '催款通知书', value: 'reminder-notice' },
+        { label: '逾期处理通知书', value: 'overdue-notice' },
+        { label: '律师函', value: 'legal-letter' },
+        { label: '限期搬离通知书', value: 'move-out-notice' },
+      ];
+    },
+    disposalStatusCards() {
+      const notice = this.disposalDetail.paymentNotice || {};
+      return [
+        {
+          key: 'file',
+          label: '通知文件',
+          value: this.disposalDetail.documentRecords.length ? `${this.disposalDetail.documentRecords.length}次` : '未生成',
+          tip: notice.fileName || '生成后会沉淀记录',
+        },
+        {
+          key: 'miniapp',
+          label: '小程序',
+          value: this.noticeStatusText(notice.miniappStatus),
+          tip: notice.miniappSendTime || '发送后记录时间',
+        },
+        {
+          key: 'workflow',
+          label: '审批',
+          value: this.disposalDetail.workflowRecords.length ? `${this.disposalDetail.workflowRecords.length}条` : '未发起',
+          tip: this.latestWorkflowTip,
+        },
+      ];
+    },
+    latestWorkflowTip() {
+      const record = (this.disposalDetail.workflowRecords || [])[0];
+      if (!record) return '律师函/退租审批会显示在这里';
+      return `${this.workflowBusinessTypeText(record.businessType)} / ${this.approvalStatusText(record.processStatus)}`;
+    },
   },
   created() {
+    this.applyRouteQuery();
     this.reload();
   },
+  watch: {
+    '$route.query': {
+      handler() {
+        this.applyRouteQuery();
+        this.page.currentPage = 1;
+        this.reload();
+      },
+      deep: true,
+    },
+  },
   methods: {
+    applyRouteQuery() {
+      const routeQuery = this.$route.query || {};
+      this.query = {
+        ...this.query,
+        contractNo: routeQuery.contractNo || '',
+        customerName: routeQuery.customerName || '',
+        feeType: routeQuery.feeType || '',
+      };
+    },
     reload() {
       this.loadSummary();
       this.loadData();
@@ -371,14 +597,73 @@ export default {
       this.page.currentPage = 1;
       this.loadData();
     },
-    selectionChange(list) {
-      this.selectionList = list;
+    openReminderDrawer(row) {
+      this.drawerRow = { ...(row || {}) };
+      this.drawerVisible = true;
+      this.loadDisposalDetail(row);
     },
-    handleNoticeCommand(row, noticeType) {
-      this.previewNotice(row, noticeType);
+    loadDisposalDetail(row) {
+      if (!row || !row.paymentId) {
+        this.resetDisposalDetail();
+        return Promise.resolve();
+      }
+      this.disposalLoading = true;
+      return getOverdueDisposalDetail(row.paymentId)
+        .then(res => {
+          const data = res.data.data || {};
+          this.disposalDetail = {
+            paymentNotice: data.paymentNotice || null,
+            documentRecords: data.documentRecords || [],
+            miniAppRecords: data.miniAppRecords || [],
+            workflowRecords: data.workflowRecords || [],
+          };
+        })
+        .finally(() => {
+          this.disposalLoading = false;
+        });
     },
-    handleMiniAppCommand(row, noticeType) {
-      this.handleSendMiniApp(row, noticeType);
+    resetDisposalDetail() {
+      this.disposalDetail = {
+        paymentNotice: null,
+        documentRecords: [],
+        miniAppRecords: [],
+        workflowRecords: [],
+      };
+    },
+    openLogDialog(row) {
+      if (!this.permissionList.logBtn) return;
+      this.logDialogVisible = true;
+      this.loadDrawerLogs(row);
+    },
+    loadDrawerLogs(row) {
+      if (!row || !row.contractId) {
+        this.drawerLogs = [];
+        return Promise.resolve();
+      }
+      this.drawerLogLoading = true;
+      return getOverduePaymentLogs(row.contractId)
+        .then(res => {
+          this.drawerLogs = res.data.data || [];
+        })
+        .finally(() => {
+          this.drawerLogLoading = false;
+        });
+    },
+    handleRemind(row) {
+      if (!row || !row.paymentId) return;
+      remindOverduePayment(row.paymentId).then(() => {
+        this.$message.success('催缴提醒已记录');
+        this.drawerRow = {
+          ...this.drawerRow,
+          remindStatus: '1',
+          remindTime: this.formatDate(new Date()),
+        };
+        this.loadDisposalDetail(row);
+        if (this.logDialogVisible && this.permissionList.logBtn) {
+          this.loadDrawerLogs(row);
+        }
+        this.reload();
+      });
     },
     previewNotice(row, noticeType) {
       if (!row || !row.paymentId) return;
@@ -416,6 +701,7 @@ export default {
         const fallbackName = this.noticeFallbackName(row, noticeType, file.noticeName);
         return this.downloadNoticeFile(url, fallbackName).then(() => {
           this.$message.success(`${file.noticeName || '通知文件'}已生成`);
+          this.loadDisposalDetail(row);
         });
       });
     },
@@ -435,7 +721,10 @@ export default {
         const refresh = noticeType === 'move-out-notice'
           ? Promise.resolve()
           : remindOverduePayment(row.paymentId);
-        refresh.finally(() => this.reload());
+        refresh.finally(() => {
+          this.loadDisposalDetail(row);
+          this.reload();
+        });
         this.$message.success(`${messageMap[noticeType] || '通知文件'}的小程序发送数据已生成，已预留给小程序接口`);
       });
     },
@@ -484,6 +773,7 @@ export default {
           const fallbackName = this.noticeFallbackName(row, 'move-out-notice', file.noticeName);
           return this.downloadNoticeFile(url, fallbackName).then(() => {
             this.$message.success('限期搬离通知书已生成，请继续发起退租审批');
+            this.loadDisposalDetail(row);
             this.openWorkflowDialog(TERMINATION_WORKFLOW, row);
           });
         });
@@ -649,6 +939,23 @@ export default {
       };
       return map[String(value || '')] || 'info';
     },
+    workflowBusinessTypeText(value) {
+      const map = {
+        contract_payment: '付款审批',
+        contract_overdue_legal: '逾期律师函',
+        contract_termination: '退租审批',
+        contract_room_review: '房屋验收',
+      };
+      return map[String(value || '')] || value || '-';
+    },
+    noticeStatusText(value) {
+      const map = {
+        pending: '未发送',
+        success: '发送成功',
+        failed: '发送失败',
+      };
+      return map[String(value || '')] || '未发送';
+    },
     overdueDays(row) {
       if (!row || !row.payDeadline || row.payStatus === '1') return 0;
       const deadline = new Date(row.payDeadline).getTime();
@@ -751,11 +1058,14 @@ export default {
   padding: 14px 16px;
 }
 
-.toolbar-left,
-.table-actions {
+.toolbar-left {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.toolbar-left {
+  flex-wrap: wrap;
 }
 
 .reminder-table-wrap {
@@ -767,10 +1077,211 @@ export default {
   width: 100%;
 }
 
+.customer-link {
+  padding: 0;
+  min-width: 0;
+  font-weight: 500;
+}
+
 .reminder-pagination {
   display: flex;
   justify-content: flex-end;
   padding: 14px 16px;
+}
+
+.drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.drawer-profile,
+.drawer-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.drawer-profile {
+  min-height: 96px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.drawer-profile__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.drawer-profile__main span,
+.drawer-field span {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.drawer-profile__main strong {
+  color: #111827;
+  font-size: 20px;
+  line-height: 26px;
+}
+
+.drawer-profile__main em {
+  color: #909399;
+  font-style: normal;
+  font-size: 13px;
+}
+
+.drawer-section {
+  padding: 16px;
+}
+
+.drawer-section-title {
+  margin-bottom: 12px;
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.drawer-field-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.drawer-field {
+  min-height: 66px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
+  background: #fafafa;
+}
+
+.drawer-field strong {
+  display: block;
+  margin-top: 6px;
+  color: #111827;
+  font-size: 14px;
+  line-height: 20px;
+  word-break: break-all;
+}
+
+.drawer-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.drawer-action-grid :deep(.el-button) {
+  width: 100%;
+  min-height: 34px;
+  margin-left: 0;
+}
+
+.drawer-log-list {
+  min-height: 120px;
+}
+
+.drawer-log-list :deep(.el-timeline) {
+  padding-left: 4px;
+}
+
+.drawer-log-item {
+  padding: 2px 0 8px;
+}
+
+.drawer-log-title {
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.drawer-log-operator {
+  margin-top: 4px;
+  color: #909399;
+  font-size: 12px;
+}
+
+.disposal-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  min-height: 92px;
+}
+
+.disposal-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+}
+
+.disposal-card span {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.disposal-card strong {
+  display: block;
+  margin-top: 8px;
+  color: #1f2937;
+  font-size: 18px;
+  line-height: 24px;
+}
+
+.disposal-card em {
+  display: block;
+  margin-top: 6px;
+  color: #909399;
+  font-size: 12px;
+  font-style: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.record-item {
+  min-height: 58px;
+  padding: 12px;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  background: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.record-item div {
+  min-width: 0;
+}
+
+.record-item strong {
+  display: block;
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.record-item span {
+  display: block;
+  margin-top: 4px;
+  color: #909399;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workflow-section {
@@ -827,6 +1338,12 @@ export default {
 
 @media (max-width: 1200px) {
   .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .drawer-field-grid,
+  .drawer-action-grid,
+  .disposal-board {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

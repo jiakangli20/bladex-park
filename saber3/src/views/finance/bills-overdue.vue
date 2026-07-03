@@ -101,7 +101,9 @@
           <el-table-column type="selection" width="50" align="center" />
           <el-table-column prop="customerName" label="对方名称" min-width="180" align="center">
             <template #default="{ row }">
-              <span class="link-like">{{ row.customerName || '-' }}</span>
+              <el-button text type="primary" class="customer-link" @click="openBillDrawer(row)">
+                {{ row.customerName || '-' }}
+              </el-button>
             </template>
           </el-table-column>
           <el-table-column prop="buildingName" label="楼宇名称" width="140" align="center" show-overflow-tooltip />
@@ -128,8 +130,13 @@
               <span class="link-like">{{ row.contractNo || '--' }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="逾期天数" width="110" align="center" fixed="right">
+          <el-table-column label="逾期天数" width="110" align="center">
             <template #default="{ row }">{{ overdueDays(row) }}天</template>
+          </el-table-column>
+          <el-table-column label="操作" width="88" align="center" fixed="right">
+            <template #default="{ row }">
+              <el-button text type="primary" @click="openBillDrawer(row)">处理</el-button>
+            </template>
           </el-table-column>
         </el-table>
 
@@ -146,15 +153,75 @@
           />
         </div>
       </section>
+
+      <el-drawer
+        v-model="drawerVisible"
+        title="逾期账单处理"
+        size="680px"
+        append-to-body
+        class="overdue-bill-drawer"
+      >
+        <div v-if="drawerRow" class="drawer-body">
+          <section class="drawer-profile">
+            <div class="drawer-profile__main">
+              <span>租客名称</span>
+              <strong>{{ drawerRow.customerName || '-' }}</strong>
+              <em>{{ drawerRow.contractNo || '暂无合同编号' }}</em>
+            </div>
+            <el-tag type="danger" effect="plain">逾期 {{ overdueDays(drawerRow) }} 天</el-tag>
+          </section>
+
+          <section class="drawer-section">
+            <div class="drawer-section-title">账单信息</div>
+            <div class="drawer-field-grid">
+              <div v-for="item in drawerSummaryItems" :key="item.label" class="drawer-field">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="drawer-section">
+            <div class="drawer-section-title">处理动作</div>
+            <div class="drawer-action-grid">
+              <el-button type="primary" plain @click="handleRemind(drawerRow)">记录催缴</el-button>
+              <el-button type="primary" plain @click="openContract(drawerRow)">查看合同</el-button>
+              <el-button type="warning" plain @click="goOverdueReminder(drawerRow)">进入逾期提醒</el-button>
+              <el-button v-if="permissionList.logBtn" plain @click="openLogDialog(drawerRow)">联动日志</el-button>
+            </div>
+          </section>
+        </div>
+      </el-drawer>
+
+      <el-dialog v-model="logDialogVisible" title="合同联动日志" width="680px" append-to-body>
+        <div v-loading="drawerLogLoading" class="drawer-log-list">
+          <el-timeline v-if="drawerLogs.length">
+            <el-timeline-item
+              v-for="item in drawerLogs"
+              :key="item.logId"
+              :timestamp="item.operateTime"
+              placement="top"
+            >
+              <div class="drawer-log-item">
+                <div class="drawer-log-title">{{ item.actionDesc || item.action }}</div>
+                <div class="drawer-log-operator">{{ item.operator || '-' }}</div>
+              </div>
+            </el-timeline-item>
+          </el-timeline>
+          <el-empty v-else description="暂无合同联动日志" />
+        </div>
+      </el-dialog>
     </div>
   </basic-container>
 </template>
 
 <script>
+import { mapGetters } from 'vuex';
 import {
   getOverduePaymentPage,
   getPaymentSummary,
   getPaymentNoticeBuildings,
+  getOverduePaymentLogs,
   remindOverduePayment,
 } from '@/api/ics/payment';
 import { feeTypeDic } from '@/option/finance/payment';
@@ -181,6 +248,11 @@ export default {
       loading: false,
       data: [],
       selectionList: [],
+      drawerVisible: false,
+      drawerRow: null,
+      drawerLogs: [],
+      drawerLogLoading: false,
+      logDialogVisible: false,
       page: {
         currentPage: 1,
         pageSize: 10,
@@ -189,6 +261,12 @@ export default {
     };
   },
   computed: {
+    ...mapGetters(['permission']),
+    permissionList() {
+      return {
+        logBtn: this.validData(this.permission.finance_overdue_reminder_log, false),
+      };
+    },
     feeTypeOptions() {
       return feeTypeDic;
     },
@@ -203,6 +281,23 @@ export default {
     overdueTenantCount() {
       const names = new Set((this.data || []).map(item => item.customerName).filter(Boolean));
       return names.size || 0;
+    },
+    drawerSummaryItems() {
+      const row = this.drawerRow || {};
+      if (!row.paymentId) return [];
+      return [
+        { label: '账单编号', value: `ZD${row.paymentId}` },
+        { label: '楼宇名称', value: row.buildingName || '-' },
+        { label: '房源信息', value: row.roomName || '-' },
+        { label: '费用类型', value: row.feeName || '-' },
+        { label: '账期', value: `${row.periodStart || '--'} 至 ${row.periodEnd || '--'}` },
+        { label: '应收金额', value: this.formatMoney(row.amountDue) },
+        { label: '实收金额', value: this.formatMoney(row.amountPaid) },
+        { label: '需收金额', value: this.formatMoney(this.unpaidAmount(row)) },
+        { label: '应收日期', value: row.payDeadline || '-' },
+        { label: '结清状态', value: row.payStatus === '1' ? '已结清' : '逾期' },
+        { label: '逾期天数', value: `${this.overdueDays(row)}天` },
+      ];
     },
   },
   mounted() {
@@ -343,6 +438,62 @@ export default {
     selectionChange(selection) {
       this.selectionList = selection;
     },
+    openBillDrawer(row) {
+      this.drawerRow = { ...(row || {}) };
+      this.drawerVisible = true;
+    },
+    openLogDialog(row) {
+      if (!this.permissionList.logBtn) return;
+      this.logDialogVisible = true;
+      this.loadDrawerLogs(row);
+    },
+    loadDrawerLogs(row) {
+      if (!row || !row.contractId) {
+        this.drawerLogs = [];
+        return Promise.resolve();
+      }
+      this.drawerLogLoading = true;
+      return getOverduePaymentLogs(row.contractId)
+        .then(res => {
+          this.drawerLogs = res.data.data || [];
+        })
+        .finally(() => {
+          this.drawerLogLoading = false;
+        });
+    },
+    handleRemind(row) {
+      if (!row || !row.paymentId) return;
+      remindOverduePayment(row.paymentId).then(() => {
+        this.$message.success('催缴提醒已记录');
+        this.drawerRow = {
+          ...this.drawerRow,
+          remindStatus: '1',
+          remindTime: this.formatDate(new Date()),
+        };
+        if (this.logDialogVisible && this.permissionList.logBtn) {
+          this.loadDrawerLogs(row);
+        }
+        this.reload();
+      });
+    },
+    openContract(row) {
+      if (!row || !row.contractId) return;
+      this.$router.push({
+        path: '/contract/contract',
+        query: {
+          contractId: row.contractId,
+        },
+      });
+    },
+    goOverdueReminder(row) {
+      this.$router.push({
+        path: '/finance/overdue-reminder',
+        query: {
+          customerName: row.customerName || '',
+          contractNo: row.contractNo || '',
+        },
+      });
+    },
     batchRemind() {
       const rows = this.selectionList || [];
       if (!rows.length) return;
@@ -371,6 +522,12 @@ export default {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       });
+    },
+    formatDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
     },
   },
 };
@@ -478,15 +635,139 @@ export default {
   width: 100%;
 }
 
-.link-like {
+.link-like,
+.customer-link {
   color: #2f8cff;
   white-space: nowrap;
+}
+
+.customer-link {
+  min-width: 0;
+  padding: 0;
+  font-weight: 500;
 }
 
 .overdue-pagination {
   display: flex;
   justify-content: flex-end;
   padding: 12px 16px;
+}
+
+.drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.drawer-profile,
+.drawer-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.drawer-profile {
+  min-height: 96px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.drawer-profile__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.drawer-profile__main span,
+.drawer-field span {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.drawer-profile__main strong {
+  color: #111827;
+  font-size: 20px;
+  line-height: 26px;
+}
+
+.drawer-profile__main em {
+  color: #909399;
+  font-style: normal;
+  font-size: 13px;
+}
+
+.drawer-section {
+  padding: 16px;
+}
+
+.drawer-section-title {
+  margin-bottom: 12px;
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.drawer-field-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.drawer-field {
+  min-height: 66px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
+  background: #fafafa;
+}
+
+.drawer-field strong {
+  display: block;
+  margin-top: 6px;
+  color: #111827;
+  font-size: 14px;
+  line-height: 20px;
+  word-break: break-all;
+}
+
+.drawer-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.drawer-action-grid :deep(.el-button) {
+  width: 100%;
+  min-height: 34px;
+  margin-left: 0;
+}
+
+.drawer-log-list {
+  min-height: 120px;
+}
+
+.drawer-log-list :deep(.el-timeline) {
+  padding-left: 4px;
+}
+
+.drawer-log-item {
+  padding: 2px 0 8px;
+}
+
+.drawer-log-title {
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.drawer-log-operator {
+  margin-top: 4px;
+  color: #909399;
+  font-size: 12px;
 }
 
 .overdue-bills-page :deep(.el-form-item) {
@@ -525,6 +806,11 @@ export default {
 @media (max-width: 1300px) {
   .overdue-search-grid {
     grid-template-columns: repeat(2, minmax(190px, 1fr));
+  }
+
+  .drawer-field-grid,
+  .drawer-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

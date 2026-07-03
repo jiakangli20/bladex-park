@@ -28,4 +28,7 @@ public class PaymentNoticeSummaryVO {
 	@Schema(description = "站内信发送成功")
 	private Long inboxSuccessCount = 0L;
 
+	@Schema(description = "小程序发送成功")
+	private Long miniappSuccessCount = 0L;
+
 }

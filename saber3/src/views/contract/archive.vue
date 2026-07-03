@@ -57,13 +57,6 @@
             @click="openArchive(row)"
             >查看档案
           </el-button>
-          <el-button
-            type="primary"
-            text
-            v-if="permission.contract_archive_export_approval"
-            @click="handleExportApproval(row)"
-            >导出审批表
-          </el-button>
         </div>
       </template>
     </avue-crud>
@@ -706,15 +699,20 @@ export default {
     },
     handleExportApproval(row) {
       if (!row || !row.contractId) return;
+      this.openContractApprovalPreview(row);
+    },
+    openContractApprovalPreview(row) {
+      const contractId = row && row.contractId;
+      if (!contractId) return;
       openNoticePreview(
         this,
         this.noticePreview,
         {
           noticeType: 'contract-approval',
-          contractId: row.contractId,
+          contractId,
         },
-        contractApprovalPrintUrl(row.contractId),
-        `${row.contractNo || '合同'}会签审批表.xlsx`,
+        contractApprovalPrintUrl(contractId),
+        `${row.contractNo || '合同'}会签审批表.docx`,
         '合同会签审批表'
       );
     },
@@ -952,6 +950,12 @@ export default {
   justify-content: center;
   gap: 2px;
   white-space: nowrap;
+}
+
+.archive-table-actions :deep(.el-button) {
+  min-width: 64px;
+  padding: 0 3px;
+  margin-left: 0;
 }
 
 .archive-actions {

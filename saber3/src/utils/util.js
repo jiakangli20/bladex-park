@@ -418,9 +418,14 @@ export const downloadFile = (fileArrayBuffer, filename, mimeType = 'application/
   if (typeof window.chrome !== 'undefined') {
     // Chrome
     let link = document.createElement('a');
-    link.href = window.URL.createObjectURL(data);
+    const objectUrl = window.URL.createObjectURL(data);
+    link.href = objectUrl;
     link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(objectUrl);
   } else if (typeof window.navigator.msSaveBlob !== 'undefined') {
     // IE
     let blob = new Blob([data], { type: 'application/force-download' });

@@ -166,7 +166,7 @@
         <el-table-column prop="signDate" label="签订日期" width="120" align="center">
           <template #default="{ row }">{{ row.signDate || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="150" align="center">
+        <el-table-column label="操作" width="150" align="center" fixed="right">
           <template #default="{ row }">
             <div class="table-actions">
               <el-button text type="primary" @click="openDetail(row)">详情</el-button>
@@ -196,6 +196,15 @@
             <span>{{ detailContract.contractNo || '-' }}</span>
           </div>
           <div class="detail-actions">
+            <el-button
+              v-if="detailContract.contractId"
+              type="primary"
+              plain
+              :loading="contractTextDownloading"
+              @click="handleDownloadContractText(detailContract)"
+            >
+              下载合同
+            </el-button>
             <el-button
               v-if="canStartApproval(detailContract)"
               type="success"
@@ -786,6 +795,7 @@ export default {
       workflowLoading: false,
       workflowData: [],
       logData: [],
+      contractTextDownloading: false,
       uploadHeaders: {
         'Blade-Auth': `bearer ${getToken()}`,
         'Blade-Requested-With': 'BladeHttpRequest',
@@ -1650,6 +1660,36 @@ export default {
       if (!this.noticePreview.downloadUrl) return;
       downloadNoticeFile(this.noticePreview.downloadUrl, this.noticePreview.fallbackName);
     },
+    handleDownloadContractText(row) {
+      if (!row || !row.contractId) {
+        this.$message.warning('请选择需要下载的合同');
+        return;
+      }
+      const noticeType = this.resolveContractTextNoticeType(row);
+      const downloadUrl = noticePrintUrl(noticeType, { contractId: row.contractId });
+      if (!downloadUrl) {
+        this.$message.warning('合同下载地址生成失败');
+        return;
+      }
+      this.contractTextDownloading = true;
+      downloadNoticeFile(downloadUrl, `${row.contractNo || '合同'}正文.docx`)
+        .then(() => {
+          this.$message.success('合同下载已开始');
+        })
+        .catch(() => {
+          this.$message.error('合同下载失败，请确认合同字段是否完整后重试');
+        })
+        .finally(() => {
+          this.contractTextDownloading = false;
+        });
+    },
+    resolveContractTextNoticeType(row = {}) {
+      const increaseNode = String(row.rentIncreaseNode || '');
+      const remark = String(row.remark || '');
+      if (increaseNode && increaseNode !== 'none') return 'contract-floating';
+      if (remark.includes('浮动')) return 'contract-floating';
+      return 'contract-fixed';
+    },
     handleConfirmPayment(row) {
       this.$prompt('请输入实收金额', '确认缴费', {
         confirmButtonText: '确定',
@@ -1985,6 +2025,7 @@ export default {
 
 .toolbar-left {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -2012,6 +2053,12 @@ export default {
   justify-content: center;
   gap: 2px;
   white-space: nowrap;
+}
+
+.table-actions :deep(.el-button) {
+  min-width: 40px;
+  padding: 0 3px;
+  margin-left: 0;
 }
 
 .inline-tag {
