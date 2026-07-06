@@ -69,9 +69,6 @@ export default {
       'tagWel',
     ]),
     validSidebar() {
-      if (this.$route.path === this.tagWel.path) {
-        return false;
-      }
       return !(
         (this.$route.meta || {}).menu === false || (this.$route.query || {}).menu === 'false'
       );

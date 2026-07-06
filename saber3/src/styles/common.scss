@@ -93,6 +93,12 @@ a {
   .avue-logo {
     width: variables.$sidebar_collapse;
   }
+
+  .avue-logo {
+    flex-basis: variables.$sidebar_collapse;
+    justify-content: center;
+    padding: 0;
+  }
 }
 
 .avue-main {

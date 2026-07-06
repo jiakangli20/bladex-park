@@ -24,7 +24,7 @@ export default {
     sidebar: 'vertical',
     tag: true,
     debug: false,
-    collapse: false,
+    collapse: true,
     search: false,
     color: false,
     lock: false,

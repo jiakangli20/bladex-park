@@ -184,6 +184,11 @@ import { getWorkbench } from '@/api/home/home';
 
 export default {
   name: 'DeskHome',
+  inject: {
+    index: {
+      default: null,
+    },
+  },
   data() {
     return {
       loading: false,
@@ -473,7 +478,64 @@ export default {
           if (key) query[key] = value || '';
         });
       }
-      this.$router.push({ path: routePath, query });
+      this.syncSideMenu(routePath).finally(() => {
+        this.$router.push({ path: routePath, query });
+      });
+    },
+    syncSideMenu(routePath) {
+      if (!routePath || routePath === this.$route.path) {
+        return Promise.resolve();
+      }
+      const topMenus = this.$store.state.user.topMenu || [];
+      const loadTopMenus = topMenus.length
+        ? Promise.resolve(topMenus)
+        : this.$store.dispatch('GetTopMenu');
+      return loadTopMenus
+        .then(list => {
+          const activeTopMenu = this.findTopMenuByPath(list, routePath);
+          if (!activeTopMenu || !activeTopMenu.id) {
+            return Promise.resolve();
+          }
+          return this.$store.dispatch('GetMenu', activeTopMenu.id).then(data => {
+            if (this.index && this.index.$refs && this.index.$refs.top) {
+              this.index.$refs.top.setActiveMenu(activeTopMenu.id);
+            }
+            if (data.length !== 0 && this.$router.$avueRouter) {
+              const menuAll = this.$store.state.user.menuAll || [];
+              this.$router.$avueRouter.formatRoutes(menuAll.length ? menuAll : data, true);
+            }
+            return data;
+          });
+        })
+        .catch(() => Promise.resolve());
+    },
+    findTopMenuByPath(topMenus = [], routePath) {
+      const matchPath = menuItem => {
+        if (!menuItem || !routePath) return false;
+        if (menuItem.path && (routePath === menuItem.path || routePath.indexOf(`${menuItem.path}/`) === 0)) {
+          return true;
+        }
+        return (menuItem.children || []).some(child => matchPath(child));
+      };
+      const topMenuCode = this.topMenuCodeByRoute(routePath);
+      return (
+        topMenus.find(menuItem => matchPath(menuItem)) ||
+        topMenus.find(menuItem => topMenuCode && menuItem.code === topMenuCode)
+      );
+    },
+    topMenuCodeByRoute(routePath) {
+      const routeMap = [
+        { prefix: '/plugin/workflow', code: 'office' },
+        { prefix: '/settlement', code: 'entry' },
+        { prefix: '/enterprise', code: 'service' },
+        { prefix: '/contract', code: 'contract' },
+        { prefix: '/finance', code: 'finance' },
+        { prefix: '/park', code: 'park' },
+      ];
+      const matched = routeMap.find(
+        item => routePath === item.prefix || routePath.indexOf(`${item.prefix}/`) === 0
+      );
+      return matched ? matched.code : '';
     },
   },
 };

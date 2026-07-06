@@ -2,13 +2,21 @@
   <div class="avue-top">
     <logo />
     <div class="top-bar__left">
-      <div
-        class="avue-breadcrumb"
-        :class="[{ 'avue-breadcrumb--active': isCollapse }]"
+      <el-tooltip
         v-if="setting.collapse && !isHorizontal"
+        :content="isCollapse ? $t('crud.open') : $t('crud.shrink')"
+        placement="bottom"
       >
-        <i class="icon-navicon" @click="setCollapse"></i>
-      </div>
+        <button
+          class="avue-breadcrumb"
+          :class="[{ 'avue-breadcrumb--active': isCollapse }]"
+          type="button"
+          aria-label="切换左侧菜单"
+          @click="setCollapse"
+        >
+          <i class="icon-navicon"></i>
+        </button>
+      </el-tooltip>
     </div>
     <div class="top-bar__menu">
       <top-menu ref="topMenu" v-if="setting.menu"></top-menu>

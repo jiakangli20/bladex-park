@@ -23,14 +23,33 @@
 }
 
 .avue-breadcrumb {
+  width: 52px;
   height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color .18s ease;
 
   i {
-    font-size: 30px !important;
+    font-size: 28px !important;
+    color: #fff;
+    transition: transform .18s ease;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, .14);
   }
 
   &--active {
-    transform: rotate(90deg);
+    i {
+      transform: rotate(90deg);
+    }
   }
 }
 
@@ -214,8 +233,12 @@
 }
 
 .top-bar__left {
-  left: 0;
-  display: none;
+  position: relative;
+  top: auto;
+  left: auto;
+  display: flex;
+  align-items: center;
+  flex: 0 0 52px;
 }
 
 .top-bar__right {
@@ -252,7 +275,7 @@
   flex: 1 1 auto;
   min-width: 0;
   height: 100%;
-  padding-left: 18px;
+  padding-left: 0;
   padding-right: 12px;
   box-sizing: border-box;
   overflow: hidden;

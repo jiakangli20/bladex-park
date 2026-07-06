@@ -44,7 +44,7 @@ public class ParamServiceImpl extends BaseServiceImpl<ParamMapper, Param> implem
 	@Override
 	public String getValue(String paramKey) {
 		Param param = this.getOne(Wrappers.<Param>query().lambda().eq(Param::getParamKey, paramKey));
-		return param.getParamValue();
+		return param == null ? null : param.getParamValue();
 	}
 
 }

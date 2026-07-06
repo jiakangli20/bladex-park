@@ -307,26 +307,47 @@ const user = {
     },
     GetMenu({ commit, dispatch, state }, topMenuId) {
       return new Promise(resolve => {
-        const applyMenu = routeMenu => {
-          const sideMenu = routeMenu.filter(item => !isFixedHomeMenu(item));
+        const setSideMenu = menuList => {
+          const sideMenu = menuList.filter(item => !isFixedHomeMenu(item));
           commit('SET_MENU', sideMenu);
+        };
+        const applyMenu = routeMenu => {
           commit('SET_MENU_ALL_NULL');
           commit('SET_MENU_ALL', routeMenu);
           dispatch('GetButtons');
           if (!topMenuId) {
+            setSideMenu(routeMenu);
             resolve(routeMenu);
             return;
           }
           getRoutes(topMenuId)
             .then(res => {
-              resolve(formatRouteMenu(res.data.data));
+              const topRouteMenu = formatRouteMenu(res.data.data);
+              setSideMenu(topRouteMenu);
+              resolve(topRouteMenu);
             })
             .catch(() => {
+              setSideMenu([]);
               resolve([]);
             });
         };
         if (state.routesLoaded && (state.menuAll || []).length) {
-          applyMenu(state.menuAll);
+          dispatch('GetButtons');
+          if (!topMenuId) {
+            setSideMenu(state.menuAll);
+            resolve(state.menuAll);
+            return;
+          }
+          getRoutes(topMenuId)
+            .then(res => {
+              const topRouteMenu = formatRouteMenu(res.data.data);
+              setSideMenu(topRouteMenu);
+              resolve(topRouteMenu);
+            })
+            .catch(() => {
+              setSideMenu([]);
+              resolve([]);
+            });
           return;
         }
         getRoutes()

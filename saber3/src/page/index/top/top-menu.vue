@@ -98,7 +98,9 @@ export default {
     },
     openHome() {
       this.setActive(0);
-      this.$router.push(this.tagWel);
+      this.$store.dispatch('GetMenu').finally(() => {
+        this.$router.push(this.tagWel);
+      });
     },
     setActive(id) {
       this.activeIndex = String(id || 0);

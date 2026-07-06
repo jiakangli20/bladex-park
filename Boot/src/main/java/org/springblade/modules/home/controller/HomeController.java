@@ -30,7 +30,7 @@ import java.util.List;
 @NonDS
 @RestController
 @AllArgsConstructor
-@PreAuth(menu = "home")
+@PreAuth(menu = "desk")
 @RequestMapping(HomeConstant.APPLICATION_HOME_NAME + "/home")
 @Tag(name = "首页工作台", description = "首页聚合接口")
 public class HomeController extends BladeController {
