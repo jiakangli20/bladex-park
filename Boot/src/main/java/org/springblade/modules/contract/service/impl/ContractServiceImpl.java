@@ -30,16 +30,22 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.secure.utils.AuthUtil;
+import org.springblade.core.tool.jackson.JsonUtil;
 import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.Func;
 import org.springblade.modules.contract.mapper.ContractLogMapper;
 import org.springblade.modules.contract.mapper.ContractMapper;
+import org.springblade.modules.contract.mapper.ContractExpiryRuleMapper;
 import org.springblade.modules.contract.mapper.ContractPaymentMapper;
+import org.springblade.modules.contract.mapper.ContractWorkflowRecordMapper;
 import org.springblade.modules.contract.pojo.entity.Contract;
+import org.springblade.modules.contract.pojo.entity.ContractExpiryRule;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
+import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.pojo.vo.ContractStatsVO;
 import org.springblade.modules.contract.service.IContractService;
+import org.springblade.modules.park.mapper.RoomMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,8 +56,11 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 /**
@@ -69,13 +78,23 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private static final String STATUS_RENEWED = "3";
 	private static final String STATUS_TERMINATED = "4";
 	private static final String STATUS_PENDING_SEAL = "5";
+	private static final String STATUS_TERMINATION_HANDOVER = "7";
+	private static final String STATUS_ROOM_REVIEW_RUNNING = "8";
+	private static final String PROCESS_STATUS_APPROVED = "approved";
+	private static final String BUSINESS_TYPE_CONTRACT_TERMINATION = "contract_termination";
+	private static final String BUSINESS_TYPE_CONTRACT_PAYMENT = "contract_payment";
+	private static final String BUSINESS_TYPE_CONTRACT_ROOM_REVIEW = "contract_room_review";
 	private static final String FEE_TYPE_DEPOSIT_REFUND = "deposit_refund";
 	private static final String PAY_STATUS_UNPAID = "0";
 	private static final String PAY_STATUS_PAID = "1";
 	private static final String REMIND_STATUS_REMINDED = "1";
+	private static final String ROOM_STATUS_VACANT = "0";
 
 	private final ContractPaymentMapper contractPaymentMapper;
 	private final ContractLogMapper contractLogMapper;
+	private final ContractWorkflowRecordMapper contractWorkflowRecordMapper;
+	private final ContractExpiryRuleMapper contractExpiryRuleMapper;
+	private final RoomMapper roomMapper;
 
 	@Override
 	public IPage<Contract> selectContractPage(IPage<Contract> page, Contract contract) {
@@ -236,6 +255,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		if (existing != null) {
 			return existing;
 		}
+		validateDepositRefundMaterials(contractId);
 		Date now = DateUtil.now();
 		ContractPayment payment = new ContractPayment();
 		payment.setContractId(contractId);
@@ -253,6 +273,125 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		payment.setCreateTime(now);
 		contractPaymentMapper.insert(payment);
 		addLog(contractId, "deposit_refund", "生成押金退还付款单");
+		return contractPaymentMapper.selectById(payment.getPaymentId());
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public ContractWorkflowRecord offlineRoomReview(Long contractId, Map<String, Object> formData) {
+		Contract contract = requireContract(contractId);
+		if (!canOfflineRoomReview(contract.getContractStatus())) {
+			throw new ServiceException("退租审批通过后才可以登记验收情况");
+		}
+		Date now = DateUtil.now();
+		Map<String, Object> snapshot = normalizeOfflineForm(formData);
+		snapshot.putIfAbsent("acceptanceDate", DateUtil.format(now, DateUtil.PATTERN_DATE));
+		snapshot.putIfAbsent("acceptanceResult", "验收通过");
+		if (Func.isBlank(textValue(snapshot, "returnDate"))) {
+			snapshot.put("returnDate", snapshot.get("acceptanceDate"));
+		}
+		if (Func.isBlank(textValue(snapshot, "handoverResult"))) {
+			snapshot.put("handoverResult", firstNotBlank(textValue(snapshot, "acceptanceSituation"), textValue(snapshot, "acceptanceResult")));
+		}
+
+		ContractWorkflowRecord record = new ContractWorkflowRecord();
+		record.setParkId(contract.getParkId());
+		record.setBusinessType(BUSINESS_TYPE_CONTRACT_ROOM_REVIEW);
+		record.setBusinessKey(String.valueOf(contractId));
+		record.setProcessDefKey("offline-room-review");
+		record.setProcessName("线下房屋验收");
+		record.setProcessStatus(PROCESS_STATUS_APPROVED);
+		record.setCurrentNodeKey("offline_room_review");
+		record.setCurrentNode("线下验收完成");
+		record.setContractId(contractId);
+		record.setCustomerId(contract.getCustomerId());
+		record.setRoomIds(resolveContractRoomIds(contract));
+		record.setTemplateKey("room-review");
+		record.setFormKey("return");
+		record.setFormDataJson(JsonUtil.toJson(snapshot));
+		record.setAttachmentJson(JsonUtil.toJson(resolveAttachmentSnapshot(snapshot)));
+		record.setPrintFileUrl("/blade-contract/print/room-review/" + contractId);
+		record.setApprovalTime(now);
+		record.setRemark(limitText(firstNotBlank(textValue(snapshot, "acceptanceSituation"), textValue(snapshot, "remark"), "线下验收登记"), 500));
+		record.setDelFlag(DEFAULT_DEL_FLAG);
+		record.setCreateBy(currentUserName());
+		record.setCreateTime(now);
+		contractWorkflowRecordMapper.insert(record);
+
+		Contract update = new Contract();
+		update.setContractId(contractId);
+		update.setContractStatus(STATUS_TERMINATED);
+		update.setUpdateBy(currentUserName());
+		update.setUpdateTime(now);
+		baseMapper.updateById(update);
+		releaseRooms(contract);
+		addLog(contractId, "room_review", "线下房屋验收完成");
+		return contractWorkflowRecordMapper.selectById(record.getRecordId());
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public ContractPayment offlineDepositRefund(Long contractId, Map<String, Object> formData) {
+		Contract contract = requireContract(contractId);
+		if (!STATUS_TERMINATED.equals(contract.getContractStatus())) {
+			throw new ServiceException("房屋验收完成后才可以上传支付凭证");
+		}
+		ContractPayment payment = findDepositRefundPayment(contractId);
+		if (payment == null) {
+			throw new ServiceException("请先发起付款申请");
+		}
+		if (PAY_STATUS_PAID.equals(payment.getPayStatus())) {
+			throw new ServiceException("该押金退还已完成");
+		}
+		if (!PROCESS_STATUS_APPROVED.equals(payment.getPaymentApprovalStatus())) {
+			throw new ServiceException("付款申请审批完成后才可以上传支付凭证");
+		}
+		validateDepositRefundMaterials(contractId);
+		Date now = DateUtil.now();
+		Map<String, Object> snapshot = normalizeOfflineForm(formData);
+		BigDecimal amountPaid = decimalValue(snapshot.get("amountPaid"), payment.getAmountDue());
+		if (amountPaid.compareTo(BigDecimal.ZERO) <= 0) {
+			throw new ServiceException("支付金额必须大于0");
+		}
+		snapshot.putIfAbsent("amountPaid", amountPaid);
+		snapshot.putIfAbsent("payTime", DateUtil.format(now, DateUtil.PATTERN_DATETIME));
+
+		ContractPayment update = new ContractPayment();
+		update.setPaymentId(payment.getPaymentId());
+		update.setAmountPaid(amountPaid);
+		update.setPayStatus(PAY_STATUS_PAID);
+		update.setPayTime(now);
+		update.setRemark(limitText(firstNotBlank(textValue(snapshot, "remark"), textValue(snapshot, "paymentRemark"), "线下押金退还"), 500));
+		update.setUpdateBy(currentUserName());
+		update.setUpdateTime(now);
+		contractPaymentMapper.updateById(update);
+
+		ContractWorkflowRecord record = new ContractWorkflowRecord();
+		record.setParkId(contract.getParkId());
+		record.setBusinessType(BUSINESS_TYPE_CONTRACT_PAYMENT);
+		record.setBusinessKey(String.valueOf(payment.getPaymentId()));
+		record.setProcessDefKey("offline-deposit-refund");
+		record.setProcessName("线下押金退还");
+		record.setProcessStatus(PROCESS_STATUS_APPROVED);
+		record.setCurrentNodeKey("offline_deposit_refund");
+		record.setCurrentNode("线下支付完成");
+		record.setContractId(contractId);
+		record.setPaymentId(payment.getPaymentId());
+		record.setCustomerId(contract.getCustomerId());
+		record.setRoomIds(resolveContractRoomIds(contract));
+		record.setTemplateKey("payment-notice");
+		record.setFormKey("pay");
+		record.setFormDataJson(JsonUtil.toJson(snapshot));
+		record.setAttachmentJson(JsonUtil.toJson(resolveAttachmentSnapshot(snapshot)));
+		record.setPrintFileUrl("/blade-contract/print/payment-notice/" + payment.getPaymentId());
+		record.setApprovalTime(now);
+		record.setRemark(limitText(firstNotBlank(textValue(snapshot, "remark"), textValue(snapshot, "paymentRemark"), "线下支付凭证登记"), 500));
+		record.setDelFlag(DEFAULT_DEL_FLAG);
+		record.setCreateBy(currentUserName());
+		record.setCreateTime(now);
+		contractWorkflowRecordMapper.insert(record);
+
+		addLog(contractId, "deposit_refund", "上传押金退还支付凭证");
 		return contractPaymentMapper.selectById(payment.getPaymentId());
 	}
 
@@ -315,9 +454,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		if (Func.isBlank(contract.getPaymentCycle())) {
 			contract.setPaymentCycle("monthly");
 		}
-		if (contract.getRenewalRemindDays() == null) {
-			contract.setRenewalRemindDays(30);
-		}
+		contract.setRenewalRemindDays(resolveRenewalRemindDays(contract));
 		contract.setDelFlag(DEFAULT_DEL_FLAG);
 		contract.setCreateBy(currentUserName());
 		contract.setCreateTime(now);
@@ -332,6 +469,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		Contract oldContract = requireContract(contract.getContractId());
 		validateNewRelations(contract);
 		contract.setParkId(oldContract.getParkId());
+		contract.setRenewalRemindDays(resolveRenewalRemindDays(contract));
 		contract.setDelFlag(DEFAULT_DEL_FLAG);
 		contract.setUpdateBy(currentUserName());
 		contract.setUpdateTime(DateUtil.now());
@@ -379,6 +517,44 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		}
 	}
 
+	private Integer resolveRenewalRemindDays(Contract contract) {
+		List<Long> buildingIds = resolveContractBuildingIds(contract);
+		if (buildingIds.isEmpty()) {
+			return null;
+		}
+		return contractExpiryRuleMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers.<ContractExpiryRule>lambdaQuery()
+				.eq(ContractExpiryRule::getDelFlag, DEFAULT_DEL_FLAG))
+			.stream()
+			.filter(rule -> matchesAnyBuilding(rule, buildingIds))
+			.map(ContractExpiryRule::getRemindDays)
+			.filter(Func::isNotEmpty)
+			.max(Integer::compareTo)
+			.orElse(null);
+	}
+
+	private List<Long> resolveContractBuildingIds(Contract contract) {
+		List<Long> buildingIds = new java.util.ArrayList<>();
+		if (contract == null) {
+			return buildingIds;
+		}
+		if (contract.getBuildingId() != null) {
+			buildingIds.add(contract.getBuildingId());
+		}
+		Func.toLongList(Func.toStr(contract.getBuildingIds(), "")).stream()
+			.filter(Func::isNotEmpty)
+			.filter(id -> !buildingIds.contains(id))
+			.forEach(buildingIds::add);
+		return buildingIds;
+	}
+
+	private boolean matchesAnyBuilding(ContractExpiryRule rule, List<Long> buildingIds) {
+		if (rule == null || Func.isBlank(rule.getBuildingIds())) {
+			return false;
+		}
+		List<Long> ruleBuildingIds = Func.toLongList(rule.getBuildingIds());
+		return buildingIds.stream().anyMatch(ruleBuildingIds::contains);
+	}
+
 	private void validateCustomer(Long customerId) {
 		if (emptyCount(baseMapper.existsSettledCustomer(customerId))) {
 			throw new ServiceException("客户不存在或尚未完成入驻审批");
@@ -387,6 +563,173 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 
 	private boolean emptyCount(Long count) {
 		return count == null || count == 0;
+	}
+
+	private boolean canOfflineRoomReview(String contractStatus) {
+		return STATUS_TERMINATION_HANDOVER.equals(contractStatus)
+			|| STATUS_ROOM_REVIEW_RUNNING.equals(contractStatus)
+			|| STATUS_TERMINATED.equals(contractStatus);
+	}
+
+	private void validateDepositRefundMaterials(Long contractId) {
+		ContractWorkflowRecord terminationRecord = contractWorkflowRecordMapper.selectLatest(contractId, BUSINESS_TYPE_CONTRACT_TERMINATION);
+		if (terminationRecord == null || !PROCESS_STATUS_APPROVED.equals(terminationRecord.getProcessStatus())) {
+			throw new ServiceException("退租审批完成后才可以发起付款申请");
+		}
+		List<String> missingMaterials = missingDepositRefundMaterials(terminationRecord.getAttachmentJson());
+		if (!missingMaterials.isEmpty()) {
+			throw new ServiceException("请先补齐退租资料：" + String.join("、", missingMaterials));
+		}
+	}
+
+	private List<String> missingDepositRefundMaterials(String attachmentJson) {
+		Map<String, Object> attachments = parseAttachmentJson(attachmentJson);
+		List<String> missing = new java.util.ArrayList<>();
+		if (!hasMaterial(attachments, List.of("room_acceptance"), List.of("房屋验收"), List.of("acceptanceFileUrl", "roomAcceptanceFiles"))) {
+			missing.add("房屋验收");
+		}
+		if (!hasMaterial(attachments, List.of("termination_agreement", "signed_termination_agreement"), List.of("租赁合同解除补充协议", "已盖章解除补充协议"), List.of("termination-agreement", "terminationAgreementUrl"))) {
+			missing.add("租赁合同解除补充协议");
+		}
+		if (!hasMaterial(attachments, List.of("handover_file"), List.of("退租交接资料"), List.of("fileList", "handoverFileUrl"))) {
+			missing.add("退租交接资料");
+		}
+		return missing;
+	}
+
+	private boolean hasMaterial(Map<String, Object> attachments, List<String> materialTypes, List<String> materialNames, List<String> attachmentKeys) {
+		for (String key : attachmentKeys) {
+			if (hasAttachmentValue(attachments.get(key))) {
+				return true;
+			}
+		}
+		for (Map<String, Object> file : materialFiles(attachments.get("materials"))) {
+			String materialType = textValue(file, "materialType");
+			String category = textValue(file, "category");
+			String materialName = firstNotBlank(textValue(file, "materialName"), textValue(file, "categoryName"), category);
+			if (materialTypes.contains(materialType) || materialTypes.contains(category)) {
+				return true;
+			}
+			if (materialNames.stream().anyMatch(materialName::contains)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean hasAttachmentValue(Object value) {
+		if (value == null) {
+			return false;
+		}
+		if (value instanceof Collection<?> collection) {
+			return !collection.isEmpty();
+		}
+		if (value instanceof Map<?, ?> map) {
+			return !map.isEmpty();
+		}
+		return Func.isNotBlank(Func.toStr(value, ""));
+	}
+
+	@SuppressWarnings("unchecked")
+	private List<Map<String, Object>> materialFiles(Object value) {
+		List<Map<String, Object>> files = new java.util.ArrayList<>();
+		if (value instanceof Collection<?> collection) {
+			collection.forEach(item -> {
+				if (item instanceof Map<?, ?> map) {
+					files.add(new LinkedHashMap<>((Map<String, Object>) map));
+				}
+			});
+		} else if (value instanceof Map<?, ?> map) {
+			files.add(new LinkedHashMap<>((Map<String, Object>) map));
+		}
+		return files;
+	}
+
+	private Map<String, Object> parseAttachmentJson(String attachmentJson) {
+		if (Func.isBlank(attachmentJson)) {
+			return new LinkedHashMap<>();
+		}
+		try {
+			Map<String, Object> attachment = JsonUtil.readMap(attachmentJson);
+			return attachment == null ? new LinkedHashMap<>() : new LinkedHashMap<>(attachment);
+		} catch (Exception ignored) {
+			return new LinkedHashMap<>();
+		}
+	}
+
+	private Map<String, Object> normalizeOfflineForm(Map<String, Object> formData) {
+		Map<String, Object> snapshot = new LinkedHashMap<>();
+		if (formData != null) {
+			snapshot.putAll(formData);
+		}
+		snapshot.putIfAbsent("operator", currentUserName());
+		snapshot.putIfAbsent("operateTime", DateUtil.format(DateUtil.now(), DateUtil.PATTERN_DATETIME));
+		return snapshot;
+	}
+
+	private Map<String, Object> resolveAttachmentSnapshot(Map<String, Object> snapshot) {
+		Map<String, Object> attachments = new LinkedHashMap<>();
+		putIfPresent(attachments, "acceptanceFileUrl", snapshot.get("acceptanceFileUrl"));
+		putIfPresent(attachments, "acceptanceFileName", snapshot.get("acceptanceFileName"));
+		putIfPresent(attachments, "paymentVoucherUrl", snapshot.get("paymentVoucherUrl"));
+		putIfPresent(attachments, "paymentVoucherName", snapshot.get("paymentVoucherName"));
+		putIfPresent(attachments, "fileList", snapshot.get("fileList"));
+		return attachments;
+	}
+
+	private void putIfPresent(Map<String, Object> target, String key, Object value) {
+		if (value != null && Func.isNotBlank(Func.toStr(value, ""))) {
+			target.put(key, value);
+		}
+	}
+
+	private BigDecimal decimalValue(Object value, BigDecimal defaultValue) {
+		if (value == null || Func.isBlank(Func.toStr(value, ""))) {
+			return defaultValue == null ? BigDecimal.ZERO : defaultValue;
+		}
+		try {
+			return new BigDecimal(Func.toStr(value, "0"));
+		} catch (NumberFormatException exception) {
+			throw new ServiceException("支付金额格式不正确");
+		}
+	}
+
+	private String textValue(Map<String, Object> source, String key) {
+		return source == null ? "" : Func.toStr(source.get(key), "");
+	}
+
+	private String firstNotBlank(String... values) {
+		for (String value : values) {
+			if (Func.isNotBlank(value)) {
+				return value;
+			}
+		}
+		return "";
+	}
+
+	private String limitText(String text, int maxLength) {
+		String value = Func.toStr(text, "");
+		if (value.length() <= maxLength) {
+			return value;
+		}
+		return value.substring(0, maxLength);
+	}
+
+	private String resolveContractRoomIds(Contract contract) {
+		String roomIds = contract == null ? "" : Func.toStr(contract.getRoomIds(), "");
+		if (Func.isNotBlank(roomIds)) {
+			return roomIds;
+		}
+		return contract != null && contract.getRoomId() != null ? String.valueOf(contract.getRoomId()) : "";
+	}
+
+	private void releaseRooms(Contract contract) {
+		if (contract == null) {
+			return;
+		}
+		for (Long roomId : Func.toLongList(resolveContractRoomIds(contract))) {
+			roomMapper.updateRoomStatus(roomId, ROOM_STATUS_VACANT, currentUserName());
+		}
 	}
 
 	private void generatePaymentPlan(Contract contract) {

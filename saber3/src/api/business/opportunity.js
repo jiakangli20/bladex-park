@@ -141,5 +141,6 @@ export const exportTenantEntryApprovalForm = (opportunityId, processInsId) => {
     url: `/blade-park/opportunity/tenant-entry/approval-form/${opportunityId}`,
     method: 'get',
     params: processInsId ? { processInsId } : {},
+    responseType: 'blob',
   });
 };

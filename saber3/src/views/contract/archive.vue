@@ -1,6 +1,197 @@
 <template>
   <basic-container>
+    <div v-if="detailMode" class="archive-detail-page">
+      <el-skeleton :loading="detailLoading" animated>
+        <template #template>
+          <el-skeleton-item variant="p" style="width: 40%" />
+          <el-skeleton-item variant="p" style="width: 70%" />
+          <el-skeleton-item variant="p" style="width: 80%" />
+        </template>
+        <template #default>
+          <header class="archive-detail-header">
+            <div class="archive-title-row">
+              <el-button class="archive-back" text icon="el-icon-arrow-left" @click="closeArchiveDetail" />
+              <h2>{{ customerTitle }}</h2>
+            </div>
+            <div class="archive-header-actions">
+              <el-button
+                v-if="permission.contract_archive_export_approval"
+                type="primary"
+                plain
+                @click="handleExportApproval(current)"
+              >
+                合同审批表
+              </el-button>
+              <el-button
+                v-if="permission.contract_archive_print"
+                type="primary"
+                @click="handlePrint(current)"
+              >
+                合同正文
+              </el-button>
+            </div>
+            <div class="archive-company-grid">
+              <div>
+                <span>联系人：</span>
+                <strong>{{ detailValue(customerDetail.contactName || current.followUser) }}</strong>
+              </div>
+              <div>
+                <span>行业分类：</span>
+                <strong>{{ detailValue(customerDetail.industry) }}</strong>
+              </div>
+              <div>
+                <span>租客标签：</span>
+                <template v-if="customerTags.length">
+                  <el-tag
+                    v-for="tag in customerTags"
+                    :key="tag"
+                    size="small"
+                    effect="plain"
+                    class="archive-tag"
+                  >
+                    {{ tag }}
+                  </el-tag>
+                </template>
+                <strong v-else>--</strong>
+              </div>
+              <div>
+                <span>邮箱：</span>
+                <strong>{{ detailValue(customerDetail.contactEmail) }}</strong>
+              </div>
+              <div>
+                <span>租客编码：</span>
+                <strong>{{ detailValue(current.customerId || customerDetail.customerId) }}</strong>
+              </div>
+            </div>
+          </header>
+
+          <el-tabs v-model="activeTab" class="archive-detail-tabs">
+            <el-tab-pane label="详情" name="detail">
+              <section class="archive-detail-section">
+                <div class="archive-section-title">企业信息</div>
+                <div class="archive-info-grid">
+                  <div v-for="item in enterpriseInfoItems" :key="item.label" class="archive-info-item">
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.value }}</strong>
+                  </div>
+                </div>
+              </section>
+              <section class="archive-detail-section">
+                <div class="archive-section-title">合同概要</div>
+                <div class="archive-info-grid">
+                  <div v-for="item in contractInfoItems" :key="item.label" class="archive-info-item">
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.value }}</strong>
+                  </div>
+                </div>
+              </section>
+            </el-tab-pane>
+
+            <el-tab-pane label="合同" name="contract">
+              <el-table :data="contractRows" class="archive-flat-table">
+                <el-table-column prop="contractNo" label="合同编号" min-width="160" align="center">
+                  <template #default="{ row }">
+                    <el-link type="primary" underline="never" @click="handlePrint(row)">
+                      {{ row.contractNo || '-' }}
+                    </el-link>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="contractStatus" label="合同状态" width="140" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="statusType(row.contractStatus)" effect="plain">
+                      {{ row.contractStatusName || statusText(row.contractStatus) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="合同类型" width="140" align="center">
+                  <template #default="{ row }">{{ contractTypeText(row) }}</template>
+                </el-table-column>
+                <el-table-column label="租赁单价" width="160" align="center">
+                  <template #default="{ row }">{{ formatRentUnitPrice(row.rentPrice) }}</template>
+                </el-table-column>
+                <el-table-column prop="signDate" label="签订日期" width="150" align="center">
+                  <template #default="{ row }">{{ row.signDate || '-' }}</template>
+                </el-table-column>
+                <el-table-column label="合同来源" width="140" align="center">
+                  <template #default="{ row }">{{ contractSourceText(row) }}</template>
+                </el-table-column>
+                <el-table-column label="操作" width="180" align="center" fixed="right">
+                  <template #default="{ row }">
+                    <el-button type="primary" text @click="handlePrint(row)">预览正文</el-button>
+                    <el-button
+                      v-if="permission.contract_archive_export_approval"
+                      type="primary"
+                      text
+                      @click="handleExportApproval(row)"
+                    >
+                      审批表
+                    </el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </el-tab-pane>
+
+            <el-tab-pane label="账单" name="bill">
+              <el-table :data="payments" class="archive-flat-table">
+                <el-table-column prop="contractNo" label="合同编号" min-width="150" show-overflow-tooltip />
+                <el-table-column prop="feeName" label="账单名称" min-width="150" />
+                <el-table-column label="账期" min-width="200" align="center">
+                  <template #default="{ row }">
+                    {{ row.periodStart || '-' }} ~ {{ row.periodEnd || '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column prop="amountDue" label="应收金额" width="130" align="right">
+                  <template #default="{ row }">{{ formatMoneyWithUnit(row.amountDue) }}</template>
+                </el-table-column>
+                <el-table-column prop="amountPaid" label="实收金额" width="130" align="right">
+                  <template #default="{ row }">{{ formatMoneyWithUnit(row.amountPaid) }}</template>
+                </el-table-column>
+                <el-table-column prop="payDeadline" label="缴费期限" width="150" align="center">
+                  <template #default="{ row }">{{ row.payDeadline || '-' }}</template>
+                </el-table-column>
+                <el-table-column label="账单状态" width="120" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="billStatusType(row.payStatus)" effect="plain">
+                      {{ billStatusText(row.payStatus) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <el-empty v-if="payments.length === 0" description="暂无账单" />
+            </el-tab-pane>
+
+            <el-tab-pane label="附件" name="attachment">
+              <div class="archive-attachment-bar">
+                <el-button type="primary" icon="el-icon-plus" @click="openSupplementDialog">
+                  新增附件
+                </el-button>
+              </div>
+              <el-table :data="attachmentRows" class="archive-flat-table">
+                <el-table-column prop="fileName" label="文件名称" min-width="220" show-overflow-tooltip>
+                  <template #default="{ row }">{{ row.fileName || row.agreementName || '-' }}</template>
+                </el-table-column>
+                <el-table-column prop="createBy" label="上传人" width="150" align="center">
+                  <template #default="{ row }">{{ row.createBy || row.updateBy || '-' }}</template>
+                </el-table-column>
+                <el-table-column prop="createTime" label="上传时间" width="180" align="center">
+                  <template #default="{ row }">{{ row.createTime || row.updateTime || '-' }}</template>
+                </el-table-column>
+                <el-table-column label="操作" width="160" align="center" fixed="right">
+                  <template #default="{ row }">
+                    <el-button type="primary" text @click="downloadSupplement(row)">下载</el-button>
+                    <el-button type="danger" text @click="removeSupplement(row)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <el-empty v-if="attachmentRows.length === 0" description="暂无附件" />
+            </el-tab-pane>
+          </el-tabs>
+        </template>
+      </el-skeleton>
+    </div>
+
     <avue-crud
+      v-else
       class="archive-crud"
       :option="option"
       :table-loading="loading"
@@ -18,7 +209,7 @@
       <template #customerName="{ row }">
         <el-link
           type="primary"
-          :underline="false"
+          underline="never"
           class="archive-customer-link"
           @click="openArchive(row)"
         >
@@ -298,7 +489,7 @@
 
     <el-dialog
       v-model="supplementVisible"
-      title="上传补充协议"
+      title="新增附件"
       width="620px"
       append-to-body
       @close="resetSupplementForm"
@@ -319,19 +510,15 @@
         :rules="supplementRules"
         label-position="top"
       >
-        <el-form-item label="协议名称" prop="agreementName">
-          <el-input v-model="supplementForm.agreementName" maxlength="100" show-word-limit />
-        </el-form-item>
-        <el-form-item label="变更事项" prop="changeItem">
+        <el-form-item label="附件名称" prop="agreementName">
           <el-input
-            v-model="supplementForm.changeItem"
-            type="textarea"
-            :rows="3"
-            maxlength="300"
+            v-model="supplementForm.agreementName"
+            maxlength="100"
             show-word-limit
+            placeholder="请输入附件名称"
           />
         </el-form-item>
-        <el-form-item label="补充协议文件" prop="fileUrl">
+        <el-form-item label="附件文件" prop="fileUrl">
           <el-upload
             drag
             ref="supplementUploadRef"
@@ -348,7 +535,7 @@
             class="supplement-upload"
           >
             <div class="supplement-upload__text">
-              <strong>上传盖章后的补充协议</strong>
+              <strong>上传合同归档附件</strong>
               <span>支持 PDF、Word、JPG、PNG，单个文件不超过 20MB</span>
             </div>
           </el-upload>
@@ -366,7 +553,7 @@
       <template #footer>
         <el-button @click="supplementVisible = false">取消</el-button>
         <el-button type="primary" :loading="supplementLoading" @click="submitSupplement">
-          确定归档
+          确定上传
         </el-button>
       </template>
     </el-dialog>
@@ -377,7 +564,6 @@
 import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
 import {
   contractApprovalPrintUrl,
-  contractTextPrintUrl,
   getArchiveDetail,
   getArchiveList,
   getSupplementAgreements,
@@ -386,6 +572,7 @@ import {
   saveSupplementAgreement,
 } from '@/api/contract/archive';
 import { noticePrintUrl } from '@/api/contract/print';
+import { getCustomerDetail } from '@/api/business/customer';
 import {
   approvalStatusDic,
   paymentStatusDic,
@@ -417,10 +604,13 @@ export default {
       },
       option: tableOption,
       data: [],
+      detailMode: false,
       drawerVisible: false,
       detailLoading: false,
-      activeTab: 'contract',
+      activeTab: 'detail',
       current: {},
+      customerDetail: {},
+      customerContracts: [],
       payments: [],
       supplements: [],
       terminations: [],
@@ -432,21 +622,21 @@ export default {
       printTitle: '合同打印',
       printHtml: '',
       noticePreview: createNoticePreviewState(),
+      archiveAutoOpened: false,
       supplementVisible: false,
       supplementLoading: false,
       supplementUploadFileList: [],
       supplementForm: {
         agreementName: '',
-        changeItem: '',
+        changeItem: '合同档案附件',
         fileName: '',
         fileUrl: '',
         fileType: '',
         remark: '',
       },
       supplementRules: {
-        agreementName: [{ required: true, message: '请输入协议名称', trigger: 'blur' }],
-        changeItem: [{ required: true, message: '请输入变更事项', trigger: 'blur' }],
-        fileUrl: [{ required: true, message: '请上传补充协议文件', trigger: 'change' }],
+        agreementName: [{ required: true, message: '请输入附件名称', trigger: 'blur' }],
+        fileUrl: [{ required: true, message: '请上传附件文件', trigger: 'change' }],
       },
       uploadHeaders: {
         'Blade-Auth': `bearer ${getToken()}`,
@@ -468,33 +658,155 @@ export default {
         editBtn: false,
       };
     },
+    customerTitle() {
+      return this.customerDetail.enterpriseName || this.current.customerName || '客户详情';
+    },
+    customerTags() {
+      const tags = this.customerDetail.tags || [];
+      if (!Array.isArray(tags)) return [];
+      return tags
+        .map(item => item.tagName || item.name || item.label || item.tagValue || '')
+        .filter(Boolean);
+    },
+    enterpriseInfoItems() {
+      const customer = this.customerDetail || {};
+      return [
+        { label: '企业名称', value: this.detailValue(customer.enterpriseName || this.current.customerName) },
+        { label: '统一社会信用代码', value: this.detailValue(customer.creditCode) },
+        { label: '企业类型', value: this.detailValue(customer.enterpriseType) },
+        { label: '所属行业', value: this.detailValue(customer.industry) },
+        { label: '联系人', value: this.detailValue(customer.contactName || this.current.followUser) },
+        { label: '联系电话', value: this.detailValue(customer.contactPhone) },
+        { label: '联系邮箱', value: this.detailValue(customer.contactEmail) },
+        { label: '企业地址', value: this.detailValue(customer.address || customer.registeredAddress) },
+      ];
+    },
+    contractInfoItems() {
+      return [
+        { label: '合同编号', value: this.detailValue(this.current.contractNo) },
+        { label: '合同名称', value: this.detailValue(this.current.contractName) },
+        { label: '所属园区', value: this.detailValue(this.current.parkName) },
+        { label: '房源信息', value: this.detailValue(this.current.roomName || this.current.buildingName) },
+        { label: '租赁面积', value: this.formatArea(this.current.rentArea) },
+        { label: '月租金', value: this.formatMoneyWithUnit(this.current.monthlyRent) },
+        { label: '租期', value: `${this.current.startDate || '-'} 至 ${this.current.endDate || '-'}` },
+        { label: '合同状态', value: this.current.contractStatusName || this.statusText(this.current.contractStatus) },
+      ];
+    },
+    contractRows() {
+      if (this.customerContracts.length) {
+        return this.customerContracts;
+      }
+      return this.current && this.current.contractId ? [this.current] : [];
+    },
+    attachmentRows() {
+      return this.supplements || [];
+    },
   },
   created() {
     if (this.$route.query.contractId) {
       this.query.contractId = this.$route.query.contractId;
     }
+    if (this.$route.query.contractNo) {
+      this.query.contractNo = this.$route.query.contractNo;
+    }
   },
   methods: {
     openArchive(row) {
+      if (!row || !row.contractId) return;
       const contractId = row.contractId;
-      this.drawerVisible = true;
+      this.detailMode = true;
+      this.drawerVisible = false;
       this.detailLoading = true;
-      this.activeTab = 'contract';
+      this.activeTab = 'detail';
       this.workflowData = [];
+      this.customerDetail = {};
+      this.customerContracts = [];
       getArchiveDetail(contractId)
         .then(res => {
           const data = res.data.data || {};
           this.current = data.contract || row;
+          this.customerContracts = this.current.contractId ? [this.current] : [];
           this.payments = data.payments || [];
           this.supplements = data.supplements || [];
           this.terminations = data.terminations || [];
           this.logs = data.logs || [];
           this.archiveStep = data.archiveStep || 0;
-          this.loadWorkflow(contractId);
+          this.loadCustomerDetail(this.current.customerId);
+          this.loadCustomerArchiveRows(this.current, data.payments || []);
         })
         .finally(() => {
           this.detailLoading = false;
         });
+    },
+    closeArchiveDetail() {
+      this.detailMode = false;
+      this.current = {};
+      this.customerDetail = {};
+      this.customerContracts = [];
+      this.payments = [];
+      this.supplements = [];
+      this.terminations = [];
+      this.logs = [];
+      this.activeTab = 'detail';
+    },
+    loadCustomerDetail(customerId) {
+      if (!customerId) return;
+      getCustomerDetail(customerId)
+        .then(res => {
+          this.customerDetail = res.data.data || {};
+        })
+        .catch(() => {
+          this.customerDetail = {};
+        });
+    },
+    loadCustomerArchiveRows(contract = {}, currentPayments = []) {
+      if (!contract.customerId && !contract.customerName) return;
+      getArchiveList(1, 200, { customerName: contract.customerName || '' })
+        .then(res => {
+          const records = ((res.data.data || {}).records || []).filter(item =>
+            this.isSameCustomerArchive(item, contract)
+          );
+          const contracts = records.length ? records : [contract];
+          this.customerContracts = contracts;
+          return Promise.all(
+            contracts.map(item => {
+              if (String(item.contractId) === String(contract.contractId)) {
+                return Promise.resolve({
+                  contract: item,
+                  payments: currentPayments,
+                });
+              }
+              return getArchiveDetail(item.contractId)
+                .then(detailRes => ({
+                  contract: item,
+                  payments: (detailRes.data.data || {}).payments || [],
+                }))
+                .catch(() => ({
+                  contract: item,
+                  payments: [],
+                }));
+            })
+          );
+        })
+        .then(groups => {
+          if (!Array.isArray(groups)) return;
+          this.payments = groups.flatMap(group =>
+            (group.payments || []).map(payment => ({
+              ...payment,
+              contractNo: payment.contractNo || group.contract.contractNo,
+              contractName: payment.contractName || group.contract.contractName,
+              customerName: payment.customerName || group.contract.customerName,
+            }))
+          );
+        })
+        .catch(() => {});
+    },
+    isSameCustomerArchive(row = {}, contract = {}) {
+      if (row.customerId && contract.customerId) {
+        return String(row.customerId) === String(contract.customerId);
+      }
+      return Boolean(row.customerName && row.customerName === contract.customerName);
     },
     loadWorkflow(contractId) {
       if (!contractId) return;
@@ -566,8 +878,8 @@ export default {
       }
       const contractNo = this.current.contractNo || '';
       this.supplementForm = {
-        agreementName: contractNo ? `${contractNo}补充协议` : '合同补充协议',
-        changeItem: '',
+        agreementName: contractNo ? `${contractNo}附件` : '合同附件',
+        changeItem: '合同档案附件',
         fileName: '',
         fileUrl: '',
         fileType: '',
@@ -589,7 +901,7 @@ export default {
       this.supplementUploadFileList = [];
       this.supplementForm = {
         agreementName: '',
-        changeItem: '',
+        changeItem: '合同档案附件',
         fileName: '',
         fileUrl: '',
         fileType: '',
@@ -660,9 +972,10 @@ export default {
         saveSupplementAgreement({
           ...this.supplementForm,
           contractId: this.current.contractId,
+          changeItem: this.supplementForm.changeItem || '合同档案附件',
         })
           .then(() => {
-            this.$message.success('补充协议已归档');
+            this.$message.success('附件已上传');
             this.supplementVisible = false;
             this.loadSupplements(this.current.contractId);
           })
@@ -672,25 +985,25 @@ export default {
       });
     },
     removeSupplement(row) {
-      this.$confirm('确认删除该补充协议归档吗？', '提示', {
+      this.$confirm('确认删除该附件吗？', '提示', {
         type: 'warning',
       })
         .then(() => removeSupplementAgreement(row.agreementId))
         .then(() => {
-          this.$message.success('补充协议已删除');
+          this.$message.success('附件已删除');
           this.loadSupplements(this.current.contractId);
         })
         .catch(() => {});
     },
     downloadSupplement(row) {
       if (!row.fileUrl) {
-        this.$message.warning('暂无补充协议文件');
+        this.$message.warning('暂无附件文件');
         return;
       }
       const link = document.createElement('a');
       link.href = row.fileUrl;
       link.target = '_blank';
-      link.download = row.fileName || row.agreementName || '补充协议';
+      link.download = row.fileName || row.agreementName || '附件';
       link.click();
     },
     getFileType(value) {
@@ -718,7 +1031,19 @@ export default {
     },
     handlePrint(row) {
       if (!row || !row.contractId) return;
-      this.downloadPrintFile(contractTextPrintUrl(row.contractId, this.resolveRentMode(row)), `${row.contractNo || '合同'}正文.docx`);
+      const rentMode = this.resolveRentMode(row);
+      const noticeType = rentMode === 'floating' ? 'contract-floating' : 'contract-fixed';
+      openNoticePreview(
+        this,
+        this.noticePreview,
+        {
+          noticeType,
+          contractId: row.contractId,
+        },
+        noticePrintUrl(noticeType, { contractId: row.contractId }),
+        `${row.contractNo || '合同'}正文.docx`,
+        rentMode === 'floating' ? '合同正文浮动租金版' : '合同正文固定租金版'
+      );
     },
     resolveRentMode(row = {}) {
       const increaseNode = String(row.rentIncreaseNode || '');
@@ -768,6 +1093,14 @@ export default {
           const data = res.data.data;
           this.page.total = data.total;
           this.data = data.records || [];
+          if (
+            this.$route.query.openArchive === '1' &&
+            !this.archiveAutoOpened &&
+            this.data.length
+          ) {
+            this.archiveAutoOpened = true;
+            this.openArchive(this.data[0]);
+          }
         })
         .finally(() => {
           this.loading = false;
@@ -806,6 +1139,21 @@ export default {
     contractSourceText(row = {}) {
       return row.parentContractId ? '续签合同' : '新建合同';
     },
+    contractTypeText(row = {}) {
+      return this.resolveRentMode(row) === 'floating' ? '浮动租金合同' : '普通合同';
+    },
+    billStatusText(value) {
+      return this.dicText(paymentStatusDic, value);
+    },
+    billStatusType(value) {
+      return String(value) === '1' ? 'success' : 'warning';
+    },
+    detailValue(value) {
+      if (value === null || value === undefined || value === '') {
+        return '--';
+      }
+      return value;
+    },
     workflowBusinessTypeText(value) {
       const map = {
         contract_approval: '合同审批',
@@ -841,6 +1189,14 @@ export default {
         return '-';
       }
       return `${this.formatMoney(value)}元/㎡·月`;
+    },
+    formatRentUnitPrice(value) {
+      if (value === null || value === undefined || value === '') {
+        return '-';
+      }
+      return `${Number(value).toLocaleString('zh-CN', {
+        maximumFractionDigits: 2,
+      })}元/㎡·天`;
     },
     formatMoneyWithUnit(value) {
       if (value === null || value === undefined || value === '') {
@@ -925,6 +1281,167 @@ export default {
 
 .archive-crud :deep(.el-scrollbar__bar.is-horizontal) {
   bottom: 0;
+}
+
+.archive-detail-page {
+  min-height: calc(100vh - 180px);
+  padding: 24px 30px 42px;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.archive-detail-header {
+  position: relative;
+  padding-bottom: 24px;
+}
+
+.archive-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+}
+
+.archive-title-row h2 {
+  margin: 0;
+  color: #303133;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.archive-back {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: #606266;
+}
+
+.archive-header-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: 12px;
+}
+
+.archive-company-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px 80px;
+  margin-top: 18px;
+  color: #303133;
+  font-size: 14px;
+}
+
+.archive-company-grid > div {
+  min-width: 0;
+}
+
+.archive-company-grid span {
+  color: #303133;
+}
+
+.archive-company-grid strong {
+  color: #303133;
+  font-weight: 400;
+}
+
+.archive-tag {
+  margin-right: 6px;
+}
+
+.archive-detail-tabs {
+  margin-top: 10px;
+}
+
+.archive-detail-tabs :deep(.el-tabs__nav-wrap::after) {
+  display: none;
+}
+
+.archive-detail-tabs :deep(.el-tabs__item) {
+  height: 44px;
+  padding: 0 18px;
+  color: #303133;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.archive-detail-tabs :deep(.el-tabs__active-bar) {
+  height: 3px;
+  background-color: #2f80ff;
+}
+
+.archive-detail-tabs :deep(.el-tabs__content) {
+  padding-top: 42px;
+}
+
+.archive-detail-section {
+  margin-bottom: 24px;
+}
+
+.archive-section-title {
+  margin-bottom: 16px;
+  color: #303133;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.archive-info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.archive-info-item {
+  min-height: 74px;
+  padding: 12px 14px;
+  border: 1px solid #edf0f5;
+  border-radius: 8px;
+  background: #fafbfc;
+}
+
+.archive-info-item span,
+.archive-info-item strong {
+  display: block;
+}
+
+.archive-info-item span {
+  color: #8c98aa;
+  font-size: 12px;
+}
+
+.archive-info-item strong {
+  margin-top: 8px;
+  color: #303133;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.archive-flat-table {
+  width: 100%;
+}
+
+.archive-flat-table :deep(.el-table__header th) {
+  height: 48px;
+  background: #fff;
+  color: #8c98aa;
+  font-weight: 600;
+}
+
+.archive-flat-table :deep(.el-table__row) {
+  height: 54px;
+}
+
+.archive-flat-table :deep(.el-table__inner-wrapper::before) {
+  background-color: #edf0f5;
+}
+
+.archive-attachment-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
 }
 
 .archive-tabs {
@@ -1062,5 +1579,29 @@ export default {
 .supplement-upload__text span {
   color: #909399;
   font-size: 12px;
+}
+
+@media (max-width: 1200px) {
+  .archive-company-grid,
+  .archive-info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .archive-detail-page {
+    padding: 18px 14px 28px;
+  }
+
+  .archive-header-actions {
+    position: static;
+    margin-top: 14px;
+  }
+
+  .archive-company-grid,
+  .archive-info-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
 }
 </style>

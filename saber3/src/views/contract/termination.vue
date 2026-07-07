@@ -117,42 +117,10 @@
         <el-table-column prop="approvalTime" label="完成时间" width="170" align="center">
           <template #default="{ row }">{{ row.approvalTime || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="360" align="center" fixed="right">
+        <el-table-column label="操作" width="120" align="center" fixed="right">
           <template #default="{ row }">
             <div class="table-actions">
-              <el-button text type="primary" @click="openContract(row)">合同详情</el-button>
-              <el-button
-                v-if="canStartRoomReview(row)"
-                text
-                type="primary"
-                @click="handleStartRoomReview(row)"
-              >
-                房屋验收
-              </el-button>
-              <el-button
-                v-if="canStartDepositRefund(row)"
-                text
-                type="primary"
-                @click="handleStartDepositRefund(row)"
-              >
-                押金退还
-              </el-button>
-              <el-button
-                v-if="row.printFileUrl"
-                text
-                type="primary"
-                @click="openWorkflowFile(row.printFileUrl, row)"
-              >
-                审批表
-              </el-button>
-              <el-button
-                v-if="terminationAgreementUrl(row)"
-                text
-                type="primary"
-                @click="openWorkflowFile(terminationAgreementUrl(row), row)"
-              >
-                解除协议
-              </el-button>
+              <el-button text type="primary" @click="openTerminationDetail(row)">查看</el-button>
             </div>
           </template>
         </el-table-column>
@@ -170,6 +138,206 @@
           @current-change="currentChange"
         />
       </div>
+
+      <el-drawer
+        v-model="detailVisible"
+        title="退租详情"
+        size="860px"
+        append-to-body
+        class="termination-detail-drawer"
+      >
+        <div v-if="detailRecord.recordId" class="termination-detail">
+          <section class="detail-section">
+            <div class="detail-section-title">基础信息</div>
+            <div class="field-grid">
+              <div v-for="item in detailSummaryItems" :key="item.label" class="field-item">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="detail-section">
+            <div class="detail-section-title">流程文件</div>
+            <div class="drawer-actions">
+              <el-button type="primary" @click="openArchive(detailRecord)">合同归档</el-button>
+              <el-button type="primary" plain @click="handleOfflineRoomReview(detailRecord)">
+                登记验收情况
+              </el-button>
+              <el-button type="primary" plain @click="handleStartDepositRefund(detailRecord)">
+                付款申请
+              </el-button>
+              <el-button type="primary" plain @click="handleOfflineDepositRefund(detailRecord)">
+                上传支付凭证
+              </el-button>
+              <el-button
+                v-if="detailRecord.printFileUrl"
+                type="primary"
+                plain
+                @click="openWorkflowFile(detailRecord.printFileUrl, detailRecord)"
+              >
+                审批表
+              </el-button>
+              <el-button
+                v-if="terminationAgreementUrl(detailRecord)"
+                type="primary"
+                plain
+                @click="openWorkflowFile(terminationAgreementUrl(detailRecord), detailRecord)"
+              >
+                解除协议
+              </el-button>
+            </div>
+          </section>
+
+          <section class="detail-section">
+            <div class="detail-section-title-row">
+              <div class="detail-section-title">付款申请前置</div>
+              <el-tag
+                :type="isDepositRefundCompleted(detailRecord) || paymentReady ? 'success' : 'warning'"
+                effect="plain"
+              >
+                {{
+                  isDepositRefundCompleted(detailRecord)
+                    ? '已完成'
+                    : paymentReady
+                    ? '可发起'
+                    : '待补齐'
+                }}
+              </el-tag>
+            </div>
+            <div class="payment-check-list">
+              <div
+                v-for="item in paymentPrerequisiteItems"
+                :key="item.label"
+                :class="['payment-check-item', { 'is-done': item.done }]"
+              >
+                <span>{{ item.label }}</span>
+                <strong>{{ item.done ? '已完成' : item.pendingText }}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="detail-section">
+            <div class="detail-section-title-row">
+              <div class="detail-section-title">退租资料</div>
+              <el-button type="primary" icon="el-icon-upload" @click="openMaterialUpload">
+                上传资料
+              </el-button>
+            </div>
+            <div v-if="materialGroups.length" class="material-group-list">
+              <div v-for="group in materialGroups" :key="group.name" class="material-group">
+                <div class="material-group-title">{{ group.name }}</div>
+                <div class="material-file-list">
+                  <a
+                    v-for="file in group.files"
+                    :key="file.fileUrl + file.fileName + file.uploadTime"
+                    :href="file.fileUrl"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <span>{{ file.fileName || group.name }}</span>
+                    <em v-if="materialFileMeta(file)">{{ materialFileMeta(file) }}</em>
+                    <p v-if="file.remark">{{ file.remark }}</p>
+                  </a>
+                </div>
+              </div>
+            </div>
+            <el-empty v-else :image-size="54" description="暂无退租资料" />
+          </section>
+        </div>
+      </el-drawer>
+
+      <el-dialog
+        v-model="precheckVisible"
+        :title="precheckTitle"
+        width="560px"
+        append-to-body
+        class="precheck-dialog"
+      >
+        <div class="precheck-list">
+          <div
+            v-for="item in precheckItems"
+            :key="item.label"
+            :class="['precheck-item', { 'is-done': item.done }]"
+          >
+            <div>
+              <strong>{{ item.label }}</strong>
+              <span>{{ item.done ? '已满足' : item.pendingText }}</span>
+            </div>
+            <el-tag :type="item.done ? 'success' : 'warning'" effect="plain">
+              {{ item.done ? '完成' : '待处理' }}
+            </el-tag>
+          </div>
+        </div>
+        <template #footer>
+          <el-button @click="precheckVisible = false">关闭</el-button>
+          <el-button v-if="precheckCanUpload" type="primary" @click="openMaterialUploadFromPrecheck">
+            去上传资料
+          </el-button>
+        </template>
+      </el-dialog>
+
+      <el-dialog
+        v-model="materialUploadVisible"
+        title="上传退租资料"
+        width="560px"
+        append-to-body
+        @close="resetMaterialUpload"
+      >
+        <el-form :model="materialUploadForm" label-width="100px" class="offline-form">
+          <el-form-item label="资料类型" required>
+            <el-select
+              v-model="materialUploadForm.materialName"
+              filterable
+              allow-create
+              clearable
+              default-first-option
+              placeholder="选择或输入资料类型"
+              style="width: 100%"
+              @change="handleMaterialNameChange"
+            >
+              <el-option
+                v-for="item in materialTypeOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.label"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="上传文件" required>
+            <el-upload
+              ref="materialUploadRef"
+              action="/api/blade-resource/oss/endpoint/put-file"
+              :headers="uploadHeaders"
+              :limit="1"
+              :show-file-list="true"
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+              :before-upload="beforeOfflineFileUpload"
+              :on-success="handleMaterialUploadSuccess"
+              :on-error="handleOfflineUploadError"
+              :on-remove="handleMaterialUploadRemove"
+            >
+              <el-button icon="el-icon-upload">选择文件</el-button>
+            </el-upload>
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input
+              v-model="materialUploadForm.remark"
+              type="textarea"
+              :rows="3"
+              maxlength="300"
+              show-word-limit
+              placeholder="填写资料说明"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="materialUploadVisible = false">取消</el-button>
+          <el-button type="primary" :loading="materialUploading" @click="submitMaterialUpload">
+            保存资料
+          </el-button>
+        </template>
+      </el-dialog>
 
       <el-dialog
         v-model="workflowVisible"
@@ -230,6 +398,158 @@
         </template>
       </el-dialog>
 
+      <el-dialog
+        v-model="offlineReviewVisible"
+        title="登记验收情况"
+        width="680px"
+        append-to-body
+        @close="resetOfflineReview"
+      >
+        <section class="offline-summary">
+          <div>
+            <span>合同编号</span>
+            <strong>{{ offlineReviewRecord.contractNo || '-' }}</strong>
+          </div>
+          <div>
+            <span>企业名称</span>
+            <strong>{{ offlineReviewRecord.customerName || '-' }}</strong>
+          </div>
+          <div>
+            <span>交接房源</span>
+            <strong>{{ offlineReviewRecord.roomName || offlineReviewRecord.buildingName || '-' }}</strong>
+          </div>
+        </section>
+        <el-form :model="offlineReviewForm" label-width="96px" class="offline-form">
+          <el-form-item label="验收日期" required>
+            <el-date-picker
+              v-model="offlineReviewForm.acceptanceDate"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="请选择验收日期"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="验收结果" required>
+            <el-radio-group v-model="offlineReviewForm.acceptanceResult">
+              <el-radio-button label="验收通过" />
+              <el-radio-button label="需整改" />
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="验收情况" required>
+            <el-input
+              v-model="offlineReviewForm.acceptanceSituation"
+              type="textarea"
+              :rows="4"
+              maxlength="500"
+              show-word-limit
+              placeholder="填写线下验收情况、交接说明、遗留问题等"
+            />
+          </el-form-item>
+          <el-form-item label="验收附件">
+            <el-upload
+              ref="offlineReviewUploadRef"
+              action="/api/blade-resource/oss/endpoint/put-file"
+              :headers="uploadHeaders"
+              :limit="1"
+              :show-file-list="true"
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+              :before-upload="beforeOfflineFileUpload"
+              :on-success="handleOfflineReviewUploadSuccess"
+              :on-error="handleOfflineUploadError"
+              :on-remove="handleOfflineReviewUploadRemove"
+            >
+              <el-button icon="el-icon-upload">上传附件</el-button>
+            </el-upload>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="offlineReviewVisible = false">取消</el-button>
+          <el-button type="primary" :loading="offlineReviewLoading" @click="submitOfflineReview">
+            确认登记
+          </el-button>
+        </template>
+      </el-dialog>
+
+      <el-dialog
+        v-model="depositVoucherVisible"
+        title="上传支付凭证"
+        width="640px"
+        append-to-body
+        @close="resetDepositVoucher"
+      >
+        <section class="offline-summary">
+          <div>
+            <span>合同编号</span>
+            <strong>{{ depositVoucherRecord.contractNo || '-' }}</strong>
+          </div>
+          <div>
+            <span>企业名称</span>
+            <strong>{{ depositVoucherRecord.customerName || '-' }}</strong>
+          </div>
+          <div>
+            <span>退款金额</span>
+            <strong>{{ formatMoney(depositVoucherForm.amountPaid) }}</strong>
+          </div>
+        </section>
+        <el-form :model="depositVoucherForm" label-width="96px" class="offline-form">
+          <el-form-item label="支付日期" required>
+            <el-date-picker
+              v-model="depositVoucherForm.payDate"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="请选择支付日期"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="支付金额" required>
+            <el-input-number
+              v-model="depositVoucherForm.amountPaid"
+              :min="0"
+              :precision="2"
+              :step="100"
+              controls-position="right"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="支付凭证" required>
+            <el-upload
+              ref="depositVoucherUploadRef"
+              action="/api/blade-resource/oss/endpoint/put-file"
+              :headers="uploadHeaders"
+              :limit="1"
+              :show-file-list="true"
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+              :before-upload="beforeOfflineFileUpload"
+              :on-success="handleDepositVoucherUploadSuccess"
+              :on-error="handleOfflineUploadError"
+              :on-remove="handleDepositVoucherUploadRemove"
+            >
+              <el-button icon="el-icon-upload">上传凭证</el-button>
+            </el-upload>
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input
+              v-model="depositVoucherForm.remark"
+              type="textarea"
+              :rows="3"
+              maxlength="300"
+              show-word-limit
+              placeholder="填写线下退款说明"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="depositVoucherVisible = false">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="depositVoucherLoading"
+            @click="submitDepositVoucher"
+          >
+            确认上传
+          </el-button>
+        </template>
+      </el-dialog>
+
       <notice-preview-dialog
         v-model="noticePreview.visible"
         :title="noticePreview.title"
@@ -248,11 +568,15 @@ import {
   ensureDepositRefundPayment,
   getDepositRefundPayment,
   getWorkflowRecordPage,
+  offlineDepositRefund,
+  offlineRoomReview,
+  uploadWorkflowRecordAttachment,
 } from '@/api/contract/contract';
 import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
 import { approvalStatusDic } from '@/option/contract/archive';
 import { statusDic } from '@/option/contract/contract';
 import { mapGetters } from 'vuex';
+import { getToken } from '@/utils/auth';
 import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
 import { noticePrintUrl } from '@/api/contract/print';
 import {
@@ -265,6 +589,38 @@ const TERMINATION_BUSINESS_TYPE = 'contract_termination';
 const ROOM_REVIEW_BUSINESS_TYPE = 'contract_room_review';
 const PAYMENT_BUSINESS_TYPE = 'contract_payment';
 const TERMINATION_AGREEMENT_KEY = 'termination-agreement';
+const MATERIAL_TYPE_OPTIONS = [
+  { value: 'approval', label: '审批资料' },
+  { value: 'room_acceptance', label: '房屋验收' },
+  { value: 'deposit_refund', label: '押金退还' },
+  { value: 'termination_agreement', label: '租赁合同解除补充协议' },
+  { value: 'signed_termination_agreement', label: '已盖章解除补充协议' },
+  { value: 'handover_file', label: '退租交接资料' },
+  { value: 'other', label: '其他资料' },
+];
+const PAYMENT_REQUIRED_MATERIALS = [
+  {
+    value: 'room_acceptance',
+    label: '房屋验收',
+    types: ['room_acceptance'],
+    names: ['房屋验收'],
+    attachmentKeys: ['acceptanceFileUrl', 'roomAcceptanceFiles'],
+  },
+  {
+    value: 'termination_agreement',
+    label: '租赁合同解除补充协议',
+    types: ['termination_agreement', 'signed_termination_agreement'],
+    names: ['租赁合同解除补充协议', '已盖章解除补充协议'],
+    attachmentKeys: ['termination-agreement', 'terminationAgreementUrl'],
+  },
+  {
+    value: 'handover_file',
+    label: '退租交接资料',
+    types: ['handover_file'],
+    names: ['退租交接资料'],
+    attachmentKeys: ['fileList', 'handoverFileUrl'],
+  },
+];
 const WORKFLOW_CONFIGS = {
   [ROOM_REVIEW_BUSINESS_TYPE]: {
     title: '发起房屋验收',
@@ -303,6 +659,8 @@ export default {
       },
       loading: false,
       data: [],
+      detailVisible: false,
+      detailRecord: {},
       workflowVisible: false,
       workflowLoading: false,
       workflowType: ROOM_REVIEW_BUSINESS_TYPE,
@@ -312,6 +670,43 @@ export default {
       workflowForm: {
         processDefKey: '',
       },
+      uploadHeaders: {
+        'Blade-Auth': `bearer ${getToken()}`,
+        'Blade-Requested-With': 'BladeHttpRequest',
+      },
+      materialUploadVisible: false,
+      materialUploading: false,
+      materialUploadForm: {
+        materialType: '',
+        materialName: '',
+        fileUrl: '',
+        fileName: '',
+        remark: '',
+      },
+      offlineReviewVisible: false,
+      offlineReviewLoading: false,
+      offlineReviewRecord: {},
+      offlineReviewForm: {
+        acceptanceDate: '',
+        acceptanceResult: '验收通过',
+        acceptanceSituation: '',
+        acceptanceFileUrl: '',
+        acceptanceFileName: '',
+      },
+      depositVoucherVisible: false,
+      depositVoucherLoading: false,
+      depositVoucherRecord: {},
+      depositVoucherPayment: {},
+      depositVoucherForm: {
+        payDate: '',
+        amountPaid: 0,
+        paymentVoucherUrl: '',
+        paymentVoucherName: '',
+        remark: '',
+      },
+      precheckVisible: false,
+      precheckTitle: '',
+      precheckItems: [],
       noticePreview: createNoticePreviewState(),
     };
   },
@@ -319,6 +714,75 @@ export default {
     ...mapGetters(['userInfo']),
     approvalStatusOptions() {
       return approvalStatusDic.filter(item => item.value !== '');
+    },
+    materialTypeOptions() {
+      return MATERIAL_TYPE_OPTIONS;
+    },
+    materialGroups() {
+      const groups = this.allMaterialFiles.reduce((result, file) => {
+        const name = file.materialName || file.categoryName || file.category || '退租资料';
+        if (!result[name]) {
+          result[name] = [];
+        }
+        result[name].push(file);
+        return result;
+      }, {});
+      return Object.keys(groups).map(name => ({
+        name,
+        files: groups[name],
+      }));
+    },
+    allMaterialFiles() {
+      const attachment = this.parseAttachment(this.detailRecord);
+      const files = [];
+      const append = (value, fallbackName) => {
+        const list = Array.isArray(value) ? value : value ? [value] : [];
+        list.forEach(item => {
+          if (typeof item === 'string') {
+            files.push({ fileUrl: item, fileName: fallbackName, materialName: fallbackName });
+            return;
+          }
+          if (item && item.fileUrl) {
+            files.push({
+              materialName: item.materialName || item.categoryName || item.category || fallbackName,
+              fileName: item.fileName || fallbackName,
+              fileUrl: item.fileUrl,
+              uploadBy: item.uploadBy || '',
+              uploadTime: item.uploadTime || '',
+              remark: item.remark || '',
+            });
+          }
+        });
+      };
+      append(attachment.materials, '退租资料');
+      append(attachment.approvalMaterials, '审批资料');
+      append(attachment.roomAcceptanceFiles, '房屋验收');
+      append(attachment.depositRefundFiles, '押金退还');
+      return files;
+    },
+    paymentReady() {
+      return this.paymentApplicationBlockedReason(this.detailRecord) === '';
+    },
+    paymentPrerequisiteItems() {
+      return this.paymentApplicationPrerequisites(this.detailRecord);
+    },
+    precheckCanUpload() {
+      return this.precheckItems.some(item => item.uploadable && !item.done);
+    },
+    detailSummaryItems() {
+      const row = this.detailRecord || {};
+      return [
+        { label: '合同编号', value: row.contractNo || '-' },
+        { label: '企业名称', value: row.customerName || '-' },
+        { label: '房源信息', value: row.roomName || row.buildingName || '-' },
+        { label: '审批状态', value: this.approvalStatusText(row.processStatus) },
+        { label: '退租阶段', value: this.terminationStageText(row) },
+        { label: '当前节点', value: row.currentNode || '-' },
+        { label: '合同状态', value: row.contractStatusName || this.statusText(row.contractStatus) },
+        { label: '保证金', value: this.formatMoney(row.deposit) },
+        { label: '发起时间', value: row.createTime || '-' },
+        { label: '完成时间', value: row.approvalTime || '-' },
+      ];
     },
     workflowConfig() {
       return WORKFLOW_CONFIGS[this.workflowType] || WORKFLOW_CONFIGS[ROOM_REVIEW_BUSINESS_TYPE];
@@ -466,6 +930,133 @@ export default {
         return result;
       }, {});
     },
+    openTerminationDetail(row) {
+      this.detailRecord = { ...(row || {}) };
+      this.detailVisible = true;
+    },
+    parseAttachment(row = {}) {
+      if (!row.attachmentJson) return {};
+      try {
+        return JSON.parse(row.attachmentJson) || {};
+      } catch (error) {
+        return {};
+      }
+    },
+    openArchive(row) {
+      if (!row || !row.contractId) {
+        this.$message.warning('当前退租记录未关联合同');
+        return;
+      }
+      this.$confirm('确定进入该合同档案归档?', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      })
+        .then(() => {
+          this.$router.push({
+            path: '/contract/archive',
+            query: {
+              contractId: row.contractId,
+              contractNo: row.contractNo,
+              openArchive: '1',
+            },
+          });
+        })
+        .catch(() => {});
+    },
+    openMaterialUpload() {
+      if (!this.detailRecord.recordId) {
+        this.$message.warning('请选择退租记录');
+        return;
+      }
+      this.materialUploadForm = {
+        materialType: '',
+        materialName: '',
+        fileUrl: '',
+        fileName: '',
+        remark: '',
+      };
+      this.materialUploadVisible = true;
+      this.$nextTick(() => {
+        const upload = this.$refs.materialUploadRef;
+        if (upload && upload.clearFiles) upload.clearFiles();
+      });
+    },
+    handleMaterialNameChange(value) {
+      const match = this.materialTypeOptions.find(item => item.label === value);
+      this.materialUploadForm.materialType = match ? match.value : 'custom';
+      this.materialUploadForm.materialName = value || '';
+    },
+    handleMaterialUploadSuccess(response, file) {
+      if (!response || response.success === false) {
+        this.$message.error((response && response.msg) || '上传失败');
+        return;
+      }
+      const fileUrl = this.extractUploadUrl(response);
+      if (!fileUrl) {
+        this.$message.error('上传成功但未返回文件地址');
+        return;
+      }
+      this.materialUploadForm.fileUrl = fileUrl;
+      this.materialUploadForm.fileName = file?.name || '';
+      this.$message.success(file?.name ? `${file.name} 上传成功` : '上传成功');
+    },
+    handleMaterialUploadRemove() {
+      this.materialUploadForm.fileUrl = '';
+      this.materialUploadForm.fileName = '';
+    },
+    submitMaterialUpload() {
+      if (!this.detailRecord.recordId) {
+        this.$message.warning('请选择退租记录');
+        return;
+      }
+      if (!this.materialUploadForm.materialName) {
+        this.$message.warning('请选择或输入资料类型');
+        return;
+      }
+      if (!this.materialUploadForm.fileUrl) {
+        this.$message.warning('请先上传文件');
+        return;
+      }
+      const materialName = String(this.materialUploadForm.materialName || '').trim();
+      const match = this.materialTypeOptions.find(item => item.label === materialName);
+      this.materialUploading = true;
+      uploadWorkflowRecordAttachment(this.detailRecord.recordId, {
+        ...this.materialUploadForm,
+        materialName,
+        materialType: match ? match.value : this.materialUploadForm.materialType || 'custom',
+      })
+        .then(res => {
+          const updated = res.data.data || {};
+          const attachmentJson = updated.attachmentJson || this.detailRecord.attachmentJson;
+          this.detailRecord = {
+            ...this.detailRecord,
+            attachmentJson,
+          };
+          this.data = this.data.map(item =>
+            String(item.recordId) === String(this.detailRecord.recordId)
+              ? { ...item, attachmentJson }
+              : item
+          );
+          this.materialUploadVisible = false;
+          this.$message.success('资料已保存');
+        })
+        .finally(() => {
+          this.materialUploading = false;
+        });
+    },
+    resetMaterialUpload() {
+      this.materialUploadForm = {
+        materialType: '',
+        materialName: '',
+        fileUrl: '',
+        fileName: '',
+        remark: '',
+      };
+    },
+    materialFileMeta(file = {}) {
+      return [file.uploadBy, file.uploadTime].filter(Boolean).join(' / ');
+    },
     openContract(row) {
       this.$router.push({
         path: '/contract/contract',
@@ -476,8 +1067,7 @@ export default {
       });
     },
     handleStartRoomReview(row) {
-      if (!this.canStartRoomReview(row)) {
-        this.$message.warning('退租审批通过并进入待交接后才可以发起房屋验收');
+      if (!this.ensurePrerequisites('房屋验收前置条件', this.roomReviewPrerequisites(row))) {
         return;
       }
       this.workflowType = ROOM_REVIEW_BUSINESS_TYPE;
@@ -488,8 +1078,7 @@ export default {
       this.loadWorkflowProcessOptions();
     },
     handleStartDepositRefund(row) {
-      if (!this.canStartDepositRefund(row)) {
-        this.$message.warning('房屋验收完成后才可以发起押金退还');
+      if (!this.ensurePrerequisites('付款申请前置条件', this.paymentApplicationPrerequisites(row))) {
         return;
       }
       ensureDepositRefundPayment(row.contractId).then(res => {
@@ -509,6 +1098,183 @@ export default {
         this.workflowVisible = true;
         this.loadWorkflowProcessOptions();
       });
+    },
+    handleOfflineRoomReview(row) {
+      if (!this.ensurePrerequisites('登记验收情况前置条件', this.offlineRoomReviewPrerequisites(row))) {
+        return;
+      }
+      this.offlineReviewRecord = { ...(row || {}) };
+      this.offlineReviewForm = {
+        acceptanceDate: this.formatDate(new Date()),
+        acceptanceResult: '验收通过',
+        acceptanceSituation: '',
+        acceptanceFileUrl: '',
+        acceptanceFileName: '',
+      };
+      this.offlineReviewVisible = true;
+      this.$nextTick(() => {
+        const upload = this.$refs.offlineReviewUploadRef;
+        if (upload && upload.clearFiles) upload.clearFiles();
+      });
+    },
+    handleOfflineDepositRefund(row) {
+      if (!this.ensurePrerequisites('上传支付凭证前置条件', this.depositVoucherPrerequisites(row))) {
+        return;
+      }
+      getDepositRefundPayment(row.contractId).then(res => {
+        const payment = res.data.data || {};
+        if (!payment.paymentId) {
+          this.$message.warning('请先发起付款申请');
+          return;
+        }
+        if (payment.paymentApprovalStatus !== 'approved') {
+          this.$message.warning('付款申请审批完成后才可以上传支付凭证');
+          return;
+        }
+        this.depositVoucherRecord = { ...(row || {}) };
+        this.depositVoucherPayment = { ...(payment || {}) };
+        this.depositVoucherForm = {
+          payDate: this.formatDate(new Date()),
+          amountPaid: Number(payment.amountDue || row.deposit || 0),
+          paymentVoucherUrl: '',
+          paymentVoucherName: '',
+          remark: '',
+        };
+        this.depositVoucherVisible = true;
+        this.$nextTick(() => {
+          const upload = this.$refs.depositVoucherUploadRef;
+          if (upload && upload.clearFiles) upload.clearFiles();
+        });
+      });
+    },
+    beforeOfflineFileUpload(file) {
+      const allowTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+      ];
+      const isAllowType =
+        allowTypes.includes(file.type) || /\.(pdf|doc|docx|jpg|jpeg|png)$/i.test(file.name || '');
+      const isLt20M = file.size / 1024 / 1024 < 20;
+      if (!isAllowType) {
+        this.$message.error('仅支持上传 PDF、Word、JPG、PNG 格式文件');
+      }
+      if (!isLt20M) {
+        this.$message.error('文件大小不能超过 20MB');
+      }
+      return isAllowType && isLt20M;
+    },
+    extractUploadUrl(response) {
+      const data = response?.data || {};
+      return data.link || data.url || data.path || response?.link || response?.url || '';
+    },
+    handleOfflineReviewUploadSuccess(response, file) {
+      if (!response || response.success === false) {
+        this.$message.error((response && response.msg) || '上传失败');
+        return;
+      }
+      this.offlineReviewForm.acceptanceFileUrl = this.extractUploadUrl(response);
+      this.offlineReviewForm.acceptanceFileName = file?.name || '';
+      this.$message.success(file?.name ? `${file.name} 上传成功` : '上传成功');
+    },
+    handleOfflineReviewUploadRemove() {
+      this.offlineReviewForm.acceptanceFileUrl = '';
+      this.offlineReviewForm.acceptanceFileName = '';
+    },
+    handleDepositVoucherUploadSuccess(response, file) {
+      if (!response || response.success === false) {
+        this.$message.error((response && response.msg) || '上传失败');
+        return;
+      }
+      this.depositVoucherForm.paymentVoucherUrl = this.extractUploadUrl(response);
+      this.depositVoucherForm.paymentVoucherName = file?.name || '';
+      this.$message.success(file?.name ? `${file.name} 上传成功` : '上传成功');
+    },
+    handleDepositVoucherUploadRemove() {
+      this.depositVoucherForm.paymentVoucherUrl = '';
+      this.depositVoucherForm.paymentVoucherName = '';
+    },
+    handleOfflineUploadError(error) {
+      const message = (error && error.message) || '上传失败，请重试';
+      this.$message.error(message);
+    },
+    submitOfflineReview() {
+      if (!this.offlineReviewRecord.contractId) {
+        this.$message.warning('请选择退租记录');
+        return;
+      }
+      if (!this.offlineReviewForm.acceptanceDate) {
+        this.$message.warning('请选择验收日期');
+        return;
+      }
+      if (!this.offlineReviewForm.acceptanceSituation) {
+        this.$message.warning('请填写验收情况');
+        return;
+      }
+      this.offlineReviewLoading = true;
+      offlineRoomReview(this.offlineReviewRecord.contractId, this.offlineReviewForm)
+        .then(() => {
+          this.$message.success('验收情况已登记');
+          this.offlineReviewVisible = false;
+          this.loadData();
+        })
+        .finally(() => {
+          this.offlineReviewLoading = false;
+        });
+    },
+    submitDepositVoucher() {
+      if (!this.depositVoucherRecord.contractId) {
+        this.$message.warning('请选择退租记录');
+        return;
+      }
+      if (!this.depositVoucherForm.payDate) {
+        this.$message.warning('请选择支付日期');
+        return;
+      }
+      if (!this.depositVoucherForm.amountPaid || this.depositVoucherForm.amountPaid <= 0) {
+        this.$message.warning('请填写支付金额');
+        return;
+      }
+      if (!this.depositVoucherForm.paymentVoucherUrl) {
+        this.$message.warning('请上传支付凭证');
+        return;
+      }
+      this.depositVoucherLoading = true;
+      offlineDepositRefund(this.depositVoucherRecord.contractId, {
+        ...this.depositVoucherForm,
+        paymentId: this.depositVoucherPayment.paymentId,
+      })
+        .then(() => {
+          this.$message.success('支付凭证已上传');
+          this.depositVoucherVisible = false;
+          this.loadData();
+        })
+        .finally(() => {
+          this.depositVoucherLoading = false;
+        });
+    },
+    resetOfflineReview() {
+      this.offlineReviewRecord = {};
+      this.offlineReviewForm = {
+        acceptanceDate: '',
+        acceptanceResult: '验收通过',
+        acceptanceSituation: '',
+        acceptanceFileUrl: '',
+        acceptanceFileName: '',
+      };
+    },
+    resetDepositVoucher() {
+      this.depositVoucherRecord = {};
+      this.depositVoucherPayment = {};
+      this.depositVoucherForm = {
+        payDate: '',
+        amountPaid: 0,
+        paymentVoucherUrl: '',
+        paymentVoucherName: '',
+        remark: '',
+      };
     },
     loadWorkflowProcessOptions() {
       this.workflowLoading = true;
@@ -566,24 +1332,140 @@ export default {
       return `${name}${version}${key}`;
     },
     canStartRoomReview(row) {
-      return Boolean(
-        row &&
-          row.contractId &&
-          row.processStatus === 'approved' &&
-          String(row.contractStatus) === '7'
-      );
+      return this.roomReviewBlockedReason(row) === '';
     },
     canStartDepositRefund(row) {
-      return Boolean(
-        row &&
-          row.contractId &&
-          row.processStatus === 'approved' &&
-          String(row.contractStatus) === '4' &&
-          !this.isDepositRefundCompleted(row)
-      );
+      return this.paymentApplicationBlockedReason(row) === '';
     },
     isDepositRefundCompleted(row) {
       return String(row?.depositRefundPayStatus || '') === '1';
+    },
+    ensurePrerequisites(title, items = []) {
+      if ((items || []).every(item => item.done)) {
+        return true;
+      }
+      this.precheckTitle = title;
+      this.precheckItems = items || [];
+      this.precheckVisible = true;
+      return false;
+    },
+    openMaterialUploadFromPrecheck() {
+      this.precheckVisible = false;
+      this.openMaterialUpload();
+    },
+    basicRecordPrerequisites(row, options = {}) {
+      return [
+        {
+          label: '已选择退租记录',
+          done: Boolean(row && row.contractId),
+          pendingText: '请先选择退租记录',
+        },
+        {
+          label: '退租审批已完成',
+          done: row?.processStatus === 'approved',
+          pendingText: '待退租审批完成',
+        },
+        ...(options.requireHandover
+          ? [
+              {
+                label: '进入退租交接阶段',
+                done: ['7', '8', '4'].includes(String(row?.contractStatus || '')),
+                pendingText: '待退租审批完成后进入交接',
+              },
+            ]
+          : []),
+        ...(options.requireTerminated
+          ? [
+              {
+                label: '房屋验收已完成',
+                done: String(row?.contractStatus || '') === '4',
+                pendingText: '待房屋验收完成',
+              },
+            ]
+          : []),
+      ];
+    },
+    roomReviewPrerequisites(row) {
+      return this.basicRecordPrerequisites(row, { requireHandover: true });
+    },
+    offlineRoomReviewPrerequisites(row) {
+      return this.basicRecordPrerequisites(row, { requireHandover: true });
+    },
+    paymentApplicationPrerequisites(row) {
+      return [
+        ...this.basicRecordPrerequisites(row, { requireTerminated: true }),
+        {
+          label: '合同保证金已配置',
+          done: Number(row?.deposit || 0) > 0,
+          pendingText: '该合同未配置可退保证金',
+        },
+        {
+          label: '付款审批未进行中',
+          done: this.paymentApprovalStatus(row) !== 'running',
+          pendingText: '当前付款审批正在进行中',
+        },
+        {
+          label: '押金退还未完成',
+          done: !this.isDepositRefundCompleted(row),
+          pendingText: '该押金退还已完成',
+        },
+        ...PAYMENT_REQUIRED_MATERIALS.map(item => ({
+          label: item.label,
+          done: this.hasPaymentMaterial(row, item),
+          pendingText: '待上传',
+          uploadable: true,
+        })),
+      ];
+    },
+    depositVoucherPrerequisites(row) {
+      return [
+        ...this.paymentApplicationPrerequisites(row),
+        {
+          label: '付款申请审批已完成',
+          done: this.paymentApprovalStatus(row) === 'approved',
+          pendingText: '待付款申请审批完成',
+        },
+      ];
+    },
+    paymentApprovalStatus(row) {
+      return String(row?.depositRefundApprovalStatus || row?.paymentApprovalStatus || '');
+    },
+    roomReviewBlockedReason(row) {
+      const pending = this.roomReviewPrerequisites(row).find(item => !item.done);
+      return pending ? pending.pendingText : '';
+    },
+    paymentApplicationBlockedReason(row) {
+      const pending = this.paymentApplicationPrerequisites(row).find(item => !item.done);
+      return pending ? pending.pendingText : '';
+    },
+    missingPaymentMaterials(row) {
+      return PAYMENT_REQUIRED_MATERIALS.filter(item => !this.hasPaymentMaterial(row, item)).map(
+        item => item.label
+      );
+    },
+    hasPaymentMaterial(row, requirement) {
+      const attachment = this.parseAttachment(row);
+      if ((requirement.attachmentKeys || []).some(key => this.hasAttachmentValue(attachment[key]))) {
+        return true;
+      }
+      return this.attachmentFiles(attachment.materials).some(file => {
+        const materialType = String(file.materialType || file.category || '');
+        const materialName = String(file.materialName || file.categoryName || file.category || '');
+        return (
+          (requirement.types || []).includes(materialType) ||
+          (requirement.names || []).some(name => materialName.includes(name))
+        );
+      });
+    },
+    attachmentFiles(value) {
+      if (Array.isArray(value)) return value;
+      if (value && typeof value === 'object') return [value];
+      return [];
+    },
+    hasAttachmentValue(value) {
+      if (Array.isArray(value)) return value.length > 0;
+      if (value && typeof value === 'object') return Object.keys(value).length > 0;
+      return Boolean(value);
     },
     goWorkflow() {
       if (!this.workflowRecord.contractId) {
@@ -738,7 +1620,7 @@ export default {
     },
     terminationStageText(row) {
       if (!row) return '-';
-      if (row.processStatus === 'running') return '退租审批中';
+      if (row.processStatus === 'running') return '退租中';
       if (row.processStatus === 'rejected') return '退租驳回';
       if (row.processStatus === 'canceled') return '退租取消';
       if (String(row.contractStatus) === '8') return '房屋验收中';
@@ -925,6 +1807,168 @@ export default {
   overflow-wrap: anywhere;
 }
 
+.termination-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.drawer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.payment-check-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.payment-check-item {
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #f3d19e;
+  border-radius: 8px;
+  background: #fdf6ec;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.payment-check-item span {
+  min-width: 0;
+  color: #606266;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payment-check-item strong {
+  flex: 0 0 auto;
+  color: #b88230;
+  font-weight: 500;
+}
+
+.payment-check-item.is-done {
+  border-color: #b3e19d;
+  background: #f0f9eb;
+}
+
+.payment-check-item.is-done strong {
+  color: #529b2e;
+}
+
+.precheck-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.precheck-item {
+  min-height: 54px;
+  padding: 10px 12px;
+  border: 1px solid #f3d19e;
+  border-radius: 8px;
+  background: #fdf6ec;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.precheck-item div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.precheck-item strong {
+  color: #303133;
+  font-weight: 600;
+}
+
+.precheck-item span {
+  color: #8c98aa;
+  font-size: 12px;
+}
+
+.precheck-item.is-done {
+  border-color: #b3e19d;
+  background: #f0f9eb;
+}
+
+.detail-section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.detail-section-title-row .detail-section-title {
+  margin-bottom: 0;
+}
+
+.material-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.material-group {
+  padding: 12px;
+  border: 1px solid #edf0f5;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.material-group-title {
+  margin-bottom: 10px;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.material-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.material-file-list a {
+  display: flex;
+  min-height: 38px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #1059c6;
+  text-decoration: none;
+}
+
+.material-file-list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.material-file-list em {
+  margin-top: 3px;
+  color: #8c98aa;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.material-file-list p {
+  margin: 4px 0 0;
+  color: #606266;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .workflow-option {
   display: flex;
   align-items: center;
@@ -937,6 +1981,40 @@ export default {
   color: #909399;
   font-size: 12px;
   font-style: normal;
+}
+
+.offline-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.offline-summary div {
+  min-height: 60px;
+  padding: 10px 12px;
+  border: 1px solid #edf0f5;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.offline-summary span {
+  display: block;
+  color: #8c98aa;
+  font-size: 12px;
+}
+
+.offline-summary strong {
+  display: block;
+  margin-top: 6px;
+  color: #303133;
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.offline-form :deep(.el-upload) {
+  width: 100%;
 }
 
 .termination-pagination {
@@ -957,6 +2035,14 @@ export default {
   }
 
   .field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-check-list {
+    grid-template-columns: 1fr;
+  }
+
+  .offline-summary {
     grid-template-columns: 1fr;
   }
 }

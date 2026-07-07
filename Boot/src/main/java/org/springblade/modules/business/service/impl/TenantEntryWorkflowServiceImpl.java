@@ -182,7 +182,7 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 	}
 
 	private String buildApprovalFileUrl(BusinessOpportunity opportunity, ProcessInstance processInstance) {
-		// 迁移阶段先生成可打印 HTML 审批表，后续可替换为正式 PDF 模板引擎。
+		// 审批结束后回流到原始模板文件，入口保留在商机/入驻审批表下载接口。
 		return "/blade-park/opportunity/tenant-entry/approval-form/" + opportunity.getOpportunityId()
 			+ "?processInsId=" + processInstance.getId();
 	}

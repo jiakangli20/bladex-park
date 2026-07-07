@@ -26,14 +26,21 @@ import org.springblade.modules.approval.pojo.entity.ApprovalMaterial;
 import org.springblade.modules.approval.pojo.entity.ApprovalNode;
 import org.springblade.modules.approval.pojo.entity.ApprovalProject;
 import org.springblade.modules.approval.service.IApprovalProjectService;
+import org.springblade.modules.business.mapper.BusinessOpportunityMapper;
+import org.springblade.modules.business.pojo.entity.BusinessOpportunity;
 import org.springblade.modules.business.service.ICustomerService;
+import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
+import org.springblade.modules.contract.service.IContractTemplateRenderService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -58,12 +65,15 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 	private static final String NODE_TYPE_SUBMIT = "submit";
 	private static final String NODE_TYPE_CC = "cc";
 	private static final String NODE_TYPE_APPROVE = "approve";
+	private static final String TEMPLATE_TENANT_ENTRY_APPROVAL = "君联大厦招商管理办法2023/附件一：企业入驻审批表.xlsx";
 
 	private final ApprovalFlowMapper approvalFlowMapper;
 	private final ApprovalNodeMapper approvalNodeMapper;
 	private final ApprovalMaterialMapper approvalMaterialMapper;
 	private final ApprovalLogMapper approvalLogMapper;
 	private final ICustomerService customerService;
+	private final BusinessOpportunityMapper businessOpportunityMapper;
+	private final IContractTemplateRenderService contractTemplateRenderService;
 
 	@Override
 	public ApprovalProject selectApprovalProjectById(Long projectId) {
@@ -273,6 +283,25 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 	}
 
 	@Override
+	public ContractNoticeFileVO exportApprovalForm(Long projectId) {
+		ApprovalProject project = requireAccessibleProject(projectId);
+		if (!"tenant_entry".equals(Func.toStr(project.getBusinessType()))) {
+			throw new ServiceException("当前审批类型暂未配置原模板导出");
+		}
+		BusinessOpportunity opportunity = resolveTenantEntryOpportunity(project);
+		Map<String, String> fields = createTenantEntryApprovalFields(project, opportunity);
+		fields.putAll(createApprovalTraceFields(project));
+		return contractTemplateRenderService.render(
+			"tenant_entry_approval",
+			"企业入驻审批表",
+			TEMPLATE_TENANT_ENTRY_APPROVAL,
+			"企业入驻审批表-" + firstNotBlank(project.getEnterpriseName(), opportunity == null ? null : opportunity.getEnterpriseName(), String.valueOf(projectId)),
+			fields,
+			Collections.emptyMap()
+		);
+	}
+
+	@Override
 	public List<ApprovalMaterial> selectApprovalMaterialList(ApprovalMaterial material) {
 		ApprovalMaterial query = Func.isEmpty(material) ? new ApprovalMaterial() : material;
 		if (!AuthUtil.isAdministrator()) {
@@ -288,6 +317,134 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 			query.setParkId(currentParkId());
 		}
 		return approvalLogMapper.selectApprovalLogList(query);
+	}
+
+	private BusinessOpportunity resolveTenantEntryOpportunity(ApprovalProject project) {
+		if (project == null || project.getBusinessId() == null) {
+			return null;
+		}
+		return businessOpportunityMapper.selectBusinessOpportunityById(project.getBusinessId());
+	}
+
+	private Map<String, String> createTenantEntryApprovalFields(ApprovalProject project, BusinessOpportunity opportunity) {
+		Map<String, String> fields = new LinkedHashMap<>();
+		String enterpriseName = firstNotBlank(project.getEnterpriseName(), opportunity == null ? null : opportunity.getEnterpriseName());
+		fields.put("企业名称", value(enterpriseName));
+		fields.put("申请时间", formatDate(firstNotNull(project.getApplicantTime(), project.getCreateTime())));
+		fields.put("股东信息", value(firstNotBlank(
+			project.getShareholderInfo(),
+			opportunity == null ? null : opportunity.getEquityStructure(),
+			opportunity == null ? null : opportunity.getEnterpriseType()
+		)));
+		fields.put("经营范围", value(firstNotBlank(
+			project.getBusinessScope(),
+			opportunity == null ? null : opportunity.getBusinessScope(),
+			opportunity == null ? null : opportunity.getMainBusiness()
+		)));
+		fields.put("负责人", value(firstNotBlank(
+			project.getResponsiblePerson(),
+			opportunity == null ? null : opportunity.getContactName()
+		)));
+		fields.put("联系方式", value(firstNotBlank(
+			project.getContactPhone(),
+			opportunity == null ? null : opportunity.getContactPhone()
+		)));
+		fields.put("租赁楼层、面积", value(formatLeaseFloorArea(project, opportunity)));
+		fields.put("免租期", value(project.getRentFreePeriod()));
+		fields.put("单价（元）", formatMoney(project.getRentPrice()));
+		fields.put("保证金（元）", formatMoney(project.getDeposit()));
+		fields.put("合同有效期", formatContractPeriod(project, opportunity));
+		fields.put("经办人", value(firstNotBlank(project.getApplicant(), project.getCreateBy(), opportunity == null ? null : opportunity.getFollowUser())));
+		fields.put("部门", value(project.getApplicantDept()));
+		fields.put("审批事项", value(firstNotBlank(
+			project.getApprovalMatter(),
+			project.getSummary(),
+			opportunity == null ? null : opportunity.getRemark(),
+			enterpriseName == null ? null : enterpriseName + " 入驻审批申请"
+		)));
+		return fields;
+	}
+
+	private Map<String, String> createApprovalTraceFields(ApprovalProject project) {
+		ApprovalLog query = new ApprovalLog();
+		query.setProjectId(project.getProjectId());
+		query.setParkId(project.getParkId());
+		List<ApprovalLog> logs = approvalLogMapper.selectApprovalLogList(query);
+		if (Func.isEmpty(logs)) {
+			return Collections.emptyMap();
+		}
+		logs.sort(Comparator.comparing(ApprovalLog::getOperateTime, Comparator.nullsLast(Date::compareTo)));
+		Map<String, String> fields = new LinkedHashMap<>();
+		putApprovalField(fields, "部门审批", logs, "部门审批", "部门经理", "经理审批", "部门负责人");
+		putApprovalField(fields, "部门经理", logs, "部门经理", "部门审批", "经理审批", "部门负责人");
+		putApprovalField(fields, "分管领导审批", logs, "分管领导", "主管领导", "领导审批");
+		putApprovalField(fields, "分管领导", logs, "分管领导", "主管领导", "领导审批");
+		putApprovalField(fields, "总经理审批", logs, "总经理", "老板", "总经理审批");
+		putApprovalField(fields, "总经理", logs, "总经理", "老板", "总经理审批");
+		String timeline = logs.stream()
+			.filter(log -> StringUtil.isNotBlank(log.getActionType()))
+			.map(this::formatApprovalTimeline)
+			.filter(StringUtil::isNotBlank)
+			.collect(Collectors.joining("\n"));
+		fields.put("审批流转信息", timeline);
+		fields.put("流转信息", timeline);
+		fields.put("审批记录", timeline);
+		return fields;
+	}
+
+	private void putApprovalField(Map<String, String> fields, String fieldName, List<ApprovalLog> logs, String... keywords) {
+		ApprovalLog matched = logs.stream()
+			.filter(log -> !"SUBMIT".equalsIgnoreCase(Func.toStr(log.getActionType())))
+			.filter(log -> containsAny(log.getNodeName(), keywords))
+			.reduce((first, second) -> second)
+			.orElse(null);
+		if (matched != null) {
+			fields.put(fieldName, formatApprovalCell(matched));
+		}
+	}
+
+	private boolean containsAny(String value, String... keywords) {
+		String normalized = normalizeText(value);
+		if (StringUtil.isBlank(normalized) || keywords == null) {
+			return false;
+		}
+		for (String keyword : keywords) {
+			String normalizedKeyword = normalizeText(keyword);
+			if (StringUtil.isNotBlank(normalizedKeyword)
+				&& normalized.contains(normalizedKeyword)
+				&& !isGenericManagerKeywordMatchedTotalManager(normalized, normalizedKeyword)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean isGenericManagerKeywordMatchedTotalManager(String normalizedValue, String normalizedKeyword) {
+		return normalizedValue.contains("总经理")
+			&& ("经理".equals(normalizedKeyword) || "经理审批".equals(normalizedKeyword) || "部门经理".equals(normalizedKeyword));
+	}
+
+	private String formatApprovalCell(ApprovalLog log) {
+		return value(log.getOperatorName()) + "（" + firstNotBlank(log.getOpinion(), log.getResultStatus(), "同意") + "，" + formatDate(log.getOperateTime()) + "）";
+	}
+
+	private String formatApprovalTimeline(ApprovalLog log) {
+		String time = log.getOperateTime() == null ? "-" : DateUtil.format(log.getOperateTime(), DateUtil.PATTERN_DATETIME);
+		return time + " " + firstNotBlank(log.getNodeName(), "审批") + " " + value(log.getOperatorName()) + "：" + firstNotBlank(log.getOpinion(), log.getResultStatus(), "-");
+	}
+
+	private String formatLeaseFloorArea(ApprovalProject project, BusinessOpportunity opportunity) {
+		String floor = firstNotBlank(project.getLeaseFloor(), opportunity == null ? null : opportunity.getCarrierTypes());
+		BigDecimal area = firstNotNull(project.getLeaseArea(), opportunity == null ? null : opportunity.getIntentArea());
+		String areaText = area == null ? null : formatArea(area);
+		return joinNonBlank("，", floor, areaText);
+	}
+
+	private String formatContractPeriod(ApprovalProject project, BusinessOpportunity opportunity) {
+		if (project.getLeaseStartDate() != null || project.getLeaseEndDate() != null) {
+			return "自 " + formatChineseDatePart(project.getLeaseStartDate()) + " 至 " + formatChineseDatePart(project.getLeaseEndDate()) + " 止";
+		}
+		return value(opportunity == null ? null : opportunity.getLeaseTermLabel());
 	}
 
 	private ApprovalProject normalizeQuery(ApprovalProject project) {
@@ -393,7 +550,12 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 
 	private ApprovalNode currentNode(ApprovalProject project, List<ApprovalNode> nodes) {
 		for (ApprovalNode node : nodes) {
-			if (Objects.equals(node.getNodeName(), project.getCurrentNodeName()) || hasLogin(node.getApproverLogin(), project.getCurrentNode())) {
+			if (Objects.equals(node.getNodeName(), project.getCurrentNodeName())) {
+				return node;
+			}
+		}
+		for (ApprovalNode node : nodes) {
+			if (hasLogin(node.getApproverLogin(), project.getCurrentNode())) {
 				return node;
 			}
 		}
@@ -473,6 +635,73 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 
 	private String firstNotBlank(String first, String second) {
 		return StringUtil.isNotBlank(first) ? first : second;
+	}
+
+	private String firstNotBlank(String... values) {
+		if (values == null) {
+			return null;
+		}
+		for (String value : values) {
+			if (StringUtil.isNotBlank(value)) {
+				return value;
+			}
+		}
+		return null;
+	}
+
+	@SafeVarargs
+	private final <T> T firstNotNull(T... values) {
+		if (values == null) {
+			return null;
+		}
+		for (T value : values) {
+			if (value != null) {
+				return value;
+			}
+		}
+		return null;
+	}
+
+	private String value(String value) {
+		return StringUtil.isBlank(value) ? "-" : value;
+	}
+
+	private String formatDate(Date date) {
+		return date == null ? "-" : DateUtil.format(date, DateUtil.PATTERN_DATE);
+	}
+
+	private String formatChineseDatePart(Date date) {
+		return date == null ? "    年   月  日" : DateUtil.format(date, "yyyy年 M 月 d 日");
+	}
+
+	private String formatMoney(BigDecimal value) {
+		return value == null ? "-" : value.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
+	}
+
+	private String formatArea(BigDecimal value) {
+		return value == null ? null : value.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString() + "㎡";
+	}
+
+	private String joinNonBlank(String delimiter, String... values) {
+		if (values == null) {
+			return "-";
+		}
+		List<String> parts = new ArrayList<>();
+		for (String value : values) {
+			if (StringUtil.isNotBlank(value) && !"-".equals(value.trim())) {
+				parts.add(value.trim());
+			}
+		}
+		return parts.isEmpty() ? "-" : String.join(delimiter, parts);
+	}
+
+	private String normalizeText(String value) {
+		return Func.toStr(value, "")
+			.replace("：", "")
+			.replace(":", "")
+			.replace(" ", "")
+			.trim()
+			.toLowerCase();
 	}
 
 	private String opinion(ApprovalLog log, String defaultOpinion) {

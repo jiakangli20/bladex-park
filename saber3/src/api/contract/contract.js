@@ -130,6 +130,28 @@ export const ensureDepositRefundPayment = contractId => {
   });
 };
 
+export const offlineRoomReview = (contractId, row) => {
+  return request({
+    url: '/blade-contract/contract/room-review/offline',
+    method: 'post',
+    params: {
+      contractId,
+    },
+    data: row,
+  });
+};
+
+export const offlineDepositRefund = (contractId, row) => {
+  return request({
+    url: '/blade-contract/contract/payment/deposit-refund/offline-confirm',
+    method: 'post',
+    params: {
+      contractId,
+    },
+    data: row,
+  });
+};
+
 export const getPaymentList = (current, size, params) => {
   return request({
     url: '/blade-contract/contract/payment/list',
@@ -200,5 +222,13 @@ export const getWorkflowRecordPage = (current, size, params) => {
       current,
       size,
     },
+  });
+};
+
+export const uploadWorkflowRecordAttachment = (recordId, row) => {
+  return request({
+    url: `/blade-contract/workflow-record/attachment/${recordId}`,
+    method: 'post',
+    data: row,
   });
 };

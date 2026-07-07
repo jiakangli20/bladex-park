@@ -27,7 +27,21 @@
 		WHERE COALESCE(c.del_flag, '0') = '0'
 		  AND c.contract_status = '1'
 		  AND c.end_date &gt;= CURDATE()
-		  AND c.end_date &lt;= DATE_ADD(CURDATE(), INTERVAL IFNULL(c.renewal_remind_days, 30) DAY)
+		  AND EXISTS (
+			  SELECT 1
+			  FROM biz_contract_expiry_rule er
+			  WHERE er.del_flag = '0'
+			    AND c.end_date &lt;= DATE_ADD(CURDATE(), INTERVAL er.remind_days DAY)
+			    AND (
+				  FIND_IN_SET(CAST(c.building_id AS CHAR), er.building_ids) &gt; 0
+				  OR EXISTS (
+					  SELECT 1
+					  FROM ics_building expiry_building
+					  WHERE FIND_IN_SET(CAST(expiry_building.id AS CHAR), c.building_ids) &gt; 0
+					    AND FIND_IN_SET(CAST(expiry_building.id AS CHAR), er.building_ids) &gt; 0
+				  )
+			    )
+		  )
 		<if test="parkId != null">
 			AND c.park_id = #{parkId}
 		</if>

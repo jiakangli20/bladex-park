@@ -70,10 +70,10 @@ public class ParkController extends BladeController {
 	 */
 	@GetMapping("/detail")
 	@ApiOperationSupport(order = 1)
-	@Operation(summary = "详情", description = "传入park")
-	public R<ParkVO> detail(Park park) {
-		Park detail = parkService.getOne(Condition.getQueryWrapper(park));
-		return R.data(ParkWrapper.build().entityVO(detail));
+	@Operation(summary = "详情", description = "传入id")
+	public R<ParkVO> detail(@RequestParam Long id) {
+		Park detail = parkService.getById(id);
+		return R.data(detail == null ? null : ParkWrapper.build().entityVO(detail));
 	}
 
 	/**

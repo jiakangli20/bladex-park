@@ -1,6 +1,266 @@
 <template>
   <basic-container>
     <div class="contract-page">
+      <template v-if="detailMode">
+        <el-skeleton :loading="detailLoading" animated>
+          <template #template>
+            <section class="contract-profile-page">
+              <el-skeleton-item variant="p" style="width: 32%" />
+              <el-skeleton-item variant="p" style="width: 68%; margin-top: 20px" />
+              <el-skeleton-item variant="p" style="width: 86%; margin-top: 20px" />
+            </section>
+          </template>
+          <template #default>
+            <section class="contract-profile-page">
+              <header class="contract-profile-header">
+                <div class="contract-profile-title-row">
+                  <el-button
+                    class="contract-profile-back"
+                    text
+                    icon="el-icon-arrow-left"
+                    @click="closeDetailPage"
+                  />
+                  <h2>{{ customerTitle }}</h2>
+                </div>
+                <div class="contract-profile-actions">
+                  <el-button
+                    v-if="detailContract.contractId"
+                    type="primary"
+                    plain
+                    @click="handleRenew(detailContract)"
+                  >
+                    合同续租
+                  </el-button>
+                  <el-button
+                    v-if="detailContract.contractId"
+                    type="primary"
+                    @click="handleSignedUpload(detailContract)"
+                  >
+                    上传盖章合同
+                  </el-button>
+                  <el-button
+                    v-if="detailContract.contractId"
+                    type="warning"
+                    plain
+                    @click="handleStartTermination(detailContract)"
+                  >
+                    发起退租审批
+                  </el-button>
+                  <el-button
+                    v-if="permission.contract_contract_terminate && detailContract.contractStatus !== '4'"
+                    type="danger"
+                    @click="handleTerminate(detailContract)"
+                  >
+                    作废
+                  </el-button>
+                  <el-button
+                    type="primary"
+                    plain
+                    :disabled="!currentCustomerId"
+                    @click="openCustomerEdit"
+                  >
+                    编辑
+                  </el-button>
+                  <el-button
+                    type="danger"
+                    plain
+                    :disabled="!currentCustomerId"
+                    @click="handleCustomerDelete"
+                  >
+                    删除
+                  </el-button>
+                </div>
+                <div class="contract-profile-grid">
+                  <div>
+                    <span>联系人：</span>
+                    <strong>{{ detailValue(customerDetail.contactName || detailContract.followUser) }}</strong>
+                  </div>
+                  <div>
+                    <span>行业分类：</span>
+                    <strong>{{ detailValue(customerDetail.industry) }}</strong>
+                  </div>
+                  <div>
+                    <span>租客标签：</span>
+                    <template v-if="customerTags.length">
+                      <el-tag
+                        v-for="tag in customerTags"
+                        :key="tag"
+                        size="small"
+                        effect="plain"
+                        class="contract-profile-tag"
+                      >
+                        {{ tag }}
+                      </el-tag>
+                    </template>
+                    <strong v-else>--</strong>
+                  </div>
+                  <div>
+                    <span>邮箱：</span>
+                    <strong>{{ detailValue(customerDetail.contactEmail) }}</strong>
+                  </div>
+                  <div>
+                    <span>租客编码：</span>
+                    <strong>{{ detailValue(currentCustomerId) }}</strong>
+                  </div>
+                </div>
+              </header>
+
+              <el-tabs v-model="profileTab" class="contract-profile-tabs">
+                <el-tab-pane label="合同" name="contract">
+                  <el-table :data="contractRows" class="contract-profile-table">
+                    <el-table-column prop="contractNo" label="合同编号" min-width="160" align="center">
+                      <template #default="{ row }">
+                        <el-link type="primary" underline="never" @click="handlePreviewContractText(row)">
+                          {{ row.contractNo || '-' }}
+                        </el-link>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="contractStatus" label="合同状态" width="130" align="center">
+                      <template #default="{ row }">
+                        <el-tag :type="statusType(row.contractStatus)" effect="plain">
+                          {{ row.contractStatusName || statusText(row.contractStatus) }}
+                        </el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="房源信息" min-width="160" align="center" show-overflow-tooltip>
+                      <template #default="{ row }">
+                        {{ row.roomName || row.buildingName || '-' }}
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="租期" width="220" align="center">
+                      <template #default="{ row }">
+                        {{ row.startDate || '-' }} 至 {{ row.endDate || '-' }}
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="租赁单价" width="140" align="center">
+                      <template #default="{ row }">{{ formatUnitPrice(row.rentPrice) }}</template>
+                    </el-table-column>
+                    <el-table-column prop="signDate" label="签订日期" width="130" align="center">
+                      <template #default="{ row }">{{ row.signDate || '-' }}</template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="360" align="center" fixed="right">
+                      <template #default="{ row }">
+                        <div class="profile-table-actions">
+                          <el-button text type="primary" @click="handlePreviewContractText(row)">
+                            预览正文
+                          </el-button>
+                          <el-button
+                            text
+                            type="primary"
+                            :loading="contractTextDownloading && activeDownloadContractId === row.contractId"
+                            @click="handleDownloadContractText(row)"
+                          >
+                            下载
+                          </el-button>
+                          <el-button
+                            text
+                            type="primary"
+                            @click="handleStartApproval(row)"
+                          >
+                            发起审批
+                          </el-button>
+                          <el-button
+                            text
+                            type="primary"
+                            @click="handleSignedUpload(row)"
+                          >
+                            上传盖章
+                          </el-button>
+                          <el-button text type="primary" @click="handleArchive(row)">归档</el-button>
+                        </div>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                  <el-empty v-if="contractRows.length === 0" description="暂无合同" />
+                </el-tab-pane>
+
+                <el-tab-pane label="账单" name="bill">
+                  <el-table
+                    v-loading="paymentLoading"
+                    :data="paymentData"
+                    class="contract-profile-table"
+                  >
+                    <el-table-column prop="contractNo" label="合同编号" min-width="150" show-overflow-tooltip />
+                    <el-table-column prop="feeName" label="账单名称" min-width="150" />
+                    <el-table-column label="账期" min-width="200" align="center">
+                      <template #default="{ row }">
+                        {{ row.periodStart || '-' }} ~ {{ row.periodEnd || '-' }}
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="amountDue" label="应收金额" width="130" align="right">
+                      <template #default="{ row }">{{ formatMoneyWithUnit(row.amountDue) }}</template>
+                    </el-table-column>
+                    <el-table-column prop="amountPaid" label="实收金额" width="130" align="right">
+                      <template #default="{ row }">{{ formatMoneyWithUnit(row.amountPaid) }}</template>
+                    </el-table-column>
+                    <el-table-column prop="payDeadline" label="缴费期限" width="140" align="center">
+                      <template #default="{ row }">{{ row.payDeadline || '-' }}</template>
+                    </el-table-column>
+                    <el-table-column label="账单状态" width="110" align="center">
+                      <template #default="{ row }">
+                        <el-tag :type="paymentTagType(row)" effect="plain">
+                          {{ paymentStatusText(row.payStatus) }}
+                        </el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="180" align="center" fixed="right">
+                      <template #default="{ row }">
+                        <el-button
+                          v-if="row.payStatus !== '1'"
+                          text
+                          type="primary"
+                          @click="handleConfirmPayment(row)"
+                        >
+                          确认缴费
+                        </el-button>
+                        <el-button
+                          v-if="row.payStatus !== '1'"
+                          text
+                          type="primary"
+                          @click="handleRemind(row)"
+                        >
+                          催缴
+                        </el-button>
+                        <span v-else class="muted">已完成</span>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                  <el-empty v-if="paymentData.length === 0" description="暂无账单" />
+                </el-tab-pane>
+
+                <el-tab-pane label="附件" name="attachment">
+                  <div class="contract-attachment-bar">
+                    <el-button type="primary" icon="el-icon-plus" @click="openSupplementDialog">
+                      新增附件
+                    </el-button>
+                  </div>
+                  <el-table :data="supplements" class="contract-profile-table">
+                    <el-table-column prop="fileName" label="文件名称" min-width="220" show-overflow-tooltip>
+                      <template #default="{ row }">{{ row.fileName || row.agreementName || '-' }}</template>
+                    </el-table-column>
+                    <el-table-column prop="contractNo" label="合同编号" min-width="150" show-overflow-tooltip />
+                    <el-table-column prop="createBy" label="上传人" width="140" align="center">
+                      <template #default="{ row }">{{ row.createBy || row.updateBy || '-' }}</template>
+                    </el-table-column>
+                    <el-table-column prop="createTime" label="上传时间" width="180" align="center">
+                      <template #default="{ row }">{{ row.createTime || row.updateTime || '-' }}</template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="150" align="center" fixed="right">
+                      <template #default="{ row }">
+                        <el-button text type="primary" @click="downloadSupplement(row)">下载</el-button>
+                        <el-button text type="danger" @click="removeSupplement(row)">删除</el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                  <el-empty v-if="supplements.length === 0" description="暂无附件" />
+                </el-tab-pane>
+              </el-tabs>
+            </section>
+          </template>
+        </el-skeleton>
+      </template>
+
+      <template v-else>
       <el-alert
         v-if="expiringData.length"
         type="warning"
@@ -63,7 +323,6 @@
             type="success"
             plain
             icon="el-icon-s-promotion"
-            :disabled="!singleSelectedContract || !canStartApproval(singleSelectedContract)"
             @click="handleStartApprovalFromSelection"
           >
             发起合同审批
@@ -188,6 +447,7 @@
           @current-change="currentChange"
         />
       </div>
+      </template>
 
       <el-drawer v-model="detailVisible" :title="detailTitle" size="980px" append-to-body>
         <section class="detail-head">
@@ -206,7 +466,7 @@
               下载合同
             </el-button>
             <el-button
-              v-if="canStartApproval(detailContract)"
+              v-if="detailContract.contractId"
               type="success"
               plain
               @click="handleStartApproval(detailContract)"
@@ -225,14 +485,14 @@
               合同续租
             </el-button>
             <el-button
-              v-if="canUploadSignedContract(detailContract)"
+              v-if="detailContract.contractId"
               type="primary"
               @click="handleSignedUpload(detailContract)"
             >
               上传盖章合同
             </el-button>
             <el-button
-              v-if="canStartTermination(detailContract)"
+              v-if="detailContract.contractId"
               type="warning"
               plain
               @click="handleStartTermination(detailContract)"
@@ -240,7 +500,7 @@
               发起退租审批
             </el-button>
             <el-button
-              v-if="canStartRoomReview(detailContract)"
+              v-if="detailContract.contractId"
               type="primary"
               plain
               @click="handleStartRoomReview(detailContract)"
@@ -370,10 +630,9 @@
                     >催缴</el-button
                   >
                   <el-button
-                    v-if="isPaymentOverdue(row)"
+                    v-if="row.payStatus !== '1'"
                     text
                     type="danger"
-                    :disabled="row.overdueApprovalStatus === 'running'"
                     @click="handleStartOverdueApproval(row)"
                   >
                     逾期处理
@@ -457,6 +716,376 @@
         </el-tabs>
       </el-drawer>
 
+      <el-drawer
+        v-model="customerEditVisible"
+        title="编辑租客"
+        size="860px"
+        append-to-body
+        class="customer-edit-drawer"
+        @close="resetCustomerEdit"
+      >
+        <el-form
+          ref="customerEditFormRef"
+          v-loading="customerEditLoading"
+          :model="customerEditForm"
+          :rules="customerEditRules"
+          label-position="top"
+          class="customer-edit-form"
+        >
+          <el-tabs v-model="customerEditTab" class="customer-edit-tabs">
+            <el-tab-pane label="基本信息" name="basic">
+              <section class="customer-edit-section">
+                <div class="customer-edit-section__title">基本信息</div>
+                <el-row :gutter="22">
+                  <el-col :span="8">
+                    <el-form-item label="租客姓名" prop="enterpriseName">
+                      <el-input
+                        v-model="customerEditForm.enterpriseName"
+                        maxlength="200"
+                        placeholder="请输入租客名称"
+                      />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-form-item label="行业分类">
+                      <el-input
+                        v-model="customerEditForm.industry"
+                        maxlength="50"
+                        placeholder="请选择"
+                      />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-form-item label="租客标签">
+                      <customer-tag-selector
+                        v-model="customerEditForm.tagIds"
+                        compact
+                        empty-text="请选择"
+                      />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-form-item label="租客编码">
+                      <el-input v-model="customerEditForm.customerId" disabled />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-form-item prop="approvalContactName">
+                      <template #label>
+                        <span>审批联系人</span>
+                        <el-tooltip content="用于审批流表单回填" placement="top">
+                          <i class="el-icon-question customer-help-icon" />
+                        </el-tooltip>
+                      </template>
+                      <el-select
+                        v-model="customerEditForm.approvalContactName"
+                        filterable
+                        allow-create
+                        default-first-option
+                        placeholder="请选择审批联系人"
+                        style="width: 100%"
+                      >
+                        <el-option
+                          v-for="item in editContactOptions"
+                          :key="`approval-${item}`"
+                          :label="item"
+                          :value="item"
+                        />
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-form-item label="账单联系人">
+                      <el-select
+                        v-model="customerEditForm.billContactName"
+                        filterable
+                        allow-create
+                        default-first-option
+                        placeholder="请选择账单联系人"
+                        style="width: 100%"
+                      >
+                        <el-option
+                          v-for="item in editContactOptions"
+                          :key="`bill-${item}`"
+                          :label="item"
+                          :value="item"
+                        />
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-form-item label="合同签署人">
+                      <el-select
+                        v-model="customerEditForm.contractSigner"
+                        filterable
+                        allow-create
+                        default-first-option
+                        placeholder="请选择合同签署人"
+                        style="width: 100%"
+                      >
+                        <el-option
+                          v-for="item in editContactOptions"
+                          :key="`sign-${item}`"
+                          :label="item"
+                          :value="item"
+                        />
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="24">
+                    <el-form-item label="证件照片">
+                      <div class="identity-upload-row">
+                        <el-upload
+                          action="/api/blade-resource/oss/endpoint/put-file"
+                          :headers="uploadHeaders"
+                          :show-file-list="false"
+                          accept=".png,.jpg,.jpeg"
+                          :before-upload="beforeIdentityUpload"
+                          :on-success="(response, file) => handleIdentityUploadSuccess('front', response, file)"
+                          :on-error="handleIdentityUploadError"
+                          class="identity-upload"
+                        >
+                          <div class="identity-upload-card">
+                            <el-image
+                              v-if="customerEditForm.identityFrontUrl"
+                              :src="customerEditForm.identityFrontUrl"
+                              fit="cover"
+                              class="identity-upload-image"
+                            />
+                            <div v-else class="identity-upload-placeholder">
+                              <i class="el-icon-camera" />
+                              <span>上传身份证人面像</span>
+                            </div>
+                          </div>
+                        </el-upload>
+                        <el-upload
+                          action="/api/blade-resource/oss/endpoint/put-file"
+                          :headers="uploadHeaders"
+                          :show-file-list="false"
+                          accept=".png,.jpg,.jpeg"
+                          :before-upload="beforeIdentityUpload"
+                          :on-success="(response, file) => handleIdentityUploadSuccess('back', response, file)"
+                          :on-error="handleIdentityUploadError"
+                          class="identity-upload"
+                        >
+                          <div class="identity-upload-card">
+                            <el-image
+                              v-if="customerEditForm.identityBackUrl"
+                              :src="customerEditForm.identityBackUrl"
+                              fit="cover"
+                              class="identity-upload-image"
+                            />
+                            <div v-else class="identity-upload-placeholder">
+                              <i class="el-icon-camera" />
+                              <span>上传身份证国徽像</span>
+                            </div>
+                          </div>
+                        </el-upload>
+                      </div>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-form-item label="介绍人">
+                      <el-input
+                        v-model="customerEditForm.channel"
+                        maxlength="100"
+                        placeholder="请输入介绍人"
+                      />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="16">
+                    <el-form-item label="备注">
+                      <el-input
+                        v-model="customerEditForm.remark"
+                        type="textarea"
+                        :rows="2"
+                        maxlength="500"
+                        placeholder="请输入备注"
+                      />
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+              </section>
+
+              <section class="customer-edit-section">
+                <div class="customer-edit-section__title">默认联系人</div>
+                <el-row :gutter="22">
+                  <el-col :span="8">
+                    <el-form-item label="联系人姓名" prop="contactName">
+                      <el-input
+                        v-model="customerEditForm.contactName"
+                        maxlength="50"
+                        placeholder="请输入联系人姓名"
+                      />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-form-item label="联系电话">
+                      <el-input
+                        v-model="customerEditForm.contactPhone"
+                        maxlength="30"
+                        placeholder="请输入联系电话"
+                      />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-form-item label="联系邮箱">
+                      <el-input
+                        v-model="customerEditForm.contactEmail"
+                        maxlength="100"
+                        placeholder="请输入联系邮箱"
+                      />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-form-item label="联系人职务">
+                      <el-input
+                        v-model="customerEditForm.contactPosition"
+                        maxlength="50"
+                        placeholder="请输入联系人职务"
+                      />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="16">
+                    <el-form-item label="注册地址">
+                      <el-input
+                        v-model="customerEditForm.registeredAddress"
+                        maxlength="500"
+                        placeholder="请输入注册地址"
+                      />
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+              </section>
+            </el-tab-pane>
+            <el-tab-pane label="年度信息" name="annual">
+              <section class="customer-edit-section">
+                <div class="customer-edit-section__title">年度信息</div>
+                <el-row :gutter="22">
+                  <el-col :span="8">
+                    <el-form-item label="上年度营收(万元)">
+                      <el-input-number
+                        v-model="customerEditForm.lastYearRevenue"
+                        :min="0"
+                        :precision="2"
+                        controls-position="right"
+                        style="width: 100%"
+                      />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-form-item label="主营业务">
+                      <el-input
+                        v-model="customerEditForm.mainBusiness"
+                        maxlength="200"
+                        placeholder="请输入主营业务"
+                      />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-form-item label="企业规模">
+                      <el-input
+                        v-model="customerEditForm.scale"
+                        maxlength="50"
+                        placeholder="请输入企业规模"
+                      />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="24">
+                    <el-form-item label="主要合作客户">
+                      <el-input
+                        v-model="customerEditForm.majorClients"
+                        type="textarea"
+                        :rows="3"
+                        maxlength="1000"
+                        placeholder="请输入主要合作客户"
+                      />
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+              </section>
+            </el-tab-pane>
+          </el-tabs>
+        </el-form>
+        <template #footer>
+          <el-button @click="customerEditVisible = false">取消</el-button>
+          <el-button type="primary" :loading="customerEditSaving" @click="submitCustomerEdit">
+            确定
+          </el-button>
+        </template>
+      </el-drawer>
+
+      <el-dialog
+        v-model="supplementVisible"
+        title="新增附件"
+        width="620px"
+        append-to-body
+        @close="resetSupplementForm"
+      >
+        <div class="supplement-contract">
+          <div>
+            <span>合同编号</span>
+            <strong>{{ detailContract.contractNo || '-' }}</strong>
+          </div>
+          <div>
+            <span>企业名称</span>
+            <strong>{{ customerTitle }}</strong>
+          </div>
+        </div>
+        <el-form
+          ref="supplementFormRef"
+          :model="supplementForm"
+          :rules="supplementRules"
+          label-position="top"
+        >
+          <el-form-item label="附件名称" prop="agreementName">
+            <el-input
+              v-model="supplementForm.agreementName"
+              maxlength="100"
+              show-word-limit
+              placeholder="请输入附件名称"
+            />
+          </el-form-item>
+          <el-form-item label="附件文件" prop="fileUrl">
+            <el-upload
+              drag
+              ref="supplementUploadRef"
+              action="/api/blade-resource/oss/endpoint/put-file"
+              :headers="uploadHeaders"
+              :limit="1"
+              :file-list="supplementUploadFileList"
+              :show-file-list="true"
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+              :before-upload="beforeSupplementUpload"
+              :on-success="handleSupplementUploadSuccess"
+              :on-error="handleSupplementUploadError"
+              :on-remove="handleSupplementUploadRemove"
+              class="supplement-upload"
+            >
+              <div class="supplement-upload__text">
+                <strong>上传合同归档附件</strong>
+                <span>支持 PDF、Word、JPG、PNG，单个文件不超过 20MB</span>
+              </div>
+            </el-upload>
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input
+              v-model="supplementForm.remark"
+              type="textarea"
+              :rows="2"
+              maxlength="300"
+              show-word-limit
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="supplementVisible = false">取消</el-button>
+          <el-button type="primary" :loading="supplementLoading" @click="submitSupplement">
+            确定上传
+          </el-button>
+        </template>
+      </el-dialog>
+
       <el-drawer v-model="paymentBox" title="缴费计划" size="760px" append-to-body>
         <el-table v-loading="paymentLoading" :data="paymentData" border>
           <el-table-column prop="feeName" label="费用" width="110" />
@@ -492,6 +1121,33 @@
           </el-table-column>
         </el-table>
       </el-drawer>
+
+      <el-dialog
+        v-model="precheckVisible"
+        :title="precheckTitle"
+        width="560px"
+        append-to-body
+        class="precheck-dialog"
+      >
+        <div class="precheck-list">
+          <div
+            v-for="item in precheckItems"
+            :key="item.label"
+            :class="['precheck-item', { 'is-done': item.done }]"
+          >
+            <div>
+              <strong>{{ item.label }}</strong>
+              <span>{{ item.done ? '已满足' : item.pendingText }}</span>
+            </div>
+            <el-tag :type="item.done ? 'success' : 'warning'" effect="plain">
+              {{ item.done ? '完成' : '待处理' }}
+            </el-tag>
+          </div>
+        </div>
+        <template #footer>
+          <el-button @click="precheckVisible = false">关闭</el-button>
+        </template>
+      </el-dialog>
 
       <el-dialog
         v-model="approvalVisible"
@@ -705,11 +1361,22 @@ import {
   terminate,
   uploadSignedContract,
 } from '@/api/contract/contract';
+import {
+  getSupplementAgreements,
+  removeSupplementAgreement,
+  saveSupplementAgreement,
+} from '@/api/contract/archive';
 import { noticePrintUrl } from '@/api/contract/print';
+import {
+  getCustomerDetail,
+  removeCustomer,
+  updateCustomer,
+} from '@/api/business/customer';
 import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
 import { paymentStatusDic, statusDic } from '@/option/contract/contract';
 import { mapGetters } from 'vuex';
 import { getToken } from '@/utils/auth';
+import CustomerTagSelector from '@/views/business/modules/customer-tag-selector.vue';
 import {
   createNoticePreviewState,
   downloadNoticeFile,
@@ -764,9 +1431,36 @@ const WORKFLOW_TYPES = {
   },
 };
 
+const createDefaultCustomerEditForm = () => ({
+  customerId: null,
+  enterpriseName: '',
+  industry: '',
+  tenantType: 'personal',
+  tagIds: [],
+  creditCode: '',
+  approvalContactName: '',
+  billContactName: '',
+  contractSigner: '',
+  contactName: '',
+  contactPhone: '',
+  contactEmail: '',
+  contactPosition: '',
+  identityFrontUrl: '',
+  identityBackUrl: '',
+  registeredAddress: '',
+  address: '',
+  channel: '',
+  remark: '',
+  lastYearRevenue: undefined,
+  mainBusiness: '',
+  scale: '',
+  majorClients: '',
+});
+
 export default {
   name: 'ContractList',
   components: {
+    CustomerTagSelector,
     NoticePreviewDialog,
   },
   data() {
@@ -786,16 +1480,47 @@ export default {
       data: [],
       stats: {},
       expiringData: [],
+      detailMode: false,
+      detailLoading: false,
+      profileTab: 'contract',
       detailVisible: false,
       detailTab: 'info',
       detailContract: {},
+      customerDetail: {},
+      customerContracts: [],
       paymentBox: false,
       paymentLoading: false,
       paymentData: [],
+      supplements: [],
       workflowLoading: false,
       workflowData: [],
       logData: [],
       contractTextDownloading: false,
+      activeDownloadContractId: '',
+      customerEditVisible: false,
+      customerEditLoading: false,
+      customerEditSaving: false,
+      customerEditTab: 'basic',
+      customerEditForm: createDefaultCustomerEditForm(),
+      customerEditRules: {
+        enterpriseName: [{ required: true, message: '请输入租客名称', trigger: 'blur' }],
+        contactName: [{ required: true, message: '请输入联系人姓名', trigger: 'blur' }],
+      },
+      supplementVisible: false,
+      supplementLoading: false,
+      supplementUploadFileList: [],
+      supplementForm: {
+        agreementName: '',
+        changeItem: '合同档案附件',
+        fileName: '',
+        fileUrl: '',
+        fileType: '',
+        remark: '',
+      },
+      supplementRules: {
+        agreementName: [{ required: true, message: '请输入附件名称', trigger: 'blur' }],
+        fileUrl: [{ required: true, message: '请上传附件文件', trigger: 'change' }],
+      },
       uploadHeaders: {
         'Blade-Auth': `bearer ${getToken()}`,
         'Blade-Requested-With': 'BladeHttpRequest',
@@ -811,6 +1536,9 @@ export default {
       renewForm: {
         dateRange: [],
       },
+      precheckVisible: false,
+      precheckTitle: '',
+      precheckItems: [],
       renewRules: {
         dateRange: [
           {
@@ -860,13 +1588,47 @@ export default {
     summaryCards() {
       return [
         { key: 'total', label: '合同总数', value: this.stats.totalCount || 0 },
-        { key: 'active', label: '履约中', value: this.stats.activeCount || 0 },
-        { key: 'pending', label: '待签约', value: this.stats.pendingCount || 0 },
+        { key: 'active', label: '生效', value: this.stats.activeCount || 0 },
+        { key: 'pending', label: '待审批', value: this.stats.pendingCount || 0 },
         { key: 'rent', label: '月租金合计', value: this.formatMoney(this.stats.monthlyRentTotal) },
       ];
     },
     ids() {
       return this.selectionList.map(item => item.contractId).join(',');
+    },
+    currentCustomerId() {
+      return this.customerDetail.customerId || this.detailContract.customerId || '';
+    },
+    customerTitle() {
+      return (
+        this.customerDetail.enterpriseName ||
+        this.detailContract.customerName ||
+        this.detailContract.contractName ||
+        '租客详情'
+      );
+    },
+    customerTags() {
+      const tags = this.customerDetail.tags || [];
+      if (!Array.isArray(tags)) return [];
+      return tags
+        .map(item => item.tagName || item.name || item.label || item.tagValue || '')
+        .filter(Boolean);
+    },
+    contractRows() {
+      if (this.customerContracts.length) {
+        return this.customerContracts;
+      }
+      return this.detailContract && this.detailContract.contractId ? [this.detailContract] : [];
+    },
+    editContactOptions() {
+      return [
+        this.customerEditForm.contactName,
+        this.customerEditForm.approvalContactName,
+        this.customerEditForm.billContactName,
+        this.customerEditForm.contractSigner,
+      ]
+        .map(item => String(item || '').trim())
+        .filter((item, index, list) => item && list.indexOf(item) === index);
     },
     expiringSummary() {
       return this.expiringData
@@ -1042,44 +1804,47 @@ export default {
       this.$router.push({ path: '/contract/create-template', query: { mode: 'create' } });
     },
     handleStartApprovalFromSelection() {
-      if (!this.singleSelectedContract) {
-        this.$message.warning('请先选择一条待签约合同');
+      if (
+        !this.ensurePrerequisites(
+          '合同审批前置条件',
+          this.selectionContractApprovalPrerequisites()
+        )
+      ) {
         return;
       }
       this.handleStartApproval(this.singleSelectedContract);
     },
     handleStartApproval(row) {
-      if (!this.canStartApproval(row)) {
-        this.$message.warning('仅待签约合同可以发起合同审批');
+      if (
+        !this.ensurePrerequisites('合同审批前置条件', this.contractApprovalPrerequisites(row))
+      ) {
         return;
       }
       this.handleStartWorkflow(CONTRACT_APPROVAL_BUSINESS_TYPE, row);
     },
     handleStartOverdueApproval(row) {
-      if (!row || !row.paymentId) {
-        this.$message.warning('请选择需要发起逾期处理的账单');
-        return;
-      }
-      if (!this.isPaymentOverdue(row)) {
-        this.$message.warning('仅逾期账单可以发起逾期处理');
-        return;
-      }
-      if (row.overdueApprovalStatus === 'running') {
-        this.$message.warning('该账单逾期处理流程正在进行中');
+      if (
+        !this.ensurePrerequisites(
+          '逾期处理前置条件',
+          this.overdueApprovalPrerequisites(this.detailContract, row)
+        )
+      ) {
         return;
       }
       this.handleStartWorkflow(CONTRACT_OVERDUE_LEGAL_BUSINESS_TYPE, this.detailContract, row);
     },
     handleStartTermination(row) {
-      if (!this.canStartTermination(row)) {
-        this.$message.warning('该合同已有进行中的退租审批');
+      if (
+        !this.ensurePrerequisites('退租审批前置条件', this.terminationPrerequisites(row))
+      ) {
         return;
       }
       this.handleStartWorkflow(CONTRACT_TERMINATION_BUSINESS_TYPE, row);
     },
     handleStartRoomReview(row) {
-      if (!this.canStartRoomReview(row)) {
-        this.$message.warning('退租审批通过后才可以发起房屋验收');
+      if (
+        !this.ensurePrerequisites('房屋验收前置条件', this.roomReviewPrerequisites(row))
+      ) {
         return;
       }
       this.handleStartWorkflow(CONTRACT_ROOM_REVIEW_BUSINESS_TYPE, row);
@@ -1191,32 +1956,142 @@ export default {
       return `${name}${version}${key}`;
     },
     canStartApproval(row) {
-      const approvalStatus = String((row && row.approvalStatus) || '');
-      return Boolean(
-        row &&
-          row.contractId &&
-          String(row.contractStatus) === '0' &&
-          !['running', 'approved'].includes(approvalStatus)
-      );
+      return this.contractApprovalPrerequisites(row).every(item => item.done);
     },
     canStartTermination(row) {
-      return Boolean(
-        row && row.contractId && !this.hasRunningWorkflow(CONTRACT_TERMINATION_BUSINESS_TYPE)
-      );
+      return this.terminationPrerequisites(row).every(item => item.done);
     },
     canStartRoomReview(row) {
-      const status = String((row && row.contractStatus) || '');
-      return Boolean(
-        row &&
-          row.contractId &&
-          status === '7' &&
-          !this.hasRunningWorkflow(CONTRACT_ROOM_REVIEW_BUSINESS_TYPE)
-      );
+      return this.roomReviewPrerequisites(row).every(item => item.done);
     },
     hasRunningWorkflow(businessType) {
       return (this.workflowData || []).some(
         item => item.businessType === businessType && item.processStatus === 'running'
       );
+    },
+    ensurePrerequisites(title, items = []) {
+      if ((items || []).every(item => item.done)) {
+        return true;
+      }
+      this.precheckTitle = title;
+      this.precheckItems = items || [];
+      this.precheckVisible = true;
+      return false;
+    },
+    baseContractPrerequisites(row) {
+      return [
+        {
+          label: '已选择合同',
+          done: Boolean(row && row.contractId),
+          pendingText: '请先选择合同',
+        },
+      ];
+    },
+    contractApprovalPrerequisites(row) {
+      const approvalStatus = String((row && row.approvalStatus) || '');
+      return [
+        ...this.baseContractPrerequisites(row),
+        {
+          label: '合同状态为待审批',
+          done: String(row?.contractStatus || '') === '0',
+          pendingText: `当前状态：${this.statusText(row?.contractStatus)}`,
+        },
+        {
+          label: '合同审批未进行中且未通过',
+          done: !['running', 'approved'].includes(approvalStatus),
+          pendingText:
+            approvalStatus === 'running'
+              ? '当前合同审批正在进行中'
+              : '合同审批已通过，不需要重复发起',
+        },
+      ];
+    },
+    selectionContractApprovalPrerequisites() {
+      const selectionCount = this.selectionList.length;
+      const selectionItems = [
+        {
+          label: '已选择合同',
+          done: selectionCount > 0,
+          pendingText: '请先选择合同',
+        },
+        {
+          label: '仅选择一份合同',
+          done: selectionCount <= 1,
+          pendingText: '每次只能发起一份合同审批',
+        },
+      ];
+      if (selectionCount !== 1) {
+        return selectionItems;
+      }
+      return [
+        ...selectionItems,
+        ...this.contractApprovalPrerequisites(this.singleSelectedContract).slice(1),
+      ];
+    },
+    signedUploadPrerequisites(row) {
+      return [
+        ...this.baseContractPrerequisites(row),
+        {
+          label: '合同状态为待盖章',
+          done: String(row?.contractStatus || '') === '5',
+          pendingText: `当前状态：${this.statusText(row?.contractStatus)}`,
+        },
+      ];
+    },
+    terminationPrerequisites(row) {
+      return [
+        ...this.baseContractPrerequisites(row),
+        {
+          label: '合同已生效或已到期',
+          done: ['1', '2'].includes(String(row?.contractStatus || '')),
+          pendingText: `当前状态：${this.statusText(row?.contractStatus)}`,
+        },
+        {
+          label: '退租审批未进行中',
+          done: !this.hasRunningWorkflow(CONTRACT_TERMINATION_BUSINESS_TYPE),
+          pendingText: '该合同已有进行中的退租审批',
+        },
+      ];
+    },
+    roomReviewPrerequisites(row) {
+      return [
+        ...this.baseContractPrerequisites(row),
+        {
+          label: '进入退租交接阶段',
+          done: String(row?.contractStatus || '') === '7',
+          pendingText: `当前状态：${this.statusText(row?.contractStatus)}`,
+        },
+        {
+          label: '房屋验收未进行中',
+          done: !this.hasRunningWorkflow(CONTRACT_ROOM_REVIEW_BUSINESS_TYPE),
+          pendingText: '该合同已有进行中的房屋验收流程',
+        },
+      ];
+    },
+    overdueApprovalPrerequisites(contract = {}, payment = {}) {
+      return [
+        ...this.baseContractPrerequisites(contract),
+        {
+          label: '已选择账单',
+          done: Boolean(payment && payment.paymentId),
+          pendingText: '请选择需要发起逾期处理的账单',
+        },
+        {
+          label: '账单未缴清',
+          done: String(payment?.payStatus || '') !== '1',
+          pendingText: '该账单已完成缴费',
+        },
+        {
+          label: '账单已逾期',
+          done: this.isPaymentOverdue(payment),
+          pendingText: '仅逾期账单可以发起逾期处理',
+        },
+        {
+          label: '逾期处理未进行中',
+          done: payment?.overdueApprovalStatus !== 'running',
+          pendingText: '该账单逾期处理流程正在进行中',
+        },
+      ];
     },
     buildContractApprovalPayload(contract = {}) {
       const selectedContract = contract || {};
@@ -1455,15 +2330,14 @@ export default {
         .then(() => {
           this.reload();
           this.detailVisible = false;
+          this.detailMode = false;
           this.$message.success('操作成功!');
         });
     },
     handleSignedUpload(row) {
-      if (!row || !row.contractId) {
-        return;
-      }
-      if (!this.canUploadSignedContract(row)) {
-        this.$message.warning('仅审批通过待盖章的合同可以上传盖章文件');
+      if (
+        !this.ensurePrerequisites('上传盖章合同前置条件', this.signedUploadPrerequisites(row))
+      ) {
         return;
       }
       this.signedUploadContract = { ...row };
@@ -1542,7 +2416,10 @@ export default {
           this.signedUploadVisible = false;
           this.resetSignedUpload();
           this.reload();
-          if (this.detailVisible && this.detailContract.contractId === contractId) {
+          if (
+            (this.detailMode || this.detailVisible) &&
+            String(this.detailContract.contractId) === String(contractId)
+          ) {
             this.openDetail({ contractId });
           }
         })
@@ -1565,17 +2442,408 @@ export default {
     },
     openDetail(row) {
       if (!row || !row.contractId) return;
-      this.detailVisible = true;
-      this.detailTab = 'info';
+      this.detailMode = true;
+      this.detailVisible = false;
+      this.detailLoading = true;
+      this.profileTab = 'contract';
       this.paymentData = [];
       this.workflowData = [];
       this.logData = [];
-      getDetail(row.contractId).then(res => {
-        this.detailContract = res.data.data || {};
-      });
-      this.loadPayment(row.contractId);
+      this.customerDetail = {};
+      this.customerContracts = [];
+      this.supplements = [];
+      getDetail(row.contractId)
+        .then(res => {
+          const contract = {
+            ...row,
+            ...((res.data && res.data.data) || {}),
+          };
+          this.detailContract = contract;
+          this.loadCustomerDetail(contract.customerId);
+          this.loadCustomerContracts(contract);
+        })
+        .finally(() => {
+          this.detailLoading = false;
+        });
       this.loadWorkflow(row.contractId);
       this.loadLogs(row.contractId);
+    },
+    closeDetailPage() {
+      this.detailMode = false;
+      this.detailVisible = false;
+      this.profileTab = 'contract';
+      this.detailContract = {};
+      this.customerDetail = {};
+      this.customerContracts = [];
+      this.paymentData = [];
+      this.workflowData = [];
+      this.logData = [];
+      this.supplements = [];
+    },
+    loadCustomerDetail(customerId) {
+      if (!customerId) {
+        this.customerDetail = {};
+        return;
+      }
+      getCustomerDetail(customerId)
+        .then(res => {
+          this.customerDetail = res.data.data || {};
+        })
+        .catch(() => {
+          this.customerDetail = {};
+        });
+    },
+    loadCustomerContracts(contract = {}) {
+      if (!contract.customerId) {
+        this.customerContracts = contract.contractId ? [contract] : [];
+        this.loadPayment(contract.contractId);
+        this.loadSupplements(contract.contractId);
+        return;
+      }
+      getList(1, 100, { customerId: contract.customerId })
+        .then(res => {
+          const result = res.data.data || {};
+          const records = result.records || [];
+          this.customerContracts = records.length ? records : [contract];
+          this.loadPaymentsByContracts(this.customerContracts);
+          this.loadSupplementsByContracts(this.customerContracts);
+        })
+        .catch(() => {
+          this.customerContracts = contract.contractId ? [contract] : [];
+          this.loadPayment(contract.contractId);
+          this.loadSupplements(contract.contractId);
+        });
+    },
+    loadPaymentsByContracts(contracts = []) {
+      if (!contracts.length) {
+        this.paymentData = [];
+        return;
+      }
+      this.paymentLoading = true;
+      Promise.all(
+        contracts.map(contract =>
+          getPayment(contract.contractId)
+            .then(res =>
+              (res.data.data || []).map(item => ({
+                ...item,
+                contractNo: item.contractNo || contract.contractNo,
+                contractName: item.contractName || contract.contractName,
+                customerName: item.customerName || contract.customerName,
+              }))
+            )
+            .catch(() => [])
+        )
+      )
+        .then(groups => {
+          this.paymentData = groups.flat();
+        })
+        .finally(() => {
+          this.paymentLoading = false;
+        });
+    },
+    loadSupplements(contractId) {
+      if (!contractId) {
+        this.supplements = [];
+        return;
+      }
+      getSupplementAgreements(contractId).then(res => {
+        this.supplements = (res.data.data || []).map(item => ({
+          ...item,
+          contractNo: item.contractNo || this.detailContract.contractNo,
+        }));
+      });
+    },
+    loadSupplementsByContracts(contracts = []) {
+      if (!contracts.length) {
+        this.supplements = [];
+        return;
+      }
+      Promise.all(
+        contracts.map(contract =>
+          getSupplementAgreements(contract.contractId)
+            .then(res =>
+              (res.data.data || []).map(item => ({
+                ...item,
+                contractNo: item.contractNo || contract.contractNo,
+              }))
+            )
+            .catch(() => [])
+        )
+      ).then(groups => {
+        this.supplements = groups.flat();
+      });
+    },
+    openCustomerEdit() {
+      const customerId = this.currentCustomerId;
+      if (!customerId) {
+        this.$message.warning('手工录入企业暂无客户档案，不能在这里编辑');
+        return;
+      }
+      this.customerEditVisible = true;
+      this.customerEditLoading = true;
+      this.customerEditTab = 'basic';
+      getCustomerDetail(customerId)
+        .then(res => {
+          const detail = res.data.data || {};
+          this.customerEditForm = {
+            ...createDefaultCustomerEditForm(),
+            ...detail,
+            tenantType: detail.tenantType || 'personal',
+            approvalContactName: detail.approvalContactName || detail.contactName || '',
+            billContactName: detail.billContactName || detail.contactName || '',
+            contractSigner: detail.contractSigner || detail.contactName || '',
+            registeredAddress: detail.registeredAddress || detail.address || '',
+            majorClients: detail.majorClients || detail.majorCustomers || '',
+            tagIds: this.resolveCustomerTagIds(detail),
+          };
+        })
+        .finally(() => {
+          this.customerEditLoading = false;
+          this.$nextTick(() => {
+            if (this.$refs.customerEditFormRef) {
+              this.$refs.customerEditFormRef.clearValidate();
+            }
+          });
+        });
+    },
+    resetCustomerEdit() {
+      this.customerEditLoading = false;
+      this.customerEditSaving = false;
+      this.customerEditTab = 'basic';
+      this.customerEditForm = createDefaultCustomerEditForm();
+    },
+    submitCustomerEdit() {
+      this.$refs.customerEditFormRef.validate(valid => {
+        if (!valid) return;
+        this.customerEditSaving = true;
+        updateCustomer(this.normalizeCustomerPayload(this.customerEditForm))
+          .then(() => {
+            this.$message.success('租客信息已保存');
+            this.customerEditVisible = false;
+            const contractId = this.detailContract.contractId;
+            this.reload();
+            if (contractId) {
+              this.openDetail({ contractId });
+            }
+          })
+          .finally(() => {
+            this.customerEditSaving = false;
+          });
+      });
+    },
+    handleCustomerDelete() {
+      const customerId = this.currentCustomerId;
+      if (!customerId) {
+        this.$message.warning('手工录入企业暂无客户档案，不能在这里删除');
+        return;
+      }
+      this.$confirm(`确定删除租客「${this.customerTitle}」？`, '提示', {
+        type: 'warning',
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+      })
+        .then(() => removeCustomer(customerId))
+        .then(() => {
+          this.$message.success('租客已删除');
+          this.closeDetailPage();
+          this.reload();
+        });
+    },
+    resolveCustomerTagIds(detail = {}) {
+      if (Array.isArray(detail.tagIds)) {
+        return detail.tagIds;
+      }
+      if (Array.isArray(detail.tags)) {
+        return detail.tags.map(tag => tag.tagId || tag.id).filter(Boolean);
+      }
+      return [];
+    },
+    normalizeCustomerPayload(row = {}) {
+      return {
+        ...row,
+        address: row.registeredAddress || row.address,
+        creditCode: row.creditCode || null,
+        tenantType: row.tenantType || 'personal',
+        approvalContactName: row.approvalContactName || '',
+        billContactName: row.billContactName || '',
+        contractSigner: row.contractSigner || '',
+        identityFrontUrl: row.identityFrontUrl || '',
+        identityBackUrl: row.identityBackUrl || '',
+        tagIds: Array.isArray(row.tagIds) ? row.tagIds : [],
+      };
+    },
+    beforeIdentityUpload(file) {
+      const isImage =
+        ['image/jpeg', 'image/png'].includes(file.type) || /\.(jpg|jpeg|png)$/i.test(file.name || '');
+      const isLt10M = file.size / 1024 / 1024 < 10;
+      if (!isImage) {
+        this.$message.error('仅支持上传 JPG、PNG 格式图片');
+      }
+      if (!isLt10M) {
+        this.$message.error('图片大小不能超过 10MB');
+      }
+      return isImage && isLt10M;
+    },
+    handleIdentityUploadSuccess(side, response, file) {
+      if (!response || response.success === false) {
+        this.$message.error((response && response.msg) || '上传失败');
+        return;
+      }
+      const data = response.data || {};
+      const fileUrl =
+        data.link || data.url || data.path || response.link || response.url || response.data || '';
+      if (!fileUrl) {
+        this.$message.error('上传成功但未返回文件地址');
+        return;
+      }
+      if (side === 'front') {
+        this.customerEditForm.identityFrontUrl = fileUrl;
+      } else {
+        this.customerEditForm.identityBackUrl = fileUrl;
+      }
+      this.$message.success(file && file.name ? `${file.name} 上传成功` : '上传成功');
+    },
+    handleIdentityUploadError(error) {
+      const message = (error && error.message) || '上传失败，请重试';
+      this.$message.error(message);
+    },
+    openSupplementDialog() {
+      if (!this.detailContract.contractId) {
+        this.$message.warning('请先选择合同');
+        return;
+      }
+      const contractNo = this.detailContract.contractNo || '';
+      this.supplementForm = {
+        agreementName: contractNo ? `${contractNo}附件` : '合同附件',
+        changeItem: '合同档案附件',
+        fileName: '',
+        fileUrl: '',
+        fileType: '',
+        remark: '',
+      };
+      this.supplementUploadFileList = [];
+      this.supplementVisible = true;
+      this.$nextTick(() => {
+        if (this.$refs.supplementFormRef) {
+          this.$refs.supplementFormRef.clearValidate();
+        }
+        if (this.$refs.supplementUploadRef && this.$refs.supplementUploadRef.clearFiles) {
+          this.$refs.supplementUploadRef.clearFiles();
+        }
+      });
+    },
+    resetSupplementForm() {
+      this.supplementLoading = false;
+      this.supplementUploadFileList = [];
+      this.supplementForm = {
+        agreementName: '',
+        changeItem: '合同档案附件',
+        fileName: '',
+        fileUrl: '',
+        fileType: '',
+        remark: '',
+      };
+      if (this.$refs.supplementFormRef) {
+        this.$refs.supplementFormRef.clearValidate();
+      }
+    },
+    beforeSupplementUpload(file) {
+      const allowTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+      ];
+      const isAllowType =
+        allowTypes.includes(file.type) || /\.(pdf|doc|docx|jpg|jpeg|png)$/i.test(file.name || '');
+      const isLt20M = file.size / 1024 / 1024 < 20;
+      if (!isAllowType) {
+        this.$message.error('仅支持上传 PDF、Word、JPG、PNG 格式文件');
+      }
+      if (!isLt20M) {
+        this.$message.error('文件大小不能超过 20MB');
+      }
+      return isAllowType && isLt20M;
+    },
+    handleSupplementUploadSuccess(response, file) {
+      if (!response || response.success === false) {
+        this.supplementForm.fileUrl = '';
+        this.$message.error((response && response.msg) || '上传失败');
+        return;
+      }
+      const data = response.data || {};
+      const fileUrl =
+        data.link || data.url || data.path || response.link || response.url || response.data || '';
+      this.supplementForm.fileUrl = fileUrl || '';
+      this.supplementForm.fileName = (file && file.name) || data.name || data.originalName || '';
+      this.supplementForm.fileType = this.getFileType(this.supplementForm.fileName || fileUrl);
+      this.supplementUploadFileList = file
+        ? [{ name: file.name, url: fileUrl }]
+        : this.supplementUploadFileList;
+      if (this.$refs.supplementFormRef) {
+        this.$refs.supplementFormRef.validateField('fileUrl');
+      }
+      this.$message.success(file && file.name ? `${file.name} 上传成功` : '上传成功');
+    },
+    handleSupplementUploadError(error) {
+      this.supplementForm.fileUrl = '';
+      const message = (error && error.message) || '上传失败，请重试';
+      this.$message.error(message);
+    },
+    handleSupplementUploadRemove() {
+      this.supplementForm.fileName = '';
+      this.supplementForm.fileUrl = '';
+      this.supplementForm.fileType = '';
+      this.supplementUploadFileList = [];
+    },
+    submitSupplement() {
+      if (!this.detailContract.contractId) {
+        this.$message.warning('请先选择合同');
+        return;
+      }
+      this.$refs.supplementFormRef.validate(valid => {
+        if (!valid) return;
+        this.supplementLoading = true;
+        saveSupplementAgreement({
+          ...this.supplementForm,
+          contractId: this.detailContract.contractId,
+          changeItem: this.supplementForm.changeItem || '合同档案附件',
+        })
+          .then(() => {
+            this.$message.success('附件已上传');
+            this.supplementVisible = false;
+            this.loadSupplementsByContracts(this.contractRows);
+          })
+          .finally(() => {
+            this.supplementLoading = false;
+          });
+      });
+    },
+    removeSupplement(row) {
+      this.$confirm('确认删除该附件吗？', '提示', {
+        type: 'warning',
+      })
+        .then(() => removeSupplementAgreement(row.agreementId))
+        .then(() => {
+          this.$message.success('附件已删除');
+          this.loadSupplementsByContracts(this.contractRows);
+        });
+    },
+    downloadSupplement(row) {
+      if (!row.fileUrl) {
+        this.$message.warning('暂无附件文件');
+        return;
+      }
+      const link = document.createElement('a');
+      link.href = row.fileUrl;
+      link.target = '_blank';
+      link.download = row.fileName || row.agreementName || '附件';
+      link.click();
+    },
+    getFileType(value) {
+      const match = String(value || '').match(/\.([a-z0-9]+)(?:\?|#|$)/i);
+      return match ? match[1].toLowerCase() : '';
     },
     handlePayment(row) {
       this.detailContract = row || {};
@@ -1660,6 +2928,24 @@ export default {
       if (!this.noticePreview.downloadUrl) return;
       downloadNoticeFile(this.noticePreview.downloadUrl, this.noticePreview.fallbackName);
     },
+    handlePreviewContractText(row) {
+      if (!row || !row.contractId) {
+        this.$message.warning('请选择需要预览的合同');
+        return;
+      }
+      const noticeType = this.resolveContractTextNoticeType(row);
+      openNoticePreview(
+        this,
+        this.noticePreview,
+        {
+          noticeType,
+          contractId: row.contractId,
+        },
+        noticePrintUrl(noticeType, { contractId: row.contractId }),
+        `${row.contractNo || '合同'}正文.docx`,
+        noticeType === 'contract-floating' ? '合同正文浮动租金版' : '合同正文固定租金版'
+      );
+    },
     handleDownloadContractText(row) {
       if (!row || !row.contractId) {
         this.$message.warning('请选择需要下载的合同');
@@ -1671,6 +2957,7 @@ export default {
         this.$message.warning('合同下载地址生成失败');
         return;
       }
+      this.activeDownloadContractId = row.contractId;
       this.contractTextDownloading = true;
       downloadNoticeFile(downloadUrl, `${row.contractNo || '合同'}正文.docx`)
         .then(() => {
@@ -1681,6 +2968,7 @@ export default {
         })
         .finally(() => {
           this.contractTextDownloading = false;
+          this.activeDownloadContractId = '';
         });
     },
     resolveContractTextNoticeType(row = {}) {
@@ -1702,7 +2990,11 @@ export default {
           })
         )
         .then(() => {
-          this.loadPayment(this.currentPaymentContractId(row));
+          if (this.detailMode) {
+            this.loadPaymentsByContracts(this.contractRows);
+          } else {
+            this.loadPayment(this.currentPaymentContractId(row));
+          }
           this.$message.success('操作成功!');
         });
     },
@@ -1809,10 +3101,11 @@ export default {
     },
     isExpiringSoon(row) {
       if (!row || !row.endDate) return false;
+      const remindDays = Number(row.renewalRemindDays || 0);
+      if (!remindDays) return false;
       const end = new Date(row.endDate).getTime();
       if (Number.isNaN(end)) return false;
       const days = Math.ceil((end - Date.now()) / 86400000);
-      const remindDays = Number(row.renewalRemindDays || 30);
       return days >= 0 && days <= remindDays;
     },
     statusText(value) {
@@ -1854,7 +3147,7 @@ export default {
       return map[String(value || '')] || 'info';
     },
     canUploadSignedContract(row) {
-      return String((row && row.contractStatus) || '') === '5';
+      return this.signedUploadPrerequisites(row).every(item => item.done);
     },
     workflowBusinessTypeText(value) {
       const map = {
@@ -1923,12 +3216,24 @@ export default {
         unitMap[contract.lateFeeUnit] || contract.lateFeeUnit || ''
       }`;
     },
+    detailValue(value) {
+      if (value === null || value === undefined || value === '') {
+        return '--';
+      }
+      return value;
+    },
     formatMoney(value) {
       const number = Number(value || 0);
       return number.toLocaleString('zh-CN', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       });
+    },
+    formatMoneyWithUnit(value) {
+      if (value === null || value === undefined || value === '') {
+        return '-';
+      }
+      return `${this.formatMoney(value)}元`;
     },
     formatUnitPrice(value) {
       if (value === null || value === undefined || value === '') return '-';
@@ -1990,6 +3295,283 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.contract-profile-page {
+  min-height: calc(100vh - 180px);
+  padding: 24px 30px 42px;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.contract-profile-header {
+  position: relative;
+  padding-bottom: 24px;
+}
+
+.contract-profile-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+}
+
+.contract-profile-title-row h2 {
+  margin: 0;
+  color: #303133;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.contract-profile-back {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: #606266;
+}
+
+.contract-profile-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  max-width: calc(100% - 320px);
+}
+
+.contract-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px 80px;
+  margin-top: 18px;
+  color: #303133;
+  font-size: 14px;
+}
+
+.contract-profile-grid > div {
+  min-width: 0;
+}
+
+.contract-profile-grid span,
+.contract-profile-grid strong {
+  color: #303133;
+  font-weight: 400;
+}
+
+.contract-profile-tag {
+  margin-right: 6px;
+}
+
+.contract-profile-tabs {
+  margin-top: 10px;
+}
+
+.contract-profile-tabs :deep(.el-tabs__nav-wrap::after) {
+  display: none;
+}
+
+.contract-profile-tabs :deep(.el-tabs__item) {
+  height: 44px;
+  padding: 0 18px;
+  color: #303133;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.contract-profile-tabs :deep(.el-tabs__active-bar) {
+  height: 3px;
+  background-color: #2f80ff;
+}
+
+.contract-profile-tabs :deep(.el-tabs__content) {
+  padding-top: 42px;
+}
+
+.contract-profile-table {
+  width: 100%;
+}
+
+.contract-profile-table :deep(.el-table__header th) {
+  height: 48px;
+  background: #fff;
+  color: #8c98aa;
+  font-weight: 600;
+}
+
+.contract-profile-table :deep(.el-table__row) {
+  height: 54px;
+}
+
+.contract-profile-table :deep(.el-table__inner-wrapper::before) {
+  background-color: #edf0f5;
+}
+
+.profile-table-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.profile-table-actions :deep(.el-button) {
+  min-width: 44px;
+  padding: 0 3px;
+  margin-left: 0;
+}
+
+.contract-attachment-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.customer-edit-form {
+  padding: 0 0 70px;
+}
+
+.customer-edit-tabs :deep(.el-tabs__nav-wrap::after) {
+  display: none;
+}
+
+.customer-edit-section {
+  padding: 18px 20px 10px;
+  margin-bottom: 18px;
+  border: 1px solid #edf0f5;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.customer-edit-section__title {
+  margin: -18px -20px 18px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #edf0f5;
+  color: #303133;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.customer-help-icon {
+  margin-left: 4px;
+  color: #606266;
+  cursor: help;
+}
+
+.customer-edit-drawer :deep(.el-drawer__body) {
+  padding-top: 12px;
+}
+
+.customer-edit-drawer :deep(.el-form-item__label) {
+  color: #303133;
+  font-weight: 400;
+}
+
+.customer-edit-drawer :deep(.el-input__wrapper),
+.customer-edit-drawer :deep(.el-select__wrapper),
+.customer-edit-drawer :deep(.el-textarea__inner) {
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px #dcdfe6 inset;
+}
+
+.identity-upload-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.identity-upload {
+  width: 160px;
+}
+
+.identity-upload-card {
+  width: 160px;
+  height: 112px;
+  overflow: hidden;
+  border: 1px dashed #dcdfe6;
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+.identity-upload-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.identity-upload-placeholder {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #606266;
+  font-size: 14px;
+}
+
+.identity-upload-placeholder i {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #2f80ff;
+  color: #fff;
+  font-size: 16px;
+}
+
+.supplement-contract {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid #ebeef5;
+  border-radius: 10px;
+  background: #f7f9fc;
+}
+
+.supplement-contract span,
+.supplement-contract strong {
+  display: block;
+}
+
+.supplement-contract span {
+  margin-bottom: 5px;
+  color: #909399;
+  font-size: 12px;
+}
+
+.supplement-contract strong {
+  overflow: hidden;
+  color: #303133;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.supplement-upload {
+  width: 100%;
+}
+
+.supplement-upload__text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #606266;
+}
+
+.supplement-upload__text strong {
+  color: #303133;
+  font-size: 14px;
+}
+
+.supplement-upload__text span {
+  color: #909399;
+  font-size: 12px;
 }
 
 .contract-alert,
@@ -2124,6 +3706,46 @@ export default {
   font-style: normal;
 }
 
+.precheck-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.precheck-item {
+  min-height: 54px;
+  padding: 10px 12px;
+  border: 1px solid #f3d19e;
+  border-radius: 8px;
+  background: #fdf6ec;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.precheck-item div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.precheck-item strong {
+  color: #303133;
+  font-weight: 600;
+}
+
+.precheck-item span {
+  color: #8c98aa;
+  font-size: 12px;
+}
+
+.precheck-item.is-done {
+  border-color: #b3e19d;
+  background: #f0f9eb;
+}
+
 .renew-dialog :deep(.el-dialog__body) {
   min-height: 640px;
   padding-top: 0;
@@ -2241,12 +3863,34 @@ export default {
 }
 
 @media (max-width: 1100px) {
+  .contract-profile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 32px;
+  }
+
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .contract-field-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .contract-profile-page {
+    padding: 18px 14px 28px;
+  }
+
+  .contract-profile-actions {
+    position: static;
+    margin-top: 14px;
+  }
+
+  .contract-profile-grid,
+  .supplement-contract {
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
 }
 </style>

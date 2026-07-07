@@ -42,11 +42,14 @@ import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.service.IContractWorkflowService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 合同管理流程记录控制器
@@ -103,6 +106,16 @@ public class ContractWorkflowRecordController extends BladeController {
 	@Operation(summary = "合同最新流程记录", description = "传入contractId和businessType")
 	public R<ContractWorkflowRecord> latest(@RequestParam Long contractId, @RequestParam String businessType) {
 		return R.data(contractWorkflowService.selectLatest(contractId, businessType));
+	}
+
+	/**
+	 * 上传流程资料
+	 */
+	@PostMapping("/attachment/{recordId}")
+	@ApiOperationSupport(order = 5)
+	@Operation(summary = "上传流程资料", description = "传入recordId和资料信息")
+	public R<ContractWorkflowRecord> uploadAttachment(@Parameter(description = "记录ID") @PathVariable Long recordId, @RequestBody Map<String, Object> payload) {
+		return R.data(contractWorkflowService.uploadAttachment(recordId, payload));
 	}
 
 }

@@ -1,17 +1,8 @@
 <template>
   <div class="top-menu-shell">
-    <button
-      class="top-menu-shell__arrow"
-      :class="{ 'is-disabled': !canScrollLeft }"
-      type="button"
-      @click="scrollMenu(-1)"
-    >
-      <span>‹</span>
-    </button>
     <div
       ref="menuScroll"
       class="top-menu-shell__scroll"
-      @scroll="updateScrollState"
       @wheel.prevent="handleMenuWheel"
     >
       <el-menu class="top-menu" :default-active="activeIndex" mode="horizontal" :ellipsis="false">
@@ -32,14 +23,6 @@
         </template>
       </el-menu>
     </div>
-    <button
-      class="top-menu-shell__arrow"
-      :class="{ 'is-disabled': !canScrollRight }"
-      type="button"
-      @click="scrollMenu(1)"
-    >
-      <span>›</span>
-    </button>
   </div>
 </template>
 
@@ -56,20 +39,11 @@ export default {
       },
       activeIndex: '0',
       items: [],
-      canScrollLeft: false,
-      canScrollRight: false,
     };
   },
   inject: ['index'],
   created() {
     this.getMenu();
-  },
-  mounted() {
-    this.updateScrollState();
-    window.addEventListener('resize', this.updateScrollState);
-  },
-  beforeUnmount() {
-    window.removeEventListener('resize', this.updateScrollState);
   },
   computed: {
     ...mapGetters(['tagCurrent', 'topMenu', 'tagWel']),
@@ -79,7 +53,6 @@ export default {
       handler(list = []) {
         this.items = this.normalizeTopMenu(list);
         this.syncActiveByRoute();
-        this.$nextTick(this.updateScrollState);
       },
       deep: true,
       immediate: true,
@@ -133,15 +106,6 @@ export default {
     getMenu() {
       this.$store.dispatch('GetTopMenu').then(res => {
         this.items = this.normalizeTopMenu(res);
-        this.$nextTick(this.updateScrollState);
-      });
-    },
-    scrollMenu(direction) {
-      const el = this.$refs.menuScroll;
-      if (!el) return;
-      el.scrollBy({
-        left: direction * 320,
-        behavior: 'smooth',
       });
     },
     handleMenuWheel(event) {
@@ -153,12 +117,6 @@ export default {
         behavior: 'auto',
       });
     },
-    updateScrollState() {
-      const el = this.$refs.menuScroll;
-      if (!el) return;
-      this.canScrollLeft = el.scrollLeft > 0;
-      this.canScrollRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
-    },
     scrollActiveIntoView() {
       const el = this.$refs.menuScroll;
       if (!el) return;
@@ -166,7 +124,6 @@ export default {
       if (active && active.scrollIntoView) {
         active.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
       }
-      this.updateScrollState();
     },
   },
 };

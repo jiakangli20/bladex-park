@@ -63,6 +63,7 @@ export const exportApprovalForm = projectId => {
   return request({
     url: `/blade-approval/project/form/export/${projectId}`,
     method: 'get',
+    responseType: 'blob',
   });
 };
 

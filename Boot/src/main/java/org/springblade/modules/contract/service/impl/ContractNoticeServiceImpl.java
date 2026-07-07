@@ -1523,11 +1523,11 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			case NOTICE_ROOM_REVIEW -> createRoomReviewFields(context);
 			default -> new LinkedHashMap<>();
 		};
-		Map<String, String> summary = buildPreviewSummary(noticeType, context, fields);
-		List<String> missingFields = fields.entrySet().stream()
-			.filter(entry -> isMissingValue(entry.getValue()))
-			.map(Map.Entry::getKey)
-			.toList();
+			Map<String, String> summary = buildPreviewSummary(noticeType, context, fields);
+			List<String> missingFields = fields.entrySet().stream()
+				.filter(entry -> isMissingValue(entry.getValue()) && !isOptionalPreviewField(noticeType, entry.getKey()))
+				.map(Map.Entry::getKey)
+				.toList();
 		return new PreviewData(summary, fields, missingFields);
 	}
 
@@ -1552,8 +1552,16 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 				"-"
 			));
 		}
-		summary.put("缺失字段数", String.valueOf(fields.entrySet().stream().filter(entry -> isMissingValue(entry.getValue())).count()));
+		summary.put("缺失字段数", String.valueOf(fields.entrySet().stream().filter(entry -> isMissingValue(entry.getValue()) && !isOptionalPreviewField(noticeType, entry.getKey())).count()));
 		return summary;
+	}
+
+	private boolean isOptionalPreviewField(String noticeType, String fieldName) {
+		return switch (noticeType) {
+			case NOTICE_PAYMENT -> Set.of("租金", "物业费", "电费").contains(fieldName);
+			case NOTICE_INVOICE -> Set.of("房租", "押金", "物业费", "电费").contains(fieldName);
+			default -> false;
+		};
 	}
 
 	private String noticeDisplayName(String noticeType) {
@@ -1580,9 +1588,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			return true;
 		}
 		String normalized = value.trim();
-		return "-".equals(normalized)
-			|| "/".equals(normalized)
-			|| "    年  月  日".equals(normalized);
+		return "    年  月  日".equals(normalized);
 	}
 
 	private String exactReplacementKey(String key) {
@@ -2051,14 +2057,14 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			}
 			String status = Func.toStr(contract.getContractStatus(), "");
 			return switch (status) {
-				case "0" -> "待签约";
-				case "1" -> "履约中";
+				case "0" -> "待审批";
+				case "1" -> "生效";
 				case "2" -> "已到期";
 				case "3" -> "已续签";
-				case "4" -> "已终止";
-				case "5" -> "审批通过待盖章";
-				case "6" -> "退租审批中";
-				case "7" -> "退租待交接";
+				case "4" -> "已退租";
+				case "5" -> "待盖章";
+				case "6" -> "退租中";
+				case "7" -> "退租交接中";
 				case "8" -> "房屋验收中";
 				default -> contract.getContractStatusName() == null ? "-" : contract.getContractStatusName();
 			};

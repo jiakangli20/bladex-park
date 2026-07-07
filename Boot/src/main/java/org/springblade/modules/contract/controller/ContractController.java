@@ -41,11 +41,13 @@ import org.springblade.core.tool.api.R;
 import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
+import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.pojo.vo.ContractStatsVO;
 import org.springblade.modules.contract.service.IContractService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 合同管理控制器
@@ -186,10 +188,30 @@ public class ContractController extends BladeController {
 	}
 
 	/**
+	 * 线下登记房屋验收情况
+	 */
+	@PostMapping("/room-review/offline")
+	@ApiOperationSupport(order = 13)
+	@Operation(summary = "线下登记房屋验收情况", description = "传入contractId和验收情况")
+	public R<ContractWorkflowRecord> offlineRoomReview(@RequestParam Long contractId, @RequestBody Map<String, Object> formData) {
+		return R.data(contractService.offlineRoomReview(contractId, formData));
+	}
+
+	/**
+	 * 线下确认押金退还
+	 */
+	@PostMapping("/payment/deposit-refund/offline-confirm")
+	@ApiOperationSupport(order = 14)
+	@Operation(summary = "线下确认押金退还", description = "传入contractId和支付凭证")
+	public R<ContractPayment> offlineDepositRefund(@RequestParam Long contractId, @RequestBody Map<String, Object> formData) {
+		return R.data(contractService.offlineDepositRefund(contractId, formData));
+	}
+
+	/**
 	 * 缴费分页
 	 */
 	@GetMapping("/payment/list")
-	@ApiOperationSupport(order = 13)
+	@ApiOperationSupport(order = 15)
 	@Operation(summary = "缴费分页", description = "传入payment")
 	public R<IPage<ContractPayment>> paymentList(ContractPayment payment, Query query) {
 		IPage<ContractPayment> pages = contractService.selectPaymentPage(Condition.getPage(query), payment);
@@ -200,7 +222,7 @@ public class ContractController extends BladeController {
 	 * 确认缴费
 	 */
 	@PostMapping("/payment/confirm")
-	@ApiOperationSupport(order = 14)
+	@ApiOperationSupport(order = 16)
 	@Operation(summary = "确认缴费", description = "传入paymentId")
 	public R confirmPayment(@RequestParam Long paymentId, @RequestBody ContractPayment payment) {
 		return R.status(contractService.confirmPayment(paymentId, payment));
@@ -210,7 +232,7 @@ public class ContractController extends BladeController {
 	 * 催缴
 	 */
 	@PostMapping("/payment/remind")
-	@ApiOperationSupport(order = 15)
+	@ApiOperationSupport(order = 17)
 	@Operation(summary = "催缴", description = "传入paymentId")
 	public R remind(@RequestParam Long paymentId) {
 		return R.status(contractService.remindPayment(paymentId));

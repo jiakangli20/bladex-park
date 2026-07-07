@@ -109,14 +109,14 @@
                c.building_name,
                c.contract_status,
                CASE c.contract_status
-                   WHEN '0' THEN '待签约'
-                   WHEN '1' THEN '履约中'
+                   WHEN '0' THEN '待审批'
+                   WHEN '1' THEN '生效'
                    WHEN '2' THEN '已到期'
                    WHEN '3' THEN '已续签'
-                   WHEN '4' THEN '已终止'
-                   WHEN '5' THEN '审批通过待盖章'
-                   WHEN '6' THEN '退租审批中'
-                   WHEN '7' THEN '退租待交接'
+                   WHEN '4' THEN '已退租'
+                   WHEN '5' THEN '待盖章'
+                   WHEN '6' THEN '退租中'
+                   WHEN '7' THEN '退租交接中'
                    WHEN '8' THEN '房屋验收中'
                    ELSE '未知'
                END AS contract_status_name,

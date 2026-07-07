@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.github.xiaoymin.knife4j.annotations.ApiOperationSupport;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springblade.core.boot.ctrl.BladeController;
@@ -21,9 +22,12 @@ import org.springblade.modules.business.pojo.entity.BusinessOpportunityFile;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunityFollow;
 import org.springblade.modules.business.pojo.entity.Tag;
 import org.springblade.modules.business.service.IBusinessOpportunityService;
+import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -165,10 +169,11 @@ public class BusinessOpportunityController extends BladeController {
 
 	@GetMapping("/tenant-entry/approval-form/{opportunityId}")
 	@ApiOperationSupport(order = 18)
-	@Operation(summary = "企业入驻审批表", description = "导出入驻审批表HTML")
-	public R<Map<String, Object>> tenantEntryApprovalForm(@PathVariable Long opportunityId,
-														  @RequestParam(value = "processInsId", required = false) String processInsId) {
-		return R.data(businessOpportunityService.exportTenantEntryApprovalForm(opportunityId, processInsId));
+	@Operation(summary = "企业入驻审批表", description = "按原始模板导出入驻审批表文件")
+	public void tenantEntryApprovalForm(@PathVariable Long opportunityId,
+										@RequestParam(value = "processInsId", required = false) String processInsId,
+										HttpServletResponse response) {
+		writeDocument(businessOpportunityService.exportTenantEntryApprovalForm(opportunityId, processInsId), response);
 	}
 
 	@PostMapping("/submitAudit/{opportunityId}")
@@ -177,6 +182,20 @@ public class BusinessOpportunityController extends BladeController {
 	public R<BusinessOpportunity> submitAudit(@PathVariable Long opportunityId,
 											  @RequestParam(value = "flowId", required = false) Long flowId) {
 		return R.data(businessOpportunityService.createApprovalProjectFromOpportunity(opportunityId, flowId));
+	}
+
+	private void writeDocument(ContractNoticeFileVO document, HttpServletResponse response) {
+		try {
+			String encodedFileName = URLEncoder.encode(document.getFileName(), StandardCharsets.UTF_8).replace("+", "%20");
+			response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+			response.setContentType(document.getContentType());
+			response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName);
+			response.setContentLength(document.getFileBytes().length);
+			response.getOutputStream().write(document.getFileBytes());
+			response.getOutputStream().flush();
+		} catch (Exception exception) {
+			throw new RuntimeException("导出企业入驻审批表失败", exception);
+		}
 	}
 
 }

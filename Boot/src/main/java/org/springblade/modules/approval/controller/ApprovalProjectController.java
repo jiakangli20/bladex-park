@@ -9,6 +9,7 @@ import com.github.xiaoymin.knife4j.annotations.ApiOperationSupport;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.AllArgsConstructor;
 import org.springblade.core.boot.ctrl.BladeController;
 import org.springblade.core.mp.support.Condition;
@@ -22,8 +23,11 @@ import org.springblade.modules.approval.pojo.entity.ApprovalLog;
 import org.springblade.modules.approval.pojo.entity.ApprovalMaterial;
 import org.springblade.modules.approval.pojo.entity.ApprovalProject;
 import org.springblade.modules.approval.service.IApprovalProjectService;
+import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -156,9 +160,9 @@ public class ApprovalProjectController extends BladeController {
 
 	@GetMapping("/project/form/export/{projectId}")
 	@ApiOperationSupport(order = 17)
-	@Operation(summary = "导出审批表", description = "返回审批表数据")
-	public R<Kv> exportForm(@PathVariable Long projectId) {
-		return R.data(approvalProjectService.generateApprovalForm(projectId));
+	@Operation(summary = "导出审批表", description = "按原始模板导出审批表文件")
+	public void exportForm(@PathVariable Long projectId, HttpServletResponse response) {
+		writeDocument(approvalProjectService.exportApprovalForm(projectId), response);
 	}
 
 	@GetMapping("/material/list")
@@ -180,6 +184,20 @@ public class ApprovalProjectController extends BladeController {
 	@Operation(summary = "打印审批表", description = "获取打印审批表")
 	public R<Kv> print(@PathVariable Long projectId) {
 		return R.data(approvalProjectService.generateApprovalForm(projectId));
+	}
+
+	private void writeDocument(ContractNoticeFileVO document, HttpServletResponse response) {
+		try {
+			String encodedFileName = URLEncoder.encode(document.getFileName(), StandardCharsets.UTF_8).replace("+", "%20");
+			response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+			response.setContentType(document.getContentType());
+			response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName);
+			response.setContentLength(document.getFileBytes().length);
+			response.getOutputStream().write(document.getFileBytes());
+			response.getOutputStream().flush();
+		} catch (Exception exception) {
+			throw new RuntimeException("导出审批表失败", exception);
+		}
 	}
 
 }

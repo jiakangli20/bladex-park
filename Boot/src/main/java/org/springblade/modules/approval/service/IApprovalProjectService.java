@@ -10,6 +10,7 @@ import org.springblade.core.tool.support.Kv;
 import org.springblade.modules.approval.pojo.entity.ApprovalLog;
 import org.springblade.modules.approval.pojo.entity.ApprovalMaterial;
 import org.springblade.modules.approval.pojo.entity.ApprovalProject;
+import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 
 import java.util.List;
 
@@ -49,6 +50,8 @@ public interface IApprovalProjectService extends IService<ApprovalProject> {
 	boolean archiveProject(Long projectId);
 
 	Kv generateApprovalForm(Long projectId);
+
+	ContractNoticeFileVO exportApprovalForm(Long projectId);
 
 	List<ApprovalMaterial> selectApprovalMaterialList(ApprovalMaterial material);
 

@@ -427,12 +427,16 @@
 	<insert id="insertApprovalProject" useGeneratedKeys="true" keyProperty="opportunity.approvalProjectId">
 		insert into biz_approval_project (
 			park_id, customer_id, flow_id, business_type, business_id, project_name, enterprise_name, credit_code,
-			applicant, applicant_time, lease_area, rent_price, summary, process_status, create_by, create_time
+			applicant, applicant_time, shareholder_info, business_scope, responsible_person, contact_phone,
+			lease_floor, lease_area, rent_price, summary, approval_matter, process_status, create_by, create_time
 		) values (
 			#{opportunity.parkId}, #{opportunity.customerId}, #{flowId}, 'tenant_entry', #{opportunity.opportunityId},
 			concat(#{opportunity.enterpriseName}, ' 入驻审核'), #{opportunity.enterpriseName}, #{opportunity.creditCode},
-			#{loginName}, now(), #{opportunity.intentArea}, #{opportunity.intentArea},
-			coalesce(#{opportunity.remark}, #{opportunity.businessScope}), '0', #{loginName}, now()
+			#{loginName}, now(), coalesce(#{opportunity.equityStructure}, #{opportunity.enterpriseType}), #{opportunity.businessScope},
+			#{opportunity.contactName}, #{opportunity.contactPhone}, #{opportunity.carrierTypes}, #{opportunity.intentArea}, null,
+			coalesce(#{opportunity.remark}, #{opportunity.businessScope}),
+			coalesce(#{opportunity.remark}, concat(#{opportunity.enterpriseName}, ' 入驻审批申请')),
+			'0', #{loginName}, now()
 		)
 	</insert>
 

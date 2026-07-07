@@ -231,7 +231,7 @@
               v-for="building in allBuildings"
               :key="building.id"
               :label="buildingLabel(building)"
-              :value="building.id"
+              :value="String(building.id)"
             />
           </el-select>
         </el-form-item>
@@ -307,7 +307,7 @@
           <div class="form-tip">支持 jpg、png 等图片格式，最多上传 9 张，单张不超过 10MB。</div>
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="roomForm.memo" type="textarea" :rows="3" />
+          <el-input v-model="roomForm.memo" type="textarea" :rows="3" maxlength="200" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -750,11 +750,14 @@ export default {
       this.roomForm = this.emptyRoomForm();
       this.roomImageFileList = [];
       this.roomDetail = {};
-      if (this.query.buildingId) {
-        this.roomForm.buildingId = this.query.buildingId;
+      const firstVisibleFloor = this.floors[0] || {};
+      const defaultBuildingId = this.query.buildingId || this.currentBuilding.id || firstVisibleFloor.buildingId;
+      const defaultFloorNo = this.query.floorNo || firstVisibleFloor.floor || firstVisibleFloor.floorNo;
+      if (defaultBuildingId) {
+        this.roomForm.buildingId = String(defaultBuildingId);
       }
-      if (this.query.floorNo) {
-        this.roomForm.floor = this.query.floorNo;
+      if (defaultFloorNo) {
+        this.roomForm.floor = defaultFloorNo;
       }
       this.syncCurrentBuildingFloors();
       this.syncFloorAreaInfo();
@@ -768,6 +771,9 @@ export default {
     },
     handleEditRoom(room) {
       this.roomForm = Object.assign(this.emptyRoomForm(), room);
+      if (this.roomForm.buildingId) {
+        this.roomForm.buildingId = String(this.roomForm.buildingId);
+      }
       this.roomForm.status = this.normalizeBaseStatus(room.baseStatus || room.status);
       this.roomImageFileList = this.parseRoomImageFiles(this.roomForm.sceneImages);
       this.roomDetail = Object.assign({}, room);

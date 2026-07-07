@@ -1,12 +1,12 @@
 export const statusDic = [
-  { label: '待签约', value: '0' },
-  { label: '履约中', value: '1' },
+  { label: '待审批', value: '0' },
+  { label: '生效', value: '1' },
   { label: '已到期', value: '2' },
   { label: '已续签', value: '3' },
-  { label: '已终止', value: '4' },
-  { label: '审批通过待盖章', value: '5' },
-  { label: '退租审批中', value: '6' },
-  { label: '退租待交接', value: '7' },
+  { label: '已退租', value: '4' },
+  { label: '待盖章', value: '5' },
+  { label: '退租中', value: '6' },
+  { label: '退租交接中', value: '7' },
   { label: '房屋验收中', value: '8' },
 ];
 

@@ -10,6 +10,7 @@
 		<result column="registered_capital" property="registeredCapital"/>
 		<result column="enterprise_type" property="enterpriseType"/>
 		<result column="industry" property="industry"/>
+		<result column="tenant_type" property="tenantType"/>
 		<result column="business_scope" property="businessScope"/>
 		<result column="registered_address" property="registeredAddress"/>
 		<result column="equity_structure" property="equityStructure"/>
@@ -31,11 +32,16 @@
 		<result column="migration_place" property="migrationPlace"/>
 		<result column="migration_reason" property="migrationReason"/>
 		<result column="contact_name" property="contactName"/>
+		<result column="approval_contact_name" property="approvalContactName"/>
+		<result column="bill_contact_name" property="billContactName"/>
+		<result column="contract_signer" property="contractSigner"/>
 		<result column="contact_phone" property="contactPhone"/>
 		<result column="contact_email" property="contactEmail"/>
 		<result column="contact_position" property="contactPosition"/>
 		<result column="channel" property="channel"/>
 		<result column="third_party_channel_name" property="thirdPartyChannelName"/>
+		<result column="identity_front_url" property="identityFrontUrl"/>
+		<result column="identity_back_url" property="identityBackUrl"/>
 		<result column="address" property="address"/>
 		<result column="cooperation_level" property="cooperationLevel"/>
 		<result column="settlement_status" property="settlementStatus"/>
@@ -74,6 +80,7 @@
 			   registered_capital,
 			   enterprise_type,
 			   industry,
+			   tenant_type,
 			   business_scope,
 			   registered_address,
 			   equity_structure,
@@ -95,11 +102,16 @@
 			   migration_place,
 			   migration_reason,
 			   contact_name,
+			   approval_contact_name,
+			   bill_contact_name,
+			   contract_signer,
 			   contact_phone,
 			   contact_email,
 			   contact_position,
 			   channel,
 			   third_party_channel_name,
+			   identity_front_url,
+			   identity_back_url,
 			   address,
 			   cooperation_level,
 			   settlement_status,
@@ -248,24 +260,26 @@
 
 	<insert id="insertCustomer" parameterType="org.springblade.modules.business.pojo.entity.Customer" useGeneratedKeys="true" keyProperty="customerId">
 		insert into biz_customer (
-			enterprise_name, credit_code, establish_date, registered_capital, enterprise_type, industry,
+			enterprise_name, credit_code, establish_date, registered_capital, enterprise_type, industry, tenant_type,
 			business_scope, registered_address, equity_structure, organization_structure, main_business,
 			last_year_revenue, major_clients, major_illegal_flag, dishonest_flag, industry_penalty_flag,
 			carrier_types, intent_area, usage_purpose, lease_term_years, lease_term_label, decoration_requirement,
-			supporting_needs, scale, migration_place, migration_reason, contact_name, contact_phone,
-			contact_email, contact_position, channel, third_party_channel_name, address, cooperation_level,
+			supporting_needs, scale, migration_place, migration_reason, contact_name, approval_contact_name,
+			bill_contact_name, contract_signer, contact_phone, contact_email, contact_position, channel,
+			third_party_channel_name, identity_front_url, identity_back_url, address, cooperation_level,
 			settlement_status, status, wx_openid, wx_unionid, remark, verify_status, verify_message,
 			tenant_entry_process_ins_id, tenant_entry_status, tenant_entry_current_node, tenant_entry_approval_pdf_url, tenant_entry_approval_time,
 			verify_time, industry_access_result, industry_access_reason, risk_level, risk_summary,
 			legal_risk_flag, executive_risk_flag, shareholder_risk_flag, del_flag, park_id, create_by, update_by,
 			create_time, update_time
 		) values (
-			#{enterpriseName}, #{creditCode}, #{establishDate}, #{registeredCapital}, #{enterpriseType}, #{industry},
+			#{enterpriseName}, #{creditCode}, #{establishDate}, #{registeredCapital}, #{enterpriseType}, #{industry}, #{tenantType},
 			#{businessScope}, #{registeredAddress}, #{equityStructure}, #{organizationStructure}, #{mainBusiness},
 			#{lastYearRevenue}, #{majorClients}, #{majorIllegalFlag}, #{dishonestFlag}, #{industryPenaltyFlag},
 			#{carrierTypes}, #{intentArea}, #{usagePurpose}, #{leaseTermYears}, #{leaseTermLabel}, #{decorationRequirement},
-			#{supportingNeeds}, #{scale}, #{migrationPlace}, #{migrationReason}, #{contactName}, #{contactPhone},
-			#{contactEmail}, #{contactPosition}, #{channel}, #{thirdPartyChannelName}, #{address}, #{cooperationLevel},
+			#{supportingNeeds}, #{scale}, #{migrationPlace}, #{migrationReason}, #{contactName}, #{approvalContactName},
+			#{billContactName}, #{contractSigner}, #{contactPhone}, #{contactEmail}, #{contactPosition}, #{channel},
+			#{thirdPartyChannelName}, #{identityFrontUrl}, #{identityBackUrl}, #{address}, #{cooperationLevel},
 			#{settlementStatus}, #{status}, #{wxOpenid}, #{wxUnionid}, #{remark}, #{verifyStatus}, #{verifyMessage},
 			#{tenantEntryProcessInsId}, #{tenantEntryStatus}, #{tenantEntryCurrentNode}, #{tenantEntryApprovalPdfUrl}, #{tenantEntryApprovalTime},
 			#{verifyTime}, #{industryAccessResult}, #{industryAccessReason}, #{riskLevel}, #{riskSummary},
@@ -283,6 +297,7 @@
 			<if test="registeredCapital != null">registered_capital = #{registeredCapital},</if>
 			<if test="enterpriseType != null">enterprise_type = #{enterpriseType},</if>
 			<if test="industry != null">industry = #{industry},</if>
+			<if test="tenantType != null">tenant_type = #{tenantType},</if>
 			<if test="businessScope != null">business_scope = #{businessScope},</if>
 			<if test="registeredAddress != null">registered_address = #{registeredAddress},</if>
 			<if test="equityStructure != null">equity_structure = #{equityStructure},</if>
@@ -304,11 +319,16 @@
 			<if test="migrationPlace != null">migration_place = #{migrationPlace},</if>
 			<if test="migrationReason != null">migration_reason = #{migrationReason},</if>
 			<if test="contactName != null">contact_name = #{contactName},</if>
+			<if test="approvalContactName != null">approval_contact_name = #{approvalContactName},</if>
+			<if test="billContactName != null">bill_contact_name = #{billContactName},</if>
+			<if test="contractSigner != null">contract_signer = #{contractSigner},</if>
 			<if test="contactPhone != null">contact_phone = #{contactPhone},</if>
 			<if test="contactEmail != null">contact_email = #{contactEmail},</if>
 			<if test="contactPosition != null">contact_position = #{contactPosition},</if>
 			<if test="channel != null">channel = #{channel},</if>
 			<if test="thirdPartyChannelName != null">third_party_channel_name = #{thirdPartyChannelName},</if>
+			<if test="identityFrontUrl != null">identity_front_url = #{identityFrontUrl},</if>
+			<if test="identityBackUrl != null">identity_back_url = #{identityBackUrl},</if>
 			<if test="address != null">address = #{address},</if>
 			<if test="cooperationLevel != null">cooperation_level = #{cooperationLevel},</if>
 			<if test="settlementStatus != null">settlement_status = #{settlementStatus},</if>

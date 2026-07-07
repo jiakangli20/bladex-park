@@ -124,13 +124,6 @@
         </template>
       </el-dialog>
 
-      <el-dialog v-model="approvalVisible" title="企业入驻审批表" width="860px" append-to-body>
-        <div class="approval-html" v-html="approvalHtml"></div>
-        <template #footer>
-          <el-button @click="approvalVisible = false">关闭</el-button>
-          <el-button type="primary" icon="el-icon-printer" @click="printApprovalForm">打印 / 另存为 PDF</el-button>
-        </template>
-      </el-dialog>
     </div>
   </basic-container>
 </template>
@@ -146,7 +139,8 @@ import {
 } from '@/views/plugin/workflow/api/process/process';
 import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
 import { exportTenantEntryApprovalForm, getOpportunityList } from '@/api/business/opportunity';
-import { printHtml } from '@/utils/print-html';
+import { downloadFile } from '@/utils/util';
+import { resolveDownloadFilename } from '@/utils/contract-notice';
 
 const DEFAULT_PROCESS_KEY = 'tenant_entry-1';
 const TENANT_ENTRY_BUSINESS_TYPE = 'tenant_entry';
@@ -196,8 +190,6 @@ export default {
       processOptions: [],
       opportunityLoading: false,
       opportunityOptions: [],
-      approvalVisible: false,
-      approvalHtml: '',
     };
   },
   created() {
@@ -471,17 +463,13 @@ export default {
       return row.opportunityId && ['done', 'send', 'myDone'].includes(row.scope);
     },
     openApprovalForm(row) {
-      exportTenantEntryApprovalForm(row.opportunityId, row.processInstanceId).then(res => {
-        this.approvalHtml = (res.data.data || {}).html || '';
-        this.approvalVisible = true;
+      exportTenantEntryApprovalForm(row.opportunityId, row.processInstanceId || row.processId).then(res => {
+        const disposition = res.headers && res.headers['content-disposition'];
+        const filename = resolveDownloadFilename(disposition, `企业入驻审批表-${row.enterpriseName || row.opportunityId}.xlsx`);
+        const contentType = (res.headers && res.headers['content-type']) || 'application/octet-stream';
+        downloadFile(res.data, filename, contentType);
+        this.$message.success('导出成功');
       });
-    },
-    printApprovalForm() {
-      if (!this.approvalHtml) {
-        this.$message.warning('暂无可打印的入驻审批表');
-        return;
-      }
-      printHtml(this.approvalHtml, '企业入驻审批表');
     },
   },
 };

@@ -60,6 +60,9 @@ public class Customer implements Serializable {
 	@Schema(description = "所属行业")
 	private String industry;
 
+	@Schema(description = "租客类型")
+	private String tenantType;
+
 	@Schema(description = "经营范围")
 	private String businessScope;
 
@@ -123,6 +126,15 @@ public class Customer implements Serializable {
 	@Schema(description = "联系人姓名")
 	private String contactName;
 
+	@Schema(description = "审批联系人")
+	private String approvalContactName;
+
+	@Schema(description = "账单联系人")
+	private String billContactName;
+
+	@Schema(description = "合同签署人")
+	private String contractSigner;
+
 	@Schema(description = "联系人电话")
 	private String contactPhone;
 
@@ -137,6 +149,12 @@ public class Customer implements Serializable {
 
 	@Schema(description = "第三方渠道名称")
 	private String thirdPartyChannelName;
+
+	@Schema(description = "身份证人像面")
+	private String identityFrontUrl;
+
+	@Schema(description = "身份证国徽面")
+	private String identityBackUrl;
 
 	@Schema(description = "企业地址")
 	private String address;

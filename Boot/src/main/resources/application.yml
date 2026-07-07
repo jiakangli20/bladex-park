@@ -233,6 +233,11 @@ blade:
         - /blade-chat/weixin/**
       #开启错误日志入库
       error-log: true
+  #请求过滤配置
+  request:
+    #BladeX 原生请求包装会将 body 做 String 往返，中文 JSON 场景交由 UTF-8 缓存过滤器处理
+    skip-url:
+      - /**
   #xss配置
   xss:
     enabled: true

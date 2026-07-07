@@ -1,8 +1,11 @@
 <template>
-  <div class="customer-tag-selector">
+  <div class="customer-tag-selector" :class="{ 'is-compact': compact }">
     <el-skeleton :loading="loading" animated :rows="3">
       <template #default>
-        <el-empty v-if="visibleTagTypeList.length === 0" :description="emptyText" />
+        <div v-if="visibleTagTypeList.length === 0 && compact" class="tag-empty-compact">
+          {{ emptyText }}
+        </div>
+        <el-empty v-else-if="visibleTagTypeList.length === 0" :description="emptyText" />
         <div v-else class="tag-group-list">
           <section v-for="type in visibleTagTypeList" :key="type.typeId" class="tag-group-section">
             <div class="tag-group-title">{{ type.typeName }}</div>
@@ -47,6 +50,10 @@ export default {
     emptyText: {
       type: String,
       default: '暂无可用客户标签',
+    },
+    compact: {
+      type: Boolean,
+      default: false,
     },
   },
   emits: ['update:modelValue', 'change'],
@@ -104,6 +111,44 @@ export default {
   width: 100%;
   padding: 4px 0 6px;
   overflow: visible;
+}
+
+.customer-tag-selector.is-compact {
+  padding: 0;
+}
+
+.tag-empty-compact {
+  display: flex;
+  width: 100%;
+  height: 32px;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 0 11px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background: #fff;
+  color: #a8abb2;
+  font-size: 14px;
+}
+
+.customer-tag-selector.is-compact .tag-group-list {
+  gap: 6px;
+  max-height: 112px;
+  overflow: auto;
+}
+
+.customer-tag-selector.is-compact .tag-group-section {
+  padding: 8px 10px;
+}
+
+.customer-tag-selector.is-compact .tag-group-title {
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.customer-tag-selector.is-compact .tag-check-item {
+  min-width: auto;
+  height: 30px;
 }
 
 .tag-group-list {

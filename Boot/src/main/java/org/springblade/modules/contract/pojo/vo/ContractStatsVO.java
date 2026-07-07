@@ -47,10 +47,10 @@ public class ContractStatsVO implements Serializable {
 	@Schema(description = "合同总数")
 	private Long totalCount;
 
-	@Schema(description = "待签约数量")
+	@Schema(description = "待审批数量")
 	private Long pendingCount;
 
-	@Schema(description = "履约中数量")
+	@Schema(description = "生效数量")
 	private Long activeCount;
 
 	@Schema(description = "已到期数量")
@@ -59,7 +59,7 @@ public class ContractStatsVO implements Serializable {
 	@Schema(description = "已续签数量")
 	private Long renewedCount;
 
-	@Schema(description = "已终止数量")
+	@Schema(description = "已退租数量")
 	private Long terminatedCount;
 
 	@Schema(description = "月租金合计")

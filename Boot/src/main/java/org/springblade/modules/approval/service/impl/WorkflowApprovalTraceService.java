@@ -333,12 +333,19 @@ public class WorkflowApprovalTraceService {
 			}
 			for (String keyword : keywords) {
 				String normalizedKeyword = normalize(keyword);
-				if (StringUtil.isNotBlank(normalizedKeyword) && normalizedValue.contains(normalizedKeyword)) {
+				if (StringUtil.isNotBlank(normalizedKeyword)
+					&& normalizedValue.contains(normalizedKeyword)
+					&& !isGenericManagerKeywordMatchedTotalManager(normalizedValue, normalizedKeyword)) {
 					return true;
 				}
 			}
 		}
 		return false;
+	}
+
+	private boolean isGenericManagerKeywordMatchedTotalManager(String normalizedValue, String normalizedKeyword) {
+		return normalizedValue.contains("总经理")
+			&& ("经理".equals(normalizedKeyword) || "经理审批".equals(normalizedKeyword) || "部门经理".equals(normalizedKeyword));
 	}
 
 	@SafeVarargs

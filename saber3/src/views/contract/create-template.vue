@@ -520,8 +520,8 @@
                   <el-col :span="8">
                     <el-form-item label="合同状态">
                       <el-select v-model="form.contractStatus" style="width: 100%">
-                        <el-option label="待签约" value="0" />
-                        <el-option label="履约中" value="1" />
+                        <el-option label="待审批" value="0" />
+                        <el-option label="生效" value="1" />
                       </el-select>
                     </el-form-item>
                   </el-col>

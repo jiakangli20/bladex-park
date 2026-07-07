@@ -50,8 +50,10 @@
           <el-table-column prop="createTime" label="创建时间" width="220" align="center" />
           <el-table-column label="操作" width="150" align="center" fixed="right">
             <template #default="{ row }">
-              <el-button text type="primary" @click="handleEdit(row)">编辑</el-button>
-              <el-button text type="danger" @click="handleDelete(row)">删除</el-button>
+              <div class="expiring-actions">
+                <el-button text type="primary" @click="handleEdit(row)">编辑</el-button>
+                <el-button text type="danger" @click="handleDelete(row)">删除</el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -325,6 +327,18 @@ export default {
 
 .expiring-table :deep(.el-table__cell) {
   height: 44px;
+}
+
+.expiring-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.expiring-actions :deep(.el-button) {
+  margin-left: 0;
 }
 
 .expiring-pagination {

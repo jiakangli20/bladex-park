@@ -340,7 +340,7 @@
         <template #footer>
           <el-button @click="formVisible = false">关闭</el-button>
           <el-button icon="el-icon-printer" @click="printApprovalForm">打印 / 另存为 PDF</el-button>
-          <el-button type="primary" icon="el-icon-download" @click="downloadApprovalForm">导出 HTML</el-button>
+          <el-button type="primary" icon="el-icon-download" @click="downloadApprovalForm">导出原模板</el-button>
         </template>
       </el-dialog>
 
@@ -866,14 +866,10 @@ export default {
     },
     downloadApprovalForm() {
       exportApprovalForm(this.current.projectId).then(res => {
-        const data = res.data.data || this.formData;
-        const html = this.buildApprovalHtml(data);
-        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `${this.current.projectName || 'approval'}-approval.html`;
-        link.click();
-        URL.revokeObjectURL(link.href);
+        const disposition = res.headers && res.headers['content-disposition'];
+        const filename = this.resolveDownloadFilename(disposition, `${this.current.projectName || '审批表'}.xlsx`);
+        const contentType = (res.headers && res.headers['content-type']) || 'application/octet-stream';
+        downloadFile(res.data, filename, contentType);
       });
     },
     printApprovalForm() {

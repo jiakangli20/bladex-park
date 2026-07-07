@@ -1574,11 +1574,11 @@ export default {
     },
     contractStatusText(value) {
       const map = {
-        0: '待签约',
-        1: '履约中',
+        0: '待审批',
+        1: '生效',
         2: '已到期',
         3: '已续签',
-        4: '已终止',
+        4: '已退租',
       };
       return map[String(value)] || '-';
     },

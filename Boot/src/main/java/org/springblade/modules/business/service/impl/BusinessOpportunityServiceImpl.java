@@ -26,15 +26,20 @@ import org.springblade.modules.business.pojo.entity.BusinessOpportunityFollow;
 import org.springblade.modules.business.pojo.entity.Tag;
 import org.springblade.modules.business.service.IBusinessOpportunityService;
 import org.springblade.modules.business.service.ITagService;
+import org.springblade.modules.approval.service.impl.WorkflowApprovalTraceService;
+import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
+import org.springblade.modules.contract.service.IContractTemplateRenderService;
 import org.springblade.modules.resource.builder.OssBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -55,11 +60,13 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	private static final String STATUS_INITIAL = "INITIAL";
 	private static final String STATUS_DEAL = "DEAL";
 	private static final String BUSINESS_TYPE_TENANT_ENTRY = "tenant_entry";
+	private static final String TEMPLATE_TENANT_ENTRY_APPROVAL = "君联大厦招商管理办法2023/附件一：企业入驻审批表.xlsx";
 
 	private final ITagService tagService;
 	private final OssBuilder ossBuilder;
-	private final TenantEntryWorkflowServiceImpl tenantEntryWorkflowService;
 	private final HistoryService historyService;
+	private final WorkflowApprovalTraceService workflowApprovalTraceService;
+	private final IContractTemplateRenderService contractTemplateRenderService;
 
 	@Override
 	public BusinessOpportunity selectBusinessOpportunityById(Long opportunityId) {
@@ -324,7 +331,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	}
 
 	@Override
-	public Map<String, Object> exportTenantEntryApprovalForm(Long opportunityId, String processInsId) {
+	public ContractNoticeFileVO exportTenantEntryApprovalForm(Long opportunityId, String processInsId) {
 		BusinessOpportunity opportunity = selectBusinessOpportunityById(opportunityId);
 		if (Func.isEmpty(opportunity)) {
 			throw new ServiceException("商机不存在");
@@ -332,14 +339,51 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		String resolvedProcessInsId = firstNotBlank(processInsId, opportunity.getTenantEntryProcessInsId());
 		Map<String, Object> variables = loadProcessVariables(resolvedProcessInsId);
 		variables.put("applyUserName", firstNotBlank(opportunity.getCreateBy(), currentUserName()));
-		String html = tenantEntryWorkflowService.buildApprovalHtml(opportunity, variables, resolvedProcessInsId);
-		Map<String, Object> result = new HashMap<>(8);
-		result.put("fileName", "企业入驻审批表-" + opportunity.getEnterpriseName() + ".html");
-		result.put("contentType", "text/html;charset=utf-8");
-		result.put("html", html);
-		result.put("processInsId", resolvedProcessInsId);
-		result.put("generatedAt", DateUtil.formatDateTime(new Date()));
-		return result;
+		Map<String, String> fields = createTenantEntryApprovalFields(opportunity, variables);
+		fields.putAll(workflowApprovalTraceService.approvalFields(resolvedProcessInsId));
+		return contractTemplateRenderService.render(
+			"tenant_entry_approval",
+			"企业入驻审批表",
+			TEMPLATE_TENANT_ENTRY_APPROVAL,
+			"企业入驻审批表-" + firstNotBlank(opportunity.getEnterpriseName(), String.valueOf(opportunityId)),
+			fields,
+			Collections.emptyMap()
+		);
+	}
+
+	private Map<String, String> createTenantEntryApprovalFields(BusinessOpportunity opportunity, Map<String, Object> variables) {
+		Map<String, String> fields = new LinkedHashMap<>();
+		String applyTime = firstNotBlank(variableText(variables, "applyTime"), formatDate(opportunity.getCreateTime()));
+		String applicant = firstNotBlank(
+			variableText(variables, "handlerName"),
+			variableText(variables, "applicant"),
+			variableText(variables, "applyUserName"),
+			opportunity.getFollowUser(),
+			opportunity.getCreateBy()
+		);
+		fields.put("企业名称", value(firstNotBlank(variableText(variables, "enterpriseName"), opportunity.getEnterpriseName())));
+		fields.put("申请时间", value(applyTime));
+		fields.put("股东信息", value(firstNotBlank(
+			variableText(variables, "shareholderInfo"),
+			opportunity.getEquityStructure(),
+			opportunity.getEnterpriseType()
+		)));
+		fields.put("经营范围", value(firstNotBlank(
+			variableText(variables, "businessScope"),
+			opportunity.getBusinessScope(),
+			opportunity.getMainBusiness()
+		)));
+		fields.put("负责人", value(firstNotBlank(variableText(variables, "principalName"), opportunity.getContactName())));
+		fields.put("联系方式", value(firstNotBlank(variableText(variables, "principalPhone"), opportunity.getContactPhone())));
+		fields.put("租赁楼层、面积", value(firstNotBlank(variableText(variables, "leaseFloorArea"), formatArea(opportunity))));
+		fields.put("免租期", value(variableText(variables, "rentFreePeriod")));
+		fields.put("单价（元）", value(variableText(variables, "unitPrice")));
+		fields.put("保证金（元）", value(variableText(variables, "deposit")));
+		fields.put("合同有效期", value(firstNotBlank(variableText(variables, "contractPeriod"), opportunity.getLeaseTermLabel())));
+		fields.put("经办人", value(applicant));
+		fields.put("部门", value(firstNotBlank(variableText(variables, "handlerDept"), variableText(variables, "applicantDept"))));
+		fields.put("审批事项", value(firstNotBlank(variableText(variables, "approvalMatter"), opportunity.getRemark(), opportunity.getMainBusiness())));
+		return fields;
 	}
 
 	private Map<String, Object> loadProcessVariables(String processInsId) {
@@ -488,6 +532,48 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 
 	private String firstNotBlank(String first, String second) {
 		return StringUtil.isNotBlank(first) ? first : second;
+	}
+
+	private String firstNotBlank(String... values) {
+		if (values == null) {
+			return null;
+		}
+		for (String value : values) {
+			if (StringUtil.isNotBlank(value)) {
+				return value;
+			}
+		}
+		return null;
+	}
+
+	private String variableText(Map<String, Object> variables, String key) {
+		if (variables == null || StringUtil.isBlank(key) || variables.get(key) == null) {
+			return null;
+		}
+		return Func.toStr(variables.get(key), "");
+	}
+
+	private String value(String value) {
+		return StringUtil.isBlank(value) ? "-" : value;
+	}
+
+	private String formatDate(Date date) {
+		return date == null ? null : DateUtil.format(date, DateUtil.PATTERN_DATE);
+	}
+
+	private String formatArea(BusinessOpportunity opportunity) {
+		if (opportunity == null) {
+			return null;
+		}
+		String area = formatNumber(opportunity.getIntentArea());
+		if (StringUtil.isBlank(area)) {
+			return opportunity.getCarrierTypes();
+		}
+		return firstNotBlank(opportunity.getCarrierTypes(), "") + (StringUtil.isBlank(opportunity.getCarrierTypes()) ? "" : "，") + area + "㎡";
+	}
+
+	private String formatNumber(BigDecimal value) {
+		return value == null ? null : value.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
 	}
 
 	private String currentUserName() {

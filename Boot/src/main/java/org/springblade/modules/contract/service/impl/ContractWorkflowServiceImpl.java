@@ -31,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
+import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.jackson.JsonUtil;
 import org.springblade.core.tool.utils.DateUtil;
@@ -57,6 +58,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -163,6 +165,29 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 	@Override
 	public ContractWorkflowRecord selectLatest(Long contractId, String businessType) {
 		return baseMapper.selectLatest(contractId, businessType);
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public ContractWorkflowRecord uploadAttachment(Long recordId, Map<String, Object> payload) {
+		ContractWorkflowRecord record = baseMapper.selectById(recordId);
+		if (record == null || DELETED_DEL_FLAG.equals(record.getDelFlag())) {
+			throw new ServiceException("退租记录不存在");
+		}
+		Map<String, Object> attachments = parseAttachmentJson(record.getAttachmentJson());
+		List<Object> files = attachmentFiles(attachments.get("materials"));
+		Map<String, Object> file = buildAttachmentFile(payload);
+		files.add(file);
+		attachments.put("materials", files);
+		attachments.put("latestMaterial", file);
+
+		ContractWorkflowRecord update = new ContractWorkflowRecord();
+		update.setRecordId(recordId);
+		update.setAttachmentJson(JsonUtil.toJson(attachments));
+		update.setUpdateBy(currentUserName(null));
+		update.setUpdateTime(DateUtil.now());
+		baseMapper.updateById(update);
+		return baseMapper.selectById(recordId);
 	}
 
 	@Override
@@ -816,6 +841,48 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		} catch (NumberFormatException ignored) {
 			return null;
 		}
+	}
+
+	private Map<String, Object> parseAttachmentJson(String attachmentJson) {
+		if (StringUtil.isBlank(attachmentJson)) {
+			return new LinkedHashMap<>();
+		}
+		try {
+			Map<String, Object> attachment = JsonUtil.readMap(attachmentJson);
+			return attachment == null ? new LinkedHashMap<>() : new LinkedHashMap<>(attachment);
+		} catch (Exception ignored) {
+			return new LinkedHashMap<>();
+		}
+	}
+
+	private List<Object> attachmentFiles(Object value) {
+		List<Object> files = new ArrayList<>();
+		if (value instanceof Collection<?> collection) {
+			files.addAll(collection);
+		} else if (value instanceof Map<?, ?> map) {
+			files.add(new LinkedHashMap<>(map));
+		}
+		return files;
+	}
+
+	private Map<String, Object> buildAttachmentFile(Map<String, Object> payload) {
+		String fileUrl = firstNotBlank(
+			getString(payload, "fileUrl", null),
+			getString(payload, "url", null),
+			getString(payload, "link", null)
+		);
+		if (StringUtil.isBlank(fileUrl)) {
+			throw new ServiceException("文件地址不能为空");
+		}
+		Map<String, Object> file = new LinkedHashMap<>();
+		file.put("fileUrl", fileUrl);
+		file.put("fileName", firstNotBlank(getString(payload, "fileName", null), getString(payload, "name", null), "退租资料"));
+		file.put("materialType", firstNotBlank(getString(payload, "materialType", null), getString(payload, "category", null), "other"));
+		file.put("materialName", firstNotBlank(getString(payload, "materialName", null), getString(payload, "categoryName", null), getString(payload, "category", null), "退租资料"));
+		file.put("remark", getString(payload, "remark", ""));
+		file.put("uploadBy", currentUserName(null));
+		file.put("uploadTime", DateUtil.format(DateUtil.now(), DateUtil.PATTERN_DATETIME));
+		return file;
 	}
 
 	private String currentUserName(WfNoticeDTO notice) {

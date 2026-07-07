@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * 合同模板填充服务实现.
@@ -374,7 +375,11 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		if (lastCellNum < 0) {
 			return;
 		}
+		Set<Integer> filledColumns = new java.util.HashSet<>();
 		for (int columnIndex = 0; columnIndex < lastCellNum; columnIndex++) {
+			if (filledColumns.contains(columnIndex)) {
+				continue;
+			}
 			Cell cell = row.getCell(columnIndex);
 			String text = cellText(cell, formatter);
 			if (StringUtil.isBlank(text)) {
@@ -395,6 +400,7 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 				targetCell = row.createCell(targetColumn);
 			}
 			targetCell.setCellValue(fields.get(label));
+			filledColumns.add(targetColumn);
 		}
 	}
 
@@ -449,16 +455,39 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 			return null;
 		}
 		String normalizedText = normalizeLabel(text);
+		String containsMatchedLabel = null;
+		int containsMatchedLength = -1;
 		for (String label : fields.keySet()) {
 			String normalizedLabel = normalizeLabel(label);
 			if (StringUtil.isBlank(normalizedLabel)) {
 				continue;
 			}
-			if (normalizedText.equals(normalizedLabel) || normalizedText.contains(normalizedLabel)) {
+			if (normalizedText.equals(normalizedLabel)) {
 				return label;
 			}
+			if (normalizedText.contains(normalizedLabel)
+				&& allowContainsFieldLabelMatch(normalizedText, normalizedLabel)
+				&& normalizedLabel.length() > containsMatchedLength) {
+				containsMatchedLabel = label;
+				containsMatchedLength = normalizedLabel.length();
+			}
 		}
-		return null;
+		return containsMatchedLabel;
+	}
+
+	private boolean allowContainsFieldLabelMatch(String normalizedText, String normalizedLabel) {
+		if (StringUtil.isBlank(normalizedText) || StringUtil.isBlank(normalizedLabel)) {
+			return false;
+		}
+		if (normalizedText.contains("审批") && "部门".equals(normalizedLabel)) {
+			return false;
+		}
+		return !isGenericManagerLabelMatchedTotalManager(normalizedText, normalizedLabel);
+	}
+
+	private boolean isGenericManagerLabelMatchedTotalManager(String normalizedText, String normalizedLabel) {
+		return normalizedText.contains("总经理")
+			&& ("经理".equals(normalizedLabel) || "经理审批".equals(normalizedLabel) || "部门经理".equals(normalizedLabel));
 	}
 
 	private int nextEditableColumn(Sheet sheet, int rowIndex, int columnIndex) {

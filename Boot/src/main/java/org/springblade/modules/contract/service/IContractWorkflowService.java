@@ -31,6 +31,7 @@ import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.plugin.workflow.process.dto.WfNoticeDTO;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 合同管理流程记录服务类
@@ -64,6 +65,15 @@ public interface IContractWorkflowService extends IService<ContractWorkflowRecor
 	 * @return 流程记录
 	 */
 	ContractWorkflowRecord selectLatest(Long contractId, String businessType);
+
+	/**
+	 * 上传合同流程资料
+	 *
+	 * @param recordId 流程记录ID
+	 * @param payload  资料信息
+	 * @return 流程记录
+	 */
+	ContractWorkflowRecord uploadAttachment(Long recordId, Map<String, Object> payload);
 
 	/**
 	 * 是否合同管理流程.
