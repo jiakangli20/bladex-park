@@ -30,7 +30,7 @@
         :disabled="!downloadUrl"
         @click="$emit('download')"
       >
-        下载Word
+        {{ downloadLabel }}
       </el-button>
     </template>
   </el-dialog>
@@ -59,6 +59,10 @@ export default {
     downloadUrl: {
       type: String,
       default: '',
+    },
+    downloadLabel: {
+      type: String,
+      default: '下载Word',
     },
     showPrint: {
       type: Boolean,

@@ -41,6 +41,7 @@ import org.springblade.core.tool.api.R;
 import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.service.IContractWorkflowService;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -116,6 +117,16 @@ public class ContractWorkflowRecordController extends BladeController {
 	@Operation(summary = "上传流程资料", description = "传入recordId和资料信息")
 	public R<ContractWorkflowRecord> uploadAttachment(@Parameter(description = "记录ID") @PathVariable Long recordId, @RequestBody Map<String, Object> payload) {
 		return R.data(contractWorkflowService.uploadAttachment(recordId, payload));
+	}
+
+	/**
+	 * 删除流程资料
+	 */
+	@DeleteMapping("/attachment/{recordId}")
+	@ApiOperationSupport(order = 6)
+	@Operation(summary = "删除流程资料", description = "传入recordId和文件地址")
+	public R<ContractWorkflowRecord> removeAttachment(@Parameter(description = "记录ID") @PathVariable Long recordId, @RequestParam String fileUrl, @RequestParam(required = false) String materialName) {
+		return R.data(contractWorkflowService.removeAttachment(recordId, fileUrl, materialName));
 	}
 
 }

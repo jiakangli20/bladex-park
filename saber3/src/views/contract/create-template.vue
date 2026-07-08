@@ -629,9 +629,9 @@
         </div>
 
         <section class="create-footer">
-          <el-button @click="backToList">返回模板列表</el-button>
+          <el-button @click="backToList">{{ editMode ? '返回合同列表' : '返回模板列表' }}</el-button>
           <el-button type="primary" :loading="submitLoading" @click="submitContract"
-            >保存合同</el-button
+            >{{ editMode ? '保存修改' : '保存合同' }}</el-button
           >
         </section>
       </template>
@@ -641,7 +641,7 @@
 
 <script>
 import { ArrowLeft } from '@element-plus/icons-vue';
-import { add, getDetail as getContractDetail, renew } from '@/api/contract/contract';
+import { add, getDetail as getContractDetail, renew, update } from '@/api/contract/contract';
 import { getCustomerDetail, getCustomerList } from '@/api/business/customer';
 import { getList as getParkList } from '@/api/park/park';
 import { getSimpleList as getBuildingList } from '@/api/park/building';
@@ -662,6 +662,8 @@ export default {
       renewalMode: false,
       renewalSourceContractId: '',
       renewalSourceContract: {},
+      editMode: false,
+      editingContractId: '',
       submitLoading: false,
       customerLoading: false,
       customerMode: 'existing',
@@ -853,8 +855,19 @@ export default {
         this.currentTemplateKey = templateKey;
         this.pageMode = 'create';
       }
-      if (query.mode === 'create' || query.mode === 'renew' || query.customerId || query.customerName) {
+      if (
+        query.mode === 'create' ||
+        query.mode === 'renew' ||
+        query.mode === 'edit' ||
+        query.customerId ||
+        query.customerName
+      ) {
         this.pageMode = 'create';
+      }
+      if (query.mode === 'edit' && query.contractId) {
+        this.editMode = true;
+        this.editingContractId = query.contractId;
+        this.loadEditSource(query.contractId);
       }
       if (query.customerName && !query.customerId) {
         this.customerMode = 'manual';
@@ -870,6 +883,87 @@ export default {
         this.form.customerId = query.customerId;
         this.prefillCustomer(query.customerId);
       }
+    },
+    loadEditSource(contractId) {
+      getContractDetail(contractId).then(res => {
+        const contract = res.data.data || {};
+        this.applyEditSource(contract);
+      });
+    },
+    applyEditSource(contract = {}) {
+      if (!contract.contractId) return;
+      this.currentTemplateKey = this.resolveTemplateKey(contract);
+      Object.assign(this.form, {
+        contractNo: contract.contractNo || '',
+        contractName: contract.contractName || '',
+        parentContractId: contract.parentContractId || '',
+        customerId: contract.customerId || '',
+        customerName: contract.customerName || '',
+        parkId: contract.parkId || '',
+        parkName: contract.parkName || '',
+        buildingId: contract.buildingId || '',
+        buildingName: contract.buildingName || '',
+        roomId: contract.roomId || '',
+        roomName: contract.roomName || '',
+        rentArea: this.toNumber(contract.rentArea, undefined),
+        leaseMonths: undefined,
+        startDate: contract.startDate || '',
+        endDate: contract.endDate || '',
+        signDate: contract.signDate || this.today(),
+        deliveryDate: contract.deliveryDate || contract.startDate || '',
+        rentFreeStartDate: contract.rentFreeStartDate || '',
+        rentFreeEndDate: contract.rentFreeEndDate || '',
+        rentPrice: this.toNumber(contract.rentPrice, undefined),
+        monthlyRent: this.toNumber(contract.monthlyRent, undefined),
+        propertyFee: this.toNumber(contract.propertyFee, undefined),
+        deposit: this.toNumber(contract.deposit, undefined),
+        depositMonths: this.toNumber(contract.depositMonths, 1),
+        paymentCycle: contract.paymentCycle || 'monthly',
+        lateFeeRatio: this.toNumber(contract.lateFeeRatio, 0.0005),
+        lateFeeUnit: contract.lateFeeUnit || 'percent_day',
+        lateFeeCap: this.toNumber(contract.lateFeeCap, undefined),
+        firstPropertyPayDate: contract.firstPropertyPayDate || '',
+        renewalRemindDays: contract.renewalRemindDays || 30,
+        contractStatus: contract.contractStatus || '0',
+        remark: this.extractBusinessRemark(contract.remark),
+      });
+      if (this.isFloatingTemplate) {
+        Object.assign(this.form, {
+          stage1StartDate: contract.stage1StartDate || contract.startDate || '',
+          stage1EndDate: contract.stage1EndDate || contract.endDate || '',
+          stage1RentPrice: this.toNumber(contract.stage1RentPrice, this.form.rentPrice),
+          stage1MonthlyRent: this.toNumber(contract.stage1MonthlyRent, this.form.monthlyRent),
+          stage2StartDate: contract.stage2StartDate || '',
+          stage2EndDate: contract.stage2EndDate || '',
+          stage2RentPrice: this.toNumber(contract.stage2RentPrice, undefined),
+          stage2MonthlyRent: this.toNumber(contract.stage2MonthlyRent, undefined),
+        });
+      }
+      this.roomQuery.parkId = contract.parkId || '';
+      this.roomQuery.buildingId = contract.buildingId || '';
+      this.customerMode = contract.customerId ? 'existing' : 'manual';
+      this.selectedCustomer = contract.customerId
+        ? {
+            customerId: contract.customerId,
+            enterpriseName: contract.customerName,
+          }
+        : {};
+      if (
+        contract.customerId &&
+        !this.customerOptions.some(item => String(item.customerId) === String(contract.customerId))
+      ) {
+        this.customerOptions.unshift(this.selectedCustomer);
+      }
+      this.ensureSelectedRoomOption();
+      this.syncLeaseMonths();
+      if (contract.customerId) {
+        this.prefillCustomer(contract.customerId);
+      }
+      this.$nextTick(() => {
+        if (this.$refs.contractForm) {
+          this.$refs.contractForm.clearValidate();
+        }
+      });
     },
     loadRenewalSource(contractId, query = {}) {
       getContractDetail(contractId).then(res => {
@@ -996,6 +1090,10 @@ export default {
       });
     },
     backToList() {
+      if (this.editMode) {
+        this.$router.push({ path: '/contract/contract' });
+        return;
+      }
       this.pageMode = 'list';
     },
     handleCustomerModeChange(mode) {
@@ -1240,14 +1338,21 @@ export default {
       this.$refs.contractForm.validate(valid => {
         if (!valid) return;
         this.submitLoading = true;
-        const request =
-          this.renewalMode && this.renewalSourceContractId
-            ? renew(this.renewalSourceContractId, this.buildPayload())
-            : add(this.buildPayload());
+        const payload = this.buildPayload();
+        const request = this.editMode
+          ? update({ ...payload, contractId: this.editingContractId })
+          : this.renewalMode && this.renewalSourceContractId
+          ? renew(this.renewalSourceContractId, payload)
+          : add(payload);
         request
           .then(() => {
-            this.$message.success(this.renewalMode ? '续租合同创建成功' : '合同创建成功');
-            this.$router.push({ path: '/contract/contract' });
+            this.$message.success(
+              this.editMode ? '合同修改成功' : this.renewalMode ? '续租合同创建成功' : '合同创建成功'
+            );
+            this.$router.push({
+              path: '/contract/contract',
+              query: this.editingContractId ? { contractId: this.editingContractId } : {},
+            });
           })
           .finally(() => {
             this.submitLoading = false;
@@ -1305,6 +1410,11 @@ export default {
         lines.push(`业务备注：${this.form.remark}`);
       }
       return lines.join('\n');
+    },
+    extractBusinessRemark(remark) {
+      const lines = String(remark || '').split(/\r?\n/);
+      const match = lines.find(item => item.startsWith('业务备注：'));
+      return match ? match.replace('业务备注：', '') : remark || '';
     },
     resolveTemplateKey(contract) {
       if (contract && contract.rentIncreaseNode) {

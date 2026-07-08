@@ -28,6 +28,8 @@ package org.springblade.modules.contract.service.impl;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
+import org.flowable.engine.TaskService;
+import org.flowable.engine.task.Attachment;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.jackson.JsonUtil;
@@ -95,6 +97,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private final ContractWorkflowRecordMapper contractWorkflowRecordMapper;
 	private final ContractExpiryRuleMapper contractExpiryRuleMapper;
 	private final RoomMapper roomMapper;
+	private final TaskService taskService;
 
 	@Override
 	public IPage<Contract> selectContractPage(IPage<Contract> page, Contract contract) {
@@ -576,25 +579,73 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		if (terminationRecord == null || !PROCESS_STATUS_APPROVED.equals(terminationRecord.getProcessStatus())) {
 			throw new ServiceException("退租审批完成后才可以发起付款申请");
 		}
-		List<String> missingMaterials = missingDepositRefundMaterials(terminationRecord.getAttachmentJson());
+		List<Map<String, Object>> attachmentSources = new java.util.ArrayList<>();
+		attachmentSources.add(resolveWorkflowAttachments(terminationRecord));
+		ContractWorkflowRecord roomReviewRecord = contractWorkflowRecordMapper.selectLatest(contractId, BUSINESS_TYPE_CONTRACT_ROOM_REVIEW);
+		if (roomReviewRecord != null) {
+			attachmentSources.add(resolveWorkflowAttachments(roomReviewRecord));
+			if (Func.isNotBlank(roomReviewRecord.getPrintFileUrl())) {
+				attachmentSources.add(Map.of("roomReviewFileUrl", roomReviewRecord.getPrintFileUrl()));
+			}
+		}
+		List<String> missingMaterials = missingDepositRefundMaterials(attachmentSources);
 		if (!missingMaterials.isEmpty()) {
 			throw new ServiceException("请先补齐退租资料：" + String.join("、", missingMaterials));
 		}
 	}
 
-	private List<String> missingDepositRefundMaterials(String attachmentJson) {
-		Map<String, Object> attachments = parseAttachmentJson(attachmentJson);
+	private Map<String, Object> resolveWorkflowAttachments(ContractWorkflowRecord record) {
+		Map<String, Object> attachments = parseAttachmentJson(record == null ? null : record.getAttachmentJson());
+		if (record == null || Func.isBlank(record.getProcessInsId())) {
+			return attachments;
+		}
+		List<Object> materials = new java.util.ArrayList<>(materialFiles(attachments.get("materials")));
+		try {
+			List<Attachment> processAttachments = taskService.getProcessInstanceAttachments(record.getProcessInsId());
+			if (processAttachments != null) {
+				processAttachments.forEach(attachment -> {
+					if (attachment != null && Func.isNotBlank(attachment.getUrl())) {
+						materials.add(buildWorkflowMaterial(attachment, record.getBusinessType()));
+					}
+				});
+			}
+		} catch (Exception ignored) {
+			// 流程附件快照失败不影响已有业务附件校验
+		}
+		if (!materials.isEmpty()) {
+			attachments.put("materials", materials);
+		}
+		return attachments;
+	}
+
+	private Map<String, Object> buildWorkflowMaterial(Attachment attachment, String businessType) {
+		Map<String, Object> file = new LinkedHashMap<>();
+		String materialName = BUSINESS_TYPE_CONTRACT_ROOM_REVIEW.equals(businessType) ? "房屋验收资料" : "审批资料";
+		String fileUrl = attachment.getUrl();
+		file.put("fileUrl", fileUrl);
+		file.put("fileName", Func.isBlank(attachment.getName()) ? fileUrl.substring(fileUrl.lastIndexOf('/') + 1) : attachment.getName());
+		file.put("materialType", BUSINESS_TYPE_CONTRACT_ROOM_REVIEW.equals(businessType) ? "room_acceptance" : "approval");
+		file.put("materialName", materialName);
+		file.put("remark", "审批流程附件");
+		return file;
+	}
+
+	private List<String> missingDepositRefundMaterials(List<Map<String, Object>> attachmentSources) {
 		List<String> missing = new java.util.ArrayList<>();
-		if (!hasMaterial(attachments, List.of("room_acceptance"), List.of("房屋验收"), List.of("acceptanceFileUrl", "roomAcceptanceFiles"))) {
+		if (!hasMaterial(attachmentSources, List.of("room_acceptance"), List.of("房屋验收", "房屋验收资料"), List.of("acceptanceFileUrl", "roomAcceptanceFiles", "roomReviewFileUrl", "room-review"))) {
 			missing.add("房屋验收");
 		}
-		if (!hasMaterial(attachments, List.of("termination_agreement", "signed_termination_agreement"), List.of("租赁合同解除补充协议", "已盖章解除补充协议"), List.of("termination-agreement", "terminationAgreementUrl"))) {
+		if (!hasMaterial(attachmentSources, List.of("termination_agreement", "signed_termination_agreement"), List.of("租赁合同解除补充协议", "已盖章解除补充协议"), List.of("termination-agreement", "terminationAgreementUrl"))) {
 			missing.add("租赁合同解除补充协议");
 		}
-		if (!hasMaterial(attachments, List.of("handover_file"), List.of("退租交接资料"), List.of("fileList", "handoverFileUrl"))) {
+		if (!hasMaterial(attachmentSources, List.of("handover_file"), List.of("退租交接资料"), List.of("fileList", "handoverFileUrl"))) {
 			missing.add("退租交接资料");
 		}
 		return missing;
+	}
+
+	private boolean hasMaterial(List<Map<String, Object>> attachmentSources, List<String> materialTypes, List<String> materialNames, List<String> attachmentKeys) {
+		return attachmentSources.stream().anyMatch(attachments -> hasMaterial(attachments, materialTypes, materialNames, attachmentKeys));
 	}
 
 	private boolean hasMaterial(Map<String, Object> attachments, List<String> materialTypes, List<String> materialNames, List<String> attachmentKeys) {

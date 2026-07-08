@@ -51,25 +51,18 @@
         class="termination-table"
       >
         <el-table-column
-          prop="contractNo"
-          label="合同编号"
-          min-width="150"
-          align="center"
-          show-overflow-tooltip
-        />
-        <el-table-column
           prop="customerName"
           label="租客名称"
           min-width="150"
           align="center"
-          show-overflow-tooltip
+          class-name="termination-full-cell"
         />
         <el-table-column
           prop="roomName"
           label="房源信息"
           min-width="150"
           align="center"
-          show-overflow-tooltip
+          class-name="termination-full-cell"
         >
           <template #default="{ row }">
             {{ row.roomName || row.buildingName || '-' }}
@@ -80,7 +73,7 @@
           label="流程名称"
           min-width="140"
           align="center"
-          show-overflow-tooltip
+          class-name="termination-full-cell"
         />
         <el-table-column prop="processStatus" label="审批状态" width="120" align="center">
           <template #default="{ row }">
@@ -101,7 +94,7 @@
           label="当前节点"
           min-width="130"
           align="center"
-          show-overflow-tooltip
+          class-name="termination-full-cell"
         />
         <el-table-column prop="contractStatus" label="合同状态" width="130" align="center">
           <template #default="{ row }">
@@ -162,7 +155,7 @@
             <div class="drawer-actions">
               <el-button type="primary" @click="openArchive(detailRecord)">合同归档</el-button>
               <el-button type="primary" plain @click="handleOfflineRoomReview(detailRecord)">
-                登记验收情况
+                登记房屋验收
               </el-button>
               <el-button type="primary" plain @click="handleStartDepositRefund(detailRecord)">
                 付款申请
@@ -228,17 +221,29 @@
               <div v-for="group in materialGroups" :key="group.name" class="material-group">
                 <div class="material-group-title">{{ group.name }}</div>
                 <div class="material-file-list">
-                  <a
+                  <div
                     v-for="file in group.files"
                     :key="file.fileUrl + file.fileName + file.uploadTime"
-                    :href="file.fileUrl"
-                    target="_blank"
-                    rel="noreferrer"
+                    class="material-file-card"
                   >
-                    <span>{{ file.fileName || group.name }}</span>
-                    <em v-if="materialFileMeta(file)">{{ materialFileMeta(file) }}</em>
-                    <p v-if="file.remark">{{ file.remark }}</p>
-                  </a>
+                    <div class="material-file-info">
+                      <span>{{ file.fileName || group.name }}</span>
+                      <em v-if="materialFileMeta(file)">{{ materialFileMeta(file) }}</em>
+                      <p v-if="file.remark">{{ file.remark }}</p>
+                    </div>
+                    <div class="material-file-actions">
+                      <el-button text type="primary" @click="previewMaterial(file)">预览</el-button>
+                      <el-button text type="primary" @click="downloadMaterial(file)">下载</el-button>
+                      <el-button
+                        v-if="file.deletable"
+                        text
+                        type="danger"
+                        @click="removeMaterial(file)"
+                      >
+                        删除
+                      </el-button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -400,7 +405,7 @@
 
       <el-dialog
         v-model="offlineReviewVisible"
-        title="登记验收情况"
+        title="登记房屋验收"
         width="680px"
         append-to-body
         @close="resetOfflineReview"
@@ -435,14 +440,14 @@
               <el-radio-button label="需整改" />
             </el-radio-group>
           </el-form-item>
-          <el-form-item label="验收情况" required>
+          <el-form-item label="验收说明" required>
             <el-input
               v-model="offlineReviewForm.acceptanceSituation"
               type="textarea"
               :rows="4"
               maxlength="500"
               show-word-limit
-              placeholder="填写线下验收情况、交接说明、遗留问题等"
+              placeholder="填写线下房屋验收情况、交接说明、遗留问题等"
             />
           </el-form-item>
           <el-form-item label="验收附件">
@@ -556,6 +561,7 @@
         :html="noticePreview.html"
         :loading="noticePreview.loading"
         :download-url="noticePreview.downloadUrl"
+        :download-label="noticePreview.downloadLabel"
         @download="downloadNoticePreviewFile"
       />
     </div>
@@ -567,9 +573,11 @@ import { Base64 } from 'js-base64';
 import {
   ensureDepositRefundPayment,
   getDepositRefundPayment,
+  getLatestWorkflowRecord,
   getWorkflowRecordPage,
   offlineDepositRefund,
   offlineRoomReview,
+  removeWorkflowRecordAttachment,
   uploadWorkflowRecordAttachment,
 } from '@/api/contract/contract';
 import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
@@ -582,6 +590,7 @@ import { noticePrintUrl } from '@/api/contract/print';
 import {
   createNoticePreviewState,
   downloadNoticeFile,
+  openAttachmentPreview,
   openNoticePreview,
 } from '@/utils/contract-notice';
 
@@ -591,7 +600,7 @@ const PAYMENT_BUSINESS_TYPE = 'contract_payment';
 const TERMINATION_AGREEMENT_KEY = 'termination-agreement';
 const MATERIAL_TYPE_OPTIONS = [
   { value: 'approval', label: '审批资料' },
-  { value: 'room_acceptance', label: '房屋验收' },
+  { value: 'room_acceptance', label: '房屋验收资料' },
   { value: 'deposit_refund', label: '押金退还' },
   { value: 'termination_agreement', label: '租赁合同解除补充协议' },
   { value: 'signed_termination_agreement', label: '已盖章解除补充协议' },
@@ -601,10 +610,10 @@ const MATERIAL_TYPE_OPTIONS = [
 const PAYMENT_REQUIRED_MATERIALS = [
   {
     value: 'room_acceptance',
-    label: '房屋验收',
+    label: '房屋验收资料',
     types: ['room_acceptance'],
-    names: ['房屋验收'],
-    attachmentKeys: ['acceptanceFileUrl', 'roomAcceptanceFiles'],
+    names: ['房屋验收', '房屋验收资料'],
+    attachmentKeys: ['acceptanceFileUrl', 'roomAcceptanceFiles', 'roomReviewFileUrl', 'room-review'],
   },
   {
     value: 'termination_agreement',
@@ -623,7 +632,7 @@ const PAYMENT_REQUIRED_MATERIALS = [
 ];
 const WORKFLOW_CONFIGS = {
   [ROOM_REVIEW_BUSINESS_TYPE]: {
-    title: '发起房屋验收',
+    title: '发起房屋验收流程',
     summaryTitle: '退租交接信息',
     placeholder: '请选择已部署的房屋验收流程',
     formKeys: ['return'],
@@ -733,13 +742,28 @@ export default {
       }));
     },
     allMaterialFiles() {
-      const attachment = this.parseAttachment(this.detailRecord);
       const files = [];
-      const append = (value, fallbackName) => {
+      const append = (
+        value,
+        fallbackName,
+        sourceName = '',
+        sourceType = 'termination',
+        recordId = this.detailRecord.recordId,
+        deletable = false
+      ) => {
         const list = Array.isArray(value) ? value : value ? [value] : [];
         list.forEach(item => {
           if (typeof item === 'string') {
-            files.push({ fileUrl: item, fileName: fallbackName, materialName: fallbackName });
+            files.push({
+              fileUrl: item,
+              fileName: fallbackName,
+              materialName: fallbackName,
+              remark: sourceName,
+              sourceName,
+              sourceType,
+              recordId,
+              deletable,
+            });
             return;
           }
           if (item && item.fileUrl) {
@@ -747,18 +771,56 @@ export default {
               materialName: item.materialName || item.categoryName || item.category || fallbackName,
               fileName: item.fileName || fallbackName,
               fileUrl: item.fileUrl,
+              materialType: item.materialType || item.category || '',
               uploadBy: item.uploadBy || '',
               uploadTime: item.uploadTime || '',
-              remark: item.remark || '',
+              remark: item.remark || sourceName,
+              sourceName,
+              sourceType,
+              recordId,
+              deletable,
             });
           }
         });
       };
-      append(attachment.materials, '退租资料');
-      append(attachment.approvalMaterials, '审批资料');
-      append(attachment.roomAcceptanceFiles, '房屋验收');
-      append(attachment.depositRefundFiles, '押金退还');
-      return files;
+      const appendDirect = (attachment, key, fallbackName, sourceName = '', sourceType = 'generated', recordId = '') => {
+        if (!attachment || !attachment[key]) return;
+        append(
+          {
+            fileUrl: attachment[key],
+            fileName: attachment[`${key}Name`] || attachment.fileName || fallbackName,
+            materialName: fallbackName,
+            remark: sourceName,
+          },
+          fallbackName,
+          sourceName,
+          sourceType,
+          recordId,
+          false
+        );
+      };
+      this.recordAttachmentList(this.detailRecord).forEach(({ attachment, sourceName, sourceType, recordId }) => {
+        const isTerminationSource = sourceType === 'termination';
+        append(attachment.materials, '退租资料', sourceName, sourceType, recordId, isTerminationSource);
+        append(attachment.approvalMaterials, '审批资料', sourceName, sourceType, recordId, false);
+        append(attachment.roomAcceptanceFiles, '房屋验收资料', sourceName, sourceType, recordId, false);
+        append(attachment.depositRefundFiles, '押金退还', sourceName, sourceType, recordId, false);
+        append(attachment.fileList, '退租交接资料', sourceName, sourceType, recordId, false);
+        appendDirect(attachment, 'acceptanceFileUrl', '房屋验收资料', sourceName, sourceType, recordId);
+        appendDirect(attachment, 'roomReviewFileUrl', '房屋验收流程文件', sourceName, sourceType, recordId);
+        appendDirect(attachment, 'paymentVoucherUrl', '押金退还支付凭证', sourceName, sourceType, recordId);
+        appendDirect(attachment, 'terminationAgreementUrl', '租赁合同解除补充协议', sourceName, sourceType, recordId);
+        appendDirect(attachment, 'termination-approval', '退租审批表', sourceName, 'generated', recordId);
+        appendDirect(attachment, 'termination-agreement', '租赁合同解除补充协议', sourceName, 'generated', recordId);
+        appendDirect(attachment, 'room-review', '房屋验收流程文件', sourceName, 'generated', recordId);
+      });
+      const seen = new Set();
+      return files.filter(file => {
+        const key = `${file.materialName || ''}|${file.fileUrl || ''}`;
+        if (!file.fileUrl || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     },
     paymentReady() {
       return this.paymentApplicationBlockedReason(this.detailRecord) === '';
@@ -887,12 +949,13 @@ export default {
         });
     },
     enrichTerminationRecords(records = []) {
-      const targets = records.filter(item => String(item.contractStatus) === '4' && item.contractId);
-      if (!targets.length) {
+      const contractRecords = records.filter(item => item.contractId);
+      const paymentTargets = records.filter(item => String(item.contractStatus) === '4' && item.contractId);
+      if (!contractRecords.length && !paymentTargets.length) {
         return Promise.resolve(records);
       }
-      return Promise.all(
-        targets.map(item =>
+      const paymentPromise = Promise.all(
+        paymentTargets.map(item =>
           getDepositRefundPayment(item.contractId)
             .then(res => {
               const payment = res.data.data || {};
@@ -910,14 +973,42 @@ export default {
               depositRefundApprovalStatus: '',
             }))
         )
-      ).then(paymentStates => {
+      );
+      const roomReviewPromise = Promise.all(
+        contractRecords.map(item =>
+          getLatestWorkflowRecord(item.contractId, ROOM_REVIEW_BUSINESS_TYPE)
+            .then(res => {
+              const record = res.data.data || {};
+              return {
+                contractId: item.contractId,
+                roomReviewRecordId: record.recordId || '',
+                roomReviewAttachmentJson: record.attachmentJson || '',
+                roomReviewPrintFileUrl: record.printFileUrl || '',
+                roomReviewProcessStatus: record.processStatus || '',
+              };
+            })
+            .catch(() => ({
+              contractId: item.contractId,
+              roomReviewRecordId: '',
+              roomReviewAttachmentJson: '',
+              roomReviewPrintFileUrl: '',
+              roomReviewProcessStatus: '',
+            }))
+        )
+      );
+      return Promise.all([paymentPromise, roomReviewPromise]).then(([paymentStates, roomReviewStates]) => {
         const paymentStateMap = paymentStates.reduce((result, item) => {
+          result[item.contractId] = item;
+          return result;
+        }, {});
+        const roomReviewStateMap = roomReviewStates.reduce((result, item) => {
           result[item.contractId] = item;
           return result;
         }, {});
         return records.map(item => ({
           ...item,
           ...(paymentStateMap[item.contractId] || {}),
+          ...(roomReviewStateMap[item.contractId] || {}),
         }));
       });
     },
@@ -935,12 +1026,45 @@ export default {
       this.detailVisible = true;
     },
     parseAttachment(row = {}) {
-      if (!row.attachmentJson) return {};
+      return this.parseAttachmentJson(row.attachmentJson);
+    },
+    parseAttachmentJson(attachmentJson) {
+      if (!attachmentJson) return {};
       try {
-        return JSON.parse(row.attachmentJson) || {};
+        return typeof attachmentJson === 'string' ? JSON.parse(attachmentJson) || {} : attachmentJson || {};
       } catch (error) {
         return {};
       }
+    },
+    recordAttachmentList(row = {}) {
+      const list = [
+        {
+          attachment: this.parseAttachment(row),
+          sourceName: '退租审批',
+          sourceType: 'termination',
+          recordId: row.recordId,
+        },
+      ];
+      const roomReviewAttachment = this.parseAttachmentJson(row.roomReviewAttachmentJson);
+      if (Object.keys(roomReviewAttachment).length) {
+        list.push({
+          attachment: roomReviewAttachment,
+          sourceName: '房屋验收流程',
+          sourceType: 'roomReview',
+          recordId: row.roomReviewRecordId,
+        });
+      }
+      if (row.roomReviewPrintFileUrl) {
+        list.push({
+          sourceName: '房屋验收流程',
+          sourceType: 'roomReviewPrint',
+          recordId: row.roomReviewRecordId,
+          attachment: {
+            roomReviewFileUrl: row.roomReviewPrintFileUrl,
+          },
+        });
+      }
+      return list;
     },
     openArchive(row) {
       if (!row || !row.contractId) {
@@ -1055,7 +1179,53 @@ export default {
       };
     },
     materialFileMeta(file = {}) {
-      return [file.uploadBy, file.uploadTime].filter(Boolean).join(' / ');
+      return [file.sourceName, file.uploadBy, file.uploadTime].filter(Boolean).join(' / ');
+    },
+    previewMaterial(file) {
+      if (!file || !file.fileUrl) {
+        this.$message.warning('暂无资料文件');
+        return;
+      }
+      openAttachmentPreview(this.noticePreview, file, '退租资料预览');
+    },
+    downloadMaterial(file) {
+      if (!file || !file.fileUrl) {
+        this.$message.warning('暂无资料文件');
+        return;
+      }
+      downloadNoticeFile(file.fileUrl, file.fileName || file.materialName || '退租资料').catch(() => {
+        this.$message.error('资料下载失败，请稍后重试');
+      });
+    },
+    removeMaterial(file) {
+      if (!file || !file.deletable || !file.recordId) {
+        this.$message.warning('该资料由流程自动生成，不能删除');
+        return;
+      }
+      this.$confirm('确认删除该资料吗？', '提示', {
+        type: 'warning',
+      })
+        .then(() =>
+          removeWorkflowRecordAttachment(file.recordId, {
+            fileUrl: file.fileUrl,
+            materialName: file.materialName,
+          })
+        )
+        .then(res => {
+          const updated = res.data.data || {};
+          const attachmentJson = updated.attachmentJson || '';
+          this.detailRecord = {
+            ...this.detailRecord,
+            attachmentJson,
+          };
+          this.data = this.data.map(item =>
+            String(item.recordId) === String(file.recordId)
+              ? { ...item, attachmentJson }
+              : item
+          );
+          this.$message.success('资料已删除');
+        })
+        .catch(() => {});
     },
     openContract(row) {
       this.$router.push({
@@ -1067,7 +1237,7 @@ export default {
       });
     },
     handleStartRoomReview(row) {
-      if (!this.ensurePrerequisites('房屋验收前置条件', this.roomReviewPrerequisites(row))) {
+      if (!this.ensurePrerequisites('发起房屋验收流程前置条件', this.roomReviewPrerequisites(row))) {
         return;
       }
       this.workflowType = ROOM_REVIEW_BUSINESS_TYPE;
@@ -1100,7 +1270,7 @@ export default {
       });
     },
     handleOfflineRoomReview(row) {
-      if (!this.ensurePrerequisites('登记验收情况前置条件', this.offlineRoomReviewPrerequisites(row))) {
+      if (!this.ensurePrerequisites('登记房屋验收前置条件', this.offlineRoomReviewPrerequisites(row))) {
         return;
       }
       this.offlineReviewRecord = { ...(row || {}) };
@@ -1210,13 +1380,13 @@ export default {
         return;
       }
       if (!this.offlineReviewForm.acceptanceSituation) {
-        this.$message.warning('请填写验收情况');
+        this.$message.warning('请填写房屋验收情况');
         return;
       }
       this.offlineReviewLoading = true;
       offlineRoomReview(this.offlineReviewRecord.contractId, this.offlineReviewForm)
         .then(() => {
-          this.$message.success('验收情况已登记');
+          this.$message.success('房屋验收情况已登记');
           this.offlineReviewVisible = false;
           this.loadData();
         })
@@ -1377,9 +1547,9 @@ export default {
         ...(options.requireTerminated
           ? [
               {
-                label: '房屋验收已完成',
+                label: '房屋验收流程已完成',
                 done: String(row?.contractStatus || '') === '4',
-                pendingText: '待房屋验收完成',
+                pendingText: '待房屋验收流程完成',
               },
             ]
           : []),
@@ -1444,17 +1614,18 @@ export default {
       );
     },
     hasPaymentMaterial(row, requirement) {
-      const attachment = this.parseAttachment(row);
-      if ((requirement.attachmentKeys || []).some(key => this.hasAttachmentValue(attachment[key]))) {
-        return true;
-      }
-      return this.attachmentFiles(attachment.materials).some(file => {
-        const materialType = String(file.materialType || file.category || '');
-        const materialName = String(file.materialName || file.categoryName || file.category || '');
-        return (
-          (requirement.types || []).includes(materialType) ||
-          (requirement.names || []).some(name => materialName.includes(name))
-        );
+      return this.recordAttachmentList(row).some(({ attachment }) => {
+        if ((requirement.attachmentKeys || []).some(key => this.hasAttachmentValue(attachment[key]))) {
+          return true;
+        }
+        return this.attachmentFiles(attachment.materials).some(file => {
+          const materialType = String(file.materialType || file.category || '');
+          const materialName = String(file.materialName || file.categoryName || file.category || '');
+          return (
+            (requirement.types || []).includes(materialType) ||
+            (requirement.names || []).some(name => materialName.includes(name))
+          );
+        });
       });
     },
     attachmentFiles(value) {
@@ -1623,10 +1794,10 @@ export default {
       if (row.processStatus === 'running') return '退租中';
       if (row.processStatus === 'rejected') return '退租驳回';
       if (row.processStatus === 'canceled') return '退租取消';
-      if (String(row.contractStatus) === '8') return '房屋验收中';
+      if (String(row.contractStatus) === '8') return '房屋验收流程中';
       if (this.isDepositRefundCompleted(row)) return '退租已完成';
       if (String(row.contractStatus) === '4') return '待押金退还';
-      if (String(row.contractStatus) === '7') return '待房屋验收';
+      if (String(row.contractStatus) === '7') return '待登记房屋验收';
       if (row.processStatus === 'approved') return '退租已通过';
       return this.approvalStatusText(row.processStatus);
     },
@@ -1743,7 +1914,19 @@ export default {
 
 .termination-table {
   width: 100%;
-  border-radius: 0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.termination-table :deep(.el-table__header th),
+.termination-table :deep(.el-table__cell) {
+  text-align: center;
+}
+
+.termination-table :deep(.termination-full-cell .cell) {
+  white-space: normal;
+  word-break: break-all;
+  line-height: 20px;
 }
 
 .table-actions {
@@ -1937,36 +2120,55 @@ export default {
   gap: 8px;
 }
 
-.material-file-list a {
+.material-file-card {
   display: flex;
-  min-height: 38px;
-  flex-direction: column;
-  justify-content: center;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 8px 10px;
   border-radius: 6px;
   background: #f8fafc;
   color: #1059c6;
-  text-decoration: none;
 }
 
-.material-file-list span {
+.material-file-info {
+  min-width: 0;
+}
+
+.material-file-info span {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.material-file-list em {
+.material-file-info em {
+  display: block;
   margin-top: 3px;
   color: #8c98aa;
   font-size: 12px;
   font-style: normal;
 }
 
-.material-file-list p {
+.material-file-info p {
   margin: 4px 0 0;
   color: #606266;
   font-size: 12px;
   line-height: 1.5;
+}
+
+.material-file-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.material-file-actions :deep(.el-button) {
+  padding: 0;
+  margin-left: 0;
 }
 
 .workflow-option {

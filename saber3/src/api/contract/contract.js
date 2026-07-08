@@ -232,3 +232,11 @@ export const uploadWorkflowRecordAttachment = (recordId, row) => {
     data: row,
   });
 };
+
+export const removeWorkflowRecordAttachment = (recordId, params) => {
+  return request({
+    url: `/blade-contract/workflow-record/attachment/${recordId}`,
+    method: 'delete',
+    params,
+  });
+};

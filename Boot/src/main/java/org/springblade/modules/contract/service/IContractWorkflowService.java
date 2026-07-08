@@ -76,6 +76,16 @@ public interface IContractWorkflowService extends IService<ContractWorkflowRecor
 	ContractWorkflowRecord uploadAttachment(Long recordId, Map<String, Object> payload);
 
 	/**
+	 * 删除合同流程资料
+	 *
+	 * @param recordId      流程记录ID
+	 * @param fileUrl       文件地址
+	 * @param materialName  资料名称
+	 * @return 流程记录
+	 */
+	ContractWorkflowRecord removeAttachment(Long recordId, String fileUrl, String materialName);
+
+	/**
 	 * 是否合同管理流程.
 	 *
 	 * @param notice 流程通知

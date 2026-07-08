@@ -176,8 +176,9 @@
                 <el-table-column prop="createTime" label="上传时间" width="180" align="center">
                   <template #default="{ row }">{{ row.createTime || row.updateTime || '-' }}</template>
                 </el-table-column>
-                <el-table-column label="操作" width="160" align="center" fixed="right">
+                <el-table-column label="操作" width="190" align="center" fixed="right">
                   <template #default="{ row }">
+                    <el-button type="primary" text @click="previewAttachment(row)">预览</el-button>
                     <el-button type="primary" text @click="downloadSupplement(row)">下载</el-button>
                     <el-button type="danger" text @click="removeSupplement(row)">删除</el-button>
                   </template>
@@ -252,7 +253,13 @@
       </template>
     </avue-crud>
 
-    <el-drawer v-model="drawerVisible" title="合同档案详情" size="920px" append-to-body>
+    <el-drawer
+      v-model="drawerVisible"
+      title="合同档案详情"
+      size="920px"
+      append-to-body
+      class="archive-detail-drawer"
+    >
       <el-skeleton :loading="detailLoading" animated>
         <template #template>
           <el-skeleton-item variant="p" style="width: 90%" />
@@ -417,6 +424,7 @@
                 <el-table-column prop="createTime" label="归档时间" width="170" align="center" />
                 <el-table-column label="操作" width="150" align="center" fixed="right">
                   <template #default="{ row }">
+                    <el-button type="primary" text @click="previewAttachment(row)">预览</el-button>
                     <el-button type="primary" text @click="downloadSupplement(row)">下载</el-button>
                     <el-button type="danger" text @click="removeSupplement(row)">删除</el-button>
                   </template>
@@ -484,6 +492,7 @@
       :html="noticePreview.html"
       :loading="noticePreview.loading"
       :download-url="noticePreview.downloadUrl"
+      :download-label="noticePreview.downloadLabel"
       @download="downloadNoticePreviewFile"
     />
 
@@ -586,6 +595,7 @@ import { getToken } from '@/utils/auth';
 import {
   createNoticePreviewState,
   downloadNoticeFile,
+  openAttachmentPreview,
   openNoticePreview,
 } from '@/utils/contract-notice';
 
@@ -1000,11 +1010,16 @@ export default {
         this.$message.warning('暂无附件文件');
         return;
       }
-      const link = document.createElement('a');
-      link.href = row.fileUrl;
-      link.target = '_blank';
-      link.download = row.fileName || row.agreementName || '附件';
-      link.click();
+      downloadNoticeFile(row.fileUrl, row.fileName || row.agreementName || '附件').catch(() => {
+        this.$message.error('附件下载失败，请稍后重试');
+      });
+    },
+    previewAttachment(row, title = '附件预览') {
+      if (!row || !row.fileUrl) {
+        this.$message.warning('暂无附件文件');
+        return;
+      }
+      openAttachmentPreview(this.noticePreview, row, title);
     },
     getFileType(value) {
       const match = String(value || '').match(/\.([a-z0-9]+)(?:\?|#|$)/i);
@@ -1271,6 +1286,15 @@ export default {
   padding-bottom: 0;
 }
 
+.archive-crud :deep(.el-table__header th),
+.archive-crud :deep(.el-table__cell),
+.archive-detail-page :deep(.el-table__header th),
+.archive-detail-page :deep(.el-table__cell),
+.archive-detail-drawer :deep(.el-table__header th),
+.archive-detail-drawer :deep(.el-table__cell) {
+  text-align: center;
+}
+
 .archive-crud :deep(.el-table__inner-wrapper::before) {
   display: none;
 }
@@ -1287,12 +1311,16 @@ export default {
   min-height: calc(100vh - 180px);
   padding: 24px 30px 42px;
   border-radius: 10px;
-  background: #fff;
+  background: #f4f4f6;
 }
 
 .archive-detail-header {
   position: relative;
-  padding-bottom: 24px;
+  padding: 22px 24px 24px;
+  border: 1px solid #e6eaf2;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(16, 89, 198, 0.04);
 }
 
 .archive-title-row {
@@ -1351,7 +1379,11 @@ export default {
 }
 
 .archive-detail-tabs {
-  margin-top: 10px;
+  margin-top: 16px;
+  border: 1px solid #e6eaf2;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(16, 89, 198, 0.04);
 }
 
 .archive-detail-tabs :deep(.el-tabs__nav-wrap::after) {
@@ -1372,11 +1404,16 @@ export default {
 }
 
 .archive-detail-tabs :deep(.el-tabs__content) {
-  padding-top: 42px;
+  padding: 18px;
+  background: #f4f4f6;
 }
 
 .archive-detail-section {
+  padding: 20px;
   margin-bottom: 24px;
+  border: 1px solid #e6eaf2;
+  border-radius: 10px;
+  background: #fff;
 }
 
 .archive-section-title {
@@ -1421,6 +1458,9 @@ export default {
 
 .archive-flat-table {
   width: 100%;
+  border: 1px solid #edf0f5;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .archive-flat-table :deep(.el-table__header th) {
@@ -1428,6 +1468,11 @@ export default {
   background: #fff;
   color: #8c98aa;
   font-weight: 600;
+  text-align: center;
+}
+
+.archive-flat-table :deep(.el-table__cell) {
+  text-align: center;
 }
 
 .archive-flat-table :deep(.el-table__row) {

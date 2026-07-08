@@ -29,13 +29,25 @@
           row-key="ruleId"
           class="expiring-table"
         >
-          <el-table-column prop="ruleName" label="名称" min-width="180" align="center" />
+          <el-table-column
+            prop="ruleName"
+            label="名称"
+            min-width="300"
+            align="center"
+            header-align="center"
+            class-name="expiring-main-cell"
+          >
+            <template #default="{ row }">
+              {{ row.ruleName || '-' }}
+            </template>
+          </el-table-column>
           <el-table-column
             prop="buildingNames"
             label="关联楼宇"
-            min-width="260"
+            min-width="300"
             align="center"
-            show-overflow-tooltip
+            header-align="center"
+            class-name="expiring-main-cell"
           >
             <template #default="{ row }">
               {{ row.buildingNames || '-' }}
@@ -47,8 +59,14 @@
             width="180"
             align="center"
           />
-          <el-table-column prop="createTime" label="创建时间" width="220" align="center" />
-          <el-table-column label="操作" width="150" align="center" fixed="right">
+          <el-table-column
+            prop="createTime"
+            label="创建时间"
+            width="180"
+            align="center"
+            class-name="expiring-time-cell"
+          />
+          <el-table-column label="操作" width="180" align="center" fixed="right">
             <template #default="{ row }">
               <div class="expiring-actions">
                 <el-button text type="primary" @click="handleEdit(row)">编辑</el-button>
@@ -327,6 +345,17 @@ export default {
 
 .expiring-table :deep(.el-table__cell) {
   height: 44px;
+}
+
+.expiring-table :deep(.expiring-main-cell .cell) {
+  white-space: normal;
+  word-break: break-all;
+  line-height: 20px;
+  text-align: center;
+}
+
+.expiring-table :deep(.expiring-time-cell .cell) {
+  white-space: nowrap;
 }
 
 .expiring-actions {

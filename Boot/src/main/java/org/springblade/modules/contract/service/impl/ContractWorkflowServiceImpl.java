@@ -29,7 +29,9 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.engine.task.Attachment;
 import org.flowable.task.api.Task;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.secure.utils.AuthUtil;
@@ -151,20 +153,25 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 	private final IContractNoticeService contractNoticeService;
 	private final IContractService contractService;
 	private final RoomMapper roomMapper;
+	private final TaskService taskService;
 
 	@Override
 	public IPage<ContractWorkflowRecord> selectRecordPage(IPage<ContractWorkflowRecord> page, ContractWorkflowRecord record) {
-		return page.setRecords(baseMapper.selectRecordPage(page, record));
+		return page.setRecords(baseMapper.selectRecordPage(page, record).stream()
+			.map(this::enrichProcessAttachments)
+			.toList());
 	}
 
 	@Override
 	public List<ContractWorkflowRecord> selectByContractId(Long contractId) {
-		return baseMapper.selectByContractId(contractId);
+		return baseMapper.selectByContractId(contractId).stream()
+			.map(this::enrichProcessAttachments)
+			.toList();
 	}
 
 	@Override
 	public ContractWorkflowRecord selectLatest(Long contractId, String businessType) {
-		return baseMapper.selectLatest(contractId, businessType);
+		return enrichProcessAttachments(baseMapper.selectLatest(contractId, businessType));
 	}
 
 	@Override
@@ -181,6 +188,39 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		attachments.put("materials", files);
 		attachments.put("latestMaterial", file);
 
+		ContractWorkflowRecord update = new ContractWorkflowRecord();
+		update.setRecordId(recordId);
+		update.setAttachmentJson(JsonUtil.toJson(attachments));
+		update.setUpdateBy(currentUserName(null));
+		update.setUpdateTime(DateUtil.now());
+		baseMapper.updateById(update);
+		return baseMapper.selectById(recordId);
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public ContractWorkflowRecord removeAttachment(Long recordId, String fileUrl, String materialName) {
+		if (StringUtil.isBlank(fileUrl)) {
+			throw new ServiceException("文件地址不能为空");
+		}
+		ContractWorkflowRecord record = baseMapper.selectById(recordId);
+		if (record == null || DELETED_DEL_FLAG.equals(record.getDelFlag())) {
+			throw new ServiceException("退租记录不存在");
+		}
+		Map<String, Object> attachments = parseAttachmentJson(record.getAttachmentJson());
+		List<Object> files = attachmentFiles(attachments.get("materials"));
+		int originalSize = files.size();
+		files.removeIf(file -> isSameAttachmentFile(file, fileUrl, materialName));
+		if (files.size() == originalSize) {
+			throw new ServiceException("资料不存在或不可删除");
+		}
+		if (files.isEmpty()) {
+			attachments.remove("materials");
+			attachments.remove("latestMaterial");
+		} else {
+			attachments.put("materials", files);
+			attachments.put("latestMaterial", files.get(files.size() - 1));
+		}
 		ContractWorkflowRecord update = new ContractWorkflowRecord();
 		update.setRecordId(recordId);
 		update.setAttachmentJson(JsonUtil.toJson(attachments));
@@ -264,7 +304,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		record.setTemplateKey(limit(firstNotBlank(record.getTemplateKey(), getString(variables, "templateKey", null), businessType), 128));
 		record.setFormKey(limit(firstNotBlank(record.getFormKey(), getString(variables, "formKey", null)), 128));
 		record.setFormDataJson(resolveFormDataJson(variables, record.getFormDataJson()));
-		record.setAttachmentJson(firstNotBlank(getString(variables, "attachment", null), getString(variables, "attachments", null), record.getAttachmentJson()));
+		record.setAttachmentJson(resolveAttachmentJson(notice, record.getAttachmentJson(), businessType));
 		return record;
 	}
 
@@ -279,7 +319,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			if (BUSINESS_TYPE_CONTRACT_APPROVAL.equals(record.getBusinessType()) && record.getContractId() != null) {
 				Map<String, String> contractFiles = uploadContractApprovalPackage(record.getContractId());
 				if (!contractFiles.isEmpty()) {
-					record.setAttachmentJson(JsonUtil.toJson(contractFiles));
+					record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), contractFiles));
 					record.setPrintFileUrl(limit(firstNotBlank(contractFiles.get(IContractNoticeService.NOTICE_CONTRACT_APPROVAL), record.getPrintFileUrl(), buildPrintFileUrl(record)), 500));
 					return;
 				}
@@ -288,7 +328,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 				if (isInvoiceWorkflow(record)) {
 					String invoiceUrl = uploadNotice(IContractNoticeService.NOTICE_INVOICE, record.getPaymentId(), null);
 					if (StringUtil.isNotBlank(invoiceUrl)) {
-						record.setAttachmentJson(JsonUtil.toJson(Map.of(IContractNoticeService.NOTICE_INVOICE, invoiceUrl)));
+						record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), Map.of(IContractNoticeService.NOTICE_INVOICE, invoiceUrl)));
 						record.setPrintFileUrl(limit(invoiceUrl, 500));
 						return;
 					}
@@ -297,7 +337,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 				}
 				Map<String, String> paymentFiles = uploadPaymentPackage(record.getPaymentId());
 				if (!paymentFiles.isEmpty()) {
-					record.setAttachmentJson(JsonUtil.toJson(paymentFiles));
+					record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), paymentFiles));
 					record.setPrintFileUrl(limit(firstNotBlank(paymentFiles.get(IContractNoticeService.NOTICE_PAYMENT), paymentFiles.get(IContractNoticeService.NOTICE_INVOICE), record.getPrintFileUrl(), buildPrintFileUrl(record)), 500));
 					return;
 				}
@@ -305,7 +345,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			if (BUSINESS_TYPE_CONTRACT_OVERDUE_LEGAL.equals(record.getBusinessType()) && record.getPaymentId() != null) {
 				Map<String, String> noticeFiles = uploadOverduePackage(record.getPaymentId());
 				if (!noticeFiles.isEmpty()) {
-					record.setAttachmentJson(JsonUtil.toJson(noticeFiles));
+					record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), noticeFiles));
 					record.setPrintFileUrl(limit(firstNotBlank(noticeFiles.get(IContractNoticeService.NOTICE_LEGAL), record.getPrintFileUrl(), buildPrintFileUrl(record)), 500));
 					return;
 				}
@@ -313,7 +353,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			if (BUSINESS_TYPE_CONTRACT_TERMINATION.equals(record.getBusinessType()) && record.getContractId() != null) {
 				Map<String, String> noticeFiles = uploadTerminationPackage(record.getContractId(), record.getFormDataJson());
 				if (!noticeFiles.isEmpty()) {
-					record.setAttachmentJson(JsonUtil.toJson(noticeFiles));
+					record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), noticeFiles));
 					record.setPrintFileUrl(limit(firstNotBlank(noticeFiles.get(IContractNoticeService.NOTICE_TERMINATION), record.getPrintFileUrl(), buildPrintFileUrl(record)), 500));
 					return;
 				}
@@ -505,6 +545,219 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		return JsonUtil.toJson(snapshot);
 	}
 
+	private String resolveAttachmentJson(WfNoticeDTO notice, String fallback, String businessType) {
+		Map<String, Object> variables = notice == null ? null : notice.getVariables();
+		Map<String, Object> attachments = parseAttachmentJson(fallback);
+		List<Object> materials = attachmentFiles(attachments.get("materials"));
+		appendWorkflowMaterials(materials, variables == null ? null : variables.get("attachment"), businessType);
+		appendWorkflowMaterials(materials, variables == null ? null : variables.get("attachments"), businessType);
+		appendFormUploadMaterials(materials, variables, businessType);
+		appendProcessAttachments(materials, notice, businessType);
+		if (!materials.isEmpty()) {
+			attachments.put("materials", distinctMaterials(materials));
+		}
+		if (attachments.isEmpty()) {
+			return firstNotBlank(getString(variables, "attachment", null), getString(variables, "attachments", null), fallback);
+		}
+		return JsonUtil.toJson(attachments);
+	}
+
+	private void appendProcessAttachments(List<Object> materials, WfNoticeDTO notice, String businessType) {
+		String processInsId = notice == null || notice.getProcessInstance() == null ? null : notice.getProcessInstance().getId();
+		appendProcessAttachments(materials, processInsId, businessType);
+	}
+
+	private ContractWorkflowRecord enrichProcessAttachments(ContractWorkflowRecord record) {
+		if (record == null || StringUtil.isBlank(record.getProcessInsId())) {
+			return record;
+		}
+		Map<String, Object> attachments = parseAttachmentJson(record.getAttachmentJson());
+		List<Object> materials = attachmentFiles(attachments.get("materials"));
+		appendProcessAttachments(materials, record.getProcessInsId(), record.getBusinessType());
+		if (!materials.isEmpty()) {
+			attachments.put("materials", distinctMaterials(materials));
+			record.setAttachmentJson(JsonUtil.toJson(attachments));
+		}
+		return record;
+	}
+
+	private void appendProcessAttachments(List<Object> materials, String processInsId, String businessType) {
+		if (StringUtil.isBlank(processInsId)) {
+			return;
+		}
+		try {
+			List<Attachment> attachments = taskService.getProcessInstanceAttachments(processInsId);
+			if (attachments == null || attachments.isEmpty()) {
+				return;
+			}
+			attachments.forEach(attachment -> {
+				if (attachment != null && StringUtil.isNotBlank(attachment.getUrl())) {
+					materials.add(buildWorkflowMaterial(attachment.getUrl(), attachment.getName(), businessType, attachment.getName()));
+				}
+			});
+		} catch (Exception exception) {
+			log.debug("同步流程审批附件失败，processInsId={}", processInsId, exception);
+		}
+	}
+
+	private void appendFormUploadMaterials(List<Object> materials, Map<String, Object> variables, String businessType) {
+		if (variables == null || variables.isEmpty()) {
+			return;
+		}
+		Object formVariable = variables.get(WfProcessConstant.TASK_VARIABLE_FORM_VARIABLE);
+		Map<String, Object> formData = new LinkedHashMap<>();
+		if (formVariable instanceof Map<?, ?> map) {
+			map.forEach((key, value) -> formData.put(Func.toStr(key, ""), value));
+		} else if (formVariable != null && StringUtil.isNotBlank(Func.toStr(formVariable, ""))) {
+			try {
+				formData.putAll(JsonUtil.readMap(Func.toStr(formVariable, "")));
+			} catch (Exception ignored) {
+				// 非标准表单快照不阻断流程记录同步
+			}
+		}
+		variables.forEach((key, value) -> {
+			if (!isWorkflowInternalVariable(key) && value != null) {
+				formData.putIfAbsent(key, value);
+			}
+		});
+		formData.forEach((key, value) -> {
+			if (isUploadValue(value)) {
+				appendWorkflowMaterials(materials, value, businessType, key);
+			}
+		});
+	}
+
+	private void appendWorkflowMaterials(List<Object> materials, Object source, String businessType) {
+		appendWorkflowMaterials(materials, source, businessType, null);
+	}
+
+	@SuppressWarnings("unchecked")
+	private void appendWorkflowMaterials(List<Object> materials, Object source, String businessType, String fieldKey) {
+		if (source == null) {
+			return;
+		}
+		if (source instanceof String text) {
+			if (StringUtil.isBlank(text)) {
+				return;
+			}
+			String trimmed = text.trim();
+			if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || (trimmed.startsWith("{") && trimmed.endsWith("}"))) {
+				try {
+					appendWorkflowMaterials(materials, JsonUtil.parse(trimmed, Object.class), businessType, fieldKey);
+					return;
+				} catch (Exception ignored) {
+					// 普通文件地址继续按字符串处理
+				}
+			}
+			if (looksLikeFileUrl(trimmed)) {
+				materials.add(buildWorkflowMaterial(trimmed, null, businessType, fieldKey));
+			}
+			return;
+		}
+		if (source instanceof Collection<?> collection) {
+			collection.forEach(item -> appendWorkflowMaterials(materials, item, businessType, fieldKey));
+			return;
+		}
+		if (source instanceof Map<?, ?> map) {
+			Map<String, Object> item = new LinkedHashMap<>((Map<String, Object>) map);
+			String fileUrl = firstNotBlank(
+				Func.toStr(firstNotNull(item.get("fileUrl"), item.get("url"), item.get("link"), item.get("value")), ""),
+				""
+			);
+			if (StringUtil.isNotBlank(fileUrl) && looksLikeFileUrl(fileUrl)) {
+				String fileName = firstNotBlank(
+					Func.toStr(firstNotNull(item.get("fileName"), item.get("name"), item.get("originalName"), item.get("label")), ""),
+					null
+				);
+				materials.add(buildWorkflowMaterial(fileUrl, fileName, businessType, fieldKey));
+				return;
+			}
+			item.values().forEach(value -> appendWorkflowMaterials(materials, value, businessType, fieldKey));
+		}
+	}
+
+	private boolean isUploadValue(Object value) {
+		if (value instanceof Collection<?> collection) {
+			return collection.stream().anyMatch(this::isUploadValue);
+		}
+		if (value instanceof Map<?, ?> map) {
+			return map.containsKey("fileUrl") || map.containsKey("url") || map.containsKey("link")
+				|| map.values().stream().anyMatch(this::isUploadValue);
+		}
+		return value instanceof String text && looksLikeFileUrl(text);
+	}
+
+	private boolean looksLikeFileUrl(String value) {
+		if (StringUtil.isBlank(value)) {
+			return false;
+		}
+		String text = value.trim();
+		return text.startsWith("http://")
+			|| text.startsWith("https://")
+			|| text.startsWith("/")
+			|| text.startsWith("blob:")
+			|| text.contains("/blade-resource/")
+			|| text.contains("/oss/");
+	}
+
+	private Map<String, Object> buildWorkflowMaterial(String fileUrl, String fileName, String businessType, String fieldKey) {
+		Map<String, Object> file = new LinkedHashMap<>();
+		String materialName = workflowMaterialName(businessType, fieldKey);
+		file.put("fileUrl", fileUrl);
+		file.put("fileName", firstNotBlank(fileName, fileUrl.substring(fileUrl.lastIndexOf('/') + 1), materialName));
+		file.put("materialType", workflowMaterialType(businessType, fieldKey));
+		file.put("materialName", materialName);
+		file.put("remark", "审批流程附件");
+		file.put("uploadBy", currentUserName(null));
+		file.put("uploadTime", DateUtil.format(DateUtil.now(), DateUtil.PATTERN_DATETIME));
+		return file;
+	}
+
+	private String workflowMaterialType(String businessType, String fieldKey) {
+		String key = Func.toStr(fieldKey, "").toLowerCase();
+		if (BUSINESS_TYPE_CONTRACT_ROOM_REVIEW.equals(businessType) || key.contains("acceptance") || key.contains("roomreview") || key.contains("验收")) {
+			return "room_acceptance";
+		}
+		if (key.contains("agreement") || key.contains("解除") || key.contains("补充协议")) {
+			return "termination_agreement";
+		}
+		if (key.contains("handover") || key.contains("filelist") || key.contains("交接")) {
+			return "handover_file";
+		}
+		return "approval";
+	}
+
+	private String workflowMaterialName(String businessType, String fieldKey) {
+		String key = Func.toStr(fieldKey, "").toLowerCase();
+		if (BUSINESS_TYPE_CONTRACT_ROOM_REVIEW.equals(businessType) || key.contains("acceptance") || key.contains("roomreview") || key.contains("验收")) {
+			return "房屋验收资料";
+		}
+		if (key.contains("agreement") || key.contains("解除") || key.contains("补充协议")) {
+			return "租赁合同解除补充协议";
+		}
+		if (key.contains("handover") || key.contains("filelist") || key.contains("交接")) {
+			return "退租交接资料";
+		}
+		return "审批资料";
+	}
+
+	private List<Object> distinctMaterials(List<Object> materials) {
+		List<Object> result = new ArrayList<>();
+		Set<String> seen = new java.util.LinkedHashSet<>();
+		for (Object material : materials) {
+			if (material instanceof Map<?, ?> map) {
+				String fileUrl = Func.toStr(map.get("fileUrl"), "");
+				String materialName = Func.toStr(map.get("materialName"), "");
+				String key = materialName + "|" + fileUrl;
+				if (StringUtil.isBlank(fileUrl) || !seen.add(key)) {
+					continue;
+				}
+			}
+			result.add(material);
+		}
+		return result;
+	}
+
 	private boolean isWorkflowInternalVariable(String key) {
 		if (StringUtil.isBlank(key)) {
 			return true;
@@ -636,6 +889,16 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			log.warn("退租审批归档文件包生成失败，contractId={}", contractId, exception);
 			return Map.of();
 		}
+	}
+
+	private String mergeAttachmentJson(String attachmentJson, Map<String, String> generatedFiles) {
+		Map<String, Object> attachments = parseAttachmentJson(attachmentJson);
+		generatedFiles.forEach((key, value) -> {
+			if (StringUtil.isNotBlank(value)) {
+				attachments.put(key, value);
+			}
+		});
+		return JsonUtil.toJson(attachments);
 	}
 
 	private void releaseContractRooms(ContractWorkflowRecord record) {
@@ -883,6 +1146,21 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		file.put("uploadBy", currentUserName(null));
 		file.put("uploadTime", DateUtil.format(DateUtil.now(), DateUtil.PATTERN_DATETIME));
 		return file;
+	}
+
+	private boolean isSameAttachmentFile(Object source, String fileUrl, String materialName) {
+		if (!(source instanceof Map<?, ?> map)) {
+			return false;
+		}
+		String sourceUrl = firstNotBlank(Func.toStr(map.get("fileUrl"), null), Func.toStr(map.get("url"), null), Func.toStr(map.get("link"), null));
+		if (!StringUtil.equals(sourceUrl, fileUrl)) {
+			return false;
+		}
+		if (StringUtil.isBlank(materialName)) {
+			return true;
+		}
+		String sourceName = firstNotBlank(Func.toStr(map.get("materialName"), null), Func.toStr(map.get("categoryName"), null), Func.toStr(map.get("category"), null));
+		return StringUtil.isBlank(sourceName) || StringUtil.equals(sourceName, materialName);
 	}
 
 	private String currentUserName(WfNoticeDTO notice) {
