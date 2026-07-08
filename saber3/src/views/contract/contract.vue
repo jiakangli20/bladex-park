@@ -299,7 +299,7 @@
                       </el-button>
                     </div>
                     <el-table :data="supplements" class="contract-detail-table">
-                      <el-table-column prop="fileName" label="文件名称" min-width="220" show-overflow-tooltip>
+                      <el-table-column prop="fileName" label="文件名称" width="240" show-overflow-tooltip>
                         <template #default="{ row }">{{ row.fileName || row.agreementName || '-' }}</template>
                       </el-table-column>
                       <el-table-column prop="contractNo" label="合同编号" min-width="150" show-overflow-tooltip />
@@ -309,11 +309,13 @@
                       <el-table-column prop="createTime" label="上传时间" width="180" align="center">
                         <template #default="{ row }">{{ row.createTime || row.updateTime || '-' }}</template>
                       </el-table-column>
-                      <el-table-column label="操作" width="190" align="center" fixed="right">
+                      <el-table-column label="操作" width="230" align="center" fixed="right">
                         <template #default="{ row }">
-                          <el-button text type="primary" @click="previewAttachment(row)">预览</el-button>
-                          <el-button text type="primary" @click="downloadSupplement(row)">下载</el-button>
-                          <el-button text type="danger" @click="removeSupplement(row)">删除</el-button>
+                          <div class="attachment-table-actions">
+                            <el-button text type="primary" @click="previewAttachment(row)">预览</el-button>
+                            <el-button text type="primary" @click="downloadSupplement(row)">下载</el-button>
+                            <el-button text type="danger" @click="removeSupplement(row)">删除</el-button>
+                          </div>
                         </template>
                       </el-table-column>
                     </el-table>
@@ -4091,6 +4093,20 @@ export default {
 
 .contract-detail-table :deep(.el-table__inner-wrapper::before) {
   background-color: #edf0f5;
+}
+
+.attachment-table-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  white-space: nowrap;
+}
+
+.attachment-table-actions :deep(.el-button) {
+  min-width: 0;
+  padding: 0;
+  margin-left: 0;
 }
 
 .bill-table-actions {
