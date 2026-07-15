@@ -206,9 +206,41 @@ public class ContractPayment implements Serializable {
 	@Schema(description = "退租审批文件地址")
 	private String terminationFileUrl;
 
-	@TableField(exist = false)
 	@Schema(description = "账单方向：receivable 收款，payable 付款")
 	private String direction;
+
+	@Schema(description = "税率（%）")
+	private BigDecimal taxRate;
+
+	@Schema(description = "特殊账单类型")
+	private String specialBillType;
+
+	@Schema(description = "滞纳金起算天数")
+	private Integer lateFeeStartDays;
+
+	@Schema(description = "滞纳金比例（%/天）")
+	private BigDecimal lateFeeRatio;
+
+	@Schema(description = "滞纳金上限（%）")
+	private BigDecimal lateFeeCap;
+
+	@Schema(description = "所属公司")
+	private String companyName;
+
+	@Schema(description = "附件名称")
+	private String attachmentName;
+
+	@Schema(description = "附件地址")
+	private String attachmentUrl;
+
+	@Schema(description = "账单选择房源ID集合")
+	private String selectedRoomIds;
+
+	@Schema(description = "账单选择房源名称")
+	private String selectedRoomName;
+
+	@Schema(description = "账单选择楼宇名称")
+	private String selectedBuildingName;
 
 	@TableField(exist = false)
 	@Schema(description = "应收/应付开始日期")

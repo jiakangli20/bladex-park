@@ -1213,18 +1213,21 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			formValue(context, "a178229026327048309", "申请人", "applicant"),
 			context.contract == null ? "-" : Func.toStr(context.contract.getCreateBy(), "-")
 		));
-		fields.put("房租", firstNotBlank(
+		String rentAmount = firstNotBlank(
 			formValue(context, "a178229043562386124"),
 			amountForFee(context, "rent", "租", "房租")
-		));
-		fields.put("物业", firstNotBlank(
+		);
+		String propertyAmount = firstNotBlank(
 			formValue(context, "a178229053048579216"),
 			amountForFee(context, "property", "物业")
-		));
-		fields.put("押金", firstNotBlank(
+		);
+		String depositAmount = firstNotBlank(
 			formValue(context, "a178229053161649966"),
 			amountForFee(context, "deposit", "押金", "保证金")
-		));
+		);
+		fields.put("房租", firstNotBlank(rentAmount, "0.00"));
+		fields.put("物业", firstNotBlank(propertyAmount, "0.00"));
+		fields.put("押金", firstNotBlank(depositAmount, "0.00"));
 		fields.put("单位名称", firstNotBlank(
 			formValue(context, "a178229058644646132", "单位名称"),
 			context.customerName()
@@ -1264,7 +1267,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		));
 		fields.put("分管领导", firstNotBlank(formValue(context, "a17822907200094136", "分管领导"), "-"));
 		fields.put("部门经理", firstNotBlank(formValue(context, "a178229072168040692", "部门经理"), "-"));
-		if (StringUtil.isBlank(fields.get("房租")) && StringUtil.isBlank(fields.get("物业")) && StringUtil.isBlank(fields.get("押金"))) {
+		if (StringUtil.isBlank(rentAmount) && StringUtil.isBlank(propertyAmount) && StringUtil.isBlank(depositAmount)) {
 			fields.put(context.feeName(), amount);
 		}
 		fields.putAll(workflowApprovalFields(context));
@@ -1559,7 +1562,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	private boolean isOptionalPreviewField(String noticeType, String fieldName) {
 		return switch (noticeType) {
 			case NOTICE_PAYMENT -> Set.of("租金", "物业费", "电费").contains(fieldName);
-			case NOTICE_INVOICE -> Set.of("房租", "押金", "物业费", "电费").contains(fieldName);
+			case NOTICE_INVOICE -> Set.of("房租", "物业", "押金", "物业费", "电费").contains(fieldName);
 			default -> false;
 		};
 	}

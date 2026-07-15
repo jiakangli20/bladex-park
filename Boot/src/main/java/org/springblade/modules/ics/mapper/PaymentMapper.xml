@@ -22,6 +22,18 @@
 		<result column="create_time" property="createTime"/>
 		<result column="update_by" property="updateBy"/>
 		<result column="update_time" property="updateTime"/>
+		<result column="direction" property="direction"/>
+		<result column="tax_rate" property="taxRate"/>
+		<result column="special_bill_type" property="specialBillType"/>
+		<result column="late_fee_start_days" property="lateFeeStartDays"/>
+		<result column="late_fee_ratio" property="lateFeeRatio"/>
+		<result column="late_fee_cap" property="lateFeeCap"/>
+		<result column="company_name" property="companyName"/>
+		<result column="attachment_name" property="attachmentName"/>
+		<result column="attachment_url" property="attachmentUrl"/>
+		<result column="selected_room_ids" property="selectedRoomIds"/>
+		<result column="selected_room_name" property="selectedRoomName"/>
+		<result column="selected_building_name" property="selectedBuildingName"/>
 		<result column="contract_no" property="contractNo"/>
 		<result column="customer_name" property="customerName"/>
 		<result column="contract_name" property="contractName"/>
@@ -81,11 +93,23 @@
 			p.create_time,
 			p.update_by,
 			p.update_time,
+			p.direction,
+			p.tax_rate,
+			p.special_bill_type,
+			p.late_fee_start_days,
+			p.late_fee_ratio,
+			p.late_fee_cap,
+			p.company_name,
+			p.attachment_name,
+			p.attachment_url,
+			p.selected_room_ids,
+			p.selected_room_name,
+			p.selected_building_name,
 			c.contract_no,
 			c.customer_name,
 			c.contract_name,
-			c.room_name,
-			c.building_name,
+			COALESCE(p.selected_room_name, c.room_name) AS room_name,
+			COALESCE(p.selected_building_name, c.building_name) AS building_name,
 			c.contract_status,
 			CASE c.contract_status
 				WHEN '0' THEN '待审批'
@@ -143,14 +167,7 @@
 
 	<sql id="paymentConditions">
 		<if test="payment != null and payment.direction != null and payment.direction != ''">
-			<choose>
-				<when test='payment.direction == "payable"'>
-					AND p.fee_type = 'deposit_refund'
-				</when>
-				<when test='payment.direction == "receivable"'>
-					AND (p.fee_type IS NULL OR p.fee_type != 'deposit_refund')
-				</when>
-			</choose>
+			AND p.direction = #{payment.direction}
 		</if>
 		<if test="payment != null and payment.contractId != null">
 			AND p.contract_id = #{payment.contractId}
@@ -253,6 +270,64 @@
 	<select id="selectPaymentById" resultMap="paymentResultMap">
 		<include refid="selectPaymentVo"/>
 		WHERE p.payment_id = #{paymentId}
+	</select>
+
+	<select id="selectContractOptions" resultType="org.springblade.modules.contract.pojo.entity.Contract">
+		SELECT
+			c.contract_id AS contractId,
+			c.contract_no AS contractNo,
+			c.contract_name AS contractName,
+			c.customer_name AS customerName,
+			c.room_id AS roomId,
+			c.room_ids AS roomIds,
+			c.room_name AS roomName,
+			c.building_id AS buildingId,
+			c.building_ids AS buildingIds,
+			c.building_name AS buildingName,
+			c.park_id AS parkId,
+			p.name AS parkName,
+			c.start_date AS startDate,
+			c.end_date AS endDate,
+			c.late_fee_ratio AS lateFeeRatio,
+			c.late_fee_cap AS lateFeeCap
+		FROM biz_contract c
+		LEFT JOIN ics_park p ON p.id = c.park_id
+		WHERE c.del_flag = '0'
+		<if test="parkId != null">
+			AND c.park_id = #{parkId}
+		</if>
+		<if test="keyword != null and keyword != ''">
+			AND (
+				c.contract_no LIKE CONCAT('%', #{keyword}, '%')
+				OR c.contract_name LIKE CONCAT('%', #{keyword}, '%')
+				OR c.customer_name LIKE CONCAT('%', #{keyword}, '%')
+			)
+		</if>
+		ORDER BY c.create_time DESC, c.contract_id DESC
+		LIMIT 200
+	</select>
+
+	<select id="selectRoomsByIds" resultType="org.springblade.modules.park.pojo.entity.Room">
+		SELECT
+			r.id,
+			r.building_id AS buildingId,
+			r.park_id AS parkId,
+			b.name AS buildingName,
+			p.name AS parkName,
+			r.name,
+			r.floor,
+			r.area,
+			r.rent_price AS rentPrice,
+			r.property_fee AS propertyFee,
+			r.status
+		FROM ics_room r
+		LEFT JOIN ics_building b ON b.id = r.building_id
+		LEFT JOIN ics_park p ON p.id = r.park_id
+		WHERE r.id IN
+		<foreach collection="roomIds" item="roomId" open="(" separator="," close=")">
+			#{roomId}
+		</foreach>
+		ORDER BY p.name ASC, b.name ASC, r.floor ASC, r.name ASC
 	</select>
 
 </mapper>

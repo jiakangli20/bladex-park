@@ -12,8 +12,10 @@ import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.Func;
 import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.contract.mapper.ContractLogMapper;
+import org.springblade.modules.contract.mapper.ContractMapper;
 import org.springblade.modules.contract.mapper.ContractPaymentMapper;
 import org.springblade.modules.contract.mapper.ContractWorkflowRecordMapper;
+import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
@@ -28,13 +30,19 @@ import org.springblade.modules.ics.pojo.vo.PaymentNoticeSummaryVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeVO;
 import org.springblade.modules.ics.pojo.vo.PaymentSummaryVO;
 import org.springblade.modules.ics.service.IPaymentService;
+import org.springblade.modules.park.pojo.entity.Room;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * 财务缴费服务实现.
@@ -48,6 +56,12 @@ public class PaymentServiceImpl implements IPaymentService {
 	private static final String SCOPE_OVERDUE = "overdue";
 	private static final String PAY_STATUS_PAID = "1";
 	private static final String PAY_STATUS_PARTIAL = "3";
+	private static final String PAY_STATUS_UNPAID = "0";
+	private static final String REMIND_STATUS_NONE = "0";
+	private static final String DIRECTION_RECEIVABLE = "receivable";
+	private static final String DIRECTION_PAYABLE = "payable";
+	private static final String SPECIAL_BILL_REGULAR = "regular";
+	private static final String DEFAULT_COMPANY_NAME = "吴中金融招商服务有限公司";
 	private static final String REMIND_STATUS_REMINDED = "1";
 	private static final String NOTICE_TYPE_RECEIPT = IContractNoticeService.NOTICE_INVOICE;
 	private static final String NOTICE_STATUS_PENDING = "pending";
@@ -56,6 +70,7 @@ public class PaymentServiceImpl implements IPaymentService {
 
 	private final PaymentMapper paymentMapper;
 	private final PaymentNoticeMapper paymentNoticeMapper;
+	private final ContractMapper contractMapper;
 	private final ContractPaymentMapper contractPaymentMapper;
 	private final ContractLogMapper contractLogMapper;
 	private final ContractWorkflowRecordMapper contractWorkflowRecordMapper;
@@ -90,6 +105,66 @@ public class PaymentServiceImpl implements IPaymentService {
 	public PaymentSummaryVO summary(ContractPayment payment) {
 		PaymentSummaryVO summary = paymentMapper.selectSummary(normalizeQuery(payment));
 		return summary == null ? new PaymentSummaryVO() : summary;
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public ContractPayment create(ContractPayment payment) {
+		if (payment == null || Func.isEmpty(payment.getContractId())) {
+			throw new ServiceException("请选择关联合同");
+		}
+		Contract contract = contractMapper.selectContractById(payment.getContractId());
+		if (contract == null) {
+			throw new ServiceException("关联合同不存在");
+		}
+		if (!AuthUtil.isAdministrator() && !Objects.equals(currentParkId(), contract.getParkId())) {
+			throw new ServiceException("无权为该园区合同创建账单");
+		}
+		String direction = normalizeDirection(payment.getDirection());
+		validateCreatePayment(payment);
+		PaymentRoomSelection roomSelection = resolvePaymentRoomSelection(contract, payment.getSelectedRoomIds());
+
+		Date now = DateUtil.now();
+		ContractPayment created = new ContractPayment();
+		created.setContractId(contract.getContractId());
+		created.setDirection(direction);
+		created.setFeeType(payment.getFeeType().trim());
+		created.setFeeName(payment.getFeeName().trim());
+		created.setPeriodStart(payment.getPeriodStart());
+		created.setPeriodEnd(payment.getPeriodEnd());
+		created.setAmountDue(payment.getAmountDue());
+		created.setAmountPaid(BigDecimal.ZERO);
+		created.setPayDeadline(payment.getPayDeadline());
+		created.setPayStatus(PAY_STATUS_UNPAID);
+		created.setRemindStatus(REMIND_STATUS_NONE);
+		created.setRemark(payment.getRemark());
+		created.setParkId(contract.getParkId());
+		created.setTaxRate(nullToZero(payment.getTaxRate()));
+		created.setSpecialBillType(Func.toStr(payment.getSpecialBillType(), SPECIAL_BILL_REGULAR));
+		created.setLateFeeStartDays(payment.getLateFeeStartDays());
+		created.setLateFeeRatio(payment.getLateFeeRatio());
+		created.setLateFeeCap(payment.getLateFeeCap());
+		created.setCompanyName(Func.toStr(payment.getCompanyName(), DEFAULT_COMPANY_NAME));
+		created.setAttachmentName(payment.getAttachmentName());
+		created.setAttachmentUrl(payment.getAttachmentUrl());
+		created.setSelectedRoomIds(roomSelection.roomIds);
+		created.setSelectedRoomName(roomSelection.roomName);
+		created.setSelectedBuildingName(roomSelection.buildingName);
+		created.setCreateBy(currentUserName());
+		created.setCreateTime(now);
+		if (contractPaymentMapper.insert(created) <= 0) {
+			throw new ServiceException("账单创建失败");
+		}
+		addLog(contract.getContractId(), "payment_create", "创建" + directionName(direction) + "账单，费用：" + created.getFeeName());
+		return paymentMapper.selectPaymentById(created.getPaymentId());
+	}
+
+	@Override
+	public List<Contract> contractOptions(String keyword) {
+		Long parkId = AuthUtil.isAdministrator() ? null : currentParkId();
+		List<Contract> contracts = paymentMapper.selectContractOptions(StringUtil.isBlank(keyword) ? null : keyword.trim(), parkId);
+		attachContractRooms(contracts);
+		return contracts;
 	}
 
 	@Override
@@ -142,6 +217,49 @@ public class PaymentServiceImpl implements IPaymentService {
 			addLog(existing.getContractId(), "remind", "发起催缴提醒");
 		}
 		return result;
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public boolean updateDeadline(Long paymentId, Date payDeadline) {
+		ContractPayment existing = requirePayment(paymentId);
+		assertAccessible(existing);
+		if (payDeadline == null) {
+			throw new ServiceException("账单日期不能为空");
+		}
+		Date now = DateUtil.now();
+		ContractPayment update = new ContractPayment();
+		update.setPaymentId(paymentId);
+		update.setPayDeadline(payDeadline);
+		update.setUpdateBy(currentUserName());
+		update.setUpdateTime(now);
+		boolean result = contractPaymentMapper.updateById(update) > 0;
+		if (result) {
+			addLog(existing.getContractId(), "payment_deadline", "调整账单日期：" + DateUtil.format(payDeadline, DateUtil.PATTERN_DATE));
+		}
+		return result;
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public ContractPayment updateAttachment(Long paymentId, ContractPayment payment) {
+		ContractPayment existing = requirePayment(paymentId);
+		assertAccessible(existing);
+		if (payment == null || StringUtil.isBlank(payment.getAttachmentUrl())) {
+			throw new ServiceException("附件地址不能为空");
+		}
+		Date now = DateUtil.now();
+		ContractPayment update = new ContractPayment();
+		update.setPaymentId(paymentId);
+		update.setAttachmentName(Func.toStr(payment.getAttachmentName(), "账单附件"));
+		update.setAttachmentUrl(payment.getAttachmentUrl());
+		update.setUpdateBy(currentUserName());
+		update.setUpdateTime(now);
+		if (contractPaymentMapper.updateById(update) <= 0) {
+			throw new ServiceException("账单附件保存失败");
+		}
+		addLog(existing.getContractId(), "payment_attachment", "上传账单附件：" + update.getAttachmentName());
+		return paymentMapper.selectPaymentById(paymentId);
 	}
 
 	@Override
@@ -299,6 +417,178 @@ public class PaymentServiceImpl implements IPaymentService {
 		return paymentNoticeMapper.selectNoticeByPaymentId(paymentId);
 	}
 
+	private void attachContractRooms(List<Contract> contracts) {
+		if (contracts == null || contracts.isEmpty()) {
+			return;
+		}
+		Set<Long> allRoomIds = new LinkedHashSet<>();
+		for (Contract contract : contracts) {
+			allRoomIds.addAll(contractRoomIds(contract));
+		}
+		if (allRoomIds.isEmpty()) {
+			return;
+		}
+		Map<Long, Room> roomMap = roomMap(new ArrayList<>(allRoomIds));
+		for (Contract contract : contracts) {
+			List<Room> rooms = new ArrayList<>();
+			for (Long roomId : contractRoomIds(contract)) {
+				Room room = roomMap.get(roomId);
+				if (room != null) {
+					rooms.add(room);
+				}
+			}
+			contract.setRooms(rooms);
+		}
+	}
+
+	private PaymentRoomSelection resolvePaymentRoomSelection(Contract contract, String requestedRoomIds) {
+		List<Long> contractRoomIds = contractRoomIds(contract);
+		List<Long> selectedRoomIds = parseRoomIds(requestedRoomIds);
+		if (selectedRoomIds.isEmpty()) {
+			selectedRoomIds = contractRoomIds;
+		}
+		if (!contractRoomIds.isEmpty()) {
+			Set<Long> allowedRoomIds = new LinkedHashSet<>(contractRoomIds);
+			for (Long roomId : selectedRoomIds) {
+				if (!allowedRoomIds.contains(roomId)) {
+					throw new ServiceException("所选房源不属于当前合同");
+				}
+			}
+		} else if (!selectedRoomIds.isEmpty()) {
+			throw new ServiceException("当前合同未配置可选房源");
+		}
+		if (selectedRoomIds.isEmpty()) {
+			return new PaymentRoomSelection("", contract == null ? "" : Func.toStr(contract.getRoomName(), ""),
+				contract == null ? "" : Func.toStr(contract.getBuildingName(), ""));
+		}
+		Map<Long, Room> roomMap = roomMap(selectedRoomIds);
+		List<Room> selectedRooms = new ArrayList<>();
+		for (Long roomId : selectedRoomIds) {
+			Room room = roomMap.get(roomId);
+			if (room == null) {
+				throw new ServiceException("所选房源不存在或已被删除");
+			}
+			selectedRooms.add(room);
+		}
+		return new PaymentRoomSelection(joinLongs(selectedRoomIds), joinRoomNames(selectedRooms), joinBuildingNames(selectedRooms));
+	}
+
+	private Map<Long, Room> roomMap(List<Long> roomIds) {
+		Map<Long, Room> roomMap = new LinkedHashMap<>();
+		if (roomIds == null || roomIds.isEmpty()) {
+			return roomMap;
+		}
+		for (Room room : paymentMapper.selectRoomsByIds(roomIds)) {
+			if (room.getId() != null) {
+				roomMap.put(room.getId(), room);
+			}
+		}
+		return roomMap;
+	}
+
+	private List<Long> contractRoomIds(Contract contract) {
+		LinkedHashSet<Long> roomIds = new LinkedHashSet<>();
+		if (contract == null) {
+			return new ArrayList<>();
+		}
+		if (contract.getRoomId() != null) {
+			roomIds.add(contract.getRoomId());
+		}
+		roomIds.addAll(parseRoomIds(contract.getRoomIds()));
+		return new ArrayList<>(roomIds);
+	}
+
+	private List<Long> parseRoomIds(String source) {
+		LinkedHashSet<Long> roomIds = new LinkedHashSet<>();
+		if (StringUtil.isBlank(source)) {
+			return new ArrayList<>();
+		}
+		for (String item : source.split("[,，、]")) {
+			String normalized = Func.toStr(item, "").replace("room_", "").trim();
+			if (StringUtil.isBlank(normalized)) {
+				continue;
+			}
+			try {
+				roomIds.add(Long.valueOf(normalized));
+			} catch (NumberFormatException ignored) {
+				// Ignore invalid historical room id fragments.
+			}
+		}
+		return new ArrayList<>(roomIds);
+	}
+
+	private String joinLongs(List<Long> values) {
+		List<String> items = new ArrayList<>();
+		for (Long value : values) {
+			if (value != null) {
+				items.add(String.valueOf(value));
+			}
+		}
+		return String.join(",", items);
+	}
+
+	private String joinRoomNames(List<Room> rooms) {
+		List<String> items = new ArrayList<>();
+		for (Room room : rooms) {
+			if (room != null && !StringUtil.isBlank(room.getName())) {
+				items.add(room.getName());
+			}
+		}
+		return String.join("、", items);
+	}
+
+	private String joinBuildingNames(List<Room> rooms) {
+		LinkedHashSet<String> items = new LinkedHashSet<>();
+		for (Room room : rooms) {
+			if (room != null && !StringUtil.isBlank(room.getBuildingName())) {
+				items.add(room.getBuildingName());
+			}
+		}
+		return String.join("、", items);
+	}
+
+	private String normalizeDirection(String direction) {
+		String value = Func.toStr(direction, DIRECTION_RECEIVABLE).trim();
+		if (!DIRECTION_RECEIVABLE.equals(value) && !DIRECTION_PAYABLE.equals(value)) {
+			throw new ServiceException("账单方向不正确");
+		}
+		return value;
+	}
+
+	private void validateCreatePayment(ContractPayment payment) {
+		if (StringUtil.isBlank(payment.getFeeType()) || StringUtil.isBlank(payment.getFeeName())) {
+			throw new ServiceException("请选择费用类型");
+		}
+		if (payment.getPeriodStart() == null || payment.getPeriodEnd() == null) {
+			throw new ServiceException("请选择计费周期");
+		}
+		if (payment.getPeriodStart().after(payment.getPeriodEnd())) {
+			throw new ServiceException("计费周期开始日期不能晚于结束日期");
+		}
+		if (payment.getAmountDue() == null || payment.getAmountDue().compareTo(BigDecimal.ZERO) <= 0) {
+			throw new ServiceException("账单金额必须大于0");
+		}
+		if (payment.getPayDeadline() == null) {
+			throw new ServiceException("请选择应收/应付日期");
+		}
+		assertNonNegative(payment.getTaxRate(), "税率");
+		assertNonNegative(payment.getLateFeeRatio(), "滞纳金比例");
+		assertNonNegative(payment.getLateFeeCap(), "滞纳金上限");
+		if (payment.getLateFeeStartDays() != null && payment.getLateFeeStartDays() < 0) {
+			throw new ServiceException("滞纳金起算天数不能小于0");
+		}
+	}
+
+	private void assertNonNegative(BigDecimal value, String fieldName) {
+		if (value != null && value.compareTo(BigDecimal.ZERO) < 0) {
+			throw new ServiceException(fieldName + "不能小于0");
+		}
+	}
+
+	private String directionName(String direction) {
+		return DIRECTION_PAYABLE.equals(direction) ? "付款" : "收款";
+	}
+
 	private ContractPayment normalizeQuery(ContractPayment payment) {
 		ContractPayment query = payment == null ? new ContractPayment() : payment;
 		if (!AuthUtil.isAdministrator()) {
@@ -435,6 +725,20 @@ public class PaymentServiceImpl implements IPaymentService {
 
 	private BigDecimal nullToZero(BigDecimal value) {
 		return value == null ? BigDecimal.ZERO : value;
+	}
+
+	private static class PaymentRoomSelection {
+
+		private final String roomIds;
+		private final String roomName;
+		private final String buildingName;
+
+		private PaymentRoomSelection(String roomIds, String roomName, String buildingName) {
+			this.roomIds = roomIds;
+			this.roomName = roomName;
+			this.buildingName = buildingName;
+		}
+
 	}
 
 }

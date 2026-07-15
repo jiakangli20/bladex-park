@@ -22,6 +22,18 @@
         <result column="create_time" property="createTime"/>
         <result column="update_by" property="updateBy"/>
         <result column="update_time" property="updateTime"/>
+        <result column="direction" property="direction"/>
+        <result column="tax_rate" property="taxRate"/>
+        <result column="special_bill_type" property="specialBillType"/>
+        <result column="late_fee_start_days" property="lateFeeStartDays"/>
+        <result column="late_fee_ratio" property="lateFeeRatio"/>
+        <result column="late_fee_cap" property="lateFeeCap"/>
+        <result column="company_name" property="companyName"/>
+        <result column="attachment_name" property="attachmentName"/>
+        <result column="attachment_url" property="attachmentUrl"/>
+        <result column="selected_room_ids" property="selectedRoomIds"/>
+        <result column="selected_room_name" property="selectedRoomName"/>
+        <result column="selected_building_name" property="selectedBuildingName"/>
         <result column="contract_no" property="contractNo"/>
         <result column="customer_name" property="customerName"/>
         <result column="contract_name" property="contractName"/>
@@ -64,11 +76,23 @@
             p.create_time,
             p.update_by,
             p.update_time,
+            p.direction,
+            p.tax_rate,
+            p.special_bill_type,
+            p.late_fee_start_days,
+            p.late_fee_ratio,
+            p.late_fee_cap,
+            p.company_name,
+            p.attachment_name,
+            p.attachment_url,
+            p.selected_room_ids,
+            p.selected_room_name,
+            p.selected_building_name,
             c.contract_no,
             c.customer_name,
             c.contract_name,
-            c.room_name,
-            c.building_name,
+            COALESCE(p.selected_room_name, c.room_name) AS room_name,
+            COALESCE(p.selected_building_name, c.building_name) AS building_name,
             c.contract_status,
             CASE c.contract_status
                 WHEN '0' THEN '待审批'

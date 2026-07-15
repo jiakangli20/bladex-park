@@ -128,7 +128,7 @@
 
 	<select id="selectNoticeSummary" resultMap="summaryResultMap">
 		SELECT
-			COUNT(1) AS generated_count,
+			COUNT(n.notice_id) AS generated_count,
 			SUM(CASE WHEN COALESCE(n.sms_status, 'pending') = 'success' THEN 1 ELSE 0 END) AS sms_success_count,
 			SUM(CASE WHEN COALESCE(n.email_status, 'pending') = 'success' THEN 1 ELSE 0 END) AS email_success_count,
 			SUM(CASE WHEN COALESCE(n.inbox_status, 'pending') = 'success' THEN 1 ELSE 0 END) AS inbox_success_count,

@@ -6,6 +6,7 @@ package org.springblade.modules.ics.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
+import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.ics.pojo.vo.OverdueDisposalDetailVO;
@@ -14,6 +15,7 @@ import org.springblade.modules.ics.pojo.vo.PaymentNoticeSummaryVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeVO;
 import org.springblade.modules.ics.pojo.vo.PaymentSummaryVO;
 
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -58,6 +60,22 @@ public interface IPaymentService {
 	PaymentSummaryVO summary(ContractPayment payment);
 
 	/**
+	 * 创建手工账单.
+	 *
+	 * @param payment 账单数据
+	 * @return 新账单
+	 */
+	ContractPayment create(ContractPayment payment);
+
+	/**
+	 * 查询可创建账单的合同选项.
+	 *
+	 * @param keyword 关键字
+	 * @return 合同选项
+	 */
+	List<Contract> contractOptions(String keyword);
+
+	/**
 	 * 确认缴费.
 	 *
 	 * @param paymentId 账单ID
@@ -65,6 +83,24 @@ public interface IPaymentService {
 	 * @return 是否成功
 	 */
 	boolean confirm(Long paymentId, ContractPayment payment);
+
+	/**
+	 * 调整账单日期.
+	 *
+	 * @param paymentId   账单ID
+	 * @param payDeadline 应收/应付日期
+	 * @return 是否成功
+	 */
+	boolean updateDeadline(Long paymentId, Date payDeadline);
+
+	/**
+	 * 更新账单附件.
+	 *
+	 * @param paymentId 账单ID
+	 * @param payment   附件数据
+	 * @return 更新后的账单
+	 */
+	ContractPayment updateAttachment(Long paymentId, ContractPayment payment);
 
 	/**
 	 * 催缴.

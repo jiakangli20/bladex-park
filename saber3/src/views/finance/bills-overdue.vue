@@ -28,17 +28,6 @@
               <el-date-picker v-model="query.periodEndDate" type="date" value-format="YYYY-MM-DD" placeholder="选择结束时间" clearable />
             </el-form-item>
 
-            <el-form-item label="创建时间">
-              <el-date-picker
-                v-model="query.createRange"
-                type="daterange"
-                value-format="YYYY-MM-DD"
-                start-placeholder="开始时间"
-                end-placeholder="结束时间"
-                range-separator="-"
-                clearable
-              />
-            </el-form-item>
             <el-form-item label="结清状态">
               <el-select v-model="query.settleStatus" clearable placeholder="请选择结清状态">
                 <el-option label="未结清" value="unsettled" />
@@ -56,10 +45,6 @@
                 clearable
               />
             </el-form-item>
-            <el-form-item label="项目名称">
-              <el-select v-model="query.projectName" clearable placeholder="请选择项目名称" disabled />
-            </el-form-item>
-
             <el-form-item label="楼宇名称">
               <el-select v-model="query.buildingNameQuery" clearable filterable placeholder="请选择楼宇名称">
                 <el-option v-for="item in buildingOptions" :key="item" :label="item" :value="item" />
@@ -67,9 +52,6 @@
             </el-form-item>
             <el-form-item label="租客名称">
               <el-input v-model="query.customerName" clearable placeholder="请填写租客名称" @keyup.enter="searchChange" />
-            </el-form-item>
-            <el-form-item label="所属公司">
-              <el-select v-model="query.companyName" clearable placeholder="请选择所属公司" disabled />
             </el-form-item>
             <div class="overdue-search-actions">
               <el-button icon="el-icon-refresh-left" @click="searchReset">重置</el-button>
@@ -113,13 +95,13 @@
             </template>
           </el-table-column>
           <el-table-column prop="feeName" label="费用类型" width="120" align="center" show-overflow-tooltip />
-          <el-table-column prop="amountDue" label="应收金额" width="130" align="right" header-align="right">
+          <el-table-column prop="amountDue" label="应收金额" width="130" align="center">
             <template #default="{ row }">{{ formatMoney(row.amountDue) }}</template>
           </el-table-column>
-          <el-table-column prop="amountPaid" label="实收金额" width="130" align="right" header-align="right">
+          <el-table-column prop="amountPaid" label="实收金额" width="130" align="center">
             <template #default="{ row }">{{ formatMoney(row.amountPaid) }}</template>
           </el-table-column>
-          <el-table-column label="需收金额" width="130" align="right" header-align="right">
+          <el-table-column label="需收金额" width="130" align="center">
             <template #default="{ row }">{{ formatMoney(unpaidAmount(row)) }}</template>
           </el-table-column>
           <el-table-column prop="periodStart" label="开始日期" width="130" align="center" />
@@ -132,11 +114,6 @@
           </el-table-column>
           <el-table-column label="逾期天数" width="110" align="center">
             <template #default="{ row }">{{ overdueDays(row) }}天</template>
-          </el-table-column>
-          <el-table-column label="操作" width="88" align="center" fixed="right">
-            <template #default="{ row }">
-              <el-button text type="primary" @click="openBillDrawer(row)">处理</el-button>
-            </template>
           </el-table-column>
         </el-table>
 
@@ -156,41 +133,156 @@
 
       <el-drawer
         v-model="drawerVisible"
-        title="逾期账单处理"
-        size="680px"
+        size="82%"
         append-to-body
         class="overdue-bill-drawer"
+        :with-header="false"
+        @closed="closeBillDrawer"
       >
-        <div v-if="drawerRow" class="drawer-body">
-          <section class="drawer-profile">
-            <div class="drawer-profile__main">
-              <span>租客名称</span>
-              <strong>{{ drawerRow.customerName || '-' }}</strong>
-              <em>{{ drawerRow.contractNo || '暂无合同编号' }}</em>
+        <div v-if="drawerRow" v-loading="drawerLoading" class="tenant-drawer">
+          <section class="tenant-drawer-header">
+            <div class="tenant-drawer-title">
+              <el-button text class="tenant-drawer-back" @click="drawerVisible = false">
+                <i class="el-icon-arrow-left"></i>
+              </el-button>
+              <strong>{{ drawerTenantName }}</strong>
             </div>
-            <el-tag type="danger" effect="plain">逾期 {{ overdueDays(drawerRow) }} 天</el-tag>
-          </section>
-
-          <section class="drawer-section">
-            <div class="drawer-section-title">账单信息</div>
-            <div class="drawer-field-grid">
-              <div v-for="item in drawerSummaryItems" :key="item.label" class="drawer-field">
-                <span>{{ item.label }}</span>
-                <strong>{{ item.value }}</strong>
-              </div>
+            <div class="tenant-drawer-actions">
+              <el-button type="primary" plain :disabled="!drawerRow.contractId" @click="openContract(drawerRow)">编辑</el-button>
+              <el-button type="warning" plain :disabled="!drawerRow.paymentId" @click="handleRemind(drawerRow)">记录催缴</el-button>
+              <el-button type="primary" :disabled="!drawerRow.paymentId" @click="goOverdueReminder(drawerRow)">逾期提醒</el-button>
             </div>
           </section>
 
-          <section class="drawer-section">
-            <div class="drawer-section-title">处理动作</div>
-            <div class="drawer-action-grid">
-              <el-button type="primary" plain @click="handleRemind(drawerRow)">记录催缴</el-button>
-              <el-button type="primary" plain @click="openContract(drawerRow)">查看合同</el-button>
-              <el-button type="warning" plain @click="goOverdueReminder(drawerRow)">进入逾期提醒</el-button>
-              <el-button v-if="permissionList.logBtn" plain @click="openLogDialog(drawerRow)">联动日志</el-button>
+          <section class="tenant-profile">
+            <div v-for="item in drawerTenantItems" :key="item.label" class="tenant-profile-item">
+              <span>{{ item.label }}：</span>
+              <strong>{{ item.value }}</strong>
+            </div>
+          </section>
+
+          <section class="tenant-tab-card">
+            <el-tabs v-model="drawerActiveTab" class="tenant-tabs">
+              <el-tab-pane label="合同" name="contract">
+                <el-table :data="drawerContracts" class="tenant-table" border empty-text="暂无合同">
+                  <el-table-column prop="contractNo" label="合同编号" min-width="180" align="center" show-overflow-tooltip>
+                    <template #default="{ row }">
+                      <el-button text type="primary" class="tenant-link" @click="openContract(row)">
+                        {{ row.contractNo || '-' }}
+                      </el-button>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="contractStatus" label="合同状态" width="120" align="center">
+                    <template #default="{ row }">
+                      <el-tag :type="contractStatusType(row.contractStatus)" effect="light">
+                        {{ contractStatusText(row.contractStatus) }}
+                      </el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="合同类型" width="130" align="center">
+                    <template #default="{ row }">{{ row.contractType || '普通合同' }}</template>
+                  </el-table-column>
+                  <el-table-column label="租赁单价" min-width="150" align="center">
+                    <template #default="{ row }">{{ rentPriceText(row) }}</template>
+                  </el-table-column>
+                  <el-table-column prop="signDate" label="签订日期" width="140" align="center">
+                    <template #default="{ row }">{{ dateOnly(row.signDate) || '-' }}</template>
+                  </el-table-column>
+                  <el-table-column label="合同来源" width="130" align="center">
+                    <template #default="{ row }">{{ row.parentContractId ? '续签合同' : '新建合同' }}</template>
+                  </el-table-column>
+                </el-table>
+              </el-tab-pane>
+
+              <el-tab-pane label="账单" name="bill">
+                <div class="tenant-bill-summary">
+                  <div v-for="item in drawerBillSummary" :key="item.key" class="tenant-bill-summary__item">
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.value }}</strong>
+                  </div>
+                </div>
+                <el-table :data="drawerBills" class="tenant-table" border empty-text="暂无账单">
+                  <el-table-column prop="contractNo" label="合同编号" min-width="170" align="center" show-overflow-tooltip />
+                  <el-table-column prop="feeName" label="费用类型" width="120" align="center" show-overflow-tooltip />
+                  <el-table-column label="账期" min-width="190" align="center">
+                    <template #default="{ row }">{{ row.periodStart || '--' }} 至 {{ row.periodEnd || '--' }}</template>
+                  </el-table-column>
+                  <el-table-column prop="payDeadline" label="应收日期" width="130" align="center" />
+                  <el-table-column label="应收金额" width="130" align="center">
+                    <template #default="{ row }">{{ formatMoney(row.amountDue) }}</template>
+                  </el-table-column>
+                  <el-table-column label="需收金额" width="130" align="center">
+                    <template #default="{ row }">{{ formatMoney(unpaidAmount(row)) }}</template>
+                  </el-table-column>
+                  <el-table-column label="逾期状态" width="110" align="center">
+                    <template #default="{ row }">
+                      <el-tag :type="overdueStatusType(row)" effect="plain">{{ overdueStatusText(row) }}</el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="结清状态" width="110" align="center">
+                    <template #default="{ row }">
+                      <el-tag :type="settleStatusType(row)" effect="plain">{{ settleStatusText(row) }}</el-tag>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </el-tab-pane>
+
+              <el-tab-pane label="附件" name="attachment">
+                <div class="tenant-attachment-toolbar">
+                  <el-upload
+                    ref="attachmentUploadRef"
+                    action="/api/blade-resource/oss/endpoint/put-file"
+                    :headers="uploadHeaders"
+                    :show-file-list="false"
+                    :disabled="!attachmentUploadPayment || attachmentUploadLoading"
+                    accept=".doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.pdf,.jpg,.jpeg,.png"
+                    :before-upload="beforeAttachmentUpload"
+                    :on-success="handleAttachmentUploadSuccess"
+                    :on-error="handleAttachmentUploadError"
+                  >
+                    <el-button type="primary" icon="el-icon-upload" :loading="attachmentUploadLoading" :disabled="!attachmentUploadPayment">
+                      上传附件
+                    </el-button>
+                  </el-upload>
+                </div>
+                <el-table :data="drawerAttachmentRows" class="tenant-table" border empty-text="暂无附件">
+                  <el-table-column prop="fileName" label="文件名称" min-width="220" align="center" show-overflow-tooltip />
+                  <el-table-column prop="source" label="来源" width="140" align="center" />
+                  <el-table-column prop="businessNo" label="关联编号" min-width="180" align="center" show-overflow-tooltip />
+                  <el-table-column label="操作" width="150" align="center" fixed="right">
+                    <template #default="{ row }">
+                      <div class="tenant-table-actions">
+                        <el-button text type="primary" @click="openAttachment(row)">查看</el-button>
+                        <el-button text type="primary" @click="downloadAttachment(row)">下载</el-button>
+                      </div>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </el-tab-pane>
+            </el-tabs>
+          </section>
+
+          <section v-if="permissionList.logBtn" class="drawer-section drawer-log-inline">
+            <div class="drawer-section-title">最近联动日志</div>
+            <div v-loading="drawerLogLoading" class="drawer-log-list">
+              <el-timeline v-if="drawerLogs.length">
+                <el-timeline-item
+                  v-for="item in drawerLogs.slice(0, 4)"
+                  :key="item.logId"
+                  :timestamp="item.operateTime"
+                  placement="top"
+                >
+                  <div class="drawer-log-item">
+                    <div class="drawer-log-title">{{ item.actionDesc || item.action }}</div>
+                    <div class="drawer-log-operator">{{ item.operator || '-' }}</div>
+                  </div>
+                </el-timeline-item>
+              </el-timeline>
+              <el-empty v-else description="暂无合同联动日志" :image-size="64" />
             </div>
           </section>
         </div>
+        <el-empty v-else description="请选择逾期账单" />
       </el-drawer>
 
       <el-dialog v-model="logDialogVisible" title="合同联动日志" width="680px" append-to-body>
@@ -211,6 +303,16 @@
           <el-empty v-else description="暂无合同联动日志" />
         </div>
       </el-dialog>
+
+      <notice-preview-dialog
+        v-model="noticePreview.visible"
+        :title="noticePreview.title"
+        :html="noticePreview.html"
+        :loading="noticePreview.loading"
+        :download-url="noticePreview.downloadUrl"
+        :download-label="noticePreview.downloadLabel"
+        @download="downloadPreviewFile"
+      />
     </div>
   </basic-container>
 </template>
@@ -218,16 +320,25 @@
 <script>
 import { mapGetters } from 'vuex';
 import {
+  getPaymentByContract,
   getOverduePaymentPage,
   getPaymentSummary,
   getPaymentNoticeBuildings,
   getOverduePaymentLogs,
   remindOverduePayment,
+  updatePaymentAttachment,
 } from '@/api/ics/payment';
+import { getList as getContractList } from '@/api/contract/contract';
 import { feeTypeDic } from '@/option/finance/payment';
+import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
+import { createNoticePreviewState, downloadNoticeFile, openAttachmentPreview } from '@/utils/contract-notice';
+import { getToken } from '@/utils/auth';
 
 export default {
   name: 'FinanceBillsOverdue',
+  components: {
+    NoticePreviewDialog,
+  },
   data() {
     return {
       query: {
@@ -235,13 +346,10 @@ export default {
         feeType: '',
         periodStartDate: '',
         periodEndDate: '',
-        createRange: [],
         settleStatus: '',
         deadlineRange: [],
-        projectName: '',
         buildingNameQuery: '',
         customerName: '',
-        companyName: '',
       },
       summary: {},
       buildingOptions: [],
@@ -250,8 +358,18 @@ export default {
       selectionList: [],
       drawerVisible: false,
       drawerRow: null,
+      drawerLoading: false,
+      drawerActiveTab: 'contract',
+      drawerContracts: [],
+      drawerBills: [],
       drawerLogs: [],
       drawerLogLoading: false,
+      attachmentUploadLoading: false,
+      uploadHeaders: {
+        'Blade-Auth': `bearer ${getToken()}`,
+        'Blade-Requested-With': 'BladeHttpRequest',
+      },
+      noticePreview: createNoticePreviewState(),
       logDialogVisible: false,
       page: {
         currentPage: 1,
@@ -282,21 +400,94 @@ export default {
       const names = new Set((this.data || []).map(item => item.customerName).filter(Boolean));
       return names.size || 0;
     },
-    drawerSummaryItems() {
+    drawerTenantName() {
       const row = this.drawerRow || {};
-      if (!row.paymentId) return [];
+      return row.customerName || '-';
+    },
+    drawerTenantItems() {
+      const row = this.drawerRow || {};
       return [
-        { label: '账单编号', value: `ZD${row.paymentId}` },
-        { label: '楼宇名称', value: row.buildingName || '-' },
-        { label: '房源信息', value: row.roomName || '-' },
-        { label: '费用类型', value: row.feeName || '-' },
-        { label: '账期', value: `${row.periodStart || '--'} 至 ${row.periodEnd || '--'}` },
-        { label: '应收金额', value: this.formatMoney(row.amountDue) },
-        { label: '实收金额', value: this.formatMoney(row.amountPaid) },
-        { label: '需收金额', value: this.formatMoney(this.unpaidAmount(row)) },
-        { label: '应收日期', value: row.payDeadline || '-' },
-        { label: '结清状态', value: row.payStatus === '1' ? '已结清' : '逾期' },
-        { label: '逾期天数', value: `${this.overdueDays(row)}天` },
+        { label: '联系人', value: row.customerName || '--' },
+        { label: '行业分类', value: row.industryCategory || '--' },
+        { label: '租客标签', value: row.customerTag || '--' },
+        { label: '邮箱', value: row.email || row.contactEmail || '--' },
+        { label: '租客编码', value: row.customerCode || '--' },
+      ];
+    },
+    drawerBillSummary() {
+      const bills = this.drawerBills || [];
+      const overdueBills = bills.filter(item => item.payStatus !== '1' && this.overdueDays(item) > 0);
+      const amountDue = bills.reduce((total, item) => total + Number(item.amountDue || 0), 0);
+      const pending = bills.reduce((total, item) => total + this.unpaidAmount(item), 0);
+      return [
+        { key: 'total', label: '账单数', value: bills.length },
+        { key: 'overdue', label: '逾期账单', value: overdueBills.length },
+        { key: 'amount', label: '应收金额', value: this.formatMoney(amountDue) },
+        { key: 'pending', label: '需收金额', value: this.formatMoney(pending) },
+      ];
+    },
+    drawerAttachmentRows() {
+      const rows = [];
+      (this.drawerContracts || []).forEach(contract => {
+        if (contract.contractFileUrl) {
+          rows.push({
+            fileName: `${contract.contractNo || '合同'}正文`,
+            source: '合同',
+            businessNo: contract.contractNo || '-',
+            url: contract.contractFileUrl,
+            fileUrl: contract.contractFileUrl,
+          });
+        }
+      });
+      (this.drawerBills || []).forEach(bill => {
+        if (bill.attachmentUrl) {
+          rows.push({
+            fileName: bill.attachmentName || `${bill.feeName || '账单'}附件`,
+            source: '账单',
+            businessNo: bill.paymentId ? `ZD${bill.paymentId}` : bill.contractNo || '-',
+            url: bill.attachmentUrl,
+            fileUrl: bill.attachmentUrl,
+            paymentId: bill.paymentId,
+          });
+        }
+      });
+      return rows;
+    },
+    attachmentUploadPayment() {
+      if (this.drawerRow && this.drawerRow.paymentId) {
+        return this.drawerRow;
+      }
+      return (this.drawerBills || []).find(item => item.paymentId) || null;
+    },
+    contractIdList() {
+      const ids = new Set();
+      (this.drawerContracts || []).forEach(item => {
+        if (item.contractId) ids.add(String(item.contractId));
+      });
+      if (this.drawerRow && this.drawerRow.contractId) {
+        ids.add(String(this.drawerRow.contractId));
+      }
+      return Array.from(ids);
+    },
+    contractNoMap() {
+      return (this.drawerContracts || []).reduce((result, item) => {
+        if (item.contractId) {
+          result[String(item.contractId)] = item.contractNo || '';
+        }
+        return result;
+      }, {});
+    },
+    contractStatusOptions() {
+      return [
+        { value: '0', label: '待审批', type: 'warning' },
+        { value: '1', label: '正常执行中', type: 'success' },
+        { value: '2', label: '已到期', type: 'danger' },
+        { value: '3', label: '已续签', type: 'success' },
+        { value: '4', label: '已退租', type: 'info' },
+        { value: '5', label: '待盖章', type: 'warning' },
+        { value: '6', label: '退租中', type: 'warning' },
+        { value: '7', label: '退租交接中', type: 'warning' },
+        { value: '8', label: '房屋验收中', type: 'warning' },
       ];
     },
   },
@@ -375,10 +566,6 @@ export default {
         params.periodEndBegin = this.toDayStart(this.query.periodEndDate);
         params.periodEndEnd = this.toDayEnd(this.query.periodEndDate);
       }
-      if (Array.isArray(this.query.createRange) && this.query.createRange.length === 2) {
-        params.createStartDate = this.toDayStart(this.query.createRange[0]);
-        params.createEndDate = this.toDayEnd(this.query.createRange[1]);
-      }
       if (Array.isArray(this.query.deadlineRange) && this.query.deadlineRange.length === 2) {
         params.deadlineStartDate = this.toDayStart(this.query.deadlineRange[0]);
         params.deadlineEndDate = this.toDayEnd(this.query.deadlineRange[1]);
@@ -415,13 +602,10 @@ export default {
         feeType: '',
         periodStartDate: '',
         periodEndDate: '',
-        createRange: [],
         settleStatus: '',
         deadlineRange: [],
-        projectName: '',
         buildingNameQuery: '',
         customerName: '',
-        companyName: '',
       };
       this.page.currentPage = 1;
       this.reload();
@@ -440,7 +624,97 @@ export default {
     },
     openBillDrawer(row) {
       this.drawerRow = { ...(row || {}) };
+      this.drawerActiveTab = 'contract';
       this.drawerVisible = true;
+      this.loadTenantDrawerData(row);
+    },
+    closeBillDrawer() {
+      this.drawerRow = null;
+      this.drawerLoading = false;
+      this.drawerActiveTab = 'contract';
+      this.drawerContracts = [];
+      this.drawerBills = [];
+      this.drawerLogs = [];
+      this.attachmentUploadLoading = false;
+    },
+    loadTenantDrawerData(row) {
+      if (!row) return;
+      this.drawerLoading = true;
+      this.drawerContracts = [];
+      this.drawerBills = [];
+      this.drawerLogs = [];
+      this.loadDrawerContracts(row)
+        .then(() => this.loadDrawerBills(row))
+        .then(() => {
+          if (this.permissionList.logBtn) {
+            return this.loadDrawerLogs(row);
+          }
+          return null;
+        })
+        .finally(() => {
+          this.drawerLoading = false;
+        });
+    },
+    loadDrawerContracts(row) {
+      const customerName = row && row.customerName;
+      if (!customerName) {
+        this.drawerContracts = this.fallbackContractRows(row);
+        return Promise.resolve();
+      }
+      return getContractList(1, 50, { customerName })
+        .then(res => {
+          const result = res.data.data || {};
+          const records = result.records || [];
+          this.drawerContracts = records.length ? records : this.fallbackContractRows(row);
+        })
+        .catch(() => {
+          this.drawerContracts = this.fallbackContractRows(row);
+        });
+    },
+    loadDrawerBills(row) {
+      const ids = this.contractIdList;
+      if (!ids.length) {
+        this.drawerBills = row && row.paymentId ? [{ ...row }] : [];
+        return Promise.resolve();
+      }
+      return Promise.all(ids.map(contractId => getPaymentByContract(contractId).catch(() => ({ data: { data: [] } }))))
+        .then(results => {
+          const bills = [];
+          results.forEach(res => {
+            const list = (res.data && res.data.data) || [];
+            list.forEach(item => {
+              bills.push({
+                ...item,
+                contractNo: item.contractNo || this.contractNoMap[String(item.contractId)] || row.contractNo,
+                customerName: item.customerName || row.customerName,
+              });
+            });
+          });
+          if (!bills.length && row && row.paymentId) {
+            bills.push({ ...row });
+          }
+          this.drawerBills = bills.sort((left, right) => this.billSortValue(right) - this.billSortValue(left));
+        });
+    },
+    fallbackContractRows(row) {
+      if (!row || !row.contractId) return [];
+      return [
+        {
+          contractId: row.contractId,
+          contractNo: row.contractNo,
+          contractName: row.contractName,
+          customerName: row.customerName,
+          buildingName: row.buildingName,
+          roomName: row.roomName,
+          contractStatus: row.contractStatus,
+          contractStatusName: row.contractStatusName,
+        },
+      ];
+    },
+    billSortValue(row) {
+      const overdueWeight = row && row.payStatus !== '1' && this.overdueDays(row) > 0 ? 10000000000000 : 0;
+      const deadline = row && row.payDeadline ? new Date(row.payDeadline).getTime() : 0;
+      return overdueWeight + (Number.isNaN(deadline) ? 0 : deadline);
     },
     openLogDialog(row) {
       if (!this.permissionList.logBtn) return;
@@ -463,18 +737,28 @@ export default {
     },
     handleRemind(row) {
       if (!row || !row.paymentId) return;
-      remindOverduePayment(row.paymentId).then(() => {
-        this.$message.success('催缴提醒已记录');
-        this.drawerRow = {
-          ...this.drawerRow,
-          remindStatus: '1',
-          remindTime: this.formatDate(new Date()),
-        };
-        if (this.logDialogVisible && this.permissionList.logBtn) {
-          this.loadDrawerLogs(row);
-        }
-        this.reload();
-      });
+      this.$confirm(`确定记录“${row.customerName || '该租客'}”本次催缴吗？`, '记录催缴', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      })
+        .then(() => remindOverduePayment(row.paymentId))
+        .then(() => {
+          this.$message.success('催缴提醒已记录');
+          this.drawerRow = {
+            ...this.drawerRow,
+            remindStatus: '1',
+            remindTime: this.formatDate(new Date()),
+          };
+          this.drawerBills = this.drawerBills.map(item => (item.paymentId === row.paymentId
+            ? { ...item, remindStatus: '1', remindTime: this.formatDate(new Date()) }
+            : item));
+          if (this.permissionList.logBtn) {
+            this.loadDrawerLogs(row);
+          }
+          this.reload();
+        })
+        .catch(() => {});
     },
     openContract(row) {
       if (!row || !row.contractId) return;
@@ -494,13 +778,149 @@ export default {
         },
       });
     },
+    contractStatusText(value) {
+      const item = this.contractStatusOptions.find(option => String(option.value) === String(value));
+      return item ? item.label : '未知';
+    },
+    contractStatusType(value) {
+      const item = this.contractStatusOptions.find(option => String(option.value) === String(value));
+      return item ? item.type : 'info';
+    },
+    overdueStatusText(row) {
+      return this.overdueDays(row) > 0 && row.payStatus !== '1' ? '逾期' : '正常';
+    },
+    overdueStatusType(row) {
+      return this.overdueDays(row) > 0 && row.payStatus !== '1' ? 'danger' : 'info';
+    },
+    settleStatusText(row) {
+      if (!row) return '-';
+      if (row.payStatus === '1') return '已支付';
+      if (row.payStatus === '3') return '部分支付';
+      return '未支付';
+    },
+    settleStatusType(row) {
+      if (!row) return 'info';
+      if (row.payStatus === '1') return 'primary';
+      if (row.payStatus === '3') return 'warning';
+      return 'danger';
+    },
+    rentPriceText(row) {
+      const price = Number((row && row.rentPrice) || 0);
+      if (!price) return '-';
+      const unit = row.rentUnit || row.rentIncreaseUnit || '元/㎡·天';
+      return `${this.formatMoney(price)}${unit}`;
+    },
+    beforeAttachmentUpload(file) {
+      const allowed = /\.(doc|docx|xls|xlsx|ppt|pptx|txt|pdf|jpg|jpeg|png)$/i.test(file.name || '');
+      const underLimit = file.size / 1024 / 1024 <= 10;
+      if (!allowed) this.$message.error('仅支持 doc、xls、ppt、txt、pdf、图片格式文件');
+      if (!underLimit) this.$message.error('文件大小不能超过 10MB');
+      if (!this.attachmentUploadPayment) this.$message.error('当前没有可关联的账单');
+      if (allowed && underLimit && this.attachmentUploadPayment) {
+        this.attachmentUploadLoading = true;
+      }
+      return allowed && underLimit && !!this.attachmentUploadPayment;
+    },
+    handleAttachmentUploadSuccess(response, file) {
+      const fileInfo = this.resolveUploadFile(response, file);
+      if (!fileInfo.url) {
+        this.attachmentUploadLoading = false;
+        this.$message.error('附件上传成功，但未返回文件地址');
+        return;
+      }
+      const payment = this.attachmentUploadPayment;
+      updatePaymentAttachment(payment.paymentId, {
+        attachmentName: fileInfo.name,
+        attachmentUrl: fileInfo.url,
+      })
+        .then(res => {
+          const updated = res.data.data || {
+            ...payment,
+            attachmentName: fileInfo.name,
+            attachmentUrl: fileInfo.url,
+          };
+          this.applyUpdatedPaymentAttachment(updated);
+          this.$message.success('附件已上传');
+        })
+        .finally(() => {
+          this.attachmentUploadLoading = false;
+          if (this.$refs.attachmentUploadRef && this.$refs.attachmentUploadRef.clearFiles) {
+            this.$refs.attachmentUploadRef.clearFiles();
+          }
+        });
+    },
+    handleAttachmentUploadError(error) {
+      this.attachmentUploadLoading = false;
+      this.$message.error((error && error.message) || '附件上传失败');
+    },
+    resolveUploadFile(response, file) {
+      if (!response || response.success === false) {
+        this.$message.error((response && response.msg) || '附件上传失败');
+        return {};
+      }
+      const data = response.data || {};
+      const url = typeof data === 'string'
+        ? data
+        : data.link || data.url || data.path || response.link || response.url || '';
+      return {
+        name: (file && file.name) || data.originalName || data.name || '账单附件',
+        url,
+      };
+    },
+    applyUpdatedPaymentAttachment(updated) {
+      const paymentId = updated.paymentId;
+      this.drawerBills = this.drawerBills.map(item => (item.paymentId === paymentId ? { ...item, ...updated } : item));
+      this.data = this.data.map(item => (item.paymentId === paymentId ? { ...item, ...updated } : item));
+      if (this.drawerRow && this.drawerRow.paymentId === paymentId) {
+        this.drawerRow = { ...this.drawerRow, ...updated };
+      }
+      if (this.permissionList.logBtn) {
+        this.loadDrawerLogs(updated);
+      }
+    },
+    openAttachment(row) {
+      if (!row || !row.url) {
+        this.$message.warning('附件地址不存在');
+        return;
+      }
+      openAttachmentPreview(
+        this.noticePreview,
+        {
+          fileUrl: row.url,
+          fileName: row.fileName,
+          sourceName: `${row.source || '附件'} ${row.businessNo || ''}`.trim(),
+        },
+        '附件预览'
+      );
+    },
+    downloadAttachment(row) {
+      if (!row || !row.url) {
+        this.$message.warning('附件地址不存在');
+        return;
+      }
+      downloadNoticeFile(row.url, row.fileName || '附件').catch(() => {
+        this.$message.error('附件下载失败，请稍后重试');
+      });
+    },
+    downloadPreviewFile() {
+      downloadNoticeFile(this.noticePreview.downloadUrl, this.noticePreview.fallbackName || '附件').catch(() => {
+        this.$message.error('附件下载失败，请稍后重试');
+      });
+    },
     batchRemind() {
       const rows = this.selectionList || [];
       if (!rows.length) return;
-      Promise.all(rows.map(row => remindOverduePayment(row.paymentId))).then(() => {
-        this.$message.success('批量催缴已记录');
-        this.reload();
-      });
+      this.$confirm(`确定对已选 ${rows.length} 条逾期账单记录催缴吗？`, '批量催缴', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      })
+        .then(() => Promise.all(rows.map(row => remindOverduePayment(row.paymentId))))
+        .then(() => {
+          this.$message.success('批量催缴已记录');
+          this.reload();
+        })
+        .catch(() => {});
     },
     handleExport() {
       this.$message.info('导出接口预留中，后续接入逾期账单导出服务');
@@ -528,6 +948,9 @@ export default {
       const m = String(date.getMonth() + 1).padStart(2, '0');
       const d = String(date.getDate()).padStart(2, '0');
       return `${y}-${m}-${d}`;
+    },
+    dateOnly(value) {
+      return value ? String(value).slice(0, 10) : '';
     },
   },
 };
@@ -635,6 +1058,10 @@ export default {
   width: 100%;
 }
 
+.overdue-table :deep(.el-table__cell) {
+  text-align: center;
+}
+
 .link-like,
 .customer-link {
   color: #2f8cff;
@@ -653,55 +1080,186 @@ export default {
   padding: 12px 16px;
 }
 
-.drawer-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.tenant-drawer {
+  min-height: 100%;
+  background: #f4f4f6;
 }
 
-.drawer-profile,
-.drawer-section {
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  background: #fff;
-}
-
-.drawer-profile {
-  min-height: 96px;
-  padding: 18px;
+.tenant-drawer-header {
+  min-height: 64px;
+  padding: 0 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  background: #fff;
 }
 
-.drawer-profile__main {
+.tenant-drawer-title,
+.tenant-drawer-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tenant-drawer-title {
+  min-width: 0;
+}
+
+.tenant-drawer-title strong {
+  min-width: 0;
+  color: #303133;
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tenant-drawer-back {
+  width: 24px;
+  height: 32px;
+  padding: 0;
+  color: #606266;
+}
+
+.tenant-profile {
+  min-height: 76px;
+  padding: 0 18px 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 28px;
+  background: #fff;
+}
+
+.tenant-profile-item {
   min-width: 0;
   display: flex;
+  align-items: center;
+  color: #303133;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.tenant-profile-item span {
+  flex: 0 0 auto;
+  color: #303133;
+}
+
+.tenant-profile-item strong {
+  min-width: 0;
+  color: #303133;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tenant-tab-card {
+  margin-top: 14px;
+  padding: 0 18px 20px;
+  background: #fff;
+}
+
+.tenant-tabs :deep(.el-tabs__header) {
+  height: 72px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.tenant-tabs :deep(.el-tabs__nav-wrap::after) {
+  height: 0;
+}
+
+.tenant-tabs :deep(.el-tabs__item) {
+  height: 72px;
+  padding: 0 16px;
+  color: #303133;
+  font-size: 15px;
+  line-height: 72px;
+}
+
+.tenant-tabs :deep(.el-tabs__item.is-active) {
+  color: #1677ff;
+}
+
+.tenant-table {
+  width: 100%;
+  border-radius: 0;
+}
+
+.tenant-attachment-toolbar {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.tenant-table :deep(.el-table__cell) {
+  height: 53px;
+}
+
+.tenant-link {
+  padding: 0;
+}
+
+.tenant-bill-summary {
+  margin-bottom: 14px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tenant-bill-summary__item {
+  min-height: 64px;
+  padding: 10px 16px;
+  display: flex;
   flex-direction: column;
-  gap: 6px;
+  justify-content: center;
+  background: #fafafa;
 }
 
-.drawer-profile__main span,
-.drawer-field span {
-  color: #6b7280;
-  font-size: 12px;
+.tenant-bill-summary__item + .tenant-bill-summary__item {
+  border-left: 1px solid #ebeef5;
 }
 
-.drawer-profile__main strong {
-  color: #111827;
-  font-size: 20px;
-  line-height: 26px;
-}
-
-.drawer-profile__main em {
+.tenant-bill-summary__item span {
   color: #909399;
-  font-style: normal;
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.tenant-bill-summary__item strong {
+  margin-top: 4px;
+  color: #303133;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+.tenant-table-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.tenant-table-actions :deep(.el-button) {
+  margin-left: 0;
 }
 
 .drawer-section {
+  margin: 14px 18px 20px;
   padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
 }
 
 .drawer-section-title {
@@ -709,41 +1267,6 @@ export default {
   color: #1f2937;
   font-size: 15px;
   font-weight: 600;
-}
-
-.drawer-field-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.drawer-field {
-  min-height: 66px;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid #ebeef5;
-  background: #fafafa;
-}
-
-.drawer-field strong {
-  display: block;
-  margin-top: 6px;
-  color: #111827;
-  font-size: 14px;
-  line-height: 20px;
-  word-break: break-all;
-}
-
-.drawer-action-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.drawer-action-grid :deep(.el-button) {
-  width: 100%;
-  min-height: 34px;
-  margin-left: 0;
 }
 
 .drawer-log-list {
@@ -803,13 +1326,18 @@ export default {
   white-space: nowrap;
 }
 
+.overdue-bill-drawer :deep(.el-drawer__body) {
+  padding: 0;
+  background: #f4f4f6;
+}
+
 @media (max-width: 1300px) {
   .overdue-search-grid {
     grid-template-columns: repeat(2, minmax(190px, 1fr));
   }
 
-  .drawer-field-grid,
-  .drawer-action-grid {
+  .tenant-profile,
+  .tenant-bill-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -262,6 +262,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		Date now = DateUtil.now();
 		ContractPayment payment = new ContractPayment();
 		payment.setContractId(contractId);
+		payment.setDirection("payable");
 		payment.setFeeType(FEE_TYPE_DEPOSIT_REFUND);
 		payment.setFeeName("押金退还");
 		payment.setPeriodStart(now);
@@ -826,6 +827,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private void insertPeriodPayment(Contract contract, String feeType, String feeName, Date periodStart, Date periodEnd, BigDecimal amountDue) {
 		ContractPayment payment = new ContractPayment();
 		payment.setContractId(contract.getContractId());
+		payment.setDirection("receivable");
 		payment.setFeeType(feeType);
 		payment.setFeeName(feeName);
 		payment.setPeriodStart(periodStart);

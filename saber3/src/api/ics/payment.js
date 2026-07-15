@@ -64,6 +64,24 @@ export const getPaymentSummary = params => {
   });
 };
 
+export const createPayment = row => {
+  return request({
+    url: '/blade-ics/payment/create',
+    method: 'post',
+    data: row,
+  });
+};
+
+export const getPaymentContractOptions = keyword => {
+  return request({
+    url: '/blade-ics/payment/contract-options',
+    method: 'get',
+    params: {
+      keyword,
+    },
+  });
+};
+
 export const getOverdueReminderSummary = params => {
   return request({
     url: '/blade-ics/payment/overdue-reminder-summary',
@@ -85,6 +103,28 @@ export const getOverdueDisposalDetail = paymentId => {
 export const confirmPayment = (paymentId, row) => {
   return request({
     url: '/blade-ics/payment/confirm',
+    method: 'post',
+    params: {
+      paymentId,
+    },
+    data: row,
+  });
+};
+
+export const updatePaymentDeadline = (paymentId, payDeadline) => {
+  return request({
+    url: '/blade-ics/payment/deadline',
+    method: 'post',
+    params: {
+      paymentId,
+      payDeadline,
+    },
+  });
+};
+
+export const updatePaymentAttachment = (paymentId, row) => {
+  return request({
+    url: '/blade-ics/payment/attachment',
     method: 'post',
     params: {
       paymentId,

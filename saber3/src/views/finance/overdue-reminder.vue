@@ -651,19 +651,26 @@ export default {
     },
     handleRemind(row) {
       if (!row || !row.paymentId) return;
-      remindOverduePayment(row.paymentId).then(() => {
-        this.$message.success('催缴提醒已记录');
-        this.drawerRow = {
-          ...this.drawerRow,
-          remindStatus: '1',
-          remindTime: this.formatDate(new Date()),
-        };
-        this.loadDisposalDetail(row);
-        if (this.logDialogVisible && this.permissionList.logBtn) {
-          this.loadDrawerLogs(row);
-        }
-        this.reload();
-      });
+      this.$confirm(`确定记录“${row.customerName || '该租客'}”本次催缴吗？`, '记录催缴', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      })
+        .then(() => remindOverduePayment(row.paymentId))
+        .then(() => {
+          this.$message.success('催缴提醒已记录');
+          this.drawerRow = {
+            ...this.drawerRow,
+            remindStatus: '1',
+            remindTime: this.formatDate(new Date()),
+          };
+          this.loadDisposalDetail(row);
+          if (this.logDialogVisible && this.permissionList.logBtn) {
+            this.loadDrawerLogs(row);
+          }
+          this.reload();
+        })
+        .catch(() => {});
     },
     previewNotice(row, noticeType) {
       if (!row || !row.paymentId) return;

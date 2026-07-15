@@ -6,8 +6,10 @@ package org.springblade.modules.ics.mapper;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.apache.ibatis.annotations.Param;
+import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.ics.pojo.vo.PaymentSummaryVO;
+import org.springblade.modules.park.pojo.entity.Room;
 
 import java.util.List;
 
@@ -43,5 +45,22 @@ public interface PaymentMapper {
 	 * @return 账单
 	 */
 	ContractPayment selectPaymentById(@Param("paymentId") Long paymentId);
+
+	/**
+	 * 可创建账单的合同选项.
+	 *
+	 * @param keyword 合同编号、名称或客户名称关键字
+	 * @param parkId  园区ID
+	 * @return 合同选项
+	 */
+	List<Contract> selectContractOptions(@Param("keyword") String keyword, @Param("parkId") Long parkId);
+
+	/**
+	 * 根据房源ID查询房源明细.
+	 *
+	 * @param roomIds 房源ID集合
+	 * @return 房源明细
+	 */
+	List<Room> selectRoomsByIds(@Param("roomIds") List<Long> roomIds);
 
 }

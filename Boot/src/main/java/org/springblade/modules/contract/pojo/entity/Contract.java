@@ -35,12 +35,14 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import org.springblade.core.tool.utils.DateUtil;
+import org.springblade.modules.park.pojo.entity.Room;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 /**
  * 合同主档实体类
@@ -238,5 +240,9 @@ public class Contract implements Serializable {
 	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
 	@Schema(description = "审批完成时间")
 	private Date approvalTime;
+
+	@TableField(exist = false)
+	@Schema(description = "合同关联房源")
+	private List<Room> rooms;
 
 }

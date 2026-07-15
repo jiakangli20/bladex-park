@@ -18,6 +18,7 @@ import org.springblade.core.tenant.annotation.NonDS;
 import org.springblade.core.tool.api.R;
 import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.StringUtil;
+import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
@@ -126,17 +127,51 @@ public class PaymentController extends BladeController {
 		return R.data(paymentService.summary(payment));
 	}
 
+	@PostMapping("/create")
+	@PreAuth(menu = "finance_bills_all")
+	@ApiOperationSupport(order = 6)
+	@Operation(summary = "创建账单", description = "创建收款或付款账单")
+	public R<ContractPayment> create(@RequestBody ContractPayment payment) {
+		return R.data(paymentService.create(payment));
+	}
+
+	@GetMapping("/contract-options")
+	@PreAuth(menu = "finance_bills_all")
+	@ApiOperationSupport(order = 7)
+	@Operation(summary = "账单关联合同选项", description = "按合同编号、名称或客户名称搜索")
+	public R<List<Contract>> contractOptions(@RequestParam(required = false) String keyword) {
+		return R.data(paymentService.contractOptions(keyword));
+	}
+
 	@PostMapping("/confirm")
 	@PreAuth(menu = "finance")
-	@ApiOperationSupport(order = 6)
+	@ApiOperationSupport(order = 8)
 	@Operation(summary = "确认缴费", description = "传入paymentId和实收金额")
 	public R confirm(@Parameter(description = "账单ID") @RequestParam Long paymentId, @RequestBody ContractPayment payment) {
 		return R.status(paymentService.confirm(paymentId, payment));
 	}
 
+	@PostMapping("/deadline")
+	@PreAuth(menu = "finance")
+	@ApiOperationSupport(order = 9)
+	@Operation(summary = "调整账单日期", description = "传入paymentId和payDeadline")
+	public R deadline(@Parameter(description = "账单ID") @RequestParam Long paymentId,
+					  @Parameter(description = "应收/应付日期") @RequestParam Date payDeadline) {
+		return R.status(paymentService.updateDeadline(paymentId, payDeadline));
+	}
+
+	@PostMapping("/attachment")
+	@PreAuth(menu = "finance")
+	@ApiOperationSupport(order = 10)
+	@Operation(summary = "更新账单附件", description = "传入paymentId和附件数据")
+	public R<ContractPayment> attachment(@Parameter(description = "账单ID") @RequestParam Long paymentId,
+										 @RequestBody ContractPayment payment) {
+		return R.data(paymentService.updateAttachment(paymentId, payment));
+	}
+
 	@PostMapping("/remind")
 	@PreAuth(menu = "finance")
-	@ApiOperationSupport(order = 7)
+	@ApiOperationSupport(order = 11)
 	@Operation(summary = "催缴", description = "传入paymentId")
 	public R remind(@Parameter(description = "账单ID") @RequestParam Long paymentId) {
 		return R.status(paymentService.remind(paymentId));
@@ -152,7 +187,7 @@ public class PaymentController extends BladeController {
 
 	@GetMapping("/log-list")
 	@PreAuth(menu = "finance_bills_all_log")
-	@ApiOperationSupport(order = 8)
+	@ApiOperationSupport(order = 9)
 	@Operation(summary = "账单合同日志", description = "传入contractId")
 	public R<List<ContractLog>> logList(@Parameter(description = "合同ID") @RequestParam Long contractId) {
 		return R.data(paymentService.logList(contractId));
@@ -175,7 +210,7 @@ public class PaymentController extends BladeController {
 	}
 
 	@GetMapping("/notice-placeholder")
-	@ApiOperationSupport(order = 9)
+	@ApiOperationSupport(order = 10)
 	@Operation(summary = "收款通知占位", description = "当前阶段暂不开发通知单主流程")
 	public R<PaymentNoticePlaceholderVO> noticePlaceholder() {
 		return R.data(paymentService.noticePlaceholder());
