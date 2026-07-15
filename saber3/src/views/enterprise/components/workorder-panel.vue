@@ -32,57 +32,59 @@
       </el-form>
     </section>
 
-    <section class="contract-toolbar">
-      <div class="toolbar-left">
-        <el-button v-if="permissionList.workorderAddBtn" type="primary" icon="el-icon-plus" @click="$emit('create')">{{ createLabel }}</el-button>
+    <section class="workorder-table-card">
+      <div class="contract-toolbar">
+        <div class="toolbar-left">
+          <el-button v-if="permissionList.workorderAddBtn" type="primary" icon="el-icon-plus" @click="$emit('create')">{{ createLabel }}</el-button>
+        </div>
+        <el-tooltip v-if="showReload" content="刷新" placement="top">
+          <el-button icon="el-icon-refresh" circle @click="$emit('reload')" />
+        </el-tooltip>
       </div>
-      <el-tooltip v-if="showReload" content="刷新" placement="top">
-        <el-button icon="el-icon-refresh" circle @click="$emit('reload')" />
-      </el-tooltip>
+
+      <el-table v-loading="loading" :data="data" border row-key="orderId" class="contract-table">
+        <el-table-column prop="orderNo" label="工单编号" width="170" align="center" show-overflow-tooltip />
+        <el-table-column prop="serviceName" label="服务名称" min-width="140" align="center" show-overflow-tooltip />
+        <el-table-column prop="customerName" label="客户" min-width="150" align="center" show-overflow-tooltip />
+        <el-table-column prop="parkName" label="园区" min-width="120" align="center" show-overflow-tooltip />
+        <el-table-column prop="roomInfo" label="房源" min-width="140" align="center" show-overflow-tooltip />
+        <el-table-column prop="priority" label="优先级" width="96" align="center">
+          <template #default="{ row }">
+            <el-tag :type="priorityTagType(row.priority)" effect="plain">{{ priorityText(row.priority) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="orderStatus" label="状态" width="96" align="center">
+          <template #default="{ row }">
+            <el-tag :type="statusTagType(row.orderStatus)">{{ statusText(row.orderStatus) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="assignTo" label="指派人" width="120" align="center" show-overflow-tooltip />
+        <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
+        <el-table-column label="操作" width="210" fixed="right" align="center">
+          <template #default="{ row }">
+            <div class="table-actions">
+              <el-button v-if="permissionList.workorderViewBtn" type="primary" text @click="$emit('view', row)">详情</el-button>
+              <el-button v-if="canDispose(row)" type="primary" text @click="$emit('dispose', row)">处置</el-button>
+              <el-button v-if="canRate(row)" type="success" text @click="$emit('rate', row)">评价</el-button>
+              <el-button v-if="permissionList.workorderDelBtn" type="danger" text @click="$emit('remove', row)">删除</el-button>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="contract-pagination">
+        <el-pagination
+          background
+          :current-page="page.currentPage"
+          :page-size="page.pageSize"
+          :page-sizes="[10, 20, 30, 50]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="page.total"
+          @size-change="size => $emit('size-change', size)"
+          @current-change="current => $emit('current-change', current)"
+        />
+      </div>
     </section>
-
-    <el-table v-loading="loading" :data="data" border row-key="orderId" class="contract-table">
-      <el-table-column prop="orderNo" label="工单编号" width="170" align="center" show-overflow-tooltip />
-      <el-table-column prop="serviceName" label="服务名称" min-width="140" align="center" show-overflow-tooltip />
-      <el-table-column prop="customerName" label="客户" min-width="150" align="center" show-overflow-tooltip />
-      <el-table-column prop="parkName" label="园区" min-width="120" align="center" show-overflow-tooltip />
-      <el-table-column prop="roomInfo" label="房源" min-width="140" align="center" show-overflow-tooltip />
-      <el-table-column prop="priority" label="优先级" width="96" align="center">
-        <template #default="{ row }">
-          <el-tag :type="priorityTagType(row.priority)" effect="plain">{{ priorityText(row.priority) }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="orderStatus" label="状态" width="96" align="center">
-        <template #default="{ row }">
-          <el-tag :type="statusTagType(row.orderStatus)">{{ statusText(row.orderStatus) }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="assignTo" label="指派人" width="120" align="center" show-overflow-tooltip />
-      <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
-      <el-table-column label="操作" width="210" fixed="right" align="center">
-        <template #default="{ row }">
-          <div class="table-actions">
-            <el-button v-if="permissionList.workorderViewBtn" type="primary" text @click="$emit('view', row)">详情</el-button>
-            <el-button v-if="canDispose(row)" type="primary" text @click="$emit('dispose', row)">处置</el-button>
-            <el-button v-if="canRate(row)" type="success" text @click="$emit('rate', row)">评价</el-button>
-            <el-button v-if="permissionList.workorderDelBtn" type="danger" text @click="$emit('remove', row)">删除</el-button>
-          </div>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <div class="contract-pagination">
-      <el-pagination
-        background
-        :current-page="page.currentPage"
-        :page-size="page.pageSize"
-        :page-sizes="[10, 20, 30, 50]"
-        layout="total, sizes, prev, pager, next, jumper"
-        :total="page.total"
-        @size-change="size => $emit('size-change', size)"
-        @current-change="current => $emit('current-change', current)"
-      />
-    </div>
   </div>
 </template>
 
@@ -155,7 +157,7 @@ export default {
 }
 
 .contract-search,
-.contract-toolbar {
+.workorder-table-card {
   border-radius: 10px;
 }
 
@@ -175,13 +177,17 @@ export default {
   width: 190px;
 }
 
+.workorder-table-card {
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+}
+
 .contract-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
 }
 
 .toolbar-left {
@@ -205,7 +211,7 @@ export default {
 .contract-pagination {
   display: flex;
   justify-content: flex-end;
-  padding: 12px 0 0;
+  padding: 12px 16px 14px;
 }
 
 .workorder-panel :deep(.el-button),

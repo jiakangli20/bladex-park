@@ -32,19 +32,6 @@ function getDefaultChildRoute({ componentPath, icon, name, meta, query }) {
   };
 }
 
-// 将多级路由扁平化为二级路由，支持 keep-alive 跨层级缓存
-function flattenRouteChildren(children) {
-  const result = [];
-  for (const child of children) {
-    if (child.children && child.children.length > 0) {
-      result.push(...flattenRouteChildren(child.children));
-    } else {
-      result.push(child);
-    }
-  }
-  return result;
-}
-
 let RouterPlugin = function () {
   this.$router = null;
   this.$store = null;
@@ -176,17 +163,15 @@ RouterPlugin.install = function (option = {}) {
               })()
             : (() => {
                 const childRoutes = this.formatRoutes(children, false) || [];
-                if (first) {
-                  const defaultChildRoute = getDefaultChildRoute({
-                    componentPath: oMenu.component || component,
-                    icon,
-                    name,
-                    meta,
-                    query: oMenu[propsDefault.query] || query,
-                  });
-                  if (defaultChildRoute) {
-                    childRoutes.unshift(defaultChildRoute);
-                  }
+                const defaultChildRoute = getDefaultChildRoute({
+                  componentPath: oMenu.component || component,
+                  icon,
+                  name,
+                  meta,
+                  query: oMenu[propsDefault.query] || query,
+                });
+                if (defaultChildRoute) {
+                  childRoutes.unshift(defaultChildRoute);
                 }
                 return childRoutes;
               })(),
@@ -197,10 +182,6 @@ RouterPlugin.install = function (option = {}) {
       }
       if (first) {
         aRouter.forEach(ele => {
-          // 将三级及更深路由扁平化为二级，确保所有叶子组件都由 index.vue 的 keep-alive 统一管理
-          if (ele.children && ele.children.length > 0) {
-            ele.children = flattenRouteChildren(ele.children);
-          }
           this.safe.$router.addRoute(ele);
         });
       } else {

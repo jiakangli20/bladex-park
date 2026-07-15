@@ -10,6 +10,7 @@ import org.flowable.engine.HistoryService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.task.Comment;
 import org.flowable.engine.history.HistoricDetail;
+import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.history.HistoricVariableUpdate;
 import org.flowable.task.api.history.HistoricTaskInstance;
 import org.springblade.common.cache.SysCache;
@@ -81,9 +82,16 @@ public class WorkflowApprovalTraceService {
 			}
 		}
 		String timeline = formatTimeline(lines);
+		ApprovalLine firstLine = lines.get(0);
+		ApprovalLine lastLine = lines.get(lines.size() - 1);
 		fields.put("审批流转信息", timeline);
 		fields.put("流转信息", timeline);
 		fields.put("审批记录", timeline);
+		fields.put("审批意见汇总", timeline);
+		fields.put("通用审批意见", timeline);
+		fields.put("流程发起人", formatApprovalCell(firstLine));
+		fields.put("首个审批记录", formatApprovalCell(firstLine));
+		fields.put("最后审批记录", formatApprovalCell(lastLine));
 		return fields;
 	}
 
@@ -99,9 +107,10 @@ public class WorkflowApprovalTraceService {
 				return Collections.emptyList();
 			}
 			List<AssigneeUpdate> assigneeUpdates = latestAssigneeUpdates(processInsId);
+			String starter = processStarter(processInsId);
 			List<ApprovalLine> lines = new ArrayList<>();
 			for (HistoricTaskInstance task : tasks) {
-				ApprovalLine line = toApprovalLine(task, assigneeUpdates);
+				ApprovalLine line = toApprovalLine(task, assigneeUpdates, starter);
 				if (StringUtil.isNotBlank(line.approverName()) || StringUtil.isNotBlank(line.comment())) {
 					lines.add(line);
 				}
@@ -142,13 +151,25 @@ public class WorkflowApprovalTraceService {
 		}
 	}
 
-	private ApprovalLine toApprovalLine(HistoricTaskInstance task, List<AssigneeUpdate> assigneeUpdates) {
+	private String processStarter(String processInsId) {
+		try {
+			HistoricProcessInstance process = historyService.createHistoricProcessInstanceQuery()
+				.processInstanceId(processInsId)
+				.singleResult();
+			return process == null ? null : process.getStartUserId();
+		} catch (Exception ignored) {
+			return null;
+		}
+	}
+
+	private ApprovalLine toApprovalLine(HistoricTaskInstance task, List<AssigneeUpdate> assigneeUpdates, String starter) {
 		CommentInfo comment = latestComment(task.getId());
 		String assignee = firstNotBlank(
 			resolveLatestAssignee(task, assigneeUpdates),
 			task.getCompletedBy(),
 			comment.userId(),
-			task.getAssignee()
+			task.getAssignee(),
+			starter
 		);
 		User user = resolveUser(assignee, task.getTenantId());
 		List<String> roleNames = roleNames(user);

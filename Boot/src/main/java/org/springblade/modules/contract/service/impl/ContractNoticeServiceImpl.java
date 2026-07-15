@@ -494,6 +494,8 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			replacements.put(exactReplacementKey("3575.42元"), moneyText(fields.get("物业")));
 			replacements.put(exactReplacementKey("元"), moneyText(fields.get("押金")));
 			replacements.put(exactReplacementKey("（2025.3.25-2025.6.30）物业费（2025.3.25-2025.6.30）"), fields.get("开票内容及所属期"));
+			replacements.put(exactReplacementKey("分管领导：                      部门经理："),
+				"分管领导：" + fields.get("分管领导") + "                      部门经理：" + fields.get("部门经理"));
 			return contractTemplateRenderService.render(
 			NOTICE_INVOICE,
 			"开票申请单",
@@ -615,6 +617,38 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		}
 		Long paymentId = context.payment == null ? null : context.payment.getPaymentId();
 		return contractWorkflowTraceService.approvalFields(context.noticeType, businessType, context.contract.getContractId(), paymentId);
+	}
+
+	private void mergeWorkflowApprovalFields(NoticeContext context, Map<String, String> fields, String... fallbackSlots) {
+		if (fields == null) {
+			return;
+		}
+		fields.putAll(workflowApprovalFields(context));
+		applyApprovalFallback(fields, fallbackSlots);
+	}
+
+	private void applyApprovalFallback(Map<String, String> fields, String... fallbackSlots) {
+		if (fields == null || fallbackSlots == null || fallbackSlots.length == 0) {
+			return;
+		}
+		String fallback = firstNotBlank(fields.get("最后审批记录"), fields.get("首个审批记录"), fields.get("通用审批意见"));
+		if (StringUtil.isBlank(fallback) || "-".equals(fallback.trim())) {
+			return;
+		}
+		for (String slot : fallbackSlots) {
+			if (hasActualApprovalValue(fields.get(slot))) {
+				return;
+			}
+		}
+		fields.put(fallbackSlots[0], fallback);
+	}
+
+	private boolean hasActualApprovalValue(String value) {
+		if (StringUtil.isBlank(value)) {
+			return false;
+		}
+		String normalized = value.trim();
+		return !"-".equals(normalized) && !"签字".equals(normalized) && !"签字：".equals(normalized);
 	}
 
 	private Map<String, String> createCommonFields(NoticeContext context) {
@@ -772,6 +806,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		fields.put("部门", applicantDept);
 		fields.put("申请内容", applyContent);
 		fields.put("备注", "账单ID：" + (context.payment == null ? "-" : context.payment.getPaymentId()));
+		applyApprovalFallback(fields, "分管领导", "总经理");
 		return fields;
 	}
 
@@ -910,7 +945,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			formValue(context, "a178228940119047948", "申请内容", "terminationReason", "退租原因", "reason"),
 			buildTerminationSummary(context)
 		));
-		fields.putAll(workflowApprovalFields(context));
+		mergeWorkflowApprovalFields(context, fields, "分管领导", "总经理");
 		return fields;
 	}
 
@@ -931,7 +966,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			"退租审批通过，进入房屋退租交接验收"
 		));
 		fields.put("应退租赁押金", formatMoney(contract == null ? null : contract.getDeposit()));
-		fields.putAll(workflowApprovalFields(context));
+		mergeWorkflowApprovalFields(context, fields, "招商部签字", "运营中心签字", "物业管理处签字");
 		return fields;
 	}
 
@@ -1075,7 +1110,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		fields.put("分管领导", firstNotBlank(formValue(context, "a178229196922319221", "分管领导"), "-"));
 		fields.put("总经理审批", firstNotBlank(formValue(context, "a17822920239039332", "总经理审批"), "-"));
 		fields.put("备注", contract == null ? "-" : Func.toStr(contract.getRemark(), "-"));
-		fields.putAll(workflowApprovalFields(context));
+		mergeWorkflowApprovalFields(context, fields, "部门经理", "风控审核", "律师意见", "综合管理部", "分管领导", "总经理审批");
 		return fields;
 	}
 
@@ -1270,7 +1305,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		if (StringUtil.isBlank(rentAmount) && StringUtil.isBlank(propertyAmount) && StringUtil.isBlank(depositAmount)) {
 			fields.put(context.feeName(), amount);
 		}
-		fields.putAll(workflowApprovalFields(context));
+		mergeWorkflowApprovalFields(context, fields, "分管领导", "部门经理");
 		return fields;
 	}
 

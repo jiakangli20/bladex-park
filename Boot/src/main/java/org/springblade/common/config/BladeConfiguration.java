@@ -38,6 +38,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
@@ -98,6 +99,12 @@ public class BladeConfiguration implements WebMvcConfigurer {
 			.allowedMethods("*")
 			.maxAge(3600)
 			.allowCredentials(true);
+	}
+
+	@Override
+	public void addResourceHandlers(ResourceHandlerRegistry registry) {
+		registry.addResourceHandler("/upload/**")
+			.addResourceLocations("file:uploadPath/");
 	}
 
 	/**

@@ -104,8 +104,14 @@
     }
 
     .el-menu-item {
-      padding-left: 42px !important;
+      padding-left: 24px !important;
       font-weight: 400;
+    }
+
+    .el-sub-menu {
+      .el-menu-item {
+        padding-left: 42px !important;
+      }
     }
   }
 
