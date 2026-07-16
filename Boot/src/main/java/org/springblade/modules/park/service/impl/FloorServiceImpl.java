@@ -37,6 +37,7 @@ import org.springblade.modules.park.mapper.BuildingMapper;
 import org.springblade.modules.park.mapper.FloorMapper;
 import org.springblade.modules.park.pojo.entity.Building;
 import org.springblade.modules.park.pojo.entity.Floor;
+import org.springblade.modules.park.pojo.entity.Room;
 import org.springblade.modules.park.service.IFloorService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +50,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * 楼层服务实现类
@@ -66,6 +68,11 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 		List<Floor> floors = baseMapper.selectFloorList(floor);
 		attachFloorDetail(floors, floor == null ? null : floor.getRoomStatus());
 		return floors;
+	}
+
+	@Override
+	public List<Floor> selectFloorStructureList(Floor floor) {
+		return baseMapper.selectFloorStructureList(floor);
 	}
 
 	@Override
@@ -345,13 +352,23 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 		if (floors == null || floors.isEmpty()) {
 			return;
 		}
+		List<Floor> queryFloors = floors.stream()
+			.filter(floor -> floor.getBuildingId() != null && floor.getFloorNo() != null)
+			.toList();
+		Map<String, List<Room>> roomsByFloor = queryFloors.isEmpty()
+			? Map.of()
+			: baseMapper.selectRoomsByFloors(queryFloors, roomStatus).stream()
+			.collect(Collectors.groupingBy(room -> floorKey(room.getBuildingId(), room.getFloor()), LinkedHashMap::new, Collectors.toList()));
 		for (Floor floor : floors) {
 			fillOccupancyRate(floor);
 			if (floor.getBuildingId() != null && floor.getFloorNo() != null) {
-				String status = StringUtil.isBlank(roomStatus) ? floor.getRoomStatus() : roomStatus;
-				floor.setRooms(baseMapper.selectRoomsByFloor(floor.getBuildingId(), floor.getFloorNo(), status));
+				floor.setRooms(roomsByFloor.getOrDefault(floorKey(floor.getBuildingId(), floor.getFloorNo()), List.of()));
 			}
 		}
+	}
+
+	private String floorKey(Long buildingId, Integer floorNo) {
+		return buildingId + ":" + floorNo;
 	}
 
 	private void fillOccupancyRate(Floor floor) {

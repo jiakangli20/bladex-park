@@ -49,6 +49,14 @@ public interface IFloorService extends IService<Floor> {
 	List<Floor> selectFloorList(Floor floor);
 
 	/**
+	 * 查询楼层结构列表，不附带房态统计和房间明细
+	 *
+	 * @param floor 查询条件
+	 * @return 楼层集合
+	 */
+	List<Floor> selectFloorStructureList(Floor floor);
+
+	/**
 	 * 查询楼层分页
 	 *
 	 * @param page 分页

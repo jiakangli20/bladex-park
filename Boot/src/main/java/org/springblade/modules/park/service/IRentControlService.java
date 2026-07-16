@@ -44,9 +44,10 @@ public interface IRentControlService {
 	 * @param searchType 搜索类型
 	 * @param status 房源状态
 	 * @param orientation 朝向
+	 * @param includeTree 是否返回完整园区树
 	 * @return 看板数据
 	 */
-	Map<String, Object> getBoard(Long parkId, Long buildingId, Integer floorNo, String keyword, String searchType, String status, String orientation);
+	Map<String, Object> getBoard(Long parkId, Long buildingId, Integer floorNo, String keyword, String searchType, String status, String orientation, boolean includeTree);
 
 	/**
 	 * 查询工单占位数据

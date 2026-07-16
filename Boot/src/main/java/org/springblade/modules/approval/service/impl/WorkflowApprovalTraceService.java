@@ -67,6 +67,10 @@ public class WorkflowApprovalTraceService {
 	private final IRoleService roleService;
 
 	public Map<String, String> approvalFields(String processInsId) {
+		return approvalFields(processInsId, "审批完成");
+	}
+
+	public Map<String, String> approvalFields(String processInsId, String unreadableCommentFallback) {
 		if (StringUtil.isBlank(processInsId)) {
 			return Collections.emptyMap();
 		}
@@ -78,10 +82,10 @@ public class WorkflowApprovalTraceService {
 		for (ApprovalSlot slot : APPROVAL_SLOTS) {
 			ApprovalLine line = matchLine(slot, lines);
 			if (line != null) {
-				fields.put(slot.fieldName(), formatApprovalCell(line));
+				fields.put(slot.fieldName(), formatApprovalCell(line, unreadableCommentFallback));
 			}
 		}
-		String timeline = formatTimeline(lines);
+		String timeline = formatTimeline(lines, unreadableCommentFallback);
 		ApprovalLine firstLine = lines.get(0);
 		ApprovalLine lastLine = lines.get(lines.size() - 1);
 		fields.put("审批流转信息", timeline);
@@ -89,9 +93,9 @@ public class WorkflowApprovalTraceService {
 		fields.put("审批记录", timeline);
 		fields.put("审批意见汇总", timeline);
 		fields.put("通用审批意见", timeline);
-		fields.put("流程发起人", formatApprovalCell(firstLine));
-		fields.put("首个审批记录", formatApprovalCell(firstLine));
-		fields.put("最后审批记录", formatApprovalCell(lastLine));
+		fields.put("流程发起人", formatApprovalCell(firstLine, unreadableCommentFallback));
+		fields.put("首个审批记录", formatApprovalCell(firstLine, unreadableCommentFallback));
+		fields.put("最后审批记录", formatApprovalCell(lastLine, unreadableCommentFallback));
 		return fields;
 	}
 
@@ -383,22 +387,30 @@ public class WorkflowApprovalTraceService {
 		return values;
 	}
 
-	private String formatApprovalCell(ApprovalLine line) {
+	private String formatApprovalCell(ApprovalLine line, String unreadableCommentFallback) {
 		String date = line.endTime() == null ? EMPTY : DateUtil.format(line.endTime(), DateUtil.PATTERN_DATE);
-		String comment = firstNotBlank(line.comment(), "同意");
+		String comment = approvalComment(line.comment(), unreadableCommentFallback);
 		return firstNotBlank(line.approverName(), EMPTY) + "（" + comment + "，" + date + "）";
 	}
 
-	private String formatTimeline(List<ApprovalLine> lines) {
+	private String formatTimeline(List<ApprovalLine> lines, String unreadableCommentFallback) {
 		List<String> rows = new ArrayList<>();
 		for (ApprovalLine line : lines) {
 			String time = line.endTime() == null ? EMPTY : DateUtil.format(line.endTime(), DateUtil.PATTERN_DATETIME);
 			String node = firstNotBlank(line.nodeName(), line.nodeKey(), "审批");
 			String approver = firstNotBlank(line.approverName(), EMPTY);
-			String comment = firstNotBlank(line.comment(), "同意");
+			String comment = approvalComment(line.comment(), unreadableCommentFallback);
 			rows.add(time + " " + node + " " + approver + "：" + comment);
 		}
 		return String.join("\n", rows);
+	}
+
+	String approvalComment(String comment, String unreadableCommentFallback) {
+		String normalized = Func.toStr(comment, "").trim();
+		if (StringUtil.isBlank(normalized) || normalized.matches("[?？�\\s]+")) {
+			return firstNotBlank(unreadableCommentFallback, "审批完成");
+		}
+		return normalized;
 	}
 
 	private String firstNotBlank(String... values) {

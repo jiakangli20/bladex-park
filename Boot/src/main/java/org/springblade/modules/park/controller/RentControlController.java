@@ -60,8 +60,8 @@ public class RentControlController extends BladeController {
 	@GetMapping("/board")
 	@ApiOperationSupport(order = 1)
 	@Operation(summary = "租控看板", description = "传入筛选条件")
-	public R<Map<String, Object>> board(Long parkId, Long buildingId, Integer floorNo, String keyword, String searchType, String status, String orientation) {
-		return R.data(rentControlService.getBoard(parkId, buildingId, floorNo, keyword, searchType, status, orientation));
+	public R<Map<String, Object>> board(Long parkId, Long buildingId, Integer floorNo, String keyword, String searchType, String status, String orientation, Boolean includeTree) {
+		return R.data(rentControlService.getBoard(parkId, buildingId, floorNo, keyword, searchType, status, orientation, !Boolean.FALSE.equals(includeTree)));
 	}
 
 	/**

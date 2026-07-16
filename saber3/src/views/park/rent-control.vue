@@ -400,6 +400,8 @@ export default {
       Upload,
       activeTab: 'overview',
       loading: false,
+      boardRequestId: 0,
+      treeLoaded: false,
       selectedKey: '',
       defaultExpandedKeys: [],
       query: {
@@ -564,6 +566,7 @@ export default {
       };
     },
     loadBoard() {
+      const requestId = ++this.boardRequestId;
       this.loading = true;
       const params = {
         parkId: this.query.parkId,
@@ -573,11 +576,19 @@ export default {
         searchType: this.query.searchType,
         status: this.query.status,
         orientation: this.query.orientation,
+        includeTree: !this.treeLoaded,
       };
       getBoard(params)
         .then(res => {
+          if (requestId !== this.boardRequestId) {
+            return;
+          }
           const data = res.data.data || {};
-          const parks = this.sortParks(data.parks || []);
+          const hasTreeData = Array.isArray(data.parks);
+          const parks = hasTreeData ? this.sortParks(data.parks) : this.parks;
+          if (hasTreeData) {
+            this.treeLoaded = true;
+          }
           if (!this.query.parkId && parks.length) {
             this.parks = parks;
             this.treeParks = parks;
@@ -591,11 +602,13 @@ export default {
           this.board = data;
           this.currentPark = data.currentPark || {};
           this.currentBuilding = data.currentBuilding || {};
-          this.parks = parks;
-          if (!this.query.parkId || !this.treeParks.length || this.parks.length > this.treeParks.length) {
-            this.treeParks = this.parks;
+          if (hasTreeData) {
+            this.parks = parks;
+            this.treeParks = parks;
           }
-          this.buildings = this.sortBuildings(data.buildings || []);
+          if (Array.isArray(data.buildings)) {
+            this.buildings = this.sortBuildings(data.buildings);
+          }
           this.floors = data.floors || [];
           this.overview = data.overview || {};
           this.analysis = Object.assign(
@@ -606,7 +619,9 @@ export default {
           this.syncTreeState();
         })
         .finally(() => {
-          this.loading = false;
+          if (requestId === this.boardRequestId) {
+            this.loading = false;
+          }
         });
     },
     loadAllBuildings() {

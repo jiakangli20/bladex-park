@@ -51,6 +51,14 @@ public interface FloorMapper extends BaseMapper<Floor> {
 	List<Floor> selectFloorList(@Param("floor") Floor floor);
 
 	/**
+	 * 查询楼层结构列表，不附带房态统计
+	 *
+	 * @param floor 查询条件
+	 * @return 楼层集合
+	 */
+	List<Floor> selectFloorStructureList(@Param("floor") Floor floor);
+
+	/**
 	 * 查询楼层分页
 	 *
 	 * @param page 分页
@@ -102,6 +110,15 @@ public interface FloorMapper extends BaseMapper<Floor> {
 	 * @return 房间集合
 	 */
 	List<Room> selectRoomsByFloor(@Param("buildingId") Long buildingId, @Param("floorNo") Integer floorNo, @Param("roomStatus") String roomStatus);
+
+	/**
+	 * 批量查询多个楼层的房间列表
+	 *
+	 * @param floors 楼层集合
+	 * @param roomStatus 房间状态
+	 * @return 房间集合
+	 */
+	List<Room> selectRoomsByFloors(@Param("floors") List<Floor> floors, @Param("roomStatus") String roomStatus);
 
 	/**
 	 * 汇总指定楼层房间面积

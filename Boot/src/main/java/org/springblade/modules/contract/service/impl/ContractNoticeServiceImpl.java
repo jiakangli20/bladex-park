@@ -1016,7 +1016,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			+ context.roomDisplay() + "物业。租赁期限为" + contractMonths(contract) + "个月，自" + startDate + "起至" + endDate + "止。";
 		String releaseClause = "1、 双方一致确认：《君联大厦租赁合同》于" + terminationDate + "解除；";
 		String returnClause = "2、 乙方承诺于" + terminationDate + "前将租赁物业腾空归还甲方，同时在" + terminationDate
-			+ "前完成注册地址迁出手续。若乙方按期完成腾房、迁址的，甲方按合同及审批结果结算租金、物业服务费；";
+			+ "前完成注册地址迁出手续。若乙方按期完成腾房、迁址的，甲方收取应结算的租金、物业服务费；";
 		String overdueClause = "若乙方逾期腾房或迁址的，甲方有权向乙方收取" + terminationDate
 			+ "至实际腾房/迁址之日（以后到为准）的房租、物业服务费并有权按照租赁合同8.2.2条约定向乙方主张通知不足2个月的补足租金和3个月租金的违约金。";
 		Map<String, String> replacements = new LinkedHashMap<>();
@@ -1462,7 +1462,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		if ("special".equals(terminationType)) {
 			return "2、" + applyDate + "，因" + reason + "，乙方向甲方申请退租、解除租赁合同，双方按特殊情况一事一议结果执行。";
 		}
-		return "2、" + applyDate + "，因" + reason + "，乙方向甲方申请提前退租、解除租赁合同，相关违约责任按租赁合同及审批结果执行。";
+		return "2、" + applyDate + "，因" + reason + "，乙方向甲方申请提前退租、解除租赁合同，已构成违约。";
 	}
 
 	private Map<String, Object> parseFormData(String formDataJson) {

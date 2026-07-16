@@ -66,16 +66,13 @@ public class RentControlServiceImpl implements IRentControlService {
 	private final IRoomService roomService;
 
 	@Override
-	public Map<String, Object> getBoard(Long parkId, Long buildingId, Integer floorNo, String keyword, String searchType, String status, String orientation) {
+	public Map<String, Object> getBoard(Long parkId, Long buildingId, Integer floorNo, String keyword, String searchType, String status, String orientation, boolean includeTree) {
 		Building buildingQuery = new Building();
 		buildingQuery.setParkId(parkId);
 		if ("building".equals(searchType) && hasText(keyword)) {
 			buildingQuery.setName(keyword);
 		}
 		List<Building> buildingList = buildingService.selectBuildingList(buildingQuery);
-		List<Park> treeParkList = parkService.list(Wrappers.<Park>lambdaQuery().orderByAsc(Park::getId));
-		List<Building> treeBuildingList = buildingService.selectBuildingList(new Building());
-
 		Long selectedBuildingId = normalizeSelectedBuildingId(buildingList, buildingId);
 		Building currentBuilding = selectedBuildingId == null ? null : findBuilding(buildingList, selectedBuildingId);
 		Long currentParkId = parkId != null ? parkId : (currentBuilding == null ? null : currentBuilding.getParkId());
@@ -85,17 +82,7 @@ public class RentControlServiceImpl implements IRentControlService {
 		floorQuery.setParkId(parkId);
 		floorQuery.setBuildingId(selectedBuildingId);
 		floorQuery.setFloorNo(floorNo);
-		List<Floor> floorList = floorService.selectFloorList(floorQuery);
-
-		Floor allFloorQuery = new Floor();
-		allFloorQuery.setParkId(parkId);
-		List<Floor> allFloorList = floorService.selectFloorList(allFloorQuery);
-		List<Floor> treeFloorList = floorService.selectFloorList(new Floor());
-
-		Room allRoomQuery = new Room();
-		allRoomQuery.setParkId(parkId);
-		List<RoomVO> allRoomList = roomService.selectRoomList(allRoomQuery);
-		List<RoomVO> treeRoomList = roomService.selectRoomList(new Room());
+		List<Floor> floorList = floorService.selectFloorStructureList(floorQuery);
 
 		Room roomQuery = new Room();
 		roomQuery.setParkId(parkId);
@@ -118,13 +105,25 @@ public class RentControlServiceImpl implements IRentControlService {
 		}
 
 		Map<String, Object> result = new LinkedHashMap<>();
-		List<Map<String, Object>> buildingTree = buildBuildingTree(buildingList, allRoomList, allFloorList);
-		List<Map<String, Object>> parkTreeBuildings = buildBuildingTree(treeBuildingList, treeRoomList, treeFloorList);
 		result.put("parkName", currentPark == null ? null : currentPark.getName());
 		result.put("currentPark", currentPark);
 		result.put("currentBuilding", currentBuilding);
-		result.put("parks", buildParkTree(treeParkList, parkTreeBuildings));
-		result.put("buildings", buildingTree);
+		if (includeTree) {
+			Floor allFloorQuery = new Floor();
+			allFloorQuery.setParkId(parkId);
+			Room allRoomQuery = new Room();
+			allRoomQuery.setParkId(parkId);
+			List<Floor> allFloorList = floorService.selectFloorStructureList(allFloorQuery);
+			List<RoomVO> allRoomList = roomService.selectRoomList(allRoomQuery);
+			List<Park> treeParkList = parkService.list(Wrappers.<Park>lambdaQuery().orderByAsc(Park::getId));
+			List<Building> treeBuildingList = buildingService.selectBuildingList(new Building());
+			List<Floor> treeFloorList = floorService.selectFloorStructureList(new Floor());
+			List<RoomVO> treeRoomList = roomService.selectRoomList(new Room());
+			List<Map<String, Object>> buildingTree = buildBuildingTree(buildingList, allRoomList, allFloorList);
+			List<Map<String, Object>> parkTreeBuildings = buildBuildingTree(treeBuildingList, treeRoomList, treeFloorList);
+			result.put("parks", buildParkTree(treeParkList, parkTreeBuildings));
+			result.put("buildings", buildingTree);
+		}
 		result.put("overview", buildOverview(floorList, roomList));
 		result.put("analysis", buildAnalysis(roomList));
 		result.put("floors", buildFloorRows(selectedBuildingId, floorList, roomList, buildingList));

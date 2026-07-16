@@ -62,7 +62,18 @@ public class ContractWorkflowTraceService {
 		if (record == null || StringUtil.isBlank(record.getProcessInsId())) {
 			return Collections.emptyMap();
 		}
-		return workflowApprovalTraceService.approvalFields(record.getProcessInsId());
+		return workflowApprovalTraceService.approvalFields(record.getProcessInsId(), workflowResult(record.getProcessStatus()));
+	}
+
+	String workflowResult(String processStatus) {
+		String status = StringUtil.isBlank(processStatus) ? "" : processStatus.trim().toLowerCase();
+		return switch (status) {
+			case "approved", "completed", "complete", "finished", "passed" -> "同意";
+			case "rejected", "refused", "denied" -> "驳回";
+			case "withdrawn", "canceled", "cancelled" -> "已撤回";
+			case "terminated" -> "已终止";
+			default -> "审批完成";
+		};
 	}
 
 	private boolean matchesNoticeType(String noticeType, ContractWorkflowRecord record) {

@@ -177,6 +177,16 @@
         <include refid="floorOrder"/>
     </select>
 
+    <select id="selectFloorStructureList" resultMap="floorResultMap">
+        SELECT
+        <include refid="floorColumns"/>
+        FROM ics_floor f
+        LEFT JOIN ics_building b ON b.id = f.building_id
+        LEFT JOIN ics_park p ON p.id = f.park_id
+        <include refid="floorWhere"/>
+        <include refid="floorOrder"/>
+    </select>
+
     <select id="selectFloorPage" resultMap="floorResultMap">
         SELECT
         <include refid="floorColumns"/>,
@@ -247,6 +257,29 @@
               AND <include refid="roomDisplayStatus"/> = #{roomStatus}
           </if>
         ORDER BY r.name ASC, r.id ASC
+    </select>
+
+    <select id="selectRoomsByFloors" resultMap="roomResultMap">
+        SELECT
+        r.id, r.park_id, p.name AS park_name, r.building_id, b.name AS building_name,
+        r.name, r.floor, r.area, r.rent_price, r.property_fee, r.house_type,
+        r.orientation, r.address, r.facilities, r.highlights, r.scene_images,
+        r.floor_plan_images, r.status AS base_status,
+        <include refid="roomDisplayStatus"/> AS status,
+        r.sync_status, r.sync_time, r.memo,
+        r.create_by, r.create_time, r.update_by, r.update_time
+        FROM ics_room r
+        LEFT JOIN ics_building b ON b.id = r.building_id
+        LEFT JOIN ics_park p ON p.id = r.park_id
+        <include refid="roomContractStatusJoin"/>
+        WHERE (r.building_id, r.floor) IN
+        <foreach collection="floors" item="floor" open="(" separator="," close=")">
+            (#{floor.buildingId}, #{floor.floorNo})
+        </foreach>
+        <if test="roomStatus != null and roomStatus != ''">
+            AND <include refid="roomDisplayStatus"/> = #{roomStatus}
+        </if>
+        ORDER BY b.name ASC, r.floor DESC, r.name ASC, r.id ASC
     </select>
 
     <select id="sumRoomAreaByFloor" resultType="java.math.BigDecimal">

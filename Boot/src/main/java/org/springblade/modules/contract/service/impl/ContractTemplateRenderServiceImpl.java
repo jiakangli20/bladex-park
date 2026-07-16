@@ -9,6 +9,7 @@ import org.apache.poi.hwpf.HWPFDocument;
 import org.apache.poi.hwpf.usermodel.Paragraph;
 import org.apache.poi.hwpf.usermodel.Range;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -16,18 +17,21 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.BreakType;
+import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
-import org.apache.poi.xwpf.usermodel.UnderlinePatterns;
+import org.apache.poi.xwpf.usermodel.TableRowHeightRule;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractTemplateRenderService;
 import org.springframework.stereotype.Service;
+import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
 import java.io.ByteArrayOutputStream;
@@ -36,6 +40,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -59,6 +64,7 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 	private static final String CONTENT_TYPE_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 	private static final String EXACT_REPLACEMENT_PREFIX = "__exact__:";
 	private static final String WORD_NAMESPACE = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+	private static final String XML_NAMESPACE = "http://www.w3.org/XML/1998/namespace";
 
 	@Override
 	@SneakyThrows
@@ -112,7 +118,7 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 					fillSignatureDate(footer.getParagraphs(), fields);
 					footer.getTables().forEach(table -> fillDocxTable(table, fields, replacements));
 				});
-			replaceDomParagraphs(document.getDocument().getBody().getDomNode(), replacements);
+			ensureTemplatePagination(document, templatePath.getFileName().toString());
 			document.write(output);
 			return output.toByteArray();
 		}
@@ -181,6 +187,7 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 						continue;
 					}
 					setCellText(cells.get(targetIndex), fields.get(label));
+					applyCompactCellStyle(cells.get(targetIndex), label, fields.get(label));
 				}
 			}
 		}
@@ -190,10 +197,11 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 			return;
 		}
 		for (XWPFParagraph paragraph : paragraphs) {
-			String text = paragraphText(paragraph);
+			String text = editableParagraphText(paragraph.getCTP().getDomNode());
 			String replaced = replaceInlineFieldText(text, fields);
 			if (!Objects.equals(text, replaced)) {
-				setParagraphText(paragraph, replaced);
+				replaceParagraphTextPreservingStyles(paragraph.getCTP().getDomNode(), text, replaced);
+				applyCompactParagraphStyle(paragraph.getCTP().getDomNode(), replaced);
 			}
 		}
 	}
@@ -264,21 +272,22 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		if (table == null || fields == null || fields.isEmpty() || !isNoticeFeeTable(table)) {
 			return false;
 		}
-		while (table.getNumberOfRows() > 3) {
-			table.removeRow(2);
-		}
-		if (table.getNumberOfRows() < 2) {
+		if (table.getNumberOfRows() < 3) {
 			return true;
 		}
-		XWPFTableRow dataRow = table.getRow(1);
+		int totalRowIndex = table.getNumberOfRows() - 1;
+		int dataRowIndex = findNoticeFeeRow(table, fields.get("项目名称"), totalRowIndex);
+		XWPFTableRow dataRow = table.getRow(dataRowIndex);
 		setRowCellText(dataRow, 0, fields.get("费用期间"));
-		setRowCellText(dataRow, 1, fields.get("项目名称"));
+		if (StringUtil.isNotBlank(fields.get("项目名称"))) {
+			setRowCellText(dataRow, 1, fields.get("项目名称"));
+		}
 		setRowCellText(dataRow, 2, moneyWithUnit(fields.get("应收金额")));
 		setRowCellText(dataRow, 3, fields.get("应付日期"));
 		setRowCellText(dataRow, 4, moneyWithUnit(fields.get("违约金")));
 		setRowCellText(dataRow, 5, moneyWithUnit(fields.get("总计")));
-		if (table.getNumberOfRows() > 2) {
-			XWPFTableRow totalRow = table.getRow(2);
+		if (totalRowIndex > dataRowIndex) {
+			XWPFTableRow totalRow = table.getRow(totalRowIndex);
 			setRowCellText(totalRow, 0, "合计人民币");
 			setRowCellText(totalRow, 1, moneyWithUnit(fields.get("合计人民币")));
 			for (int index = 2; index < totalRow.getTableCells().size(); index++) {
@@ -286,6 +295,35 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 			}
 		}
 		return true;
+	}
+
+	private int findNoticeFeeRow(XWPFTable table, String projectName, int totalRowIndex) {
+		String normalizedProject = normalizeLabel(projectName);
+		for (int rowIndex = 1; rowIndex < totalRowIndex; rowIndex++) {
+			XWPFTableRow row = table.getRow(rowIndex);
+			if (row == null || row.getTableCells().size() < 2) {
+				continue;
+			}
+			String templateProject = normalizeLabel(cellText(row.getCell(1)));
+			if (noticeProjectMatches(normalizedProject, templateProject)) {
+				return rowIndex;
+			}
+		}
+		return Math.min(1, Math.max(0, totalRowIndex - 1));
+	}
+
+	private boolean noticeProjectMatches(String projectName, String templateProject) {
+		if (StringUtil.isBlank(projectName) || StringUtil.isBlank(templateProject)) {
+			return false;
+		}
+		if (projectName.contains(templateProject) || templateProject.contains(projectName)) {
+			return true;
+		}
+		return (projectName.contains("租") && templateProject.contains("租"))
+			|| ((projectName.contains("押金") || projectName.contains("保证金")) && templateProject.contains("保证金"))
+			|| (projectName.contains("物业") && templateProject.contains("物业"))
+			|| (projectName.contains("电") && templateProject.contains("电"))
+			|| (projectName.contains("水") && templateProject.contains("水"));
 	}
 
 	private boolean isNoticeFeeTable(XWPFTable table) {
@@ -327,10 +365,10 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 			return;
 		}
 		for (XWPFParagraph paragraph : paragraphs) {
-			String text = paragraphText(paragraph);
+			String text = editableParagraphText(paragraph.getCTP().getDomNode());
 			String replaced = replaceText(text, replacements);
 			if (!Objects.equals(text, replaced)) {
-				setParagraphText(paragraph, replaced);
+				replaceParagraphTextPreservingStyles(paragraph.getCTP().getDomNode(), text, replaced);
 			}
 		}
 	}
@@ -390,6 +428,12 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 				cell.setCellValue(replaced);
 				continue;
 			}
+			String inlineFieldText = replaceInlineFieldText(text, fields);
+			if (!Objects.equals(text, inlineFieldText)) {
+				cell.setCellValue(inlineFieldText);
+				applyWorkbookInlineCellStyle(cell, text);
+				continue;
+			}
 			String label = matchFieldLabel(text, fields);
 			if (StringUtil.isBlank(label)) {
 				continue;
@@ -402,6 +446,16 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 			targetCell.setCellValue(fields.get(label));
 			filledColumns.add(targetColumn);
 		}
+	}
+
+	private void applyWorkbookInlineCellStyle(Cell cell, String sourceText) {
+		if (cell == null || !normalizeLabel(sourceText).startsWith("退租理由")) {
+			return;
+		}
+		CellStyle style = cell.getSheet().getWorkbook().createCellStyle();
+		style.cloneStyleFrom(cell.getCellStyle());
+		style.setShrinkToFit(true);
+		cell.setCellStyle(style);
 	}
 
 	private String replaceText(String text, Map<String, String> replacements) {
@@ -514,105 +568,207 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		if (cell == null) {
 			return;
 		}
-		XWPFParagraph paragraph = cell.getParagraphs().isEmpty() ? cell.addParagraph() : cell.getParagraphs().get(0);
-		setParagraphText(paragraph, value);
-		for (int index = cell.getParagraphs().size() - 1; index > 0; index--) {
-			cell.removeParagraph(index);
+		String safeValue = value == null ? "" : value;
+		String[] lines = safeValue.split("\\R", -1);
+		List<XWPFParagraph> paragraphs = cell.getParagraphs();
+		if (paragraphs.isEmpty()) {
+			paragraphs = List.of(cell.addParagraph());
 		}
+		for (int index = 0; index < paragraphs.size(); index++) {
+			setParagraphText(paragraphs.get(index), index < lines.length ? lines[index] : "");
+		}
+		for (int index = paragraphs.size(); index < lines.length; index++) {
+			XWPFParagraph paragraph = cell.addParagraph();
+			setParagraphText(paragraph, lines[index]);
+		}
+	}
+
+	private void applyCompactCellStyle(XWPFTableCell cell, String label, String value) {
+		if (cell == null || StringUtil.isBlank(label) || StringUtil.isBlank(value)) {
+			return;
+		}
+		String normalizedLabel = normalizeLabel(label);
+		int fontSize = -1;
+		if ("合同编号".equals(normalizedLabel) && value.replaceAll("\\s+", "").length() > 18) {
+			fontSize = 8;
+		} else if ("合同事项".equals(normalizedLabel) && value.replaceAll("\\s+", "").length() > 24) {
+			fontSize = 8;
+		}
+		if (fontSize <= 0) {
+			return;
+		}
+		for (XWPFParagraph paragraph : cell.getParagraphs()) {
+			for (XWPFRun run : paragraph.getRuns()) {
+				if (StringUtil.isNotBlank(run.text())) {
+					run.setFontSize(fontSize);
+				}
+			}
+		}
+	}
+
+	private void applyCompactParagraphStyle(Node paragraphNode, String value) {
+		int fontSize = compactFontSize(value);
+		if (paragraphNode == null || fontSize <= 0) {
+			return;
+		}
+		for (Node textNode : editableTextNodes(paragraphNode)) {
+			if (StringUtil.isNotBlank(textNodeValue(textNode))) {
+				setRunFontSize(ancestor(textNode, "r"), fontSize);
+			}
+		}
+	}
+
+	private int compactFontSize(String value) {
+		if (StringUtil.isBlank(value)) {
+			return -1;
+		}
+		String normalized = value.replaceAll("\\s+", "").trim();
+		if (normalized.startsWith("合同编号：") && normalized.length() > 18) {
+			return 8;
+		}
+		if (normalized.startsWith("合同事项：") && normalized.length() > 24) {
+			return 8;
+		}
+		return -1;
+	}
+
+	private void setRunFontSize(Node runNode, int fontSize) {
+		if (runNode == null || fontSize <= 0) {
+			return;
+		}
+		Node runProperties = null;
+		for (Node child = runNode.getFirstChild(); child != null; child = child.getNextSibling()) {
+			if (hasLocalName(child, "rPr")) {
+				runProperties = child;
+				break;
+			}
+		}
+		if (runProperties == null) {
+			runProperties = runNode.getOwnerDocument().createElementNS(WORD_NAMESPACE, "w:rPr");
+			runNode.insertBefore(runProperties, runNode.getFirstChild());
+		}
+		setWordPropertyValue(runProperties, "sz", Integer.toString(fontSize * 2));
+		setWordPropertyValue(runProperties, "szCs", Integer.toString(fontSize * 2));
+	}
+
+	private void setWordPropertyValue(Node properties, String propertyName, String value) {
+		Node property = null;
+		for (Node child = properties.getFirstChild(); child != null; child = child.getNextSibling()) {
+			if (hasLocalName(child, propertyName)) {
+				property = child;
+				break;
+			}
+		}
+		if (property == null) {
+			property = properties.getOwnerDocument().createElementNS(WORD_NAMESPACE, "w:" + propertyName);
+			properties.appendChild(property);
+		}
+		((Element) property).setAttributeNS(WORD_NAMESPACE, "w:val", value);
+	}
+
+	private void ensureTemplatePagination(XWPFDocument document, String templateFileName) {
+		if (document == null) {
+			return;
+		}
+		if ("附件八：退租审批表.docx".equals(templateFileName)) {
+			List<XWPFParagraph> paragraphs = document.getParagraphs();
+			if (paragraphs.size() >= 2 && !hasPageBreak(paragraphs.get(1))) {
+				paragraphs.get(1).createRun().addBreak(BreakType.PAGE);
+			}
+		}
+		if ("附件四：君联大厦付款通知单.docx".equals(templateFileName)) {
+			for (XWPFParagraph paragraph : document.getParagraphs()) {
+				String text = editableParagraphText(paragraph.getCTP().getDomNode());
+				if (!text.contains("日期（Date）:")) {
+					continue;
+				}
+				String alignedText = text.stripLeading();
+				if (!Objects.equals(text, alignedText)) {
+					replaceParagraphTextPreservingStyles(paragraph.getCTP().getDomNode(), text, alignedText);
+				}
+				paragraph.setAlignment(ParagraphAlignment.RIGHT);
+			}
+		}
+		if ("开票申请.docx".equals(templateFileName) && !document.getTables().isEmpty()) {
+			XWPFTable table = document.getTables().get(0);
+			if (table.getNumberOfRows() >= 5) {
+				XWPFTableRow accountRow = table.getRow(3);
+				accountRow.setHeight(3000);
+				accountRow.setHeightRule(TableRowHeightRule.AT_LEAST);
+				XWPFTableRow lastRow = table.getRow(4);
+				preserveInvoiceCrossPageRow(lastRow);
+			}
+		}
+	}
+
+	private void preserveInvoiceCrossPageRow(XWPFTableRow row) {
+		if (row == null || row.getTableCells().size() < 2) {
+			return;
+		}
+		XWPFTableCell contentCell = row.getCell(1);
+		if (contentCell.getParagraphs().size() == 2) {
+			contentCell.getCTTc().insertNewP(1).addNewR().addNewT().setStringValue(" ");
+		}
+	}
+
+	private boolean hasPageBreak(XWPFParagraph paragraph) {
+		if (paragraph == null) {
+			return false;
+		}
+		Node paragraphNode = paragraph.getCTP().getDomNode();
+		for (Node node = paragraphNode.getFirstChild(); node != null; node = node.getNextSibling()) {
+			if (hasPageBreakNode(node)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean hasPageBreakNode(Node node) {
+		if (node == null) {
+			return false;
+		}
+		if (hasLocalName(node, "br") && node instanceof Element element
+			&& "page".equals(element.getAttributeNS(WORD_NAMESPACE, "type"))) {
+			return true;
+		}
+		for (Node child = node.getFirstChild(); child != null; child = child.getNextSibling()) {
+			if (hasPageBreakNode(child)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private void setParagraphText(XWPFParagraph paragraph, String value) {
 		if (paragraph == null) {
 			return;
 		}
-		List<XWPFRun> runs = paragraph.getRuns();
-		RunStyle style = runs.isEmpty() ? RunStyle.empty() : RunStyle.from(runs.get(0));
-		for (int index = runs.size() - 1; index > 0; index--) {
-			paragraph.removeRun(index);
-		}
-		if (!runs.isEmpty()) {
-			paragraph.removeRun(0);
-		}
-		removeParagraphContentControls(paragraph);
-			XWPFRun run = paragraph.createRun();
-			style.apply(run);
-			applyCompactFieldStyle(run, value);
-			writeRunText(run, value);
-		}
-
-		private void applyCompactFieldStyle(XWPFRun run, String value) {
-			if (run == null || StringUtil.isBlank(value)) {
-				return;
-			}
-			String normalized = value.replaceAll("\\s+", "").trim();
-			if (normalized.startsWith("合同编号：") && normalized.length() > 18) {
-				run.setFontSize(8);
-			} else if (normalized.startsWith("合同事项：") && normalized.length() > 24) {
-				run.setFontSize(8);
-			}
-		}
-
-		private void removeParagraphContentControls(XWPFParagraph paragraph) {
 		Node paragraphNode = paragraph.getCTP().getDomNode();
-		List<Node> contentControls = new ArrayList<>();
-		for (Node child = paragraphNode.getFirstChild(); child != null; child = child.getNextSibling()) {
-			if (hasLocalName(child, "sdt")) {
-				contentControls.add(child);
+		List<Node> textNodes = editableTextNodes(paragraphNode);
+		if (textNodes.isEmpty()) {
+			appendTextToFirstRun(paragraphNode, value);
+		} else {
+			setTextNodeValue(textNodes.get(0), value);
+			for (int index = 1; index < textNodes.size(); index++) {
+				setTextNodeValue(textNodes.get(index), "");
 			}
 		}
-		contentControls.forEach(paragraphNode::removeChild);
+		for (XWPFRun run : paragraph.getRuns()) {
+			if (StringUtil.isNotBlank(run.text())) {
+				applyCompactFieldStyle(run, value);
+				break;
+			}
+		}
 	}
 
-	private void writeRunText(XWPFRun run, String value) {
-		String safeValue = StringUtil.isBlank(value) ? "" : value;
-		String[] lines = safeValue.split("\\R", -1);
-		if (lines.length == 0) {
-			run.setText("");
+	private void applyCompactFieldStyle(XWPFRun run, String value) {
+		if (run == null) {
 			return;
 		}
-		run.setText(lines[0]);
-		for (int index = 1; index < lines.length; index++) {
-			run.addBreak();
-			run.setText(lines[index]);
-		}
-	}
-
-	private record RunStyle(String fontFamily,
-							int fontSize,
-							String color,
-							boolean bold,
-							boolean italic,
-							UnderlinePatterns underline) {
-		private static RunStyle empty() {
-			return new RunStyle(null, -1, null, false, false, UnderlinePatterns.NONE);
-		}
-
-		private static RunStyle from(XWPFRun run) {
-			return new RunStyle(
-				run.getFontFamily(),
-				run.getFontSize(),
-				run.getColor(),
-				run.isBold(),
-				run.isItalic(),
-				run.getUnderline()
-			);
-		}
-
-		private void apply(XWPFRun run) {
-			if (StringUtil.isNotBlank(fontFamily)) {
-				run.setFontFamily(fontFamily);
-			}
-			if (fontSize > 0) {
-				run.setFontSize(fontSize);
-			}
-			if (StringUtil.isNotBlank(color)) {
-				run.setColor(color);
-			}
-			run.setBold(bold);
-			run.setItalic(italic);
-			if (underline != null && underline != UnderlinePatterns.NONE) {
-				run.setUnderline(underline);
-			}
+		int fontSize = compactFontSize(value);
+		if (fontSize > 0) {
+			run.setFontSize(fontSize);
 		}
 	}
 
@@ -674,10 +830,10 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 			return;
 		}
 		if (hasLocalName(root, "p")) {
-			String text = domParagraphText(root);
-			String replaced = findExactWholeTextReplacement(text, replacements);
-			if (replaced != null && !Objects.equals(text, replaced)) {
-				setDomParagraphText(root, replaced);
+			String text = editableParagraphText(root);
+			String replaced = replaceText(text, replacements);
+			if (!Objects.equals(text, replaced)) {
+				replaceParagraphTextPreservingStyles(root, text, replaced);
 			}
 			return;
 		}
@@ -686,44 +842,266 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		}
 	}
 
-	private String domParagraphText(Node paragraphNode) {
+	private void replaceParagraphTextPreservingStyles(Node paragraphNode, String originalText, String targetText) {
+		List<Node> textNodes = editableTextNodes(paragraphNode);
+		if (textNodes.isEmpty()) {
+			appendTextToFirstRun(paragraphNode, targetText);
+			return;
+		}
+		String actualText = editableParagraphText(paragraphNode);
+		String sourceText = Objects.equals(actualText, originalText) ? originalText : actualText;
+		List<Integer> charNodeIndexes = new ArrayList<>(sourceText.length());
+		for (int nodeIndex = 0; nodeIndex < textNodes.size(); nodeIndex++) {
+			String value = textNodeValue(textNodes.get(nodeIndex));
+			for (int index = 0; index < value.length(); index++) {
+				charNodeIndexes.add(nodeIndex);
+			}
+		}
+		if (charNodeIndexes.size() != sourceText.length()) {
+			setTextNodeValue(textNodes.get(0), targetText);
+			for (int index = 1; index < textNodes.size(); index++) {
+				setTextNodeValue(textNodes.get(index), "");
+			}
+			return;
+		}
+		int[] sourceIndexes = alignTargetCharacters(sourceText, targetText, charNodeIndexes, textNodes);
+		StringBuilder[] values = new StringBuilder[textNodes.size()];
+		for (int index = 0; index < values.length; index++) {
+			values[index] = new StringBuilder();
+		}
+		int lastNodeIndex = 0;
+		for (int index = 0; index < targetText.length(); index++) {
+			int nodeIndex = Math.max(lastNodeIndex, Math.min(sourceIndexes[index], textNodes.size() - 1));
+			values[nodeIndex].append(targetText.charAt(index));
+			lastNodeIndex = nodeIndex;
+		}
+		for (int index = 0; index < textNodes.size(); index++) {
+			Node textNode = textNodes.get(index);
+			String originalNodeValue = textNodeValue(textNode);
+			String replacementNodeValue = values[index].toString();
+			if (originalNodeValue.indexOf('_') >= 0
+				&& replacementNodeValue.indexOf('_') < 0
+				&& StringUtil.isNotBlank(replacementNodeValue)) {
+				ensureRunUnderline(textNode);
+			}
+			setTextNodeValue(textNode, replacementNodeValue);
+		}
+	}
+
+	private int[] alignTargetCharacters(String sourceText, String targetText, List<Integer> charNodeIndexes, List<Node> textNodes) {
+		int sourceLength = sourceText.length();
+		int targetLength = targetText.length();
+		int[] sourceIndexes = new int[targetLength];
+		Arrays.fill(sourceIndexes, 0);
+		if (sourceLength == 0 || targetLength == 0) {
+			return sourceIndexes;
+		}
+		int[][] lcs = buildLcs(sourceText, targetText);
+		List<TextMatch> matches = new ArrayList<>();
+		int sourceIndex = 0;
+		int targetIndex = 0;
+		while (sourceIndex < sourceLength && targetIndex < targetLength) {
+			if (sourceText.charAt(sourceIndex) == targetText.charAt(targetIndex)) {
+				matches.add(new TextMatch(sourceIndex++, targetIndex++));
+			} else if (lcs[sourceIndex + 1][targetIndex] >= lcs[sourceIndex][targetIndex + 1]) {
+				sourceIndex++;
+			} else {
+				targetIndex++;
+			}
+		}
+		TextMatch previous = new TextMatch(-1, -1);
+		for (int matchIndex = 0; matchIndex <= matches.size(); matchIndex++) {
+			TextMatch next = matchIndex < matches.size() ? matches.get(matchIndex) : new TextMatch(sourceLength, targetLength);
+			int chosenSource = chooseSlotSource(sourceText, previous.sourceIndex() + 1, next.sourceIndex() - 1,
+				previous.sourceIndex(), next.sourceIndex(), charNodeIndexes, textNodes);
+			for (int index = previous.targetIndex() + 1; index < next.targetIndex(); index++) {
+				sourceIndexes[index] = chosenSource;
+			}
+			if (next.sourceIndex() < sourceLength && next.targetIndex() < targetLength) {
+				sourceIndexes[next.targetIndex()] = charNodeIndexes.get(next.sourceIndex());
+			}
+			previous = next;
+		}
+		return sourceIndexes;
+	}
+
+	private int[][] buildLcs(String sourceText, String targetText) {
+		int[][] result = new int[sourceText.length() + 1][targetText.length() + 1];
+		for (int sourceIndex = sourceText.length() - 1; sourceIndex >= 0; sourceIndex--) {
+			for (int targetIndex = targetText.length() - 1; targetIndex >= 0; targetIndex--) {
+				result[sourceIndex][targetIndex] = sourceText.charAt(sourceIndex) == targetText.charAt(targetIndex)
+					? result[sourceIndex + 1][targetIndex + 1] + 1
+					: Math.max(result[sourceIndex + 1][targetIndex], result[sourceIndex][targetIndex + 1]);
+			}
+		}
+		return result;
+	}
+
+	private int chooseSlotSource(String sourceText, int rangeStart, int rangeEnd, int previousIndex, int nextIndex,
+								 List<Integer> charNodeIndexes, List<Node> textNodes) {
+		int bestCharIndex = -1;
+		int bestScore = Integer.MIN_VALUE;
+		for (int index = Math.max(0, rangeStart); index <= rangeEnd && index < sourceText.length(); index++) {
+			int nodeIndex = charNodeIndexes.get(index);
+			int score = slotScore(sourceText.charAt(index), textNodes.get(nodeIndex));
+			if (score > bestScore) {
+				bestScore = score;
+				bestCharIndex = index;
+			}
+		}
+		if (bestCharIndex >= 0) {
+			return charNodeIndexes.get(bestCharIndex);
+		}
+		if (previousIndex >= 0 && previousIndex < charNodeIndexes.size()) {
+			return charNodeIndexes.get(previousIndex);
+		}
+		if (nextIndex >= 0 && nextIndex < charNodeIndexes.size()) {
+			return charNodeIndexes.get(nextIndex);
+		}
+		return 0;
+	}
+
+	private int slotScore(char character, Node textNode) {
+		int score = Character.isWhitespace(character) || character == '_' ? 4 : 0;
+		Node run = ancestor(textNode, "r");
+		if (run != null && hasDescendant(run, "u")) {
+			score += 8;
+		}
+		return score;
+	}
+
+	private List<Node> editableTextNodes(Node root) {
+		List<Node> result = new ArrayList<>();
+		collectEditableTextNodes(root, result);
+		return result;
+	}
+
+	private void collectEditableTextNodes(Node node, List<Node> result) {
+		if (node == null) {
+			return;
+		}
+		if (hasLocalName(node, "t")) {
+			result.add(node);
+			return;
+		}
+		for (Node child = node.getFirstChild(); child != null; child = child.getNextSibling()) {
+			collectEditableTextNodes(child, result);
+		}
+	}
+
+	private String editableParagraphText(Node paragraphNode) {
 		StringBuilder builder = new StringBuilder();
-		appendNodeText(paragraphNode, builder);
+		for (Node textNode : editableTextNodes(paragraphNode)) {
+			builder.append(textNodeValue(textNode));
+		}
 		return builder.toString();
 	}
 
-	private void setDomParagraphText(Node paragraphNode, String value) {
-		List<Node> removeNodes = new ArrayList<>();
-		for (Node child = paragraphNode.getFirstChild(); child != null; child = child.getNextSibling()) {
-			if (!hasLocalName(child, "pPr")) {
-				removeNodes.add(child);
+	private String textNodeValue(Node textNode) {
+		if (textNode == null) {
+			return "";
+		}
+		StringBuilder builder = new StringBuilder();
+		for (Node child = textNode.getFirstChild(); child != null; child = child.getNextSibling()) {
+			if (child.getNodeValue() != null) {
+				builder.append(child.getNodeValue());
 			}
 		}
-		removeNodes.forEach(paragraphNode::removeChild);
-		org.w3c.dom.Document owner = paragraphNode.getOwnerDocument();
-		Node runNode = owner.createElementNS(WORD_NAMESPACE, "w:r");
-		writeDomRunText(owner, runNode, value);
-		paragraphNode.appendChild(runNode);
+		return builder.toString();
 	}
 
-	private void writeDomRunText(org.w3c.dom.Document owner, Node runNode, String value) {
-		String safeValue = StringUtil.isBlank(value) ? "" : value;
-		String[] lines = safeValue.split("\\R", -1);
-		if (lines.length == 0) {
-			appendDomText(owner, runNode, "");
+	private void setTextNodeValue(Node textNode, String value) {
+		String safeValue = value == null ? "" : value;
+		Node firstTextChild = null;
+		List<Node> extraTextChildren = new ArrayList<>();
+		for (Node child = textNode.getFirstChild(); child != null; child = child.getNextSibling()) {
+			if (child.getNodeValue() == null) {
+				continue;
+			}
+			if (firstTextChild == null) {
+				firstTextChild = child;
+			} else {
+				extraTextChildren.add(child);
+			}
+		}
+		if (firstTextChild == null) {
+			textNode.appendChild(textNode.getOwnerDocument().createTextNode(safeValue));
+		} else {
+			firstTextChild.setNodeValue(safeValue);
+			extraTextChildren.forEach(textNode::removeChild);
+		}
+		if (textNode instanceof Element element) {
+			if (!safeValue.isEmpty() && (Character.isWhitespace(safeValue.charAt(0))
+				|| Character.isWhitespace(safeValue.charAt(safeValue.length() - 1)))) {
+				element.setAttributeNS(XML_NAMESPACE, "xml:space", "preserve");
+			} else {
+				element.removeAttributeNS(XML_NAMESPACE, "space");
+			}
+		}
+	}
+
+	private void appendTextToFirstRun(Node paragraphNode, String value) {
+		Node runNode = firstDescendant(paragraphNode, "r");
+		if (runNode == null) {
+			runNode = paragraphNode.getOwnerDocument().createElementNS(WORD_NAMESPACE, "w:r");
+			paragraphNode.appendChild(runNode);
+		}
+		Node textNode = paragraphNode.getOwnerDocument().createElementNS(WORD_NAMESPACE, "w:t");
+		runNode.appendChild(textNode);
+		setTextNodeValue(textNode, value);
+	}
+
+	private Node firstDescendant(Node root, String localName) {
+		if (root == null) {
+			return null;
+		}
+		if (hasLocalName(root, localName)) {
+			return root;
+		}
+		for (Node child = root.getFirstChild(); child != null; child = child.getNextSibling()) {
+			Node result = firstDescendant(child, localName);
+			if (result != null) {
+				return result;
+			}
+		}
+		return null;
+	}
+
+	private Node ancestor(Node node, String localName) {
+		for (Node current = node == null ? null : node.getParentNode(); current != null; current = current.getParentNode()) {
+			if (hasLocalName(current, localName)) {
+				return current;
+			}
+		}
+		return null;
+	}
+
+	private boolean hasDescendant(Node root, String localName) {
+		return firstDescendant(root, localName) != null;
+	}
+
+	private void ensureRunUnderline(Node textNode) {
+		Node runNode = ancestor(textNode, "r");
+		if (runNode == null || hasDescendant(runNode, "u")) {
 			return;
 		}
-		appendDomText(owner, runNode, lines[0]);
-		for (int index = 1; index < lines.length; index++) {
-			runNode.appendChild(owner.createElementNS(WORD_NAMESPACE, "w:br"));
-			appendDomText(owner, runNode, lines[index]);
+		Node runProperties = null;
+		for (Node child = runNode.getFirstChild(); child != null; child = child.getNextSibling()) {
+			if (hasLocalName(child, "rPr")) {
+				runProperties = child;
+				break;
+			}
 		}
+		if (runProperties == null) {
+			runProperties = runNode.getOwnerDocument().createElementNS(WORD_NAMESPACE, "w:rPr");
+			runNode.insertBefore(runProperties, runNode.getFirstChild());
+		}
+		Node underline = runNode.getOwnerDocument().createElementNS(WORD_NAMESPACE, "w:u");
+		((Element) underline).setAttributeNS(WORD_NAMESPACE, "w:val", "single");
+		runProperties.appendChild(underline);
 	}
 
-	private void appendDomText(org.w3c.dom.Document owner, Node runNode, String value) {
-		Node textNode = owner.createElementNS(WORD_NAMESPACE, "w:t");
-		textNode.appendChild(owner.createTextNode(value == null ? "" : value));
-		runNode.appendChild(textNode);
+	private record TextMatch(int sourceIndex, int targetIndex) {
 	}
 
 	private String paragraphText(XWPFParagraph paragraph) {

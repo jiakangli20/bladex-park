@@ -4,6 +4,7 @@
  */
 package org.springblade.modules.contract.service.impl;
 
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.apache.poi.hwpf.HWPFDocument;
 import org.apache.poi.ss.usermodel.Cell;
@@ -40,6 +41,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 import java.io.ByteArrayInputStream;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -52,6 +54,7 @@ import java.util.Set;
  * @author BladeX
  */
 @Service
+@RequiredArgsConstructor
 public class ContractDocumentPreviewService {
 
 	private static final int MAX_PREVIEW_ROWS = 160;
@@ -62,17 +65,20 @@ public class ContractDocumentPreviewService {
 	private static final double DEFAULT_PARAGRAPH_HEIGHT_PT = 18D;
 	private static final double DEFAULT_TABLE_ROW_HEIGHT_PT = 24D;
 	private static final double WORD_PAGE_SPLIT_BUFFER_PT = 20D;
+	private final OfficePdfConversionService officePdfConversionService;
 
 	@SneakyThrows
 	public String render(ContractNoticeFileVO document, Map<String, String> summary, List<String> missingFields) {
 		String extension = extension(document == null ? null : document.getFileName());
-		String body = switch (extension) {
-			case "docx" -> renderDocx(document.getFileBytes());
-			case "doc" -> renderDoc(document.getFileBytes());
-			case "xls", "xlsx" -> renderWorkbook(document.getFileBytes());
-			default -> renderUnsupported(document);
-		};
+		String body = renderPdf(officePdfConversionService.convert(document));
 		return wrapDocument(document, summary, missingFields, body, extension);
+	}
+
+	private String renderPdf(byte[] pdfBytes) {
+		String source = "data:application/pdf;base64," + Base64.getEncoder().encodeToString(pdfBytes);
+		return "<object class=\"pdf-preview\" data-office-preview-pdf=\"true\" type=\"application/pdf\" data=\"" + source + "\">"
+			+ "<p class=\"pdf-preview-fallback\">当前浏览器无法内嵌 PDF，请下载原文件查看。</p>"
+			+ "</object>";
 	}
 
 	private String renderDocx(byte[] fileBytes) throws Exception {
@@ -726,6 +732,7 @@ public class ContractDocumentPreviewService {
 			+ ".preview-summary em{font-style:normal;color:#6b7280;}"
 			+ ".preview-status{max-width:980px;margin:0 auto 14px;padding:10px 12px;border-radius:6px;font-size:13px;}"
 			+ ".preview-status-success{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;}.preview-status-warning{background:#fff7ed;border:1px solid #fdba74;color:#c2410c;}"
+			+ ".pdf-preview{display:block;box-sizing:border-box;width:min(1100px,100%);height:calc(100vh - 190px);min-height:720px;margin:0 auto;border:1px solid #d8dde6;background:#fff;box-shadow:0 10px 30px rgba(15,23,42,.12);}.pdf-preview-fallback{padding:24px;text-align:center;color:#6b7280;}"
 			+ ".word-page,.sheet-page{box-sizing:border-box;margin:0 auto 18px;background:#fff;border:1px solid #d8dde6;box-shadow:0 10px 30px rgba(15,23,42,.12);}"
 			+ ".word-page{overflow:visible;}.sheet-page{overflow:auto;}"
 			+ ".word-paragraph{margin:0 0 8px;line-height:1.55;font-size:10.5pt;white-space:pre-wrap;}.word-blank{min-height:12pt;}"
@@ -735,7 +742,7 @@ public class ContractDocumentPreviewService {
 			+ "@media (max-width:900px){.contract-document-preview{padding:12px}.word-page,.sheet-page{max-width:none;}.preview-toolbar{flex-direction:column;align-items:flex-start;}}"
 			+ "</style>"
 			+ "<div class=\"preview-toolbar\"><strong>" + escapeHtml(document == null ? "文书预览" : document.getNoticeName()) + "</strong><code>"
-			+ escapeHtml(extension == null ? "" : extension.toUpperCase(Locale.ROOT)) + " 原文件预览</code></div>"
+			+ escapeHtml(extension == null ? "" : extension.toUpperCase(Locale.ROOT)) + " 转 PDF 原版预览</code></div>"
 			+ "<div class=\"preview-summary\">" + summaryHtml + "</div>"
 			+ missingHtml
 			+ body
