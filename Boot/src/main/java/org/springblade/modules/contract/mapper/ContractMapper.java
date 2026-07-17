@@ -29,6 +29,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.apache.ibatis.annotations.Param;
 import org.springblade.modules.contract.pojo.entity.Contract;
+import org.springblade.modules.contract.pojo.vo.ContractExpirySummaryVO;
 import org.springblade.modules.contract.pojo.vo.ContractStatsVO;
 
 import java.util.List;
@@ -65,6 +66,14 @@ public interface ContractMapper extends BaseMapper<Contract> {
 	 * @return 合同列表
 	 */
 	List<Contract> selectExpiringPage(IPage<Contract> page, @Param("contract") Contract contract);
+
+	/**
+	 * 到期提醒汇总.
+	 *
+	 * @param contract 查询条件
+	 * @return 汇总
+	 */
+	ContractExpirySummaryVO selectExpiringSummary(@Param("contract") Contract contract);
 
 	/**
 	 * 合同统计

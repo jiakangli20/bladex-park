@@ -172,6 +172,9 @@
 		<if test="payment != null and payment.contractId != null">
 			AND p.contract_id = #{payment.contractId}
 		</if>
+		<if test="payment != null and payment.paymentId != null">
+			AND p.payment_id = #{payment.paymentId}
+		</if>
 		<if test="payment != null and payment.feeType != null and payment.feeType != ''">
 			AND p.fee_type = #{payment.feeType}
 		</if>

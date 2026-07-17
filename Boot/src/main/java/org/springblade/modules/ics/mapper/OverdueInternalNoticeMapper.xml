@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.ics.mapper.OverdueInternalNoticeMapper">
+
+	<insert id="insertIgnore" parameterType="org.springblade.modules.ics.pojo.entity.OverdueInternalNotice">
+		INSERT IGNORE INTO biz_overdue_internal_notice (
+			payment_id, contract_id, recipient_user_id, recipient_account, recipient_name,
+			recipient_roles, notice_title, notice_content, read_status, park_id,
+			del_flag, create_by, create_time
+		) VALUES (
+			#{paymentId}, #{contractId}, #{recipientUserId}, #{recipientAccount}, #{recipientName},
+			#{recipientRoles}, #{noticeTitle}, #{noticeContent}, #{readStatus}, #{parkId},
+			#{delFlag}, #{createBy}, #{createTime}
+		)
+	</insert>
+
+	<select id="selectByPaymentId" resultType="org.springblade.modules.ics.pojo.entity.OverdueInternalNotice">
+		SELECT *
+		FROM biz_overdue_internal_notice
+		WHERE payment_id = #{paymentId}
+		  AND del_flag = '0'
+		ORDER BY notice_id ASC
+	</select>
+
+	<select id="countUnread" resultType="java.lang.Long">
+		SELECT COUNT(1)
+		FROM biz_overdue_internal_notice
+		WHERE del_flag = '0'
+		  AND read_status = '0'
+		  AND recipient_user_id = #{userId}
+	</select>
+
+	<select id="selectNoticePage" resultType="org.springblade.modules.ics.pojo.vo.OverdueInternalNoticeVO">
+		SELECT
+			n.notice_id AS noticeId,
+			n.payment_id AS paymentId,
+			n.contract_id AS contractId,
+			n.recipient_user_id AS recipientUserId,
+			n.recipient_account AS recipientAccount,
+			n.recipient_name AS recipientName,
+			n.recipient_roles AS recipientRoles,
+			n.notice_title AS noticeTitle,
+			n.notice_content AS noticeContent,
+			n.read_status AS readStatus,
+			n.read_time AS readTime,
+			n.park_id AS parkId,
+			n.del_flag AS delFlag,
+			n.create_by AS createBy,
+			n.create_time AS createTime,
+			c.contract_no AS contractNo,
+			c.customer_name AS customerName,
+			p.fee_name AS feeName,
+			p.amount_due AS amountDue,
+			p.amount_paid AS amountPaid,
+			p.pay_deadline AS payDeadline,
+			COALESCE(p.selected_room_name, c.room_name) AS roomName,
+			COALESCE(p.selected_building_name, c.building_name) AS buildingName
+		FROM biz_overdue_internal_notice n
+		INNER JOIN biz_contract_payment p ON p.payment_id = n.payment_id
+		LEFT JOIN biz_contract c ON c.contract_id = n.contract_id
+		WHERE n.del_flag = '0'
+		  AND n.recipient_user_id = #{userId}
+		<if test="customerName != null and customerName != ''">
+			AND c.customer_name LIKE CONCAT('%', #{customerName}, '%')
+		</if>
+		<if test="readStatus != null and readStatus != ''">
+			AND n.read_status = #{readStatus}
+		</if>
+		ORDER BY n.read_status ASC, n.create_time DESC, n.notice_id DESC
+	</select>
+
+	<update id="markRead">
+		UPDATE biz_overdue_internal_notice
+		SET read_status = '1',
+			read_time = NOW()
+		WHERE payment_id = #{paymentId}
+		  AND recipient_user_id = #{userId}
+		  AND read_status = '0'
+		  AND del_flag = '0'
+	</update>
+
+</mapper>

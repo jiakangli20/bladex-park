@@ -28,9 +28,11 @@ package org.springblade.modules.contract.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import org.springblade.modules.contract.pojo.entity.Contract;
+import org.springblade.modules.contract.pojo.entity.ContractChange;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
+import org.springblade.modules.contract.pojo.vo.ContractExpirySummaryVO;
 import org.springblade.modules.contract.pojo.vo.ContractStatsVO;
 
 import java.util.List;
@@ -86,6 +88,22 @@ public interface IContractService extends IService<Contract> {
 	boolean renewContract(Long contractId, Contract newContract);
 
 	/**
+	 * 登记并立即应用合同变更.
+	 *
+	 * @param change 变更内容
+	 * @return 变更记录
+	 */
+	ContractChange applyContractChange(ContractChange change);
+
+	/**
+	 * 查询合同变更记录.
+	 *
+	 * @param contractId 合同ID
+	 * @return 变更记录
+	 */
+	List<ContractChange> selectContractChanges(Long contractId);
+
+	/**
 	 * 终止合同
 	 *
 	 * @param contractId 合同ID
@@ -110,6 +128,14 @@ public interface IContractService extends IService<Contract> {
 	 * @return 分页
 	 */
 	IPage<Contract> selectExpiringPage(IPage<Contract> page, Contract contract);
+
+	/**
+	 * 到期提醒汇总.
+	 *
+	 * @param contract 查询条件
+	 * @return 汇总
+	 */
+	ContractExpirySummaryVO expiringSummary(Contract contract);
 
 	/**
 	 * 合同统计

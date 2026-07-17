@@ -31,7 +31,7 @@ public class HomeTodoVO implements Serializable {
 	@Schema(description = "物业工单待办数量")
 	private Long workorderTodoCount = 0L;
 
-	@Schema(description = "审批超时数量")
-	private Long timeoutApprovalCount = 0L;
+	@Schema(description = "逾期内部通知未读数量")
+	private Long overdueNoticeCount = 0L;
 
 }

@@ -60,20 +60,6 @@
 		</if>
 	</select>
 
-	<select id="countTimeoutApprovals" resultType="java.lang.Long">
-		SELECT COUNT(1)
-		FROM biz_approval_project p
-		WHERE COALESCE(p.del_flag, '0') = '0'
-		  AND p.process_status = '1'
-		  AND COALESCE(p.update_time, p.applicant_time, p.create_time) &lt; DATE_SUB(NOW(), INTERVAL 12 HOUR)
-		<if test="parkId != null">
-			AND p.park_id = #{parkId}
-		</if>
-		<if test="admin == null or admin == false">
-			AND FIND_IN_SET(#{currentUser}, REPLACE(COALESCE(p.current_node, ''), ' ', '')) &gt; 0
-		</if>
-	</select>
-
 	<select id="countWorkorderTodos" resultType="java.lang.Long">
 		SELECT COUNT(1)
 		FROM biz_service_workorder w

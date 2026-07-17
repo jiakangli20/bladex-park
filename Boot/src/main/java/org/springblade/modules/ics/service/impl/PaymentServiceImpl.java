@@ -5,6 +5,7 @@
 package org.springblade.modules.ics.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.secure.utils.AuthUtil;
@@ -23,14 +24,25 @@ import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractNoticeService;
 import org.springblade.modules.ics.mapper.PaymentMapper;
 import org.springblade.modules.ics.mapper.PaymentNoticeMapper;
+import org.springblade.modules.ics.mapper.OverdueInternalNoticeMapper;
+import org.springblade.modules.ics.pojo.dto.OverdueNoticeSendDTO;
+import org.springblade.modules.ics.pojo.entity.OverdueInternalNotice;
 import org.springblade.modules.ics.pojo.entity.PaymentNotice;
 import org.springblade.modules.ics.pojo.vo.OverdueDisposalDetailVO;
+import org.springblade.modules.ics.pojo.vo.OverdueInternalNoticeVO;
+import org.springblade.modules.ics.pojo.vo.OverdueNoticeRecipientVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticePlaceholderVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeSummaryVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeVO;
 import org.springblade.modules.ics.pojo.vo.PaymentSummaryVO;
 import org.springblade.modules.ics.service.IPaymentService;
 import org.springblade.modules.park.pojo.entity.Room;
+import org.springblade.modules.system.pojo.entity.Dept;
+import org.springblade.modules.system.pojo.entity.Role;
+import org.springblade.modules.system.pojo.entity.User;
+import org.springblade.modules.system.service.IDeptService;
+import org.springblade.modules.system.service.IRoleService;
+import org.springblade.modules.system.service.IUserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -67,14 +79,20 @@ public class PaymentServiceImpl implements IPaymentService {
 	private static final String NOTICE_STATUS_PENDING = "pending";
 	private static final String NOTICE_STATUS_SUCCESS = "success";
 	private static final String NOTICE_STATUS_FAILED = "failed";
+	private static final String NOTICE_READ_UNREAD = "0";
+	private static final String DEFAULT_DEL_FLAG = "0";
 
 	private final PaymentMapper paymentMapper;
 	private final PaymentNoticeMapper paymentNoticeMapper;
+	private final OverdueInternalNoticeMapper overdueInternalNoticeMapper;
 	private final ContractMapper contractMapper;
 	private final ContractPaymentMapper contractPaymentMapper;
 	private final ContractLogMapper contractLogMapper;
 	private final ContractWorkflowRecordMapper contractWorkflowRecordMapper;
 	private final IContractNoticeService contractNoticeService;
+	private final IUserService userService;
+	private final IDeptService deptService;
+	private final IRoleService roleService;
 
 	@Override
 	public IPage<ContractPayment> selectPaymentPage(IPage<ContractPayment> page, ContractPayment payment, String scope) {
@@ -212,10 +230,10 @@ public class PaymentServiceImpl implements IPaymentService {
 		update.setRemindTime(now);
 		update.setUpdateBy(currentUserName());
 		update.setUpdateTime(now);
-		boolean result = contractPaymentMapper.updateById(update) > 0;
-		if (result) {
-			addLog(existing.getContractId(), "remind", "发起催缴提醒");
-		}
+			boolean result = contractPaymentMapper.updateById(update) > 0;
+			if (result) {
+				addLog(existing.getContractId(), "remind", "发起催缴提醒");
+			}
 		return result;
 	}
 
@@ -288,9 +306,154 @@ public class PaymentServiceImpl implements IPaymentService {
 		detail.setWorkflowRecords(payment.getContractId() == null
 			? List.of()
 			: contractWorkflowRecordMapper.selectByContractId(payment.getContractId()).stream()
-				.filter(record -> isOverdueWorkflowRecord(record, paymentId))
-				.toList());
+					.filter(record -> isOverdueWorkflowRecord(record, paymentId))
+					.toList());
+		detail.setInternalNotices(overdueInternalNoticeMapper.selectByPaymentId(paymentId));
 		return detail;
+	}
+
+	@Override
+	public Long unreadOverdueNoticeCount() {
+		Long userId = AuthUtil.getUserId();
+		if (Func.isEmpty(userId)) {
+			return 0L;
+		}
+		Long count = overdueInternalNoticeMapper.countUnread(userId);
+		return count == null ? 0L : count;
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public boolean readOverdueNotice(Long paymentId) {
+		if (Func.isEmpty(paymentId) || Func.isEmpty(AuthUtil.getUserId())) {
+			return false;
+		}
+		return overdueInternalNoticeMapper.markRead(paymentId, AuthUtil.getUserId()) >= 0;
+	}
+
+	@Override
+	public List<OverdueInternalNotice> overdueInternalNotices(Long paymentId) {
+		ContractPayment payment = requirePayment(paymentId);
+		assertAccessible(payment);
+		return overdueInternalNoticeMapper.selectByPaymentId(paymentId);
+	}
+
+	@Override
+	public List<OverdueNoticeRecipientVO> overdueNoticeRecipients(Long paymentId) {
+		ContractPayment payment = requirePayment(paymentId);
+		assertAccessible(payment);
+		Contract contract = contractMapper.selectContractById(payment.getContractId());
+		if (contract == null) {
+			throw new ServiceException("账单关联合同不存在");
+		}
+		RecipientContext context = loadRecipientContext();
+		Map<Long, NoticeRecipient> suggested = resolveSuggestedRecipients(contract, context);
+		Set<Long> sentUserIds = overdueInternalNoticeMapper.selectByPaymentId(paymentId).stream()
+			.map(OverdueInternalNotice::getRecipientUserId)
+			.filter(Objects::nonNull)
+			.collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+		List<OverdueNoticeRecipientVO> result = new ArrayList<>();
+		for (User user : context.users) {
+			OverdueNoticeRecipientVO recipient = new OverdueNoticeRecipientVO();
+			recipient.setUserId(user.getId());
+			recipient.setAccount(user.getAccount());
+			recipient.setUserName(firstNotBlank(user.getRealName(), user.getName(), user.getAccount()));
+			recipient.setDeptName(userDeptNames(user, context.deptMap));
+			recipient.setRoleNames(userRoleNames(user, context.roleMap));
+			NoticeRecipient suggestedRecipient = suggested.get(user.getId());
+			recipient.setSuggestedRoles(suggestedRecipient == null ? "" : String.join("、", suggestedRecipient.roles));
+			recipient.setDefaultSelected(suggestedRecipient != null);
+			recipient.setAlreadySent(sentUserIds.contains(user.getId()));
+			result.add(recipient);
+		}
+		result.sort((left, right) -> {
+			int selectedCompare = Boolean.compare(Boolean.TRUE.equals(right.getDefaultSelected()), Boolean.TRUE.equals(left.getDefaultSelected()));
+			if (selectedCompare != 0) {
+				return selectedCompare;
+			}
+			int deptCompare = Func.toStr(left.getDeptName()).compareTo(Func.toStr(right.getDeptName()));
+			return deptCompare != 0 ? deptCompare : Func.toStr(left.getUserName()).compareTo(Func.toStr(right.getUserName()));
+		});
+		return result;
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public int sendOverdueNotice(OverdueNoticeSendDTO dto) {
+		if (dto == null || Func.isEmpty(dto.getPaymentId())) {
+			throw new ServiceException("账单ID不能为空");
+		}
+		List<Long> selectedUserIds = dto.getRecipientUserIds() == null ? List.of() : dto.getRecipientUserIds().stream()
+			.filter(Objects::nonNull)
+			.distinct()
+			.toList();
+		if (selectedUserIds.isEmpty()) {
+			throw new ServiceException("请至少选择一名接收人");
+		}
+		ContractPayment payment = requirePayment(dto.getPaymentId());
+		assertAccessible(payment);
+		Date now = DateUtil.now();
+		if (PAY_STATUS_PAID.equals(payment.getPayStatus())) {
+			throw new ServiceException("已缴账单无需发送逾期通知");
+		}
+		if (!isOverdue(payment, now)) {
+			throw new ServiceException("当前账单尚未逾期");
+		}
+		Contract contract = contractMapper.selectContractById(payment.getContractId());
+		if (contract == null) {
+			throw new ServiceException("账单关联合同不存在");
+		}
+		RecipientContext context = loadRecipientContext();
+		Map<Long, User> userMap = new LinkedHashMap<>();
+		context.users.forEach(user -> userMap.put(user.getId(), user));
+		List<Long> invalidUserIds = selectedUserIds.stream().filter(userId -> !userMap.containsKey(userId)).toList();
+		if (!invalidUserIds.isEmpty()) {
+			throw new ServiceException("所选接收人不存在或已停用，请重新选择");
+		}
+		Map<Long, NoticeRecipient> suggested = resolveSuggestedRecipients(contract, context);
+		int inserted = 0;
+		List<String> insertedRecipients = new ArrayList<>();
+		for (Long userId : selectedUserIds) {
+			User user = userMap.get(userId);
+			NoticeRecipient suggestedRecipient = suggested.get(userId);
+			String responsibilities = suggestedRecipient == null || suggestedRecipient.roles.isEmpty()
+				? "指定接收人"
+				: String.join("、", suggestedRecipient.roles);
+			OverdueInternalNotice notice = new OverdueInternalNotice();
+			notice.setPaymentId(payment.getPaymentId());
+			notice.setContractId(payment.getContractId());
+			notice.setRecipientUserId(user.getId());
+			notice.setRecipientAccount(user.getAccount());
+			notice.setRecipientName(firstNotBlank(user.getRealName(), user.getName(), user.getAccount()));
+			notice.setRecipientRoles(responsibilities);
+			notice.setNoticeTitle("合同账单首次逾期通知");
+			notice.setNoticeContent(buildOverdueInternalNoticeContent(contract, payment));
+			notice.setReadStatus(NOTICE_READ_UNREAD);
+			notice.setParkId(payment.getParkId());
+			notice.setDelFlag(DEFAULT_DEL_FLAG);
+			notice.setCreateBy(currentUserName());
+			notice.setCreateTime(now);
+			int affected = overdueInternalNoticeMapper.insertIgnore(notice);
+			inserted += affected;
+			if (affected > 0) {
+				insertedRecipients.add(notice.getRecipientName() + "（" + responsibilities + "）");
+			}
+		}
+		if (!insertedRecipients.isEmpty()) {
+			addLog(payment.getContractId(), "overdue_internal_notice", "发送首次逾期通知：" + String.join("、", insertedRecipients));
+		}
+		return inserted;
+	}
+
+	@Override
+	public IPage<OverdueInternalNoticeVO> overdueNoticePage(IPage<OverdueInternalNoticeVO> page, String customerName, String readStatus) {
+		Long userId = AuthUtil.getUserId();
+		if (Func.isEmpty(userId)) {
+			page.setRecords(List.of());
+			return page;
+		}
+		page.setRecords(overdueInternalNoticeMapper.selectNoticePage(page, userId, customerName, readStatus));
+		return page;
 	}
 
 	@Override
@@ -415,6 +578,191 @@ public class PaymentServiceImpl implements IPaymentService {
 		paymentNoticeMapper.updateById(notice);
 		addLog(payment.getContractId(), "payment_notice_email", notice.getRemark());
 		return paymentNoticeMapper.selectNoticeByPaymentId(paymentId);
+	}
+
+	private RecipientContext loadRecipientContext() {
+		String tenantId = AuthUtil.getTenantId();
+		List<User> users = userService.list(Wrappers.<User>lambdaQuery()
+			.eq(User::getTenantId, tenantId)
+			.eq(User::getStatus, 1));
+		List<Role> roles = roleService.list(Wrappers.<Role>lambdaQuery()
+			.eq(Role::getTenantId, tenantId)
+			.eq(Role::getStatus, 1));
+		List<Dept> depts = deptService.list(Wrappers.<Dept>lambdaQuery()
+			.eq(Dept::getTenantId, tenantId)
+			.eq(Dept::getStatus, 1));
+		Map<Long, Role> roleMap = new LinkedHashMap<>();
+		roles.forEach(role -> roleMap.put(role.getId(), role));
+		Map<Long, Dept> deptMap = new LinkedHashMap<>();
+		depts.forEach(dept -> deptMap.put(dept.getId(), dept));
+		return new RecipientContext(users, roleMap, deptMap);
+	}
+
+	private Map<Long, NoticeRecipient> resolveSuggestedRecipients(Contract contract, RecipientContext context) {
+		List<User> users = context.users;
+		Map<Long, Role> roleMap = context.roleMap;
+		Map<Long, Dept> deptMap = context.deptMap;
+		Map<Long, NoticeRecipient> recipients = new LinkedHashMap<>();
+		User followUser = findUser(users, firstNotBlank(contract.getFollowUser(), contract.getCreateBy()));
+		if (followUser == null) {
+			followUser = users.stream()
+				.filter(user -> userHasKeywordDept(user, deptMap, List.of("招商"))
+					|| userHasKeywordRole(user, roleMap, List.of("招商")))
+				.findFirst()
+				.orElse(null);
+		}
+		if (followUser == null) {
+			followUser = findUser(users, contract.getCreateBy());
+		}
+		addRecipient(recipients, followUser, "招商员");
+
+		List<User> deptLeaders = resolveDepartmentLeaders(users, followUser, deptMap, roleMap);
+		deptLeaders.forEach(user -> addRecipient(recipients, user, "部门领导"));
+
+		List<User> supervisingLeaders = users.stream()
+			.filter(user -> userHasKeywordRole(user, roleMap, List.of("分管领导", "主管领导", "总经理", "老板", "boss")))
+			.toList();
+		supervisingLeaders.forEach(user -> addRecipient(recipients, user, "分管领导"));
+
+		List<User> financeUsers = users.stream()
+			.filter(user -> userHasKeywordDept(user, deptMap, List.of("财务"))
+				|| userHasKeywordRole(user, roleMap, List.of("财务")))
+			.toList();
+		financeUsers.forEach(user -> addRecipient(recipients, user, "财务跟进"));
+
+		if (deptLeaders.isEmpty() && !supervisingLeaders.isEmpty()) {
+			addRecipient(recipients, supervisingLeaders.get(0), "部门领导");
+		}
+		return recipients;
+	}
+
+	private String userDeptNames(User user, Map<Long, Dept> deptMap) {
+		return Func.toLongList(user.getDeptId()).stream()
+			.map(deptMap::get)
+			.filter(Objects::nonNull)
+			.map(dept -> firstNotBlank(dept.getDeptName(), dept.getFullName()))
+			.filter(StringUtil::isNotBlank)
+			.distinct()
+			.reduce((left, right) -> left + "、" + right)
+			.orElse("");
+	}
+
+	private String userRoleNames(User user, Map<Long, Role> roleMap) {
+		return Func.toLongList(user.getRoleId()).stream()
+			.map(roleMap::get)
+			.filter(Objects::nonNull)
+			.map(role -> firstNotBlank(role.getRoleName(), role.getRoleAlias()))
+			.filter(StringUtil::isNotBlank)
+			.distinct()
+			.reduce((left, right) -> left + "、" + right)
+			.orElse("");
+	}
+
+	private List<User> resolveDepartmentLeaders(List<User> users, User followUser, Map<Long, Dept> deptMap, Map<Long, Role> roleMap) {
+		if (followUser == null) {
+			return List.of();
+		}
+		Set<Long> leaderIds = new LinkedHashSet<>(Func.toLongList(followUser.getLeaderId()));
+		List<Long> followDeptIds = Func.toLongList(followUser.getDeptId());
+		for (Long deptId : followDeptIds) {
+			Dept dept = deptMap.get(deptId);
+			if (dept != null) {
+				leaderIds.addAll(Func.toLongList(dept.getLeaderId()));
+			}
+		}
+		List<User> configured = users.stream().filter(user -> leaderIds.contains(user.getId())).toList();
+		if (!configured.isEmpty()) {
+			return configured;
+		}
+		return users.stream()
+			.filter(user -> Func.toLongList(user.getDeptId()).stream().anyMatch(followDeptIds::contains))
+			.filter(user -> userHasKeywordRole(user, roleMap, List.of("部门领导", "经理", "老板", "manager", "boss")))
+			.toList();
+	}
+
+	private User findUser(List<User> users, String accountOrName) {
+		if (StringUtil.isBlank(accountOrName)) {
+			return null;
+		}
+		String target = accountOrName.trim();
+		return users.stream()
+			.filter(user -> target.equals(user.getAccount()) || target.equals(user.getRealName()) || target.equals(user.getName()))
+			.findFirst()
+			.orElse(null);
+	}
+
+	private boolean userHasKeywordRole(User user, Map<Long, Role> roleMap, List<String> keywords) {
+		return Func.toLongList(user.getRoleId()).stream()
+			.map(roleMap::get)
+			.filter(Objects::nonNull)
+			.anyMatch(role -> containsAny(firstNotBlank(role.getRoleName(), "") + " " + firstNotBlank(role.getRoleAlias(), ""), keywords));
+	}
+
+	private boolean userHasKeywordDept(User user, Map<Long, Dept> deptMap, List<String> keywords) {
+		return Func.toLongList(user.getDeptId()).stream()
+			.map(deptMap::get)
+			.filter(Objects::nonNull)
+			.anyMatch(dept -> containsAny(firstNotBlank(dept.getDeptName(), dept.getFullName(), ""), keywords));
+	}
+
+	private boolean containsAny(String source, List<String> keywords) {
+		String normalized = Func.toStr(source, "").toLowerCase();
+		return keywords.stream().anyMatch(keyword -> normalized.contains(keyword.toLowerCase()));
+	}
+
+	private String firstNotBlank(String... values) {
+		for (String value : values) {
+			if (!StringUtil.isBlank(value)) {
+				return value;
+			}
+		}
+		return "";
+	}
+
+	private void addRecipient(Map<Long, NoticeRecipient> recipients, User user, String role) {
+		if (user == null || user.getId() == null) {
+			return;
+		}
+		recipients.computeIfAbsent(user.getId(), ignored -> new NoticeRecipient(user)).roles.add(role);
+	}
+
+	private String buildOverdueInternalNoticeContent(Contract contract, ContractPayment payment) {
+		BigDecimal amountDue = payment.getAmountDue() == null ? BigDecimal.ZERO : payment.getAmountDue();
+		BigDecimal amountPaid = payment.getAmountPaid() == null ? BigDecimal.ZERO : payment.getAmountPaid();
+		String payDeadline = payment.getPayDeadline() == null ? "-" : DateUtil.format(payment.getPayDeadline(), DateUtil.PATTERN_DATE);
+		return "合同" + firstNotBlank(contract.getContractNo(), "-") + "，企业" + firstNotBlank(contract.getCustomerName(), "-")
+			+ "，" + firstNotBlank(payment.getFeeName(), "费用") + "未缴金额" + amountDue.subtract(amountPaid).max(BigDecimal.ZERO).stripTrailingZeros().toPlainString()
+			+ "元，应缴日期" + payDeadline + "。";
+	}
+
+	private boolean isOverdue(ContractPayment payment, Date now) {
+		return payment.getPayDeadline() != null
+			&& DateUtil.format(payment.getPayDeadline(), DateUtil.PATTERN_DATE).compareTo(DateUtil.format(now, DateUtil.PATTERN_DATE)) < 0;
+	}
+
+	private static class NoticeRecipient {
+
+		private final User user;
+		private final Set<String> roles = new LinkedHashSet<>();
+
+		private NoticeRecipient(User user) {
+			this.user = user;
+		}
+
+	}
+
+	private static class RecipientContext {
+
+		private final List<User> users;
+		private final Map<Long, Role> roleMap;
+		private final Map<Long, Dept> deptMap;
+
+		private RecipientContext(List<User> users, Map<Long, Role> roleMap, Map<Long, Dept> deptMap) {
+			this.users = users;
+			this.roleMap = roleMap;
+			this.deptMap = deptMap;
+		}
+
 	}
 
 	private void attachContractRooms(List<Contract> contracts) {

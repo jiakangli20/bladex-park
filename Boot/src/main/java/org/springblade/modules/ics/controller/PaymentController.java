@@ -23,11 +23,15 @@ import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.ics.constant.IcsConstant;
+import org.springblade.modules.ics.pojo.dto.OverdueNoticeSendDTO;
+import org.springblade.modules.ics.pojo.vo.OverdueInternalNoticeVO;
+import org.springblade.modules.ics.pojo.vo.OverdueNoticeRecipientVO;
 import org.springblade.modules.ics.pojo.vo.OverdueDisposalDetailVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticePlaceholderVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeSummaryVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeVO;
 import org.springblade.modules.ics.pojo.vo.PaymentSummaryVO;
+import org.springblade.modules.ics.pojo.entity.OverdueInternalNotice;
 import org.springblade.modules.ics.service.IPaymentService;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
@@ -207,6 +211,48 @@ public class PaymentController extends BladeController {
 	@Operation(summary = "逾期处置闭环详情", description = "传入paymentId")
 	public R<OverdueDisposalDetailVO> overdueDisposalDetail(@Parameter(description = "账单ID") @RequestParam Long paymentId) {
 		return R.data(paymentService.overdueDisposalDetail(paymentId));
+	}
+
+	@GetMapping("/overdue-internal-notice")
+	@PreAuth(menu = "finance_overdue_reminder")
+	@ApiOperationSupport(order = 26)
+	@Operation(summary = "逾期内部通知记录", description = "传入paymentId")
+	public R<List<OverdueInternalNotice>> overdueInternalNotice(@RequestParam Long paymentId) {
+		return R.data(paymentService.overdueInternalNotices(paymentId));
+	}
+
+	@GetMapping("/overdue-internal-notice/recipients")
+	@PreAuth(menu = "finance_overdue_reminder")
+	@ApiOperationSupport(order = 27)
+	@Operation(summary = "首次逾期通知收件人", description = "默认推荐招商员、部门领导、分管领导和财务，支持人工调整")
+	public R<List<OverdueNoticeRecipientVO>> overdueNoticeRecipients(@RequestParam Long paymentId) {
+		return R.data(paymentService.overdueNoticeRecipients(paymentId));
+	}
+
+	@PostMapping("/overdue-internal-notice/send")
+	@PreAuth(menu = "finance_overdue_reminder")
+	@ApiOperationSupport(order = 28)
+	@Operation(summary = "发送首次逾期通知", description = "向选中的内部用户发送逾期通知")
+	public R<Integer> sendOverdueNotice(@RequestBody OverdueNoticeSendDTO dto) {
+		return R.data(paymentService.sendOverdueNotice(dto));
+	}
+
+	@GetMapping("/overdue-internal-notice/page")
+	@PreAuth(menu = "finance_overdue_notice")
+	@ApiOperationSupport(order = 29)
+	@Operation(summary = "我的逾期通知", description = "只查询当前登录账号收到的逾期通知")
+	public R<IPage<OverdueInternalNoticeVO>> overdueNoticePage(@RequestParam(required = false) String customerName,
+															 @RequestParam(required = false) String readStatus,
+															 Query query) {
+		return R.data(paymentService.overdueNoticePage(Condition.getPage(query), customerName, readStatus));
+	}
+
+	@PostMapping("/overdue-internal-notice/read")
+	@PreAuth(menu = "finance_overdue_notice")
+	@ApiOperationSupport(order = 30)
+	@Operation(summary = "标记逾期内部通知已读", description = "传入paymentId")
+	public R readOverdueInternalNotice(@RequestParam Long paymentId) {
+		return R.status(paymentService.readOverdueNotice(paymentId));
 	}
 
 	@GetMapping("/notice-placeholder")

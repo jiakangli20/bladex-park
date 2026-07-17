@@ -26,6 +26,7 @@
 package org.springblade.modules.contract.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.flowable.engine.TaskService;
@@ -35,17 +36,20 @@ import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.jackson.JsonUtil;
 import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.Func;
+import org.springblade.modules.contract.mapper.ContractChangeMapper;
+import org.springblade.modules.contract.mapper.ContractExpiryRuleMapper;
 import org.springblade.modules.contract.mapper.ContractLogMapper;
 import org.springblade.modules.contract.mapper.ContractMapper;
-import org.springblade.modules.contract.mapper.ContractExpiryRuleMapper;
 import org.springblade.modules.contract.mapper.ContractPaymentMapper;
 import org.springblade.modules.contract.mapper.ContractWorkflowRecordMapper;
 import org.springblade.modules.contract.pojo.entity.Contract;
+import org.springblade.modules.contract.pojo.entity.ContractChange;
 import org.springblade.modules.contract.pojo.entity.ContractExpiryRule;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.pojo.vo.ContractStatsVO;
+import org.springblade.modules.contract.pojo.vo.ContractExpirySummaryVO;
 import org.springblade.modules.contract.service.IContractService;
 import org.springblade.modules.park.mapper.RoomMapper;
 import org.springframework.stereotype.Service;
@@ -80,8 +84,14 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private static final String STATUS_RENEWED = "3";
 	private static final String STATUS_TERMINATED = "4";
 	private static final String STATUS_PENDING_SEAL = "5";
+	private static final String STATUS_TERMINATION_RUNNING = "6";
 	private static final String STATUS_TERMINATION_HANDOVER = "7";
 	private static final String STATUS_ROOM_REVIEW_RUNNING = "8";
+	private static final String CHANGE_TYPE_RENT = "租金变更";
+	private static final String CHANGE_TYPE_TERM = "租期变更";
+	private static final String CHANGE_TYPE_RENT_AND_TERM = "租金及租期变更";
+	private static final String CHANGE_TYPE_OTHER = "其他";
+	private static final String CHANGE_STATUS_COMPLETED = "completed";
 	private static final String PROCESS_STATUS_APPROVED = "approved";
 	private static final String BUSINESS_TYPE_CONTRACT_TERMINATION = "contract_termination";
 	private static final String BUSINESS_TYPE_CONTRACT_PAYMENT = "contract_payment";
@@ -94,6 +104,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 
 	private final ContractPaymentMapper contractPaymentMapper;
 	private final ContractLogMapper contractLogMapper;
+	private final ContractChangeMapper contractChangeMapper;
 	private final ContractWorkflowRecordMapper contractWorkflowRecordMapper;
 	private final ContractExpiryRuleMapper contractExpiryRuleMapper;
 	private final RoomMapper roomMapper;
@@ -149,6 +160,89 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
+	public ContractChange applyContractChange(ContractChange change) {
+		if (change == null || change.getContractId() == null) {
+			throw new ServiceException("合同ID不能为空");
+		}
+		Contract contract = requireContract(change.getContractId());
+		validateContractCanChange(contract);
+		String changeType = Func.toStr(change.getChangeType(), "").trim();
+		String reason = Func.toStr(change.getReason(), "").trim();
+		if (!isSupportedChangeType(changeType)) {
+			throw new ServiceException("请选择正确的变更类型");
+		}
+		if (Func.isBlank(reason)) {
+			throw new ServiceException("请输入变更原因");
+		}
+
+		validatePositiveAmount(change.getNewRentPrice(), "新租金单价");
+		validatePositiveAmount(change.getNewMonthlyRent(), "新月租金");
+		if (change.getNewEndDate() != null && contract.getStartDate() != null
+			&& !change.getNewEndDate().after(contract.getStartDate())) {
+			throw new ServiceException("新结束日期必须晚于合同开始日期");
+		}
+
+		boolean rentPriceChanged = amountChanged(contract.getRentPrice(), change.getNewRentPrice());
+		boolean monthlyRentChanged = amountChanged(contract.getMonthlyRent(), change.getNewMonthlyRent());
+		boolean endDateChanged = dateChanged(contract.getEndDate(), change.getNewEndDate());
+		validateChangeContent(changeType, rentPriceChanged, monthlyRentChanged, endDateChanged);
+
+		Date now = DateUtil.now();
+		String userName = currentUserName();
+		change.setChangeId(null);
+		change.setChangeNo(generateChangeNo());
+		change.setContractNo(contract.getContractNo());
+		change.setContractName(contract.getContractName());
+		change.setCustomerName(contract.getCustomerName());
+		change.setChangeType(changeType);
+		change.setOldRentPrice(rentPriceChanged ? contract.getRentPrice() : null);
+		change.setNewRentPrice(rentPriceChanged ? change.getNewRentPrice() : null);
+		change.setOldMonthlyRent(monthlyRentChanged ? contract.getMonthlyRent() : null);
+		change.setNewMonthlyRent(monthlyRentChanged ? change.getNewMonthlyRent() : null);
+		change.setOldEndDate(endDateChanged ? contract.getEndDate() : null);
+		change.setNewEndDate(endDateChanged ? change.getNewEndDate() : null);
+		change.setReason(reason);
+		change.setApprovalStatus(CHANGE_STATUS_COMPLETED);
+		change.setApprovalOpinion("无需审批，登记后生效");
+		change.setDelFlag(DEFAULT_DEL_FLAG);
+		change.setCreateBy(userName);
+		change.setCreateTime(now);
+		if (contractChangeMapper.insert(change) <= 0) {
+			throw new ServiceException("合同变更记录保存失败");
+		}
+
+		Contract update = new Contract();
+		update.setContractId(contract.getContractId());
+		if (rentPriceChanged) {
+			update.setRentPrice(change.getNewRentPrice());
+		}
+		if (monthlyRentChanged) {
+			update.setMonthlyRent(change.getNewMonthlyRent());
+		}
+		if (endDateChanged) {
+			update.setEndDate(change.getNewEndDate());
+		}
+		update.setUpdateBy(userName);
+		update.setUpdateTime(now);
+		if (baseMapper.updateById(update) <= 0) {
+			throw new ServiceException("合同信息更新失败");
+		}
+		addLog(contract.getContractId(), "change", "合同变更已登记并生效：" + changeType + "，" + reason);
+		return contractChangeMapper.selectById(change.getChangeId());
+	}
+
+	@Override
+	public List<ContractChange> selectContractChanges(Long contractId) {
+		requireContract(contractId);
+		return contractChangeMapper.selectList(Wrappers.<ContractChange>lambdaQuery()
+			.eq(ContractChange::getContractId, contractId)
+			.eq(ContractChange::getDelFlag, DEFAULT_DEL_FLAG)
+			.orderByDesc(ContractChange::getCreateTime)
+			.orderByDesc(ContractChange::getChangeId));
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
 	public boolean terminateContract(Long contractId) {
 		Contract contract = requireContract(contractId);
 		contract.setContractStatus(STATUS_TERMINATED);
@@ -191,6 +285,12 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	@Override
 	public IPage<Contract> selectExpiringPage(IPage<Contract> page, Contract contract) {
 		return page.setRecords(baseMapper.selectExpiringPage(page, contract));
+	}
+
+	@Override
+	public ContractExpirySummaryVO expiringSummary(Contract contract) {
+		ContractExpirySummaryVO summary = baseMapper.selectExpiringSummary(contract);
+		return summary == null ? new ContractExpirySummaryVO() : summary;
 	}
 
 	@Override
@@ -868,6 +968,64 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 
 	private String generateContractNo() {
 		return "HT" + DateUtil.format(DateUtil.now(), "yyyyMMdd") + String.format("%04d", new Random().nextInt(10000));
+	}
+
+	private String generateChangeNo() {
+		return "BG" + DateUtil.format(DateUtil.now(), "yyyyMMddHHmmss") + String.format("%04d", new Random().nextInt(10000));
+	}
+
+	private void validateContractCanChange(Contract contract) {
+		String status = contract.getContractStatus();
+		if (STATUS_TERMINATED.equals(status)) {
+			throw new ServiceException("已退租合同不能办理合同变更");
+		}
+		if (STATUS_TERMINATION_RUNNING.equals(status)
+			|| STATUS_TERMINATION_HANDOVER.equals(status)
+			|| STATUS_ROOM_REVIEW_RUNNING.equals(status)) {
+			throw new ServiceException("退租办理中的合同不能办理合同变更");
+		}
+	}
+
+	private boolean isSupportedChangeType(String changeType) {
+		return CHANGE_TYPE_RENT.equals(changeType)
+			|| CHANGE_TYPE_TERM.equals(changeType)
+			|| CHANGE_TYPE_RENT_AND_TERM.equals(changeType)
+			|| CHANGE_TYPE_OTHER.equals(changeType);
+	}
+
+	private void validatePositiveAmount(BigDecimal value, String fieldName) {
+		if (value != null && value.compareTo(BigDecimal.ZERO) <= 0) {
+			throw new ServiceException(fieldName + "必须大于0");
+		}
+	}
+
+	private boolean amountChanged(BigDecimal oldValue, BigDecimal newValue) {
+		return newValue != null && (oldValue == null || oldValue.compareTo(newValue) != 0);
+	}
+
+	private boolean dateChanged(Date oldValue, Date newValue) {
+		if (newValue == null) {
+			return false;
+		}
+		return oldValue == null || !DateUtil.format(oldValue, DateUtil.PATTERN_DATE)
+			.equals(DateUtil.format(newValue, DateUtil.PATTERN_DATE));
+	}
+
+	private void validateChangeContent(String changeType, boolean rentPriceChanged,
+									   boolean monthlyRentChanged, boolean endDateChanged) {
+		boolean rentChanged = rentPriceChanged || monthlyRentChanged;
+		if (!rentChanged && !endDateChanged) {
+			throw new ServiceException("请至少填写一项与原合同不同的变更内容");
+		}
+		if (CHANGE_TYPE_RENT.equals(changeType) && !rentChanged) {
+			throw new ServiceException("租金变更需填写新的租金单价或月租金");
+		}
+		if (CHANGE_TYPE_TERM.equals(changeType) && !endDateChanged) {
+			throw new ServiceException("租期变更需填写新的合同结束日期");
+		}
+		if (CHANGE_TYPE_RENT_AND_TERM.equals(changeType) && (!rentChanged || !endDateChanged)) {
+			throw new ServiceException("租金及租期变更需同时填写新租金和新结束日期");
+		}
 	}
 
 	private void addLog(Long contractId, String action, String actionDesc) {

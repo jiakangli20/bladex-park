@@ -65,6 +65,7 @@
                       <el-dropdown-menu>
                         <el-dropdown-item command="downloadContract">下载合同</el-dropdown-item>
                         <el-dropdown-item command="editContract">编辑合同</el-dropdown-item>
+                        <el-dropdown-item command="contractChange">合同变更</el-dropdown-item>
                         <el-dropdown-item command="startApproval">发起合同审批</el-dropdown-item>
                         <el-dropdown-item command="signedUpload">上传盖章合同</el-dropdown-item>
                         <el-dropdown-item command="roomReview">发起房屋验收</el-dropdown-item>
@@ -443,9 +444,9 @@
           <el-button
             type="success"
             plain
-            icon="el-icon-s-promotion"
             @click="handleStartApprovalFromSelection"
           >
+            <el-icon><Promotion /></el-icon>
             发起合同审批
           </el-button>
           <el-button
@@ -1375,6 +1376,102 @@
       </el-dialog>
 
       <el-dialog
+        v-model="contractChangeVisible"
+        title="新增合同变更"
+        width="640px"
+        append-to-body
+        class="contract-change-dialog"
+        @closed="resetContractChange"
+      >
+        <el-form
+          ref="contractChangeFormRef"
+          :model="contractChangeForm"
+          :rules="contractChangeRules"
+          label-width="104px"
+          class="contract-change-form"
+        >
+          <el-row :gutter="24">
+            <el-col :span="12">
+              <el-form-item label="合同" prop="contractLabel">
+                <el-input v-model="contractChangeForm.contractLabel" disabled />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="变更类型" prop="changeType">
+                <el-select
+                  v-model="contractChangeForm.changeType"
+                  placeholder="请选择变更类型"
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="item in contractChangeTypeOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="新租金单价" prop="newRentPrice">
+                <el-input-number
+                  v-model="contractChangeForm.newRentPrice"
+                  :min="0.01"
+                  :precision="2"
+                  :controls="false"
+                  placeholder="元/㎡/月"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="新月租金" prop="newMonthlyRent">
+                <el-input-number
+                  v-model="contractChangeForm.newMonthlyRent"
+                  :min="0.01"
+                  :precision="2"
+                  :controls="false"
+                  placeholder="元/月"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="新结束日期" prop="newEndDate">
+                <el-date-picker
+                  v-model="contractChangeForm.newEndDate"
+                  type="date"
+                  value-format="YYYY-MM-DD"
+                  placeholder="请选择日期"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item label="变更原因" prop="reason">
+            <el-input
+              v-model="contractChangeForm.reason"
+              type="textarea"
+              :rows="4"
+              maxlength="1000"
+              show-word-limit
+              placeholder="请输入变更原因"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="contractChangeVisible = false">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="contractChangeSaving"
+            @click="submitContractChange"
+          >
+            确定
+          </el-button>
+        </template>
+      </el-dialog>
+
+      <el-dialog
         v-model="renewVisible"
         title="合同续租"
         width="552px"
@@ -1473,8 +1570,10 @@
 
 <script>
 import { Base64 } from 'js-base64';
+import { Promotion } from '@element-plus/icons-vue';
 import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
 import {
+  applyContractChange,
   confirmPayment,
   getDetail,
   getExpiring,
@@ -1585,11 +1684,22 @@ const createDefaultCustomerEditForm = () => ({
   majorClients: '',
 });
 
+const createDefaultContractChangeForm = () => ({
+  contractId: null,
+  contractLabel: '',
+  changeType: '',
+  newRentPrice: null,
+  newMonthlyRent: null,
+  newEndDate: '',
+  reason: '',
+});
+
 export default {
   name: 'ContractList',
   components: {
     CustomerTagSelector,
     NoticePreviewDialog,
+    Promotion,
   },
   data() {
     return {
@@ -1658,6 +1768,20 @@ export default {
       signedUploadContract: {},
       signedUploadForm: {
         contractFileUrl: '',
+      },
+      contractChangeVisible: false,
+      contractChangeSaving: false,
+      contractChangeForm: createDefaultContractChangeForm(),
+      contractChangeTypeOptions: [
+        { label: '租金变更', value: '租金变更' },
+        { label: '租期变更', value: '租期变更' },
+        { label: '租金及租期变更', value: '租金及租期变更' },
+        { label: '其他', value: '其他' },
+      ],
+      contractChangeRules: {
+        contractLabel: [{ required: true, message: '请选择合同', trigger: 'change' }],
+        changeType: [{ required: true, message: '请选择变更类型', trigger: 'change' }],
+        reason: [{ required: true, message: '请输入变更原因', trigger: 'blur' }],
       },
       renewVisible: false,
       renewContract: {},
@@ -2119,6 +2243,86 @@ export default {
         return;
       }
       this.handleStartWorkflow(CONTRACT_ROOM_REVIEW_BUSINESS_TYPE, row);
+    },
+    handleContractChange(row) {
+      if (!row || !row.contractId) {
+        this.$message.warning('请选择需要变更的合同');
+        return;
+      }
+      this.contractChangeForm = {
+        ...createDefaultContractChangeForm(),
+        contractId: row.contractId,
+        contractLabel: [row.contractNo, row.contractName || row.customerName]
+          .filter(Boolean)
+          .join(' - '),
+      };
+      this.contractChangeVisible = true;
+      this.$nextTick(() => {
+        if (this.$refs.contractChangeFormRef) {
+          this.$refs.contractChangeFormRef.clearValidate();
+        }
+      });
+    },
+    submitContractChange() {
+      this.$refs.contractChangeFormRef.validate(valid => {
+        if (!valid) return;
+        const form = this.contractChangeForm;
+        const contract = this.detailContract || {};
+        const rentPriceChanged = this.contractChangeAmountChanged(
+          contract.rentPrice,
+          form.newRentPrice
+        );
+        const monthlyRentChanged = this.contractChangeAmountChanged(
+          contract.monthlyRent,
+          form.newMonthlyRent
+        );
+        const rentChanged = rentPriceChanged || monthlyRentChanged;
+        const endDateChanged =
+          Boolean(form.newEndDate) && String(form.newEndDate) !== String(contract.endDate || '');
+        if (!rentChanged && !endDateChanged) {
+          this.$message.warning('请至少填写一项与原合同不同的变更内容');
+          return;
+        }
+        if (form.changeType === '租金变更' && !rentChanged) {
+          this.$message.warning('租金变更需填写新的租金单价或月租金');
+          return;
+        }
+        if (form.changeType === '租期变更' && !endDateChanged) {
+          this.$message.warning('租期变更需填写新的合同结束日期');
+          return;
+        }
+        if (form.changeType === '租金及租期变更' && (!rentChanged || !endDateChanged)) {
+          this.$message.warning('租金及租期变更需同时填写新租金和新结束日期');
+          return;
+        }
+        this.contractChangeSaving = true;
+        applyContractChange({
+          contractId: form.contractId,
+          changeType: form.changeType,
+          newRentPrice: rentPriceChanged ? form.newRentPrice : null,
+          newMonthlyRent: monthlyRentChanged ? form.newMonthlyRent : null,
+          newEndDate: endDateChanged ? form.newEndDate : null,
+          reason: form.reason.trim(),
+        })
+          .then(() => {
+            const contractId = form.contractId;
+            this.$message.success('合同变更已登记并生效');
+            this.contractChangeVisible = false;
+            this.reload();
+            this.openDetail({ contractId });
+          })
+          .finally(() => {
+            this.contractChangeSaving = false;
+          });
+      });
+    },
+    contractChangeAmountChanged(oldValue, newValue) {
+      if (newValue === null || newValue === undefined || newValue === '') return false;
+      return Number(oldValue) !== Number(newValue);
+    },
+    resetContractChange() {
+      this.contractChangeSaving = false;
+      this.contractChangeForm = createDefaultContractChangeForm();
     },
     handleRenew(row) {
       if (!row || !row.contractId) {
@@ -3327,6 +3531,7 @@ export default {
       const actionMap = {
         downloadContract: () => this.handleDownloadContractText(row),
         editContract: () => this.handleEditContract(row),
+        contractChange: () => this.handleContractChange(row),
         startApproval: () => this.handleStartApproval(row),
         signedUpload: () => this.handleSignedUpload(row),
         roomReview: () => this.handleStartRoomReview(row),
@@ -4468,6 +4673,23 @@ export default {
 .precheck-item.is-done {
   border-color: #b3e19d;
   background: #f0f9eb;
+}
+
+.contract-change-dialog :deep(.el-dialog__body) {
+  padding: 24px 28px 10px;
+}
+
+.contract-change-form :deep(.el-form-item) {
+  margin-bottom: 22px;
+}
+
+.contract-change-form :deep(.el-input-number .el-input__inner) {
+  text-align: left;
+}
+
+.contract-change-form :deep(.el-textarea__inner) {
+  min-height: 104px !important;
+  resize: vertical;
 }
 
 .renew-dialog :deep(.el-dialog__body) {

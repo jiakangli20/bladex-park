@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
+import org.springblade.modules.ics.pojo.entity.OverdueInternalNotice;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -37,5 +38,8 @@ public class OverdueDisposalDetailVO implements Serializable {
 
 	@Schema(description = "逾期相关审批记录")
 	private List<ContractWorkflowRecord> workflowRecords = new ArrayList<>();
+
+	@Schema(description = "内部通知记录")
+	private List<OverdueInternalNotice> internalNotices = new ArrayList<>();
 
 }

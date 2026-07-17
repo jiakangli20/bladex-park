@@ -1,5 +1,6 @@
 import { downloadBlob } from '@/api/common';
 import { getNoticePreview } from '@/api/contract/print';
+import { baseUrl } from '@/config/env';
 import { downloadFile } from '@/utils/util';
 
 export const createNoticePreviewState = () => ({
@@ -22,9 +23,27 @@ export const resolveDownloadFilename = (disposition, fallbackName) => {
   return filenameMatch && filenameMatch[1] ? decodeURIComponent(filenameMatch[1]) : fallbackName;
 };
 
+export const normalizeNoticeDownloadUrl = url => {
+  if (!url || typeof window === 'undefined') return url;
+  try {
+    const parsed = new URL(url, window.location.origin);
+    const localHost = ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
+    const currentHost = parsed.hostname === window.location.hostname;
+    if (
+      parsed.pathname.startsWith('/upload/') &&
+      (localHost || currentHost || parsed.port === '8080')
+    ) {
+      return `${String(baseUrl || '').replace(/\/$/, '')}${parsed.pathname}${parsed.search}`;
+    }
+  } catch {
+    return url;
+  }
+  return url;
+};
+
 export const downloadNoticeFile = (url, fallbackName) => {
   if (!url) return Promise.resolve();
-  return downloadBlob(url).then(res => {
+  return downloadBlob(normalizeNoticeDownloadUrl(url)).then(res => {
     const disposition = res.headers && res.headers['content-disposition'];
     const filename = resolveDownloadFilename(disposition, fallbackName);
     const contentType = (res.headers && res.headers['content-type']) || 'application/octet-stream';

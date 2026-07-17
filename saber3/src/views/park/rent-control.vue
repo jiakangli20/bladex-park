@@ -159,10 +159,16 @@
                     :class="'status-' + normalizeStatus(room.status)"
                     @click="openRoom(room)"
                   >
-                    <span class="room-name">{{ room.name }}</span>
-                    <span class="room-area">{{ formatNumber(room.area) }}㎡</span>
-                    <span class="room-meta">{{ statusLabel(room.status) }} · {{ formatNumber(room.rentPrice) }}元/月</span>
-                    <span class="room-sync">{{ room.syncStatus === '1' ? '已同步' : '待同步' }}</span>
+                    <span class="room-cover">
+                      <el-image v-if="roomCoverImage(room)" :src="roomCoverImage(room)" fit="cover" />
+                      <span v-else class="room-cover__empty">暂无实景图</span>
+                    </span>
+                    <span class="room-tile__body">
+                      <span class="room-name">{{ room.name }}</span>
+                      <span class="room-area">{{ formatNumber(room.area) }}㎡</span>
+                      <span class="room-meta">{{ statusLabel(room.status) }} · {{ formatNumber(room.rentPrice) }}元/月</span>
+                      <span class="room-sync">{{ room.syncStatus === '1' ? '已同步' : '待同步' }}</span>
+                    </span>
                   </button>
                 </div>
               </section>
@@ -225,12 +231,17 @@
 
     <el-drawer v-model="roomFormVisible" :title="roomForm.id ? '编辑房间' : '新增房间'" size="520px">
       <el-form ref="roomFormRef" :model="roomForm" :rules="roomRules" label-width="110px">
+        <el-form-item label="所属园区" prop="parkId">
+          <el-select v-model="roomForm.parkId" filterable placeholder="请选择园区" @change="handleRoomParkChange">
+            <el-option v-for="park in roomParkOptions" :key="park.id" :label="park.name" :value="String(park.id)" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="所属建筑" prop="buildingId">
           <el-select v-model="roomForm.buildingId" filterable placeholder="请选择建筑" @change="handleRoomBuildingChange">
             <el-option
-              v-for="building in allBuildings"
+              v-for="building in filteredRoomBuildings"
               :key="building.id"
-              :label="buildingLabel(building)"
+              :label="building.name"
               :value="String(building.id)"
             />
           </el-select>
@@ -319,6 +330,7 @@
     <el-drawer v-model="roomDetailVisible" title="房源详情" size="460px">
       <section v-if="roomDetail.id" class="room-detail">
         <div><span>房间名称</span><strong>{{ roomDetail.name }}</strong></div>
+        <div><span>所属园区</span><strong>{{ roomDetail.parkName || '-' }}</strong></div>
         <div><span>所属建筑</span><strong>{{ roomDetail.buildingName || '-' }}</strong></div>
         <div><span>楼层</span><strong>{{ roomDetail.floor || '-' }}F</strong></div>
         <div><span>面积</span><strong>{{ formatNumber(roomDetail.area) }}㎡</strong></div>
@@ -467,6 +479,7 @@ export default {
         'Blade-Requested-With': 'BladeHttpRequest',
       },
       roomRules: {
+        parkId: [{ required: true, message: '请选择所属园区', trigger: 'change' }],
         buildingId: [{ required: true, message: '请选择所属建筑', trigger: 'change' }],
         name: [{ required: true, message: '请输入房间名称', trigger: 'blur' }],
         floor: [{ required: true, message: '请输入楼层', trigger: 'change' }],
@@ -539,6 +552,28 @@ export default {
     roomDetailImageList() {
       return this.parseRoomImageUrls(this.roomDetail.sceneImages);
     },
+    roomParkOptions() {
+      const parks = this.getTreeParks();
+      if (parks.length) {
+        return parks;
+      }
+      const parkMap = new Map();
+      this.allBuildings.forEach(building => {
+        if (building.parkId && !parkMap.has(String(building.parkId))) {
+          parkMap.set(String(building.parkId), {
+            id: building.parkId,
+            name: building.parkName || `园区${building.parkId}`,
+          });
+        }
+      });
+      return Array.from(parkMap.values());
+    },
+    filteredRoomBuildings() {
+      if (!this.roomForm.parkId) {
+        return this.allBuildings;
+      }
+      return this.allBuildings.filter(building => String(building.parkId) === String(this.roomForm.parkId));
+    },
   },
   created() {
     this.loadBoard();
@@ -548,6 +583,7 @@ export default {
     emptyRoomForm() {
       return {
         id: undefined,
+        parkId: undefined,
         buildingId: undefined,
         name: '',
         floor: undefined,
@@ -758,18 +794,20 @@ export default {
     floorRowKey(floor, index) {
       return `${floor.buildingId || 'building'}-${floor.floor || index}`;
     },
-    buildingLabel(building) {
-      return `${building.parkName || '未关联园区'} / ${building.name}`;
-    },
     handleAddRoom() {
       this.roomForm = this.emptyRoomForm();
       this.roomImageFileList = [];
       this.roomDetail = {};
       const firstVisibleFloor = this.floors[0] || {};
       const defaultBuildingId = this.query.buildingId || this.currentBuilding.id || firstVisibleFloor.buildingId;
+      const defaultParkId = this.query.parkId || this.currentPark.id || this.currentBuilding.parkId;
       const defaultFloorNo = this.query.floorNo || firstVisibleFloor.floor || firstVisibleFloor.floorNo;
+      if (defaultParkId) {
+        this.roomForm.parkId = String(defaultParkId);
+      }
       if (defaultBuildingId) {
         this.roomForm.buildingId = String(defaultBuildingId);
+        this.syncRoomParkByBuilding();
       }
       if (defaultFloorNo) {
         this.roomForm.floor = defaultFloorNo;
@@ -788,6 +826,9 @@ export default {
       this.roomForm = Object.assign(this.emptyRoomForm(), room);
       if (this.roomForm.buildingId) {
         this.roomForm.buildingId = String(this.roomForm.buildingId);
+      }
+      if (this.roomForm.parkId) {
+        this.roomForm.parkId = String(this.roomForm.parkId);
       }
       this.roomForm.status = this.normalizeBaseStatus(room.baseStatus || room.status);
       this.roomImageFileList = this.parseRoomImageFiles(this.roomForm.sceneImages);
@@ -837,11 +878,27 @@ export default {
       });
     },
     handleRoomBuildingChange() {
+      this.syncRoomParkByBuilding();
       this.syncCurrentBuildingFloors();
       if (this.currentBuildingFloors && this.roomForm.floor > this.currentBuildingFloors) {
         this.roomForm.floor = undefined;
       }
       this.syncFloorAreaInfo();
+    },
+    handleRoomParkChange() {
+      const building = this.allBuildings.find(item => String(item.id) === String(this.roomForm.buildingId));
+      if (building && String(building.parkId) !== String(this.roomForm.parkId)) {
+        this.roomForm.buildingId = undefined;
+        this.roomForm.floor = undefined;
+      }
+      this.syncCurrentBuildingFloors();
+      this.syncFloorAreaInfo();
+    },
+    syncRoomParkByBuilding() {
+      const building = this.allBuildings.find(item => String(item.id) === String(this.roomForm.buildingId));
+      if (building && building.parkId) {
+        this.roomForm.parkId = String(building.parkId);
+      }
     },
     syncCurrentBuildingFloors() {
       const building = this.allBuildings.find(item => String(item.id) === String(this.roomForm.buildingId));
@@ -987,6 +1044,9 @@ export default {
         }
       }
       return text.split(',').map(item => item.trim()).filter(Boolean);
+    },
+    roomCoverImage(room = {}) {
+      return this.parseRoomImageUrls(room.sceneImages)[0] || '';
     },
     loadWorkorders() {
       getWorkorders().then(res => {
@@ -1226,22 +1286,55 @@ export default {
 
 .room-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(178px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 10px;
   padding: 12px;
 }
 
 .room-tile {
   display: grid;
-  grid-template-rows: auto auto auto auto;
-  gap: 5px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 10px;
   min-height: 112px;
-  padding: 12px;
+  padding: 9px;
   border: 1px solid #dcdfe6;
   border-radius: 6px;
   background: #fff;
   text-align: left;
   cursor: pointer;
+}
+
+.room-cover {
+  display: flex;
+  width: 92px;
+  height: 92px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 5px;
+  background: #f5f7fa;
+}
+
+.room-cover :deep(.el-image) {
+  width: 100%;
+  height: 100%;
+}
+
+.room-cover__empty {
+  padding: 0 8px;
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.room-tile__body {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: repeat(4, auto);
+  align-content: center;
+  gap: 5px;
 }
 
 .room-tile:hover {

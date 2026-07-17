@@ -112,6 +112,34 @@ export default [
     ],
   },
   {
+    path: '/finance/overdue-notice',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        name: '我的逾期通知',
+        meta: {
+          activeMenu: '/finance/overdue-notice',
+        },
+        component: () => import('@/views/finance/overdue-notice.vue'),
+      },
+    ],
+  },
+  {
+    path: '/contract/expiry-notice',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        name: '合同到期提醒',
+        meta: {
+          activeMenu: '/contract/expiry-notice',
+        },
+        component: () => import('@/views/contract/expiry-notice.vue'),
+      },
+    ],
+  },
+  {
     path: '/work/process/leave',
     component: Layout,
     redirect: '/work/process/leave/form',

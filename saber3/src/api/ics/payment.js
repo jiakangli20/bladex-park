@@ -100,6 +100,46 @@ export const getOverdueDisposalDetail = paymentId => {
   });
 };
 
+export const readOverdueInternalNotice = paymentId => {
+  return request({
+    url: '/blade-ics/payment/overdue-internal-notice/read',
+    method: 'post',
+    params: {
+      paymentId,
+    },
+  });
+};
+
+export const getOverdueNoticeRecipients = paymentId => {
+  return request({
+    url: '/blade-ics/payment/overdue-internal-notice/recipients',
+    method: 'get',
+    params: {
+      paymentId,
+    },
+  });
+};
+
+export const sendOverdueInternalNotice = data => {
+  return request({
+    url: '/blade-ics/payment/overdue-internal-notice/send',
+    method: 'post',
+    data,
+  });
+};
+
+export const getOverdueInternalNoticePage = (current, size, params) => {
+  return request({
+    url: '/blade-ics/payment/overdue-internal-notice/page',
+    method: 'get',
+    params: {
+      ...params,
+      current,
+      size,
+    },
+  });
+};
+
 export const confirmPayment = (paymentId, row) => {
   return request({
     url: '/blade-ics/payment/confirm',

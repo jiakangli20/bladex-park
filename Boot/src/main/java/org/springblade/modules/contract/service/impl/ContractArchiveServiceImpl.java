@@ -43,6 +43,7 @@ import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.entity.ContractSupplementAgreement;
 import org.springblade.modules.contract.pojo.vo.ContractArchiveDetailVO;
 import org.springblade.modules.contract.pojo.vo.ContractArchiveVO;
+import org.springblade.modules.contract.pojo.vo.ContractChangeArchiveVO;
 import org.springblade.modules.contract.pojo.vo.TerminationArchiveVO;
 import org.springblade.modules.contract.service.IContractArchiveService;
 import org.springblade.modules.contract.service.IContractNoticeService;
@@ -86,6 +87,7 @@ public class ContractArchiveServiceImpl implements IContractArchiveService {
 	public ContractArchiveDetailVO getArchiveDetail(Long contractId) {
 		ContractArchiveVO contract = requireContract(contractId);
 		List<ContractPayment> payments = safePayments(contractId);
+		List<ContractChangeArchiveVO> changes = safeChanges(contractId);
 		List<ContractSupplementAgreement> supplements = safeSupplements(contractId);
 		List<TerminationArchiveVO> terminations = safeTerminations(contractId);
 		List<ContractLog> logs = safeLogs(contractId);
@@ -93,6 +95,7 @@ public class ContractArchiveServiceImpl implements IContractArchiveService {
 		ContractArchiveDetailVO detail = new ContractArchiveDetailVO();
 		detail.setContract(contract);
 		detail.setPayments(payments);
+		detail.setChanges(changes);
 		detail.setSupplements(supplements);
 		detail.setTerminations(terminations);
 		detail.setLogs(logs);
@@ -206,6 +209,15 @@ public class ContractArchiveServiceImpl implements IContractArchiveService {
 			return listSupplements(contractId);
 		} catch (Exception exception) {
 			log.warn("合同归档补充协议加载失败，contractId={}", contractId, exception);
+			return new ArrayList<>();
+		}
+	}
+
+	private List<ContractChangeArchiveVO> safeChanges(Long contractId) {
+		try {
+			return contractArchiveMapper.selectChangesByContractId(contractId);
+		} catch (Exception exception) {
+			log.warn("合同归档变更记录加载失败，contractId={}", contractId, exception);
 			return new ArrayList<>();
 		}
 	}

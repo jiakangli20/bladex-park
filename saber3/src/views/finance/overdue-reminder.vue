@@ -46,7 +46,7 @@
           <el-table-column label="账单编号" width="118" align="center">
             <template #default="{ row }">ZD{{ row.paymentId }}</template>
           </el-table-column>
-          <el-table-column prop="customerName" label="租客名称" min-width="150" align="center" show-overflow-tooltip>
+          <el-table-column prop="customerName" label="租客名称" :min-width="customerNameColumnWidth" align="center">
             <template #default="{ row }">
               <el-button text type="primary" class="customer-link" @click="openReminderDrawer(row)">
                 {{ row.customerName || '-' }}
@@ -145,7 +145,7 @@
             <div class="drawer-action-grid">
               <el-button type="primary" plain @click="openContract(drawerRow)">查看合同</el-button>
               <el-button type="primary" plain @click="handleRemind(drawerRow)">记录催缴</el-button>
-              <el-button type="primary" plain @click="handleGenerateNotice(drawerRow, 'overdue-notice')">生成逾期通知</el-button>
+              <el-button type="warning" plain @click="openRecipientDialog(drawerRow)">发送首次逾期通知</el-button>
               <el-button
                 type="warning"
                 plain
@@ -175,16 +175,18 @@
           </section>
 
           <section class="drawer-section">
-            <div class="drawer-section-title">通知文件</div>
-            <div class="drawer-action-grid">
-              <el-button
-                v-for="item in drawerNoticeTypes"
-                :key="item.value"
-                plain
-                @click="previewNotice(drawerRow, item.value)"
-              >
-                {{ item.label }}
-              </el-button>
+            <div class="drawer-section-title">通知文书</div>
+            <div class="document-list">
+              <div v-for="item in drawerNoticeTypes" :key="item.value" class="document-row">
+                <div class="document-row__name">
+                  <strong>{{ item.label }}</strong>
+                  <span>Word 文书</span>
+                </div>
+                <div class="document-row__actions">
+                  <el-button plain @click="previewNotice(drawerRow, item.value)">预览</el-button>
+                  <el-button type="primary" plain @click="handleGenerateNotice(drawerRow, item.value)">生成并下载</el-button>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -214,8 +216,28 @@
             </div>
           </section>
 
+		  <section class="drawer-section">
+				<div class="drawer-section-title">首次逾期通知记录</div>
+			<div class="record-list">
+			  <div
+				v-for="item in disposalDetail.internalNotices"
+				:key="item.noticeId"
+				class="record-item"
+			  >
+				<div>
+				  <strong>{{ item.recipientName || item.recipientAccount || '-' }}</strong>
+				  <span>{{ item.recipientRoles || '-' }} / {{ item.createTime || '-' }}</span>
+				</div>
+				<el-tag :type="item.readStatus === '1' ? 'success' : 'warning'" effect="plain">
+				  {{ item.readStatus === '1' ? '已读' : '未读' }}
+				</el-tag>
+			  </div>
+			  <el-empty v-if="!disposalDetail.internalNotices.length" description="暂无内部通知记录" />
+			</div>
+		  </section>
+
           <section class="drawer-section">
-            <div class="drawer-section-title">通知文件记录</div>
+            <div class="drawer-section-title">文书生成记录</div>
             <div class="record-list">
               <div v-for="item in disposalDetail.documentRecords" :key="item.logId" class="record-item">
                 <div>
@@ -277,6 +299,77 @@
           </el-timeline>
           <el-empty v-else description="暂无合同联动日志" />
         </div>
+      </el-dialog>
+
+      <el-dialog
+        v-model="recipientVisible"
+        title="发送首次逾期通知"
+        width="820px"
+        append-to-body
+        @closed="resetRecipientDialog"
+      >
+        <div class="recipient-dialog">
+          <div class="recipient-summary">
+            <div>
+              <span>租客名称</span>
+              <strong>{{ recipientPayment.customerName || '-' }}</strong>
+            </div>
+            <div>
+              <span>合同编号</span>
+              <strong>{{ recipientPayment.contractNo || '-' }}</strong>
+            </div>
+            <el-input
+              v-model="recipientKeyword"
+              clearable
+              prefix-icon="el-icon-search"
+              placeholder="搜索姓名、账号或部门"
+            />
+          </div>
+          <el-table
+            ref="recipientTable"
+            v-loading="recipientLoading"
+            :data="filteredRecipientCandidates"
+            row-key="userId"
+            border
+            max-height="420"
+            @selection-change="handleRecipientSelectionChange"
+          >
+            <el-table-column type="selection" width="48" align="center" reserve-selection :selectable="recipientSelectable" />
+            <el-table-column prop="userName" label="用户姓名" min-width="100" align="center" show-overflow-tooltip />
+            <el-table-column prop="account" label="账号" min-width="110" align="center" show-overflow-tooltip />
+            <el-table-column prop="deptName" label="所属部门" min-width="130" align="center" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.deptName || '-' }}</template>
+            </el-table-column>
+            <el-table-column prop="roleNames" label="所属角色" min-width="140" align="center" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.roleNames || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="通知职责" min-width="126" align="center">
+              <template #default="{ row }">
+                <el-tag v-if="row.suggestedRoles" type="warning" effect="plain">{{ row.suggestedRoles }}</el-tag>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" width="86" align="center">
+              <template #default="{ row }">
+                <el-tag :type="row.alreadySent ? 'success' : 'info'" effect="plain">
+                  {{ row.alreadySent ? '已发送' : '待发送' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <template #footer>
+          <span class="recipient-selected-count">已选择 {{ recipientSelection.length }} 人</span>
+          <el-button @click="recipientVisible = false">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="recipientSubmitting"
+            :disabled="recipientSelection.length === 0"
+            @click="submitOverdueNotice"
+          >
+            确认发送
+          </el-button>
+        </template>
       </el-dialog>
 
       <el-dialog v-model="workflowVisible" :title="workflowDialogTitle" width="760px" append-to-body @close="resetWorkflowDialog">
@@ -346,7 +439,10 @@ import {
   getOverduePaymentLogs,
   getOverdueReminderPage,
   getOverdueReminderSummary,
+	readOverdueInternalNotice,
+  getOverdueNoticeRecipients,
   remindOverduePayment,
+  sendOverdueInternalNotice,
   sendMiniAppNotice,
 } from '@/api/ics/payment';
 import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
@@ -386,6 +482,7 @@ export default {
   data() {
     return {
       query: {
+        paymentId: '',
         contractNo: '',
         customerName: '',
         feeType: '',
@@ -409,6 +506,7 @@ export default {
         documentRecords: [],
         miniAppRecords: [],
         workflowRecords: [],
+		internalNotices: [],
       },
       workflowVisible: false,
       workflowLoading: false,
@@ -419,6 +517,15 @@ export default {
         processDefKey: '',
       },
       noticePreview: createNoticePreviewState(),
+      recipientVisible: false,
+      recipientLoading: false,
+      recipientSubmitting: false,
+      recipientKeyword: '',
+      recipientPayment: {},
+      recipientCandidates: [],
+      recipientSelection: [],
+      routePaymentId: '',
+      routeDrawerOpened: false,
     };
   },
   computed: {
@@ -430,6 +537,25 @@ export default {
     },
     feeTypeOptions() {
       return feeTypeDic;
+    },
+    customerNameColumnWidth() {
+      const longestUnits = this.data.reduce((maxUnits, row) => {
+        const name = String(row.customerName || '-');
+        const units = Array.from(name).reduce(
+          (total, character) => total + (/^[\u0000-\u00ff]$/.test(character) ? 0.6 : 1),
+          0
+        );
+        return Math.max(maxUnits, units);
+      }, 0);
+      return Math.max(180, Math.ceil(longestUnits * 15 + 48));
+    },
+    filteredRecipientCandidates() {
+      const keyword = (this.recipientKeyword || '').trim().toLowerCase();
+      if (!keyword) return this.recipientCandidates;
+      return this.recipientCandidates.filter(item =>
+        [item.userName, item.account, item.deptName, item.roleNames, item.suggestedRoles]
+          .some(value => String(value || '').toLowerCase().includes(keyword))
+      );
     },
     summaryCards() {
       const running = this.data.filter(item => item.overdueApprovalStatus === 'running').length;
@@ -506,7 +632,7 @@ export default {
       return [
         {
           key: 'file',
-          label: '通知文件',
+          label: '通知文书',
           value: this.disposalDetail.documentRecords.length ? `${this.disposalDetail.documentRecords.length}次` : '未生成',
           tip: notice.fileName || '生成后会沉淀记录',
         },
@@ -547,8 +673,11 @@ export default {
   methods: {
     applyRouteQuery() {
       const routeQuery = this.$route.query || {};
+      this.routePaymentId = routeQuery.paymentId || '';
+      this.routeDrawerOpened = false;
       this.query = {
         ...this.query,
+        paymentId: routeQuery.paymentId || '',
         contractNo: routeQuery.contractNo || '',
         customerName: routeQuery.customerName || '',
         feeType: routeQuery.feeType || '',
@@ -565,6 +694,7 @@ export default {
           const result = res.data.data || {};
           this.page.total = result.total || 0;
           this.data = result.records || [];
+          this.openRoutePaymentDrawer();
         })
         .finally(() => {
           this.loading = false;
@@ -581,6 +711,7 @@ export default {
     },
     searchReset() {
       this.query = {
+        paymentId: '',
         contractNo: '',
         customerName: '',
         feeType: '',
@@ -600,7 +731,16 @@ export default {
     openReminderDrawer(row) {
       this.drawerRow = { ...(row || {}) };
       this.drawerVisible = true;
-      this.loadDisposalDetail(row);
+	  readOverdueInternalNotice(row.paymentId)
+		.catch(() => {})
+		.finally(() => this.loadDisposalDetail(row));
+    },
+    openRoutePaymentDrawer() {
+      if (!this.routePaymentId || this.routeDrawerOpened) return;
+      const row = this.data.find(item => String(item.paymentId) === String(this.routePaymentId));
+      if (!row) return;
+      this.routeDrawerOpened = true;
+      this.openReminderDrawer(row);
     },
     loadDisposalDetail(row) {
       if (!row || !row.paymentId) {
@@ -616,6 +756,7 @@ export default {
             documentRecords: data.documentRecords || [],
             miniAppRecords: data.miniAppRecords || [],
             workflowRecords: data.workflowRecords || [],
+			internalNotices: data.internalNotices || [],
           };
         })
         .finally(() => {
@@ -628,6 +769,7 @@ export default {
         documentRecords: [],
         miniAppRecords: [],
         workflowRecords: [],
+		internalNotices: [],
       };
     },
     openLogDialog(row) {
@@ -671,6 +813,66 @@ export default {
           this.reload();
         })
         .catch(() => {});
+    },
+    openRecipientDialog(row) {
+      if (!row || !row.paymentId) return;
+      this.recipientPayment = { ...row };
+      this.recipientKeyword = '';
+      this.recipientCandidates = [];
+      this.recipientSelection = [];
+      this.recipientVisible = true;
+      this.recipientLoading = true;
+      getOverdueNoticeRecipients(row.paymentId)
+        .then(res => {
+          this.recipientCandidates = res.data.data || [];
+          this.$nextTick(() => {
+            const table = this.$refs.recipientTable;
+            if (!table) return;
+            table.clearSelection();
+            this.recipientCandidates
+              .filter(item => item.defaultSelected && !item.alreadySent)
+              .forEach(item => table.toggleRowSelection(item, true));
+          });
+        })
+        .finally(() => {
+          this.recipientLoading = false;
+        });
+    },
+    recipientSelectable(row) {
+      return !row.alreadySent;
+    },
+    handleRecipientSelectionChange(selection) {
+      this.recipientSelection = selection || [];
+    },
+    submitOverdueNotice() {
+      if (!this.recipientPayment.paymentId || this.recipientSelection.length === 0) return;
+      this.recipientSubmitting = true;
+      sendOverdueInternalNotice({
+        paymentId: this.recipientPayment.paymentId,
+        recipientUserIds: this.recipientSelection.map(item => item.userId),
+      })
+        .then(res => {
+          const inserted = Number(res.data.data) || 0;
+          if (inserted > 0) {
+            this.$message.success(`首次逾期通知已发送给 ${inserted} 人`);
+          } else {
+            this.$message.warning('所选用户均已收到该账单的逾期通知');
+          }
+          this.recipientVisible = false;
+          this.loadDisposalDetail(this.recipientPayment);
+          if (this.logDialogVisible && this.permissionList.logBtn) {
+            this.loadDrawerLogs(this.recipientPayment);
+          }
+        })
+        .finally(() => {
+          this.recipientSubmitting = false;
+        });
+    },
+    resetRecipientDialog() {
+      this.recipientKeyword = '';
+      this.recipientPayment = {};
+      this.recipientCandidates = [];
+      this.recipientSelection = [];
     },
     previewNotice(row, noticeType) {
       if (!row || !row.paymentId) return;
@@ -1087,7 +1289,14 @@ export default {
 .customer-link {
   padding: 0;
   min-width: 0;
+  max-width: none;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.customer-link :deep(span) {
+  white-space: nowrap;
 }
 
 .reminder-pagination {
@@ -1187,6 +1396,103 @@ export default {
   width: 100%;
   min-height: 34px;
   margin-left: 0;
+}
+
+.document-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.document-row {
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  background: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.document-row__name {
+  min-width: 0;
+}
+
+.document-row__name strong,
+.document-row__name span {
+  display: block;
+}
+
+.document-row__name strong {
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.document-row__name span {
+  margin-top: 3px;
+  color: #909399;
+  font-size: 12px;
+}
+
+.document-row__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.document-row__actions :deep(.el-button) {
+  margin-left: 0;
+}
+
+.recipient-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.recipient-summary {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) 240px;
+  align-items: end;
+  gap: 12px;
+}
+
+.recipient-summary > div {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.recipient-summary span,
+.recipient-summary strong {
+  display: block;
+}
+
+.recipient-summary span {
+  color: #909399;
+  font-size: 12px;
+}
+
+.recipient-summary strong {
+  margin-top: 4px;
+  overflow: hidden;
+  color: #1f2937;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recipient-selected-count {
+  float: left;
+  color: #606266;
+  font-size: 13px;
+  line-height: 32px;
 }
 
 .drawer-log-list {
@@ -1352,6 +1658,14 @@ export default {
   .drawer-action-grid,
   .disposal-board {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .recipient-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .recipient-summary :deep(.el-input) {
+    grid-column: 1 / -1;
   }
 }
 </style>

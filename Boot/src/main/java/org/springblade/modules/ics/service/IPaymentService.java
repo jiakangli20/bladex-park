@@ -10,10 +10,14 @@ import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.ics.pojo.vo.OverdueDisposalDetailVO;
+import org.springblade.modules.ics.pojo.dto.OverdueNoticeSendDTO;
+import org.springblade.modules.ics.pojo.vo.OverdueInternalNoticeVO;
+import org.springblade.modules.ics.pojo.vo.OverdueNoticeRecipientVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticePlaceholderVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeSummaryVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeVO;
 import org.springblade.modules.ics.pojo.vo.PaymentSummaryVO;
+import org.springblade.modules.ics.pojo.entity.OverdueInternalNotice;
 
 import java.util.Date;
 import java.util.List;
@@ -125,6 +129,55 @@ public interface IPaymentService {
 	 * @return 闭环详情
 	 */
 	OverdueDisposalDetailVO overdueDisposalDetail(Long paymentId);
+
+	/**
+	 * 当前账号未读逾期通知数量.
+	 *
+	 * @return 未读数量
+	 */
+	Long unreadOverdueNoticeCount();
+
+	/**
+	 * 标记当前账号指定账单通知为已读.
+	 *
+	 * @param paymentId 账单ID
+	 * @return 是否更新
+	 */
+	boolean readOverdueNotice(Long paymentId);
+
+	/**
+	 * 查询账单内部通知记录.
+	 *
+	 * @param paymentId 账单ID
+	 * @return 通知记录
+	 */
+	List<OverdueInternalNotice> overdueInternalNotices(Long paymentId);
+
+	/**
+	 * 查询首次逾期通知收件人候选.
+	 *
+	 * @param paymentId 账单ID
+	 * @return 收件人候选
+	 */
+	List<OverdueNoticeRecipientVO> overdueNoticeRecipients(Long paymentId);
+
+	/**
+	 * 向指定用户发送首次逾期通知.
+	 *
+	 * @param dto 发送参数
+	 * @return 新增通知数量
+	 */
+	int sendOverdueNotice(OverdueNoticeSendDTO dto);
+
+	/**
+	 * 当前账号逾期通知分页.
+	 *
+	 * @param page         分页
+	 * @param customerName 客户名称
+	 * @param readStatus   已读状态
+	 * @return 通知分页
+	 */
+	IPage<OverdueInternalNoticeVO> overdueNoticePage(IPage<OverdueInternalNoticeVO> page, String customerName, String readStatus);
 
 	/**
 	 * 收款通知占位.

@@ -103,6 +103,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 	private static final String CONTRACT_STATUS_ROOM_REVIEW_RUNNING = "8";
 	private static final String PAY_STATUS_PAID = "1";
 	private static final String PAY_STATUS_PARTIAL = "3";
+	private static final String FEE_TYPE_DEPOSIT_REFUND = "deposit_refund";
 	private static final String ROOM_STATUS_VACANT = "0";
 	private static final String NODE_START = "流程发起";
 	private static final String NODE_END = "流程结束";
@@ -400,6 +401,9 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		}
 		ContractPayment payment = contractPaymentMapper.selectById(record.getPaymentId());
 		if (payment == null || PAY_STATUS_PAID.equals(payment.getPayStatus())) {
+			return;
+		}
+		if (FEE_TYPE_DEPOSIT_REFUND.equals(payment.getFeeType())) {
 			return;
 		}
 		ContractPayment update = new ContractPayment();

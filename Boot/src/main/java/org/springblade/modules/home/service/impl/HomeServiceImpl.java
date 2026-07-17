@@ -13,6 +13,7 @@ import org.springblade.modules.home.pojo.vo.HomeOverviewVO;
 import org.springblade.modules.home.pojo.vo.HomeTodoVO;
 import org.springblade.modules.home.pojo.vo.HomeWorkbenchVO;
 import org.springblade.modules.home.service.IHomeService;
+import org.springblade.modules.ics.service.IPaymentService;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ import java.util.List;
 public class HomeServiceImpl implements IHomeService {
 
 	private final HomeMapper homeMapper;
+	private final IPaymentService paymentService;
 
 	@Override
 	public HomeWorkbenchVO workbench() {
@@ -39,8 +41,8 @@ public class HomeServiceImpl implements IHomeService {
 		Long customerCount = zeroIfNull(homeMapper.countCustomers(parkId));
 		Long expiringContractCount = zeroIfNull(homeMapper.countExpiringContracts(parkId));
 		Long approvalTodoCount = zeroIfNull(homeMapper.countApprovalTodos(parkId, currentUser, admin));
-		Long timeoutApprovalCount = zeroIfNull(homeMapper.countTimeoutApprovals(parkId, currentUser, admin));
 		Long workorderTodoCount = zeroIfNull(homeMapper.countWorkorderTodos(parkId, currentUser, admin));
+		Long overdueNoticeCount = zeroIfNull(paymentService.unreadOverdueNoticeCount());
 
 		HomeOverviewVO overview = new HomeOverviewVO();
 		overview.setRoomCount(roomCount);
@@ -53,7 +55,7 @@ public class HomeServiceImpl implements IHomeService {
 		todos.setApprovalTodoCount(approvalTodoCount);
 		todos.setExpiringContractCount(expiringContractCount);
 		todos.setWorkorderTodoCount(workorderTodoCount);
-		todos.setTimeoutApprovalCount(timeoutApprovalCount);
+		todos.setOverdueNoticeCount(overdueNoticeCount);
 
 		HomeWorkbenchVO workbench = new HomeWorkbenchVO();
 		workbench.setOverview(overview);

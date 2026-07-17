@@ -65,14 +65,6 @@
             新增商机
           </el-button>
           <el-button
-            type="primary"
-            plain
-            icon="el-icon-setting"
-            @click="openIndustryRuleDialog"
-          >
-            行业准入规则
-          </el-button>
-          <el-button
             v-if="permissionList.delBtn"
             type="danger"
             plain
@@ -341,17 +333,9 @@
                 <el-form-item label="行业类型">
                   <el-input v-model="form.industryType" placeholder="请输入行业类型">
                     <template #append>
-                      <div class="industry-input-actions">
-                        <el-button :loading="industryChecking" @click.stop="handleIndustryCheck">
-                          行业检测
-                        </el-button>
-                        <el-button
-                          v-if="permissionList.industryRuleBtn"
-                          @click.stop="openIndustryRuleDialog"
-                        >
-                          规则配置
-                        </el-button>
-                      </div>
+                      <el-button :loading="industryChecking" @click.stop="handleIndustryCheck">
+                        行业检测
+                      </el-button>
                     </template>
                   </el-input>
                 </el-form-item>
@@ -624,17 +608,9 @@
                 <el-form-item label="行业类型">
                   <el-input v-model="form.industryType" placeholder="请输入行业类型">
                     <template #append>
-                      <div class="industry-input-actions">
-                        <el-button :loading="industryChecking" @click.stop="handleIndustryCheck">
-                          行业检测
-                        </el-button>
-                        <el-button
-                          v-if="permissionList.industryRuleBtn && !view"
-                          @click.stop="openIndustryRuleDialog"
-                        >
-                          规则配置
-                        </el-button>
-                      </div>
+                      <el-button :loading="industryChecking" @click.stop="handleIndustryCheck">
+                        行业检测
+                      </el-button>
                     </template>
                   </el-input>
                 </el-form-item>
@@ -858,7 +834,6 @@
         <el-empty description="未查询到企业数据" />
       </el-dialog>
 
-      <industry-rule-dialog ref="industryRuleDialog" @ok="handleIndustryRulesChanged" />
     </div>
   </basic-container>
 </template>
@@ -877,7 +852,6 @@ import {
 } from '@/api/business/opportunity';
 import { checkIndustryRule } from '@/api/business/customer';
 import { getList as getUserList } from '@/api/system/user';
-import IndustryRuleDialog from './modules/industry-rule-dialog.vue';
 import CustomerTagSelector from './modules/customer-tag-selector.vue';
 import { mapGetters } from 'vuex';
 import { getToken } from '@/utils/auth';
@@ -898,7 +872,7 @@ const createDefaultForm = () => ({
 
 export default {
   name: 'BusinessOpportunity',
-  components: { CustomerTagSelector, IndustryRuleDialog },
+  components: { CustomerTagSelector },
   data() {
     return {
       loading: false,
@@ -999,7 +973,6 @@ export default {
         viewBtn: this.validData(this.permission.business_opportunity_view, false),
         followBtn: this.validData(this.permission.business_opportunity_follow, false),
         fileUploadBtn: this.validData(this.permission.business_opportunity_file_upload, false),
-        industryRuleBtn: this.validData(this.permission.business_opportunity_industry_rule, false),
       };
     },
     ids() {
@@ -1437,14 +1410,6 @@ export default {
           this.industryChecking = false;
         });
     },
-    openIndustryRuleDialog() {
-      this.$refs.industryRuleDialog && this.$refs.industryRuleDialog.open();
-    },
-    handleIndustryRulesChanged() {
-      if (this.form.industryType) {
-        this.handleIndustryCheck(false);
-      }
-    },
     formatCarrierTypes(value) {
       return value ? String(value).split(',').filter(Boolean).join('、') : '-';
     },
@@ -1632,20 +1597,6 @@ export default {
 .opportunity-form :deep(.el-input-group__append .el-button) {
   min-width: 124px;
   border: 0;
-}
-
-.industry-input-actions {
-  display: inline-flex;
-  height: 100%;
-  align-items: center;
-}
-
-.industry-input-actions .el-button {
-  min-width: 124px;
-}
-
-.industry-input-actions .el-button + .el-button {
-  border-left: 1px solid #dcdfe6;
 }
 
 .industry-check-alert {

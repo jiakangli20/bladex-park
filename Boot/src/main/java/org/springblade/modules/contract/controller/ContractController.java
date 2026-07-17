@@ -39,10 +39,12 @@ import org.springblade.core.tenant.annotation.NonDS;
 import org.springblade.core.tenant.annotation.TenantIgnore;
 import org.springblade.core.tool.api.R;
 import org.springblade.modules.contract.pojo.entity.Contract;
+import org.springblade.modules.contract.pojo.entity.ContractChange;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.pojo.vo.ContractStatsVO;
+import org.springblade.modules.contract.pojo.vo.ContractExpirySummaryVO;
 import org.springblade.modules.contract.service.IContractService;
 import org.springframework.web.bind.annotation.*;
 
@@ -117,6 +119,26 @@ public class ContractController extends BladeController {
 	}
 
 	/**
+	 * 登记合同变更并立即生效
+	 */
+	@PostMapping("/change")
+	@ApiOperationSupport(order = 6)
+	@Operation(summary = "合同变更", description = "登记合同变更并立即更新合同，不发起审批流")
+	public R<ContractChange> change(@RequestBody ContractChange change) {
+		return R.data(contractService.applyContractChange(change));
+	}
+
+	/**
+	 * 合同变更记录
+	 */
+	@GetMapping("/change/list")
+	@ApiOperationSupport(order = 7)
+	@Operation(summary = "合同变更记录", description = "传入contractId")
+	public R<List<ContractChange>> changeList(@RequestParam Long contractId) {
+		return R.data(contractService.selectContractChanges(contractId));
+	}
+
+	/**
 	 * 终止合同
 	 */
 	@PostMapping("/terminate")
@@ -155,6 +177,13 @@ public class ContractController extends BladeController {
 	public R<IPage<Contract>> expiring(Contract contract, Query query) {
 		IPage<Contract> pages = contractService.selectExpiringPage(Condition.getPage(query), contract);
 		return R.data(pages);
+	}
+
+	@GetMapping("/expiring/summary")
+	@ApiOperationSupport(order = 10)
+	@Operation(summary = "到期提醒汇总", description = "按到期设置规则统计提醒合同")
+	public R<ContractExpirySummaryVO> expiringSummary(Contract contract) {
+		return R.data(contractService.expiringSummary(contract));
 	}
 
 	/**

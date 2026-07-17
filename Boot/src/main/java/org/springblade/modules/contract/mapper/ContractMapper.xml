@@ -201,9 +201,7 @@
           AND c.del_flag = '0'
     </select>
 
-    <select id="selectExpiringPage" resultMap="contractResultMap">
-        <include refid="selectContractVo"/>
-        <where>
+    <sql id="expiringWhere">
             c.del_flag = '0'
             AND c.contract_status = '1'
             AND c.end_date &gt;= CURDATE()
@@ -234,8 +232,28 @@
             <if test="contract.customerName != null and contract.customerName != ''">
                 AND c.customer_name LIKE CONCAT('%', #{contract.customerName}, '%')
             </if>
+            <if test="contract.buildingName != null and contract.buildingName != ''">
+                AND c.building_name LIKE CONCAT('%', #{contract.buildingName}, '%')
+            </if>
+    </sql>
+
+    <select id="selectExpiringPage" resultMap="contractResultMap">
+        <include refid="selectContractVo"/>
+        <where>
+            <include refid="expiringWhere"/>
         </where>
         ORDER BY c.end_date ASC, c.contract_id DESC
+    </select>
+
+    <select id="selectExpiringSummary" resultType="org.springblade.modules.contract.pojo.vo.ContractExpirySummaryVO">
+        SELECT
+            COUNT(1) AS totalCount,
+            COALESCE(SUM(CASE WHEN c.end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END), 0) AS within30Days,
+            COALESCE(SUM(CASE WHEN c.end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 7 DAY) THEN 1 ELSE 0 END), 0) AS within7Days
+        FROM biz_contract c
+        <where>
+            <include refid="expiringWhere"/>
+        </where>
     </select>
 
     <select id="selectStats" resultMap="contractStatsResultMap">

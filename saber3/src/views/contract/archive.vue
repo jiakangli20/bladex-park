@@ -133,6 +133,55 @@
               </section>
             </el-tab-pane>
 
+            <el-tab-pane label="变更记录" name="change">
+              <section class="archive-detail-section archive-table-section">
+                <el-table :data="changes" class="archive-flat-table">
+                  <el-table-column prop="changeNo" label="变更单号" min-width="180" align="center" />
+                  <el-table-column prop="changeType" label="变更类型" width="150" align="center" />
+                  <el-table-column label="租金单价变更" min-width="220" align="center">
+                    <template #default="{ row }">
+                      <span v-if="row.newRentPrice !== null && row.newRentPrice !== undefined">
+                        {{ formatRentUnitPrice(row.oldRentPrice) }} →
+                        {{ formatRentUnitPrice(row.newRentPrice) }}
+                      </span>
+                      <span v-else>-</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="月租金变更" min-width="210" align="center">
+                    <template #default="{ row }">
+                      <span v-if="row.newMonthlyRent !== null && row.newMonthlyRent !== undefined">
+                        {{ formatMoneyWithUnit(row.oldMonthlyRent) }} →
+                        {{ formatMoneyWithUnit(row.newMonthlyRent) }}
+                      </span>
+                      <span v-else>-</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="合同结束日期变更" min-width="210" align="center">
+                    <template #default="{ row }">
+                      <span v-if="row.newEndDate">
+                        {{ row.oldEndDate || '-' }} → {{ row.newEndDate }}
+                      </span>
+                      <span v-else>-</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column
+                    prop="reason"
+                    label="变更原因"
+                    min-width="220"
+                    align="center"
+                    show-overflow-tooltip
+                  />
+                  <el-table-column label="生效状态" width="120" align="center">
+                    <template #default>
+                      <el-tag type="success" effect="plain">已生效</el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="createTime" label="登记时间" width="180" align="center" />
+                </el-table>
+                <el-empty v-if="changes.length === 0" description="暂无合同变更记录" />
+              </section>
+            </el-tab-pane>
+
             <el-tab-pane label="账单" name="bill">
               <section class="archive-detail-section archive-table-section">
                 <el-table :data="payments" class="archive-flat-table">
@@ -632,6 +681,7 @@ export default {
       customerDetail: {},
       customerContracts: [],
       payments: [],
+      changes: [],
       supplements: [],
       terminations: [],
       logs: [],
@@ -748,6 +798,7 @@ export default {
           this.current = data.contract || row;
           this.customerContracts = this.current.contractId ? [this.current] : [];
           this.payments = data.payments || [];
+          this.changes = data.changes || [];
           this.supplements = data.supplements || [];
           this.terminations = data.terminations || [];
           this.logs = data.logs || [];
@@ -765,6 +816,7 @@ export default {
       this.customerDetail = {};
       this.customerContracts = [];
       this.payments = [];
+      this.changes = [];
       this.supplements = [];
       this.terminations = [];
       this.logs = [];

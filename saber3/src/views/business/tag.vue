@@ -70,7 +70,7 @@
               />
             </el-form-item>
             <el-form-item label="状态">
-              <el-select v-model="query.status" clearable placeholder="全部状态">
+              <el-select v-model="query.status" clearable placeholder="全部状态" class="status-filter">
                 <el-option label="正常" value="0" />
                 <el-option label="停用" value="1" />
               </el-select>
@@ -629,6 +629,10 @@ export default {
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   background: #fff;
+}
+
+.tag-search .status-filter {
+  width: 168px;
 }
 
 .tag-toolbar {

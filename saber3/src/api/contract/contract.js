@@ -59,6 +59,24 @@ export const renew = (contractId, row) => {
   });
 };
 
+export const applyContractChange = row => {
+  return request({
+    url: '/blade-contract/contract/change',
+    method: 'post',
+    data: row,
+  });
+};
+
+export const getContractChanges = contractId => {
+  return request({
+    url: '/blade-contract/contract/change/list',
+    method: 'get',
+    params: {
+      contractId,
+    },
+  });
+};
+
 export const terminate = contractId => {
   return request({
     url: '/blade-contract/contract/terminate',
@@ -97,6 +115,14 @@ export const getExpiring = (current, size, params) => {
       current,
       size,
     },
+  });
+};
+
+export const getExpiringSummary = params => {
+  return request({
+    url: '/blade-contract/contract/expiring/summary',
+    method: 'get',
+    params,
   });
 };
 
