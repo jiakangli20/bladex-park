@@ -211,11 +211,19 @@
             <el-empty description="暂无工单记录" />
           </el-tab-pane>
 
-          <el-tab-pane label="资产记录" name="assets">
-            <el-empty description="资产记录待后续模块迁移后接入" />
+          <el-tab-pane label="资产记录" name="assets" lazy>
+            <AssetLedger
+              :park-id="query.parkId"
+              :building-id="query.buildingId"
+              :floor-no="query.floorNo"
+            />
           </el-tab-pane>
-          <el-tab-pane label="智能硬件" name="hardware">
-            <el-empty description="智能硬件待后续模块迁移后接入" />
+          <el-tab-pane label="智能水电表" name="meters" lazy>
+            <SmartDeviceLedger
+              :park-id="query.parkId"
+              :building-id="query.buildingId"
+              :floor-no="query.floorNo"
+            />
           </el-tab-pane>
           <el-tab-pane label="楼宇信息" name="building">
             <section class="building-info">
@@ -335,6 +343,9 @@
         <div><span>楼层</span><strong>{{ roomDetail.floor || '-' }}F</strong></div>
         <div><span>面积</span><strong>{{ formatNumber(roomDetail.area) }}㎡</strong></div>
         <div><span>状态</span><strong>{{ statusLabel(roomDetail.status) }}</strong></div>
+        <div v-if="normalizeStatus(roomDetail.status) === '0'">
+          <span>空置开始时间</span><strong>{{ roomDetail.vacantSince || '-' }}</strong>
+        </div>
         <div><span>月租金</span><strong>{{ formatNumber(roomDetail.rentPrice) }}元</strong></div>
         <div><span>同步状态</span><strong>{{ roomDetail.syncStatus === '1' ? '已同步' : '待同步' }}</strong></div>
         <div><span>核心卖点</span><strong>{{ roomDetail.highlights || '-' }}</strong></div>
@@ -401,8 +412,11 @@ import {
 } from '@/api/park/rent-control';
 import { Plus, Refresh, RefreshRight, Search, Upload } from '@element-plus/icons-vue';
 import { getToken } from '@/utils/auth';
+import AssetLedger from './asset-ledger.vue';
+import SmartDeviceLedger from './smart-device.vue';
 
 export default {
+  components: { AssetLedger, SmartDeviceLedger },
   data() {
     return {
       Search,
@@ -576,6 +590,9 @@ export default {
     },
   },
   created() {
+    if (this.$route.query.tab === 'meters') {
+      this.activeTab = 'meters';
+    }
     this.loadBoard();
     this.loadAllBuildings();
   },

@@ -914,7 +914,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			return;
 		}
 		for (Long roomId : resolveRoomIds(contract, record)) {
-			roomMapper.updateRoomStatus(roomId, ROOM_STATUS_VACANT, record.getUpdateBy());
+			roomMapper.updateRoomStatus(roomId, ROOM_STATUS_VACANT, record.getUpdateBy(), true);
 		}
 	}
 

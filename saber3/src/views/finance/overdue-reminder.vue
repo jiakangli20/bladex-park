@@ -41,6 +41,7 @@
           :data="data"
           border
           row-key="paymentId"
+          scrollbar-always-on
           class="reminder-table"
         >
           <el-table-column label="账单编号" width="118" align="center">
@@ -58,16 +59,18 @@
             <template #default="{ row }">{{ row.roomName || row.buildingName || '-' }}</template>
           </el-table-column>
           <el-table-column prop="feeName" label="费用类型" width="100" align="center" />
-          <el-table-column label="账期" min-width="180" align="center">
-            <template #default="{ row }">{{ row.periodStart || '-' }} 至 {{ row.periodEnd || '-' }}</template>
+          <el-table-column label="账期" width="210" align="center">
+            <template #default="{ row }">
+              <span class="period-cell">{{ row.periodStart || '-' }} 至 {{ row.periodEnd || '-' }}</span>
+            </template>
           </el-table-column>
-          <el-table-column prop="amountDue" label="应收金额" width="116" align="right">
+          <el-table-column prop="amountDue" label="应收金额" width="116" align="center">
             <template #default="{ row }">{{ formatMoney(row.amountDue) }}</template>
           </el-table-column>
-          <el-table-column prop="amountPaid" label="已缴金额" width="116" align="right">
+          <el-table-column prop="amountPaid" label="已缴金额" width="116" align="center">
             <template #default="{ row }">{{ formatMoney(row.amountPaid) }}</template>
           </el-table-column>
-          <el-table-column label="未缴金额" width="116" align="right">
+          <el-table-column label="未缴金额" width="116" align="center">
             <template #default="{ row }">{{ formatMoney(unpaidAmount(row)) }}</template>
           </el-table-column>
           <el-table-column prop="payDeadline" label="应缴日期" width="116" align="center" />
@@ -1284,6 +1287,27 @@ export default {
 
 .reminder-table {
   width: 100%;
+}
+
+.reminder-table :deep(.el-table__header th),
+.reminder-table :deep(.el-table__cell),
+.reminder-table :deep(.cell) {
+  text-align: center;
+}
+
+.reminder-table :deep(.el-scrollbar__bar.is-horizontal) {
+  bottom: 2px;
+  height: 8px;
+  opacity: 1;
+}
+
+.reminder-table :deep(.el-scrollbar__bar.is-horizontal .el-scrollbar__thumb) {
+  background-color: #aeb5c2;
+}
+
+.period-cell {
+  display: inline-block;
+  white-space: nowrap;
 }
 
 .customer-link {

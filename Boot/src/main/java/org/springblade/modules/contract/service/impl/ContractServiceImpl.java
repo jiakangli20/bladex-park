@@ -880,7 +880,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 			return;
 		}
 		for (Long roomId : Func.toLongList(resolveContractRoomIds(contract))) {
-			roomMapper.updateRoomStatus(roomId, ROOM_STATUS_VACANT, currentUserName());
+			roomMapper.updateRoomStatus(roomId, ROOM_STATUS_VACANT, currentUserName(), true);
 		}
 	}
 

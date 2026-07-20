@@ -48,6 +48,7 @@
         <result column="floor_plan_images" property="floorPlanImages"/>
         <result column="status" property="status"/>
         <result column="base_status" property="baseStatus"/>
+        <result column="vacant_since" property="vacantSince"/>
         <result column="sync_status" property="syncStatus"/>
         <result column="sync_time" property="syncTime"/>
         <result column="memo" property="memo"/>
@@ -95,10 +96,10 @@
                        r.status,
                        CASE
                            WHEN IFNULL(contract_room_status.has_exiting, 0) = 1 THEN '3'
-                           WHEN IFNULL(contract_room_status.has_expired, 0) = 1 THEN '6'
                            WHEN IFNULL(contract_room_status.has_expiring30, 0) = 1 THEN '5'
                            WHEN IFNULL(contract_room_status.has_expiring90, 0) = 1 THEN '4'
                            WHEN IFNULL(contract_room_status.has_active, 0) = 1 THEN '7'
+                           WHEN IFNULL(contract_room_status.has_expired, 0) = 1 THEN '6'
                            ELSE r.status
                        END AS display_status
                 FROM ics_room r
@@ -125,10 +126,10 @@
     <sql id="roomDisplayStatus">
         CASE
             WHEN IFNULL(contract_room_status.has_exiting, 0) = 1 THEN '3'
-            WHEN IFNULL(contract_room_status.has_expired, 0) = 1 THEN '6'
             WHEN IFNULL(contract_room_status.has_expiring30, 0) = 1 THEN '5'
             WHEN IFNULL(contract_room_status.has_expiring90, 0) = 1 THEN '4'
             WHEN IFNULL(contract_room_status.has_active, 0) = 1 THEN '7'
+            WHEN IFNULL(contract_room_status.has_expired, 0) = 1 THEN '6'
             ELSE r.status
         END
     </sql>
@@ -245,7 +246,7 @@
         r.orientation, r.address, r.facilities, r.highlights, r.scene_images,
         r.floor_plan_images, r.status AS base_status,
         <include refid="roomDisplayStatus"/> AS status,
-        r.sync_status, r.sync_time, r.memo,
+        r.vacant_since, r.sync_status, r.sync_time, r.memo,
         r.create_by, r.create_time, r.update_by, r.update_time
         FROM ics_room r
         LEFT JOIN ics_building b ON b.id = r.building_id
@@ -266,7 +267,7 @@
         r.orientation, r.address, r.facilities, r.highlights, r.scene_images,
         r.floor_plan_images, r.status AS base_status,
         <include refid="roomDisplayStatus"/> AS status,
-        r.sync_status, r.sync_time, r.memo,
+        r.vacant_since, r.sync_status, r.sync_time, r.memo,
         r.create_by, r.create_time, r.update_by, r.update_time
         FROM ics_room r
         LEFT JOIN ics_building b ON b.id = r.building_id

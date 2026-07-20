@@ -31,23 +31,25 @@
         </el-form>
       </section>
 
-      <section class="contract-toolbar">
-        <div class="toolbar-left">
-          <el-button v-if="permissionList.addBtn" type="primary" icon="el-icon-plus" @click="openCreate">录入服务申请</el-button>
+      <section class="service-table-card">
+        <div class="contract-toolbar">
+          <div class="toolbar-left">
+            <el-button v-if="permissionList.addBtn" type="primary" icon="el-icon-plus" @click="openCreate">录入服务申请</el-button>
+          </div>
+          <el-tooltip content="刷新" placement="top">
+            <el-button icon="el-icon-refresh" circle @click="reload" />
+          </el-tooltip>
         </div>
-        <el-tooltip content="刷新" placement="top">
-          <el-button icon="el-icon-refresh" circle @click="reload" />
-        </el-tooltip>
-      </section>
 
-      <el-table
-        ref="table"
-        v-loading="loading"
-        :data="data"
-        border
-        row-key="orderId"
-        class="contract-table"
-      >
+        <el-table
+          ref="table"
+          v-loading="loading"
+          :data="data"
+          border
+          row-key="orderId"
+          scrollbar-always-on
+          class="contract-table"
+        >
         <el-table-column prop="orderNo" label="服务单号" width="172" align="center" show-overflow-tooltip />
         <el-table-column prop="merchantName" label="服务商" min-width="150" align="center" show-overflow-tooltip />
         <el-table-column prop="serviceType" label="服务类型" width="116" align="center">
@@ -70,8 +72,12 @@
           </template>
         </el-table-column>
         <el-table-column prop="assignTo" label="处理人" width="110" align="center" show-overflow-tooltip />
-        <el-table-column prop="nextFollowTime" label="下次跟进" width="160" align="center" show-overflow-tooltip />
-        <el-table-column prop="createTime" label="申请时间" width="170" align="center" />
+          <el-table-column prop="nextFollowTime" label="下次跟进" width="180" align="center">
+            <template #default="{ row }"><span class="single-line-cell">{{ row.nextFollowTime || '-' }}</span></template>
+          </el-table-column>
+          <el-table-column prop="createTime" label="申请时间" width="180" align="center">
+            <template #default="{ row }"><span class="single-line-cell">{{ row.createTime || '-' }}</span></template>
+          </el-table-column>
         <el-table-column label="操作" width="244" fixed="right" align="center">
           <template #default="{ row }">
             <div class="table-actions">
@@ -83,20 +89,21 @@
             </div>
           </template>
         </el-table-column>
-      </el-table>
+        </el-table>
 
-      <div class="contract-pagination">
-        <el-pagination
-          background
-          :current-page="page.currentPage"
-          :page-sizes="[10, 20, 30, 50]"
-          :page-size="page.pageSize"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="page.total"
-          @size-change="sizeChange"
-          @current-change="currentChange"
-        />
-      </div>
+        <div class="contract-pagination">
+          <el-pagination
+            background
+            :current-page="page.currentPage"
+            :page-sizes="[10, 20, 30, 50]"
+            :page-size="page.pageSize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="page.total"
+            @size-change="sizeChange"
+            @current-change="currentChange"
+          />
+        </div>
+      </section>
     </div>
 
     <el-dialog
@@ -263,7 +270,7 @@
         </el-descriptions>
 
         <div class="log-title">处理进展</div>
-        <el-table v-loading="logLoading" :data="logs" border row-key="logId">
+        <el-table v-loading="logLoading" :data="logs" border row-key="logId" scrollbar-always-on class="service-log-table">
           <el-table-column prop="operateTime" label="时间" width="180" align="center" />
           <el-table-column prop="action" label="操作" width="110" align="center">
             <template #default="{ row }">{{ actionText(row.action) }}</template>
@@ -678,7 +685,7 @@ export default {
 }
 
 .contract-search,
-.contract-toolbar {
+.service-table-card {
   border-radius: 10px;
 }
 
@@ -703,6 +710,10 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
+}
+
+.service-table-card {
+  overflow: hidden;
   border: 1px solid #e5e7eb;
   background: #fff;
 }
@@ -717,6 +728,32 @@ export default {
   border-radius: 0;
 }
 
+.contract-table :deep(.el-table__header th),
+.contract-table :deep(.el-table__cell),
+.contract-table :deep(.cell),
+.service-log-table :deep(.el-table__header th),
+.service-log-table :deep(.el-table__cell),
+.service-log-table :deep(.cell) {
+  text-align: center;
+}
+
+.contract-table :deep(.el-scrollbar__bar.is-horizontal),
+.service-log-table :deep(.el-scrollbar__bar.is-horizontal) {
+  bottom: 2px;
+  height: 8px;
+  opacity: 1;
+}
+
+.contract-table :deep(.el-scrollbar__bar.is-horizontal .el-scrollbar__thumb),
+.service-log-table :deep(.el-scrollbar__bar.is-horizontal .el-scrollbar__thumb) {
+  background-color: #aeb5c2;
+}
+
+.single-line-cell {
+  display: inline-block;
+  white-space: nowrap;
+}
+
 .table-actions {
   display: flex;
   align-items: center;
@@ -728,7 +765,7 @@ export default {
 .contract-pagination {
   display: flex;
   justify-content: flex-end;
-  padding: 12px 0 0;
+  padding: 14px 16px;
 }
 
 .log-title {

@@ -28,84 +28,89 @@
         </el-form>
       </section>
 
-      <section class="contract-toolbar">
-        <div class="toolbar-left">
-          <el-button v-if="permissionList.addBtn" type="primary" icon="el-icon-plus" @click="openAdd">新增商户</el-button>
-          <el-button
-            v-if="permissionList.delBtn"
-            type="danger"
-            icon="el-icon-delete"
-            plain
-            :disabled="selectionList.length === 0"
-            @click="handleBatchDelete"
-          >
-            批量删除
-          </el-button>
+      <section class="merchant-table-card">
+        <div class="contract-toolbar">
+          <div class="toolbar-left">
+            <el-button v-if="permissionList.addBtn" type="primary" icon="el-icon-plus" @click="openAdd">新增商户</el-button>
+            <el-button
+              v-if="permissionList.delBtn"
+              type="danger"
+              icon="el-icon-delete"
+              plain
+              :disabled="selectionList.length === 0"
+              @click="handleBatchDelete"
+            >
+              批量删除
+            </el-button>
+          </div>
+          <el-tooltip content="刷新" placement="top">
+            <el-button icon="el-icon-refresh" circle @click="reload" />
+          </el-tooltip>
         </div>
-        <el-tooltip content="刷新" placement="top">
-          <el-button icon="el-icon-refresh" circle @click="reload" />
-        </el-tooltip>
+
+        <el-table
+          ref="table"
+          v-loading="loading"
+          :data="data"
+          border
+          row-key="merchantId"
+          scrollbar-always-on
+          class="contract-table"
+          @selection-change="selectionChange"
+        >
+          <el-table-column type="selection" width="48" align="center" />
+          <el-table-column prop="merchantName" label="服务商名称" min-width="200" align="center" show-overflow-tooltip />
+          <el-table-column prop="businessType" label="服务类型" width="120" align="center">
+            <template #default="{ row }">
+              <el-tag effect="plain">{{ businessTypeText(row.businessType) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="serviceScope" label="服务范围" min-width="180" align="center" show-overflow-tooltip />
+          <el-table-column prop="serviceArea" label="服务区域" min-width="160" align="center" show-overflow-tooltip />
+          <el-table-column prop="contactName" label="联系人" width="110" align="center" show-overflow-tooltip />
+          <el-table-column prop="contactPhone" label="联系电话" width="130" align="center" show-overflow-tooltip />
+          <el-table-column prop="status" label="小程序展示" width="120" align="center">
+            <template #default="{ row }">
+              <el-tag :type="statusTagType(row.status)" effect="plain">{{ statusText(row.status) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="createTime" label="创建时间" width="180" align="center">
+            <template #default="{ row }"><span class="single-line-cell">{{ row.createTime || '-' }}</span></template>
+          </el-table-column>
+          <el-table-column label="操作" width="190" fixed="right" align="center">
+            <template #default="{ row }">
+              <div class="table-actions">
+                <el-button v-if="permissionList.viewBtn" type="primary" text @click="openView(row)">查看</el-button>
+                <el-button v-if="permissionList.editBtn" type="primary" text @click="openEdit(row)">编辑</el-button>
+                <el-dropdown v-if="permissionList.statusBtn || permissionList.delBtn" trigger="click">
+                  <el-button type="primary" text>更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '0'" @click="changeStatus(row, '0')">上架</el-dropdown-item>
+                      <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '1'" @click="changeStatus(row, '1')">下架</el-dropdown-item>
+                      <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '2'" @click="changeStatus(row, '2')">暂停展示</el-dropdown-item>
+                      <el-dropdown-item v-if="permissionList.delBtn" divided @click="removeRow(row)">删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="contract-pagination">
+          <el-pagination
+            background
+            :current-page="page.currentPage"
+            :page-sizes="[10, 20, 30, 50]"
+            :page-size="page.pageSize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="page.total"
+            @size-change="sizeChange"
+            @current-change="currentChange"
+          />
+        </div>
       </section>
-
-      <el-table
-        ref="table"
-        v-loading="loading"
-        :data="data"
-        border
-        row-key="merchantId"
-        class="contract-table"
-        @selection-change="selectionChange"
-      >
-        <el-table-column type="selection" width="48" align="center" />
-        <el-table-column prop="merchantName" label="服务商名称" min-width="180" align="center" show-overflow-tooltip />
-        <el-table-column prop="businessType" label="服务类型" width="120" align="center">
-          <template #default="{ row }">
-            <el-tag effect="plain">{{ businessTypeText(row.businessType) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="serviceScope" label="服务范围" min-width="180" align="center" show-overflow-tooltip />
-        <el-table-column prop="serviceArea" label="服务区域" min-width="150" align="center" show-overflow-tooltip />
-        <el-table-column prop="contactName" label="联系人" width="110" align="center" show-overflow-tooltip />
-        <el-table-column prop="contactPhone" label="联系电话" width="130" align="center" show-overflow-tooltip />
-        <el-table-column prop="status" label="小程序展示" width="120" align="center">
-          <template #default="{ row }">
-            <el-tag :type="statusTagType(row.status)" effect="plain">{{ statusText(row.status) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
-        <el-table-column label="操作" width="190" fixed="right" align="center">
-          <template #default="{ row }">
-            <div class="table-actions">
-              <el-button v-if="permissionList.viewBtn" type="primary" text @click="openView(row)">查看</el-button>
-              <el-button v-if="permissionList.editBtn" type="primary" text @click="openEdit(row)">编辑</el-button>
-              <el-dropdown v-if="permissionList.statusBtn || permissionList.delBtn" trigger="click">
-                <el-button type="primary" text>更多</el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '0'" @click="changeStatus(row, '0')">上架</el-dropdown-item>
-                    <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '1'" @click="changeStatus(row, '1')">下架</el-dropdown-item>
-                    <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '2'" @click="changeStatus(row, '2')">暂停展示</el-dropdown-item>
-                    <el-dropdown-item v-if="permissionList.delBtn" divided @click="removeRow(row)">删除</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="contract-pagination">
-        <el-pagination
-          background
-          :current-page="page.currentPage"
-          :page-sizes="[10, 20, 30, 50]"
-          :page-size="page.pageSize"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="page.total"
-          @size-change="sizeChange"
-          @current-change="currentChange"
-        />
-      </div>
     </div>
 
     <el-dialog
@@ -521,7 +526,7 @@ export default {
 }
 
 .contract-search,
-.contract-toolbar {
+.merchant-table-card {
   border-radius: 10px;
 }
 
@@ -546,6 +551,10 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
+}
+
+.merchant-table-card {
+  overflow: hidden;
   border: 1px solid #e5e7eb;
   background: #fff;
 }
@@ -560,6 +569,27 @@ export default {
   border-radius: 0;
 }
 
+.contract-table :deep(.el-table__header th),
+.contract-table :deep(.el-table__cell),
+.contract-table :deep(.cell) {
+  text-align: center;
+}
+
+.contract-table :deep(.el-scrollbar__bar.is-horizontal) {
+  bottom: 2px;
+  height: 8px;
+  opacity: 1;
+}
+
+.contract-table :deep(.el-scrollbar__bar.is-horizontal .el-scrollbar__thumb) {
+  background-color: #aeb5c2;
+}
+
+.single-line-cell {
+  display: inline-block;
+  white-space: nowrap;
+}
+
 .table-actions {
   display: flex;
   align-items: center;
@@ -571,7 +601,7 @@ export default {
 .contract-pagination {
   display: flex;
   justify-content: flex-end;
-  padding: 12px 0 0;
+  padding: 14px 16px;
 }
 
 .merchant-page :deep(.el-button),

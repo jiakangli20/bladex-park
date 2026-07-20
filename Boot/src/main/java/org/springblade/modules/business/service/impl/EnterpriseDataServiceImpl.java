@@ -4,12 +4,18 @@
  */
 package org.springblade.modules.business.service.impl;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import lombok.RequiredArgsConstructor;
-import org.springblade.core.secure.utils.AuthUtil;
+import org.springblade.core.mp.support.Query;
 import org.springblade.core.tool.support.Kv;
 import org.springblade.core.tool.utils.Func;
+import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.business.mapper.EnterpriseDataMapper;
 import org.springblade.modules.business.service.IEnterpriseDataService;
+import org.springblade.modules.park.service.ISmartDeviceService;
+import org.springblade.plugin.workflow.core.constant.WfProcessConstant;
+import org.springblade.plugin.workflow.process.model.WfProcess;
+import org.springblade.plugin.workflow.process.service.IWfProcessService;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -28,10 +34,12 @@ import java.util.Map;
 public class EnterpriseDataServiceImpl implements IEnterpriseDataService {
 
 	private final EnterpriseDataMapper enterpriseDataMapper;
+	private final IWfProcessService wfProcessService;
+	private final ISmartDeviceService smartDeviceService;
 
 	@Override
 	public Kv overview(Long parkId) {
-		Long scopedParkId = scopedParkId(parkId);
+		Long scopedParkId = null;
 		Map<String, Object> finance = mapOrEmpty(enterpriseDataMapper.selectFinanceOverview(scopedParkId));
 		Map<String, Object> contract = mapOrEmpty(enterpriseDataMapper.selectContractExecution(scopedParkId));
 		Map<String, Object> room = mapOrEmpty(enterpriseDataMapper.selectRoomSummary(scopedParkId));
@@ -45,7 +53,7 @@ public class EnterpriseDataServiceImpl implements IEnterpriseDataService {
 			.set("vacancyWarning", enterpriseDataMapper.selectVacancyWarning(scopedParkId))
 			.set("rentalTrend", enterpriseDataMapper.selectRentalTrend(scopedParkId))
 			.set("contractDealTrend", enterpriseDataMapper.selectContractDealTrend(scopedParkId))
-			.set("approvalList", enterpriseDataMapper.selectApprovalList(scopedParkId))
+			.set("approvalList", flowableTodoList())
 			.set("noticeTenantList", enterpriseDataMapper.selectNoticeTenantList(scopedParkId))
 			.set("opportunityReminderList", enterpriseDataMapper.selectOpportunityReminderList(scopedParkId));
 	}
@@ -72,12 +80,13 @@ public class EnterpriseDataServiceImpl implements IEnterpriseDataService {
 	}
 
 	private List<Kv> buildDeviceSummary() {
+		List<Map<String, Object>> statistics = smartDeviceService.selectDeviceTypeStatistics();
 		List<Kv> list = new ArrayList<>();
-		list.add(device("electric", "电表"));
-		list.add(device("water", "水表"));
-		list.add(device("camera", "摄像头"));
-		list.add(device("lock", "门锁"));
-		list.add(device("access", "门禁"));
+		list.add(device("electric", "电表", findDeviceStatistics(statistics, "electric")));
+		list.add(device("water", "水表", findDeviceStatistics(statistics, "water")));
+		list.add(device("camera", "摄像头", findDeviceStatistics(statistics, "camera")));
+		list.add(device("lock", "门锁", findDeviceStatistics(statistics, "lock")));
+		list.add(device("access", "门禁", findDeviceStatistics(statistics, "access")));
 		return list;
 	}
 
@@ -85,22 +94,23 @@ public class EnterpriseDataServiceImpl implements IEnterpriseDataService {
 		return Kv.create()
 			.set("totalRooms", number(room, "totalRooms"))
 			.set("vacantRooms", number(room, "vacantRooms"))
-			.set("lockedRooms", number(room, "lockedRooms"))
+			.set("reservedRooms", number(room, "reservedRooms"))
+			.set("pendingRooms", number(room, "pendingRooms"))
+			.set("expiringRooms", number(room, "expiringRooms"))
 			.set("rentedRooms", number(room, "rentedRooms"))
-			.set("overdueRooms", number(room, "overdueRooms"))
-			.set("expiredRooms", number(room, "expiredRooms"));
+			.set("occupiedRooms", number(room, "occupiedRooms"));
 	}
 
 	private Kv buildRentMetrics(Map<String, Object> room) {
 		BigDecimal totalRooms = decimal(room, "totalRooms");
-		BigDecimal rentedRooms = decimal(room, "rentedRooms");
+		BigDecimal occupiedRooms = decimal(room, "occupiedRooms");
 		BigDecimal vacantRooms = decimal(room, "vacantRooms");
 		BigDecimal totalArea = decimal(room, "totalArea");
 		BigDecimal billableArea = decimal(room, "billableArea");
 
 		return Kv.create()
 			.set("averageRent", decimal(room, "averageRent").setScale(2, RoundingMode.HALF_UP))
-			.set("rentRate", percent(rentedRooms, totalRooms))
+			.set("rentRate", percent(occupiedRooms, totalRooms))
 			.set("vacancyRate", percent(vacantRooms, totalRooms))
 			.set("billingRate", percent(billableArea, totalArea));
 	}
@@ -113,26 +123,36 @@ public class EnterpriseDataServiceImpl implements IEnterpriseDataService {
 			.set("tone", tone);
 	}
 
-	private Kv device(String key, String label) {
+	private Kv device(String key, String label, Map<String, Object> statistics) {
 		return Kv.create()
 			.set("key", key)
 			.set("label", label)
-			.set("total", 0)
-			.set("online", 0)
-			.set("offline", 0);
+			.set("total", number(statistics, "total"))
+			.set("online", number(statistics, "online"))
+			.set("offline", number(statistics, "offline"));
 	}
 
-	private Long scopedParkId(Long parkId) {
-		if (AuthUtil.isAdministrator()) {
-			return Func.isEmpty(parkId) || parkId <= 0 ? null : parkId;
-		}
-		Long currentParkId = currentParkId();
-		return Func.isEmpty(parkId) || parkId <= 0 ? currentParkId : parkId;
+	private Map<String, Object> findDeviceStatistics(List<Map<String, Object>> statistics, String deviceType) {
+		return statistics.stream()
+			.filter(item -> deviceType.equals(Func.toStr(value(item, "deviceType"))))
+			.findFirst()
+			.orElse(Map.of());
 	}
 
-	private Long currentParkId() {
-		Long deptId = Func.firstLong(AuthUtil.getDeptId());
-		return Func.isEmpty(deptId) ? 1L : deptId;
+	private List<Kv> flowableTodoList() {
+		WfProcess process = new WfProcess();
+		process.setStatus(WfProcessConstant.STATUS_TODO);
+		Query query = new Query().setCurrent(1).setSize(3);
+		IPage<WfProcess> page = wfProcessService.selectTaskPage(process, query);
+		return page.getRecords().stream().map(item -> Kv.create()
+			.set("id", item.getTaskId())
+			.set("taskId", item.getTaskId())
+			.set("processInstanceId", item.getProcessInstanceId())
+			.set("title", StringUtil.isBlank(item.getProcessDefinitionName()) ? "待办审批" : item.getProcessDefinitionName())
+			.set("flowType", StringUtil.isBlank(item.getCategoryName()) ? "Flowable流程" : item.getCategoryName())
+			.set("statusText", StringUtil.isBlank(item.getTaskName()) ? "待处理" : item.getTaskName())
+			.set("createTime", item.getCreateTime()))
+			.toList();
 	}
 
 	private Map<String, Object> mapOrEmpty(Map<String, Object> map) {

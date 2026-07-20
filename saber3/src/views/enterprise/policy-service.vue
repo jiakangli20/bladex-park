@@ -19,67 +19,82 @@
           <el-form-item>
             <el-button icon="el-icon-search" @click="searchChange">搜索</el-button>
             <el-button icon="el-icon-refresh" @click="searchReset">重置</el-button>
-            <el-button v-if="permissionList.addBtn" type="primary" plain icon="el-icon-plus" @click="openAdd">新增</el-button>
-            <el-button type="success" plain icon="el-icon-download" @click="exportCsv">导出</el-button>
           </el-form-item>
         </el-form>
       </section>
 
-      <el-table
-        ref="table"
-        v-loading="loading"
-        :data="data"
-        border
-        row-key="policyId"
-        class="policy-table"
-      >
-        <el-table-column prop="serviceTitle" label="服务标题" min-width="180" align="center" show-overflow-tooltip />
-        <el-table-column prop="serviceStatus" label="服务状态" width="120" align="center">
-          <template #default="{ row }">
-            <el-tag :type="statusTagType(row.serviceStatus)" effect="plain">{{ statusText(row.serviceStatus) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="viewCount" label="浏览总数" width="120" align="center" />
-        <el-table-column prop="permanentFlag" label="是否永久有效" width="150" align="center">
-          <template #default="{ row }">{{ permanentText(row.permanentFlag) }}</template>
-        </el-table-column>
-        <el-table-column prop="validTime" label="有效期" min-width="180" align="center">
-          <template #default="{ row }">{{ row.permanentFlag === '0' ? '-' : row.validTime || '-' }}</template>
-        </el-table-column>
-        <el-table-column prop="onlineFlag" label="上架" width="120" align="center">
-          <template #default="{ row }">
-            <el-switch
-              :model-value="row.onlineFlag === '0'"
-              :disabled="!permissionList.onlineBtn"
-              @change="value => changeOnline(row, value)"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180" align="center" />
-        <el-table-column label="操作" width="250" fixed="right" align="center">
-          <template #default="{ row }">
-            <div class="table-actions">
-              <el-button v-if="permissionList.editBtn" type="primary" text @click="openEdit(row)">编辑</el-button>
-              <el-button v-if="permissionList.addBtn" type="primary" text @click="copyRow(row)">复制</el-button>
-              <el-button v-if="permissionList.viewBtn" type="primary" text @click="openRecord(row)">提交记录</el-button>
-              <el-button v-if="permissionList.delBtn" type="danger" text @click="removeRow(row)">删除</el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
+      <section class="policy-table-card">
+        <div class="policy-toolbar">
+          <div class="policy-toolbar__actions">
+            <el-button v-if="permissionList.addBtn" type="primary" icon="el-icon-plus" @click="openAdd">新增</el-button>
+            <el-button icon="el-icon-download" @click="exportCsv">导出</el-button>
+          </div>
+          <el-tooltip content="刷新" placement="top">
+            <el-button icon="el-icon-refresh" circle @click="onLoad(page)" />
+          </el-tooltip>
+        </div>
 
-      <div class="contract-pagination">
-        <el-pagination
-          background
-          :current-page="page.currentPage"
-          :page-sizes="[10, 20, 30, 50]"
-          :page-size="page.pageSize"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="page.total"
-          @size-change="sizeChange"
-          @current-change="currentChange"
-        />
-      </div>
+        <el-table
+          ref="table"
+          v-loading="loading"
+          :data="data"
+          border
+          row-key="policyId"
+          scrollbar-always-on
+          class="policy-table"
+        >
+          <el-table-column prop="serviceTitle" label="服务标题" min-width="240" align="center" show-overflow-tooltip />
+          <el-table-column prop="serviceStatus" label="服务状态" width="120" align="center">
+            <template #default="{ row }">
+              <el-tag :type="statusTagType(row.serviceStatus)" effect="plain">{{ statusText(row.serviceStatus) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="viewCount" label="浏览总数" width="120" align="center" />
+          <el-table-column prop="permanentFlag" label="是否永久有效" width="150" align="center">
+            <template #default="{ row }">{{ permanentText(row.permanentFlag) }}</template>
+          </el-table-column>
+          <el-table-column prop="validTime" label="有效期" width="190" align="center">
+            <template #default="{ row }">
+              <span class="single-line-cell">{{ row.permanentFlag === '0' ? '-' : row.validTime || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="onlineFlag" label="上架" width="120" align="center">
+            <template #default="{ row }">
+              <el-switch
+                :model-value="row.onlineFlag === '0'"
+                :disabled="!permissionList.onlineBtn"
+                @change="value => changeOnline(row, value)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column prop="createTime" label="创建时间" width="180" align="center">
+            <template #default="{ row }"><span class="single-line-cell">{{ row.createTime || '-' }}</span></template>
+          </el-table-column>
+          <el-table-column label="操作" width="250" fixed="right" align="center">
+            <template #default="{ row }">
+              <div class="table-actions">
+                <el-button v-if="permissionList.editBtn" type="primary" text @click="openEdit(row)">编辑</el-button>
+                <el-button v-if="permissionList.addBtn" type="primary" text @click="copyRow(row)">复制</el-button>
+                <el-button v-if="permissionList.viewBtn" type="primary" text @click="openRecord(row)">提交记录</el-button>
+                <el-button v-if="permissionList.delBtn" type="danger" text @click="removeRow(row)">删除</el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="contract-pagination">
+          <el-pagination
+            background
+            :current-page="page.currentPage"
+            :page-sizes="[10, 20, 30, 50]"
+            :page-size="page.pageSize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="page.total"
+            @size-change="sizeChange"
+            @current-change="currentChange"
+          />
+        </div>
+      </section>
     </div>
 
     <el-dialog
@@ -477,6 +492,33 @@ export default {
   border-radius: 0;
 }
 
+.policy-table-card {
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.policy-toolbar {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+}
+
+.policy-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.policy-table :deep(.el-table__header th),
+.policy-table :deep(.el-table__cell),
+.policy-table :deep(.cell) {
+  text-align: center;
+}
+
 .policy-table :deep(.el-table__header th) {
   height: 54px;
   color: #606266;
@@ -486,6 +528,21 @@ export default {
 
 .policy-table :deep(.el-table__row) {
   height: 53px;
+}
+
+.policy-table :deep(.el-scrollbar__bar.is-horizontal) {
+  bottom: 2px;
+  height: 8px;
+  opacity: 1;
+}
+
+.policy-table :deep(.el-scrollbar__bar.is-horizontal .el-scrollbar__thumb) {
+  background-color: #aeb5c2;
+}
+
+.single-line-cell {
+  display: inline-block;
+  white-space: nowrap;
 }
 
 .table-actions {
@@ -499,7 +556,7 @@ export default {
 .contract-pagination {
   display: flex;
   justify-content: flex-end;
-  padding: 12px 0 0;
+  padding: 14px 16px;
 }
 
 .cover-upload {

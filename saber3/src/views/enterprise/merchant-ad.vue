@@ -28,34 +28,36 @@
         </el-form>
       </section>
 
-      <section class="contract-toolbar">
-        <div class="toolbar-left">
-          <el-button v-if="permissionList.addBtn" type="primary" icon="el-icon-plus" @click="openAdd">新增广告</el-button>
-          <el-button
-            v-if="permissionList.delBtn"
-            type="danger"
-            icon="el-icon-delete"
-            plain
-            :disabled="selectionList.length === 0"
-            @click="handleBatchDelete"
-          >
-            批量删除
-          </el-button>
+      <section class="merchant-ad-table-card">
+        <div class="contract-toolbar">
+          <div class="toolbar-left">
+            <el-button v-if="permissionList.addBtn" type="primary" icon="el-icon-plus" @click="openAdd">新增广告</el-button>
+            <el-button
+              v-if="permissionList.delBtn"
+              type="danger"
+              icon="el-icon-delete"
+              plain
+              :disabled="selectionList.length === 0"
+              @click="handleBatchDelete"
+            >
+              批量删除
+            </el-button>
+          </div>
+          <el-tooltip content="刷新" placement="top">
+            <el-button icon="el-icon-refresh" circle @click="reload" />
+          </el-tooltip>
         </div>
-        <el-tooltip content="刷新" placement="top">
-          <el-button icon="el-icon-refresh" circle @click="reload" />
-        </el-tooltip>
-      </section>
 
-      <el-table
-        ref="table"
-        v-loading="loading"
-        :data="data"
-        border
-        row-key="adId"
-        class="contract-table"
-        @selection-change="selectionChange"
-      >
+        <el-table
+          ref="table"
+          v-loading="loading"
+          :data="data"
+          border
+          row-key="adId"
+          scrollbar-always-on
+          class="contract-table"
+          @selection-change="selectionChange"
+        >
         <el-table-column type="selection" width="48" align="center" />
         <el-table-column prop="adTitle" label="广告标题" min-width="170" align="center" show-overflow-tooltip />
         <el-table-column prop="adPosition" label="广告位置" width="130" align="center">
@@ -81,9 +83,9 @@
           <template #default="{ row }">{{ row.merchantName || row.linkUrl || '-' }}</template>
         </el-table-column>
         <el-table-column prop="sortOrder" label="排序" width="76" align="center" />
-        <el-table-column prop="startTime" label="展示时间" min-width="210" align="center" show-overflow-tooltip>
-          <template #default="{ row }">{{ formatRange(row.startTime, row.endTime) }}</template>
-        </el-table-column>
+          <el-table-column prop="startTime" label="展示时间" width="320" align="center">
+            <template #default="{ row }"><span class="single-line-cell">{{ formatRange(row.startTime, row.endTime) }}</span></template>
+          </el-table-column>
         <el-table-column prop="status" label="小程序状态" width="116" align="center">
           <template #default="{ row }">
             <el-tag :type="statusTagType(row.status)" effect="plain">{{ statusText(row.status) }}</el-tag>
@@ -107,20 +109,21 @@
             </div>
           </template>
         </el-table-column>
-      </el-table>
+        </el-table>
 
-      <div class="contract-pagination">
-        <el-pagination
-          background
-          :current-page="page.currentPage"
-          :page-sizes="[10, 20, 30, 50]"
-          :page-size="page.pageSize"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="page.total"
-          @size-change="sizeChange"
-          @current-change="currentChange"
-        />
-      </div>
+        <div class="contract-pagination">
+          <el-pagination
+            background
+            :current-page="page.currentPage"
+            :page-sizes="[10, 20, 30, 50]"
+            :page-size="page.pageSize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="page.total"
+            @size-change="sizeChange"
+            @current-change="currentChange"
+          />
+        </div>
+      </section>
     </div>
 
     <el-dialog
@@ -538,7 +541,7 @@ export default {
 }
 
 .contract-search,
-.contract-toolbar {
+.merchant-ad-table-card {
   border-radius: 10px;
 }
 
@@ -563,6 +566,10 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
+}
+
+.merchant-ad-table-card {
+  overflow: hidden;
   border: 1px solid #e5e7eb;
   background: #fff;
 }
@@ -575,6 +582,27 @@ export default {
 .contract-table {
   width: 100%;
   border-radius: 0;
+}
+
+.contract-table :deep(.el-table__header th),
+.contract-table :deep(.el-table__cell),
+.contract-table :deep(.cell) {
+  text-align: center;
+}
+
+.contract-table :deep(.el-scrollbar__bar.is-horizontal) {
+  bottom: 2px;
+  height: 8px;
+  opacity: 1;
+}
+
+.contract-table :deep(.el-scrollbar__bar.is-horizontal .el-scrollbar__thumb) {
+  background-color: #aeb5c2;
+}
+
+.single-line-cell {
+  display: inline-block;
+  white-space: nowrap;
 }
 
 .ad-cover {
@@ -595,7 +623,7 @@ export default {
 .contract-pagination {
   display: flex;
   justify-content: flex-end;
-  padding: 12px 0 0;
+  padding: 14px 16px;
 }
 
 .cover-upload {

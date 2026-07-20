@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.park.mapper.AssetRecordMapper">
+
+	<resultMap id="assetRecordResult" type="org.springblade.modules.park.pojo.entity.AssetRecord">
+		<id property="assetId" column="asset_id"/>
+		<result property="parkId" column="park_id"/>
+		<result property="buildingId" column="building_id"/>
+		<result property="floorNo" column="floor_no"/>
+		<result property="roomId" column="room_id"/>
+		<result property="assetCode" column="asset_code"/>
+		<result property="assetName" column="asset_name"/>
+		<result property="assetCategory" column="asset_category"/>
+		<result property="brandModel" column="brand_model"/>
+		<result property="quantity" column="quantity"/>
+		<result property="unit" column="unit"/>
+		<result property="purchaseDate" column="purchase_date"/>
+		<result property="originalValue" column="original_value"/>
+		<result property="assetStatus" column="asset_status"/>
+		<result property="responsiblePerson" column="responsible_person"/>
+		<result property="locationNote" column="location_note"/>
+		<result property="remark" column="remark"/>
+		<result property="delFlag" column="del_flag"/>
+		<result property="createBy" column="create_by"/>
+		<result property="createTime" column="create_time"/>
+		<result property="updateBy" column="update_by"/>
+		<result property="updateTime" column="update_time"/>
+		<result property="parkName" column="park_name"/>
+		<result property="buildingName" column="building_name"/>
+		<result property="roomName" column="room_name"/>
+	</resultMap>
+
+	<sql id="assetColumns">
+		SELECT a.asset_id, a.park_id, a.building_id, a.floor_no, a.room_id,
+			   a.asset_code, a.asset_name, a.asset_category, a.brand_model,
+			   a.quantity, a.unit, a.purchase_date, a.original_value, a.asset_status,
+			   a.responsible_person, a.location_note, a.remark, a.del_flag,
+			   a.create_by, a.create_time, a.update_by, a.update_time,
+			   p.name AS park_name, b.name AS building_name, r.name AS room_name
+		FROM biz_asset_record a
+		LEFT JOIN ics_park p ON p.id = a.park_id
+		LEFT JOIN ics_building b ON b.id = a.building_id
+		LEFT JOIN ics_room r ON r.id = a.room_id
+	</sql>
+
+	<sql id="assetWhere">
+		<where>
+			a.del_flag = '0'
+			<if test="asset != null">
+				<if test="asset.parkId != null">AND a.park_id = #{asset.parkId}</if>
+				<if test="asset.buildingId != null">AND a.building_id = #{asset.buildingId}</if>
+				<if test="asset.floorNo != null">AND a.floor_no = #{asset.floorNo}</if>
+				<if test="asset.roomId != null">AND a.room_id = #{asset.roomId}</if>
+				<if test="asset.assetCode != null and asset.assetCode != ''">AND a.asset_code LIKE CONCAT('%', #{asset.assetCode}, '%')</if>
+				<if test="asset.assetName != null and asset.assetName != ''">AND a.asset_name LIKE CONCAT('%', #{asset.assetName}, '%')</if>
+				<if test="asset.assetCategory != null and asset.assetCategory != ''">AND a.asset_category = #{asset.assetCategory}</if>
+				<if test="asset.assetStatus != null and asset.assetStatus != ''">AND a.asset_status = #{asset.assetStatus}</if>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectAssetById" resultMap="assetRecordResult">
+		<include refid="assetColumns"/>
+		WHERE a.asset_id = #{assetId} AND a.del_flag = '0'
+	</select>
+
+	<select id="selectAssetPage" resultMap="assetRecordResult">
+		<include refid="assetColumns"/>
+		<include refid="assetWhere"/>
+		ORDER BY a.create_time DESC, a.asset_id DESC
+	</select>
+
+	<select id="countAssetCode" resultType="int">
+		SELECT COUNT(1)
+		FROM biz_asset_record
+		WHERE asset_code = #{assetCode} AND del_flag = '0'
+		<if test="excludeId != null">AND asset_id != #{excludeId}</if>
+	</select>
+
+	<update id="deleteAssetByIds">
+		UPDATE biz_asset_record
+		SET asset_code = CONCAT(LEFT(asset_code, 70), '_deleted_', asset_id),
+			del_flag = '1',
+			update_by = #{updateBy},
+			update_time = NOW()
+		WHERE asset_id IN
+		<foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+	</update>
+
+</mapper>

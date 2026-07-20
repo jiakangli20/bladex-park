@@ -39,7 +39,13 @@
       <section class="expiry-table-wrap">
         <el-table v-loading="loading" :data="data" border row-key="contractId" class="expiry-table">
           <el-table-column prop="contractNo" label="合同编号" min-width="170" align="center" show-overflow-tooltip />
-          <el-table-column prop="customerName" label="租客名称" :min-width="customerNameColumnWidth" align="center" />
+          <el-table-column prop="customerName" label="租客名称" :min-width="customerNameColumnWidth" align="center">
+            <template #default="{ row }">
+              <el-button text type="primary" class="customer-link" @click="openContract(row)">
+                {{ row.customerName || '-' }}
+              </el-button>
+            </template>
+          </el-table-column>
           <el-table-column prop="buildingName" label="楼宇名称" min-width="150" align="center" show-overflow-tooltip />
           <el-table-column prop="roomName" label="房源信息" min-width="150" align="center" show-overflow-tooltip />
           <el-table-column prop="endDate" label="合同到期日" width="120" align="center" />
@@ -59,12 +65,9 @@
               <el-tag type="success" effect="plain">{{ row.contractStatusName || '生效' }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="166" align="center" fixed="right">
+          <el-table-column label="操作" width="96" align="center">
             <template #default="{ row }">
-              <div class="expiry-actions">
-                <el-button text type="primary" @click="openNotice(row)">查看提醒</el-button>
-                <el-button text type="primary" @click="openContract(row)">查看合同</el-button>
-              </div>
+              <button type="button" class="expiry-action-link" @click="openNotice(row)">查看提醒</button>
             </template>
           </el-table-column>
         </el-table>
@@ -341,16 +344,14 @@ export default {
   font-size: 15px;
 }
 
-.expiry-toolbar__actions,
-.expiry-actions {
+.expiry-toolbar__actions {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   white-space: nowrap;
 }
 
-.expiry-toolbar__actions :deep(.el-button),
-.expiry-actions :deep(.el-button) {
+.expiry-toolbar__actions :deep(.el-button) {
   margin-left: 0;
 }
 
@@ -360,6 +361,42 @@ export default {
 
 .expiry-table {
   width: 100%;
+}
+
+.expiry-action-link {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--el-color-primary);
+  font: inherit;
+  line-height: 22px;
+  cursor: pointer;
+  appearance: none;
+}
+
+.expiry-action-link::before,
+.expiry-action-link::after {
+  content: none;
+}
+
+.expiry-action-link:hover,
+.expiry-action-link:focus-visible {
+  color: var(--el-color-primary-light-3);
+}
+
+.customer-link {
+  min-width: 0;
+  max-width: none;
+  padding: 0;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.customer-link :deep(span) {
+  white-space: nowrap;
 }
 
 .expiry-pagination {

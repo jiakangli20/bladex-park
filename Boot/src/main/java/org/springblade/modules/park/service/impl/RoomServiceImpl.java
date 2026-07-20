@@ -88,12 +88,18 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements IR
 		}
 		room.setSyncStatus(SYNC_PENDING);
 		if (room.getId() == null) {
+			room.setVacantSince(STATUS_VACANT.equals(room.getStatus()) ? now : null);
 			room.setCreateBy(userName);
 			room.setCreateTime(now);
 		} else {
 			RoomVO oldRoom = selectRoomById(room.getId());
 			if (oldRoom == null) {
 				throw new ServiceException("房源不存在");
+			}
+			if (STATUS_VACANT.equals(room.getStatus())) {
+				room.setVacantSince(STATUS_VACANT.equals(oldRoom.getBaseStatus()) ? oldRoom.getVacantSince() : now);
+			} else {
+				room.setVacantSince(null);
 			}
 			room.setUpdateBy(userName);
 			room.setUpdateTime(now);
@@ -127,7 +133,8 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements IR
 		if (!List.of("0", "1", "2", "3").contains(status)) {
 			throw new ServiceException("房源状态不正确");
 		}
-		return baseMapper.updateRoomStatus(id, status, AuthUtil.getUserName()) > 0;
+		boolean resetVacantSince = STATUS_VACANT.equals(status) && !STATUS_VACANT.equals(room.getStatus());
+		return baseMapper.updateRoomStatus(id, status, AuthUtil.getUserName(), resetVacantSince) > 0;
 	}
 
 	@Override

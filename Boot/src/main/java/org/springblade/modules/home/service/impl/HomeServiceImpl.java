@@ -7,9 +7,12 @@ package org.springblade.modules.home.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.utils.StringUtil;
+import org.springblade.modules.business.pojo.entity.PolicyService;
+import org.springblade.modules.business.service.IPolicyServiceService;
 import org.springblade.modules.home.mapper.HomeMapper;
 import org.springblade.modules.home.pojo.vo.HomeMissingApiVO;
 import org.springblade.modules.home.pojo.vo.HomeOverviewVO;
+import org.springblade.modules.home.pojo.vo.HomePolicyNoticeVO;
 import org.springblade.modules.home.pojo.vo.HomeTodoVO;
 import org.springblade.modules.home.pojo.vo.HomeWorkbenchVO;
 import org.springblade.modules.home.service.IHomeService;
@@ -17,6 +20,7 @@ import org.springblade.modules.ics.service.IPaymentService;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -30,6 +34,7 @@ public class HomeServiceImpl implements IHomeService {
 
 	private final HomeMapper homeMapper;
 	private final IPaymentService paymentService;
+	private final IPolicyServiceService policyServiceService;
 
 	@Override
 	public HomeWorkbenchVO workbench() {
@@ -60,6 +65,7 @@ public class HomeServiceImpl implements IHomeService {
 		HomeWorkbenchVO workbench = new HomeWorkbenchVO();
 		workbench.setOverview(overview);
 		workbench.setTodos(todos);
+		workbench.setPolicyNotices(policyNotices());
 		workbench.setEnterprises(homeMapper.selectEnterprises(parkId));
 		workbench.setMissingApis(missingApis());
 		return workbench;
@@ -69,9 +75,29 @@ public class HomeServiceImpl implements IHomeService {
 	public List<HomeMissingApiVO> missingApis() {
 		List<HomeMissingApiVO> list = new ArrayList<>();
 		list.add(new HomeMissingApiVO("首页Banner", "home_banner / /blade-home/home/banner", "目标库暂未发现 Banner 表和管理接口，当前返回默认 Banner", "第三步"));
-		list.add(new HomeMissingApiVO("园区政策通知", "home_policy / /blade-home/home/policy-notice", "目标库暂未发现政策通知表和发布接口，当前返回空列表", "第三步"));
 		list.add(new HomeMissingApiVO("日程安排", "/blade-home/home/schedule", "迁移清单未指定可用日程表，本期仅保留页面占位", "第三步"));
 		return list;
+	}
+
+	private List<HomePolicyNoticeVO> policyNotices() {
+		PolicyService query = new PolicyService();
+		query.setServiceStatus("0");
+		query.setOnlineFlag("0");
+		Date now = new Date();
+		return policyServiceService.selectPolicyList(query).stream()
+			.filter(policy -> !"1".equals(policy.getPermanentFlag())
+				|| (policy.getValidTime() != null && !policy.getValidTime().before(now)))
+			.limit(4)
+			.map(this::toPolicyNotice)
+			.toList();
+	}
+
+	private HomePolicyNoticeVO toPolicyNotice(PolicyService policy) {
+		HomePolicyNoticeVO notice = new HomePolicyNoticeVO();
+		notice.setTitle(policy.getServiceTitle());
+		notice.setPublishTime(policy.getCreateTime());
+		notice.setLinkUrl("/enterprise/policy-service");
+		return notice;
 	}
 
 	private String currentUserName() {

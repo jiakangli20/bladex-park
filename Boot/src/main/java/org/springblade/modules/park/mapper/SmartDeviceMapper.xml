@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.park.mapper.SmartDeviceMapper">
+
+	<resultMap id="smartDeviceResult" type="org.springblade.modules.park.pojo.entity.SmartDevice">
+		<id property="deviceId" column="device_id"/>
+		<result property="parkId" column="park_id"/>
+		<result property="buildingId" column="building_id"/>
+		<result property="floorNo" column="floor_no"/>
+		<result property="roomId" column="room_id"/>
+		<result property="deviceName" column="device_name"/>
+		<result property="deviceCode" column="device_code"/>
+		<result property="deviceType" column="device_type"/>
+		<result property="brand" column="brand"/>
+		<result property="deviceModel" column="device_model"/>
+		<result property="paymentType" column="payment_type"/>
+		<result property="meterType" column="meter_type"/>
+		<result property="purpose" column="purpose"/>
+		<result property="currentReading" column="current_reading"/>
+		<result property="currentBalance" column="current_balance"/>
+		<result property="multiplier" column="multiplier"/>
+		<result property="maxReading" column="max_reading"/>
+		<result property="warningUnit" column="warning_unit"/>
+		<result property="warningRules" column="warning_rules"/>
+		<result property="installLocation" column="install_location"/>
+		<result property="onlineStatus" column="online_status"/>
+		<result property="enabledStatus" column="enabled_status"/>
+		<result property="lastOnlineTime" column="last_online_time"/>
+		<result property="remark" column="remark"/>
+		<result property="delFlag" column="del_flag"/>
+		<result property="createBy" column="create_by"/>
+		<result property="createTime" column="create_time"/>
+		<result property="updateBy" column="update_by"/>
+		<result property="updateTime" column="update_time"/>
+		<result property="parkName" column="park_name"/>
+		<result property="buildingName" column="building_name"/>
+		<result property="roomName" column="room_name"/>
+	</resultMap>
+
+	<sql id="deviceColumns">
+		SELECT d.device_id, d.park_id, d.building_id, d.floor_no, d.room_id,
+			   d.device_name, d.device_code, d.device_type, d.brand, d.device_model,
+			   d.payment_type, d.meter_type, d.purpose, d.current_reading, d.current_balance,
+			   d.multiplier, d.max_reading, d.warning_unit, d.warning_rules,
+			   d.install_location, d.online_status, d.enabled_status, d.last_online_time,
+			   d.remark, d.del_flag, d.create_by, d.create_time, d.update_by, d.update_time,
+			   p.name AS park_name, b.name AS building_name, r.name AS room_name
+		FROM biz_smart_device d
+		LEFT JOIN ics_park p ON p.id = d.park_id
+		LEFT JOIN ics_building b ON b.id = d.building_id
+		LEFT JOIN ics_room r ON r.id = d.room_id
+	</sql>
+
+	<sql id="deviceWhere">
+		<where>
+			d.del_flag = '0'
+			<if test="device != null">
+				<if test="device.parkId != null">AND d.park_id = #{device.parkId}</if>
+				<if test="device.buildingId != null">AND d.building_id = #{device.buildingId}</if>
+				<if test="device.floorNo != null">AND d.floor_no = #{device.floorNo}</if>
+				<if test="device.roomId != null">AND d.room_id = #{device.roomId}</if>
+				<if test="device.deviceName != null and device.deviceName != ''">AND d.device_name LIKE CONCAT('%', #{device.deviceName}, '%')</if>
+				<if test="device.deviceCode != null and device.deviceCode != ''">AND d.device_code LIKE CONCAT('%', #{device.deviceCode}, '%')</if>
+				<if test="device.deviceType != null and device.deviceType != ''">AND d.device_type = #{device.deviceType}</if>
+				<if test="device.deviceTypeGroup == 'meter'">AND d.device_type IN ('electric', 'water')</if>
+				<if test="device.onlineStatus != null and device.onlineStatus != ''">AND d.online_status = #{device.onlineStatus}</if>
+				<if test="device.enabledStatus != null and device.enabledStatus != ''">AND d.enabled_status = #{device.enabledStatus}</if>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectDeviceById" resultMap="smartDeviceResult">
+		<include refid="deviceColumns"/>
+		WHERE d.device_id = #{deviceId} AND d.del_flag = '0'
+	</select>
+
+	<select id="selectDevicePage" resultMap="smartDeviceResult">
+		<include refid="deviceColumns"/>
+		<include refid="deviceWhere"/>
+		ORDER BY d.create_time DESC, d.device_id DESC
+	</select>
+
+	<select id="selectDeviceStatistics" resultType="java.util.HashMap">
+		SELECT COUNT(1) AS totalCount,
+			   COALESCE(SUM(CASE WHEN d.enabled_status = '0' AND d.online_status = '0' THEN 1 ELSE 0 END), 0) AS onlineCount,
+			   COALESCE(SUM(CASE WHEN d.enabled_status = '0' AND d.online_status = '1' THEN 1 ELSE 0 END), 0) AS offlineCount,
+			   COALESCE(SUM(CASE WHEN d.enabled_status = '1' THEN 1 ELSE 0 END), 0) AS disabledCount
+		FROM biz_smart_device d
+		<include refid="deviceWhere"/>
+	</select>
+
+	<select id="selectDeviceTypeStatistics" resultType="java.util.HashMap">
+		SELECT d.device_type AS deviceType,
+			   COUNT(1) AS total,
+			   COALESCE(SUM(CASE WHEN d.online_status = '0' THEN 1 ELSE 0 END), 0) AS online,
+			   COALESCE(SUM(CASE WHEN d.online_status = '1' THEN 1 ELSE 0 END), 0) AS offline
+		FROM biz_smart_device d
+		WHERE d.del_flag = '0' AND d.enabled_status = '0'
+		GROUP BY d.device_type
+	</select>
+
+	<select id="countDeviceCode" resultType="int">
+		SELECT COUNT(1)
+		FROM biz_smart_device
+		WHERE device_code = #{deviceCode} AND del_flag = '0'
+		<if test="excludeId != null">AND device_id != #{excludeId}</if>
+	</select>
+
+	<update id="deleteDeviceByIds">
+		UPDATE biz_smart_device
+		SET device_code = CONCAT(LEFT(device_code, 70), '_deleted_', device_id),
+			del_flag = '1',
+			update_by = #{updateBy},
+			update_time = NOW()
+		WHERE device_id IN
+		<foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+	</update>
+
+</mapper>

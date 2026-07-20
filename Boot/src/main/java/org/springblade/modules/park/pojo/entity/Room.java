@@ -25,6 +25,7 @@
  */
 package org.springblade.modules.park.pojo.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -114,6 +115,12 @@ public class Room implements Serializable {
 
 	@Schema(description = "状态")
 	private String status;
+
+	@TableField(updateStrategy = FieldStrategy.ALWAYS)
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@Schema(description = "空置开始时间")
+	private Date vacantSince;
 
 	@TableField(exist = false)
 	@Schema(description = "基础状态")

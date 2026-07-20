@@ -50,7 +50,13 @@
                 <span class="title-icon"><i class="el-icon-cpu" /></span>
                 <strong>智能设备</strong>
               </div>
-              <el-button text type="primary" disabled>更多</el-button>
+              <el-button
+                text
+                type="primary"
+                @click="go({ path: '/park/rent-control', query: { tab: 'meters' } })"
+              >
+                更多
+              </el-button>
             </div>
             <el-tabs v-model="deviceTab" class="device-tabs">
               <el-tab-pane
@@ -259,10 +265,10 @@ export default {
     roomLegend() {
       return [
         { key: 'vacantRooms', label: '空置', value: this.roomSummary.vacantRooms || 0, color: ROOM_COLORS[0] },
-        { key: 'lockedRooms', label: '已锁定', value: this.roomSummary.lockedRooms || 0, color: ROOM_COLORS[1] },
-        { key: 'rentedRooms', label: '已出租', value: this.roomSummary.rentedRooms || 0, color: ROOM_COLORS[2] },
-        { key: 'overdueRooms', label: '已逾期', value: this.roomSummary.overdueRooms || 0, color: ROOM_COLORS[3] },
-        { key: 'expiredRooms', label: '已到期', value: this.roomSummary.expiredRooms || 0, color: ROOM_COLORS[4] },
+        { key: 'reservedRooms', label: '预留', value: this.roomSummary.reservedRooms || 0, color: ROOM_COLORS[1] },
+        { key: 'pendingRooms', label: '待清退/待退出', value: this.roomSummary.pendingRooms || 0, color: ROOM_COLORS[2] },
+        { key: 'expiringRooms', label: '到期预警', value: this.roomSummary.expiringRooms || 0, color: ROOM_COLORS[3] },
+        { key: 'rentedRooms', label: '已出租', value: this.roomSummary.rentedRooms || 0, color: ROOM_COLORS[4] },
       ];
     },
     rateItems() {
@@ -519,7 +525,7 @@ export default {
       return `${year}-${month}-${day}`;
     },
     go(path) {
-      this.$router.push({ path });
+      this.$router.push(path);
     },
   },
 };

@@ -84,7 +84,8 @@ public interface RoomMapper extends BaseMapper<Room> {
 	 * @param updateBy 更新人
 	 * @return 更新数量
 	 */
-	int updateRoomStatus(@Param("id") Long id, @Param("status") String status, @Param("updateBy") String updateBy);
+	int updateRoomStatus(@Param("id") Long id, @Param("status") String status,
+						 @Param("updateBy") String updateBy, @Param("resetVacantSince") boolean resetVacantSince);
 
 	/**
 	 * 标记小程序同步
