@@ -182,6 +182,12 @@
         <if test="contract.roomName != null and contract.roomName != ''">
             AND c.room_name LIKE CONCAT('%', #{contract.roomName}, '%')
         </if>
+        <if test="contract.roomId != null">
+            AND (
+                c.room_id = #{contract.roomId}
+                OR FIND_IN_SET(CAST(#{contract.roomId} AS CHAR), REPLACE(COALESCE(c.room_ids, ''), 'room_', '')) &gt; 0
+            )
+        </if>
         <if test="contract.parkId != null">
             AND c.park_id = #{contract.parkId}
         </if>

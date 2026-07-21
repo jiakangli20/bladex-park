@@ -338,6 +338,7 @@ export default {
     parkId: [String, Number],
     buildingId: [String, Number],
     floorNo: [String, Number],
+    roomId: [String, Number],
   },
   data() {
     return {
@@ -378,7 +379,7 @@ export default {
   computed: {
     ...mapGetters(['permission']),
     locationFilterKey() {
-      return [this.parkId || '', this.buildingId || '', this.floorNo || ''].join('|');
+      return [this.parkId || '', this.buildingId || '', this.floorNo || '', this.roomId || ''].join('|');
     },
     locationTree() {
       return this.buildLocationTree();
@@ -441,6 +442,7 @@ export default {
         parkId: this.parkId || undefined,
         buildingId: this.buildingId || undefined,
         floorNo: this.floorNo || undefined,
+        roomId: this.roomId || undefined,
       })
         .then(res => {
           const payload = res.data.data || {};
@@ -502,6 +504,7 @@ export default {
         parkId: this.parkId ? String(this.parkId) : undefined,
         buildingId: this.buildingId ? String(this.buildingId) : undefined,
         floorNo: this.floorNo || undefined,
+        roomId: this.roomId ? String(this.roomId) : undefined,
       };
       this.selectedLocationKey = this.locationKeyFromForm();
       this.drawerVisible = true;

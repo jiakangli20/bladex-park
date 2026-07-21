@@ -116,6 +116,9 @@ public class Building implements Serializable {
 	@Schema(description = "标准层高")
 	private BigDecimal standardFloorHeight;
 
+	@Schema(description = "楼宇实景图片")
+	private String sceneImages;
+
 	@Schema(description = "建筑类型")
 	private String buildingType;
 

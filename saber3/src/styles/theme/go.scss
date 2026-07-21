@@ -104,10 +104,13 @@
 
     .el-tabs__nav-prev,
     .el-tabs__nav-next {
-      width: 20px;
-      line-height: 50px;
+      top: 10px;
+      width: 24px;
+      height: 30px;
+      line-height: 30px;
       font-size: 18px;
       text-align: center;
+      box-sizing: border-box;
     }
 
     &__box {

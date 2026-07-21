@@ -100,6 +100,17 @@
 				<if test="workorder.serviceName != null and workorder.serviceName != ''">and s.service_name like concat('%', #{workorder.serviceName}, '%')</if>
 				<if test="workorder.priority != null and workorder.priority != ''">and w.priority = #{workorder.priority}</if>
 				<if test="workorder.assignTo != null and workorder.assignTo != ''">and w.assign_to = #{workorder.assignTo}</if>
+				<if test="workorder.filterRoomIds != null and workorder.filterRoomIds != ''">
+					and exists (
+						select 1
+						from ics_room wr
+						where find_in_set(cast(wr.id as char), #{workorder.filterRoomIds}) > 0
+						  and find_in_set(
+							cast(wr.id as char),
+							replace(replace(coalesce(w.room_ids, ''), 'room_', ''), ' ', '')
+						  ) > 0
+					)
+				</if>
 				<if test="workorder.mine != null and workorder.mine and workorder.currentUser != null and workorder.currentUser != ''">
 					and (w.create_by = #{workorder.currentUser} or w.assign_to = #{workorder.currentUser})
 				</if>

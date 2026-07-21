@@ -1,5 +1,5 @@
 <template>
-  <basic-container>
+  <component :is="containerComponent" :class="{ 'property-workorder-embedded': embedded }">
     <div class="property-workorder-page">
       <workorder-panel
         :query="processQuery"
@@ -13,6 +13,9 @@
         :permission-list="permissionList"
         :show-service-filter="false"
         :show-reload="false"
+        :show-actions="!embedded"
+        :show-statistics="!embedded"
+        :show-search="!embedded"
         create-label="录入工单"
         @search="searchProcess"
         @reset="resetProcessSearch"
@@ -73,17 +76,17 @@
               <el-option v-for="item in priorityOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
-          <el-form-item label="初始状态" prop="orderStatus">
+          <el-form-item v-if="!embedded" label="初始状态" prop="orderStatus">
             <el-select v-model="workorderForm.orderStatus" style="width: 100%">
               <el-option label="待受理" value="0" />
               <el-option label="处理中" value="1" />
               <el-option label="已完成" value="2" />
             </el-select>
           </el-form-item>
-          <el-form-item v-if="needsProcess(workorderForm.orderStatus)" label="指派人" prop="assignTo">
+          <el-form-item v-if="!embedded && needsProcess(workorderForm.orderStatus)" label="指派人" prop="assignTo">
             <assignee-select v-model="workorderForm.assignTo" :users="userOptions" />
           </el-form-item>
-          <el-form-item v-if="needsProcess(workorderForm.orderStatus)" label="处置内容" prop="disposalContent">
+          <el-form-item v-if="!embedded && needsProcess(workorderForm.orderStatus)" label="处置内容" prop="disposalContent">
             <el-input v-model="workorderForm.disposalContent" type="textarea" :rows="3" maxlength="1000" show-word-limit placeholder="请输入处置内容" />
           </el-form-item>
         </el-form>
@@ -187,7 +190,7 @@
         </template>
       </el-drawer>
     </div>
-  </basic-container>
+  </component>
 </template>
 
 <script>
@@ -215,6 +218,12 @@ export default {
     WorkorderPanel,
     AssigneeSelect,
   },
+  props: {
+    embedded: { type: Boolean, default: false },
+    parkId: [String, Number],
+    filterRoomIds: { type: String, default: '' },
+    defaultRoomInfo: { type: String, default: '' },
+  },
   data() {
     return {
       serviceTypeOptions: [
@@ -239,7 +248,10 @@ export default {
         { value: '2', label: '低' },
       ],
       serviceOptions: [],
-      processQuery: {},
+      processQuery: {
+        parkId: this.embedded && this.parkId ? this.parkId : undefined,
+        filterRoomIds: this.embedded && this.filterRoomIds ? this.filterRoomIds : undefined,
+      },
       processPage: {
         currentPage: 1,
         pageSize: 10,
@@ -284,6 +296,12 @@ export default {
   },
   computed: {
     ...mapGetters(['permission']),
+    containerComponent() {
+      return this.embedded ? 'div' : 'basic-container';
+    },
+    contextFilterKey() {
+      return [this.embedded ? '1' : '0', this.parkId || '', this.filterRoomIds || ''].join('|');
+    },
     permissionList() {
       return {
         workorderListBtn: this.validData(this.permission.property_workorder_list, false),
@@ -296,6 +314,14 @@ export default {
         workorderCloseBtn: this.validData(this.permission.property_workorder_close, false),
         workorderRateBtn: this.validData(this.permission.property_workorder_rate, false),
       };
+    },
+  },
+  watch: {
+    contextFilterKey() {
+      this.processQuery = this.applyContextFilters(this.processQuery);
+      this.processPage.currentPage = 1;
+      this.loadProcessPage();
+      this.loadServiceOptions();
     },
   },
   created() {
@@ -333,7 +359,10 @@ export default {
       return status === '1' || status === '2';
     },
     loadServiceOptions() {
-      getServiceList({ status: '0' }).then(res => {
+      getServiceList({
+        status: '0',
+        parkId: this.embedded && this.parkId ? this.parkId : undefined,
+      }).then(res => {
         const data = this.responseData(res);
         this.serviceOptions = Array.isArray(data) ? data : [];
       });
@@ -359,7 +388,7 @@ export default {
       this.loadProcessPage();
     },
     resetProcessSearch() {
-      this.processQuery = {};
+      this.processQuery = this.applyContextFilters({});
       this.searchProcess();
     },
     changeProcessSize(size) {
@@ -374,7 +403,9 @@ export default {
       const selected = service || {};
       this.workorderForm = {
         serviceId: selected.serviceId,
-        parkId: selected.parkId || 1,
+        parkId: selected.parkId || this.parkId || 1,
+        roomIds: this.embedded && this.filterRoomIds !== '-1' ? this.filterRoomIds : '',
+        roomInfo: this.embedded ? this.defaultRoomInfo : '',
         priority: '1',
         orderStatus: '0',
       };
@@ -491,6 +522,14 @@ export default {
       }).catch(() => {
         this.userOptions = [];
       });
+    },
+    applyContextFilters(query) {
+      const next = { ...(query || {}) };
+      if (this.embedded && this.parkId) next.parkId = this.parkId;
+      else delete next.parkId;
+      if (this.embedded && this.filterRoomIds) next.filterRoomIds = this.filterRoomIds;
+      else delete next.filterRoomIds;
+      return next;
     },
   },
 };

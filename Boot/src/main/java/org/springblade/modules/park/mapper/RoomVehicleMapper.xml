@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.park.mapper.RoomVehicleMapper">
+
+	<select id="selectVehiclePage" resultType="org.springblade.modules.park.pojo.entity.RoomVehicle">
+		SELECT rv.vehicle_id AS vehicleId, rv.room_id AS roomId, rv.plate_no AS plateNo,
+		       rv.vehicle_type AS vehicleType, rv.owner_name AS ownerName, rv.owner_phone AS ownerPhone,
+		       rv.valid_start AS validStart, rv.valid_end AS validEnd, rv.status, rv.remark,
+		       rv.del_flag AS delFlag, rv.create_by AS createBy, rv.create_time AS createTime,
+		       rv.update_by AS updateBy, rv.update_time AS updateTime, r.name AS roomName
+		FROM biz_room_vehicle rv
+		LEFT JOIN ics_room r ON r.id = rv.room_id
+		WHERE rv.del_flag = '0' AND rv.room_id = #{roomId}
+		ORDER BY rv.create_time DESC, rv.vehicle_id DESC
+	</select>
+
+	<select id="countActivePlate" resultType="int">
+		SELECT COUNT(1)
+		FROM biz_room_vehicle
+		WHERE room_id = #{roomId} AND plate_no = #{plateNo} AND del_flag = '0'
+	</select>
+
+	<update id="deleteVehicle">
+		UPDATE biz_room_vehicle
+		SET del_flag = '1', update_by = #{updateBy}, update_time = NOW()
+		WHERE vehicle_id = #{vehicleId} AND del_flag = '0'
+	</update>
+</mapper>

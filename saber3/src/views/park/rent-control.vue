@@ -27,7 +27,21 @@
             :current-node-key="selectedKey"
             highlight-current
             @node-click="handleTreeNodeClick"
-          />
+          >
+            <template #default="{ data }">
+              <span class="rent-tree-node">
+                <el-icon v-if="data.type === 'park' || data.type === 'building'"><OfficeBuilding /></el-icon>
+                <el-icon v-else-if="data.type === 'floor'"><Collection /></el-icon>
+                <el-icon v-else><House /></el-icon>
+                <span class="rent-tree-node__label">{{ data.label }}</span>
+                <i
+                  v-if="data.type === 'room'"
+                  class="rent-tree-node__status"
+                  :class="'status-' + normalizeStatus(data.status)"
+                ></i>
+              </span>
+            </template>
+          </el-tree>
         </el-scrollbar>
       </aside>
 
@@ -38,24 +52,59 @@
             <div class="rent-subtitle">{{ currentSubtitle }}</div>
           </div>
           <div class="rent-actions">
-            <el-select v-model="query.status" clearable placeholder="房态" size="small" @change="loadBoard">
-              <el-option
-                v-for="item in statusOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
-            <el-select v-model="query.orientation" clearable placeholder="朝向" size="small" @change="loadBoard">
-              <el-option v-for="item in orientationOptions" :key="item" :label="item" :value="item" />
-            </el-select>
-            <el-button :icon="Refresh" size="small" @click="handleReset">重置</el-button>
-            <el-button :icon="RefreshRight" size="small" type="primary" @click="loadBoard">刷新</el-button>
+            <template v-if="isRoomSelection">
+              <el-button
+                v-if="permission.rent_control_room_delete"
+                :icon="Delete"
+                size="small"
+                type="danger"
+                plain
+                @click="handleDeleteRoom(selectedRoomDetail)"
+              >
+                删除
+              </el-button>
+              <el-button
+                v-if="permission.rent_control_room_edit"
+                :icon="Edit"
+                size="small"
+                type="primary"
+                @click="handleEditRoom(selectedRoomDetail)"
+              >
+                编辑
+              </el-button>
+            </template>
+            <template v-else>
+              <el-select v-model="query.status" clearable placeholder="房态" size="small" @change="loadBoard">
+                <el-option
+                  v-for="item in statusOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+              <el-select v-model="query.orientation" clearable placeholder="朝向" size="small" @change="loadBoard">
+                <el-option v-for="item in orientationOptions" :key="item" :label="item" :value="item" />
+              </el-select>
+              <el-button :icon="Refresh" size="small" @click="handleReset">重置</el-button>
+              <el-button :icon="RefreshRight" size="small" type="primary" @click="loadBoard">刷新</el-button>
+            </template>
           </div>
         </div>
 
-        <el-tabs v-model="activeTab">
-          <el-tab-pane label="项目概况" name="overview">
+        <RoomWorkbench
+          v-if="isRoomSelection"
+          :key="`${selectedRoomId}-${roomRevision}`"
+          :room-id="selectedRoomId"
+          :park-id="query.parkId"
+          :building-id="query.buildingId"
+          :floor-no="query.floorNo"
+          :park-name="currentPark.name"
+          :building-name="currentBuilding.name"
+          @loaded="handleRoomLoaded"
+        />
+
+        <el-tabs v-else v-model="activeTab" :class="{ 'floor-only-tabs': isFloorSelection }">
+          <el-tab-pane v-if="!isFloorSelection" label="项目概况" name="overview">
             <section class="metric-grid">
               <div class="metric-item">
                 <span>在租房间数</span>
@@ -175,61 +224,70 @@
             </template>
           </el-tab-pane>
 
-          <el-tab-pane label="工单记录" name="workorders">
-            <section class="workorder-head">
-              <div class="workorder-metrics">
-                <div><span>待派工单</span><strong>{{ workorderStats.pendingAssign }}</strong></div>
-                <div><span>未办结超时</span><strong>{{ workorderStats.overdueOpen }}</strong></div>
-                <div><span>当月超时率</span><strong>{{ workorderStats.monthOverdueRate }}%</strong></div>
-                <div><span>满意度</span><strong>{{ workorderStats.monthSatisfaction }}%</strong></div>
-              </div>
-              <div class="workorder-actions">
-                <el-button
-                  v-if="permission.rent_control_workorder_list"
-                  :icon="RefreshRight"
-                  @click="loadWorkorders"
-                >
-                  刷新
-                </el-button>
-                <el-button
-                  v-if="permission.rent_control_workorder_report"
-                  type="primary"
-                  :icon="Plus"
-                  @click="handleReportWorkorder"
-                >
-                  上报工单
-                </el-button>
-              </div>
-            </section>
-            <el-alert
-              v-if="workorderMessage"
-              :title="workorderMessage"
-              type="info"
-              show-icon
-              :closable="false"
+          <el-tab-pane v-if="!isFloorSelection" label="工单记录" name="workorders" lazy>
+            <EnterprisePropertyWorkorder
+              embedded
+              :park-id="query.parkId"
+              :filter-room-ids="workorderFilterRoomIds"
+              :default-room-info="workorderDefaultRoomInfo"
             />
-            <el-empty description="暂无工单记录" />
           </el-tab-pane>
 
-          <el-tab-pane label="资产记录" name="assets" lazy>
+          <el-tab-pane v-if="!isFloorSelection" label="资产记录" name="assets" lazy>
             <AssetLedger
               :park-id="query.parkId"
               :building-id="query.buildingId"
               :floor-no="query.floorNo"
             />
           </el-tab-pane>
-          <el-tab-pane label="智能水电表" name="meters" lazy>
+          <el-tab-pane v-if="!isFloorSelection" label="智能水电表" name="meters" lazy>
             <SmartDeviceLedger
               :park-id="query.parkId"
               :building-id="query.buildingId"
               :floor-no="query.floorNo"
             />
           </el-tab-pane>
-          <el-tab-pane label="楼宇信息" name="building">
-            <section class="building-info">
-              <div v-for="item in buildingInfoItems" :key="item.label">
-                <span>{{ item.label }}</span>
-                <strong>{{ item.value }}</strong>
+          <el-tab-pane v-if="!isFloorSelection" label="楼宇信息" name="building">
+            <el-empty v-if="!currentBuilding.id" description="请从左侧选择具体楼宇" />
+            <section v-else class="building-profile">
+              <div class="building-profile-section">
+                <h3>基础信息</h3>
+                <div class="building-profile-grid">
+                  <div
+                    v-for="item in buildingBasicInfoItems"
+                    :key="item.label"
+                    class="building-profile-item"
+                    :class="{ 'is-wide': item.wide, 'is-full': item.full }"
+                  >
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.value }}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="building-profile-section">
+                <h3>拓展信息</h3>
+                <div class="building-profile-grid">
+                  <div v-for="item in buildingExtensionInfoItems" :key="item.label" class="building-profile-item">
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.value }}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="building-profile-section">
+                <h3>楼宇图片</h3>
+                <div v-if="buildingImageList.length" class="building-profile-images">
+                  <el-image
+                    v-for="image in buildingImageList"
+                    :key="image"
+                    :src="image"
+                    :preview-src-list="buildingImageList"
+                    fit="cover"
+                    preview-teleported
+                  />
+                </div>
+                <el-empty v-else description="暂无楼宇图片，可在楼宇管理中上传" :image-size="72" />
               </div>
             </section>
           </el-tab-pane>
@@ -403,26 +461,27 @@ import {
   getBoard,
   getBuildingList,
   getFloorList,
-  getRoomDetail,
-  getWorkorders,
   removeRoom,
-  reportWorkorder,
   submitRoom,
   syncRoomMini,
 } from '@/api/park/rent-control';
-import { Plus, Refresh, RefreshRight, Search, Upload } from '@element-plus/icons-vue';
+import { Collection, Delete, Edit, House, OfficeBuilding, Plus, Refresh, RefreshRight, Search, Upload } from '@element-plus/icons-vue';
 import { getToken } from '@/utils/auth';
+import EnterprisePropertyWorkorder from '@/views/enterprise/property-workorder.vue';
 import AssetLedger from './asset-ledger.vue';
+import RoomWorkbench from './room-workbench.vue';
 import SmartDeviceLedger from './smart-device.vue';
 
 export default {
-  components: { AssetLedger, SmartDeviceLedger },
+  components: { AssetLedger, Collection, EnterprisePropertyWorkorder, House, OfficeBuilding, RoomWorkbench, SmartDeviceLedger },
   data() {
     return {
       Search,
       Plus,
       Refresh,
       RefreshRight,
+      Delete,
+      Edit,
       Upload,
       activeTab: 'overview',
       loading: false,
@@ -430,6 +489,10 @@ export default {
       treeLoaded: false,
       selectedKey: '',
       defaultExpandedKeys: [],
+      selectedRoomId: undefined,
+      selectedRoom: {},
+      selectedRoomDetail: {},
+      roomRevision: 0,
       query: {
         parkId: undefined,
         buildingId: undefined,
@@ -500,16 +563,6 @@ export default {
       },
       roomDetailVisible: false,
       roomDetail: {},
-      workorderStats: {
-        pendingAssign: 0,
-        overdueOpen: 0,
-        processing: 0,
-        monthOverdueRate: 0,
-        monthOverdue: 0,
-        monthSatisfaction: 0,
-        monthRated: 0,
-      },
-      workorderMessage: '',
     };
   },
   computed: {
@@ -520,51 +573,116 @@ export default {
         type: 'park',
         id: park.id,
         label: park.name,
-        children: (park.buildings || []).map(building => ({
-          key: `building-${building.id}`,
-          type: 'building',
-          id: building.id,
-          parkId: building.parkId,
-          label: building.name,
-          children: (building.floors || []).map(floor => ({
-            key: `floor-${building.id}-${floor}`,
-            type: 'floor',
-            id: `${building.id}-${floor}`,
+        children: (park.buildings || []).map(building => {
+          const floorNodes = Array.isArray(building.floorNodes)
+            ? building.floorNodes
+            : (building.floors || []).map(floorNo => ({ floorNo, rooms: [] }));
+          return {
+            key: `building-${building.id}`,
+            type: 'building',
+            id: building.id,
             parkId: building.parkId,
-            buildingId: building.id,
-            floorNo: floor,
-            label: `${floor}F`,
-          })),
-        })),
+            label: building.name,
+            children: floorNodes.map(floor => ({
+              key: `floor-${building.id}-${floor.floorNo}`,
+              type: 'floor',
+              id: `${building.id}-${floor.floorNo}`,
+              parkId: building.parkId,
+              buildingId: building.id,
+              floorNo: floor.floorNo,
+              label: `${floor.floorNo}层`,
+              children: (floor.rooms || []).map(room => ({
+                key: `room-${room.id}`,
+                type: 'room',
+                id: room.id,
+                roomId: room.id,
+                parkId: room.parkId || building.parkId,
+                buildingId: room.buildingId || building.id,
+                floorNo: room.floorNo || floor.floorNo,
+                label: room.name,
+                area: room.area,
+                status: room.status,
+              })),
+            })),
+          };
+        }),
       }));
     },
     currentTitle() {
+      if (this.isRoomSelection) {
+        return this.selectedRoomDetail.name || this.selectedRoom.name || '房源信息';
+      }
+      if (this.isFloorSelection) {
+        return `${this.query.floorNo}层`;
+      }
       return this.currentBuilding.name || this.currentPark.name || '租控管理';
     },
     currentSubtitle() {
-      if (this.query.floorNo) {
-        return `${this.currentPark.name || ''} ${this.currentBuilding.name || ''} ${this.query.floorNo}F`;
+      if (this.isRoomSelection) {
+        return [this.currentPark.name, this.currentBuilding.name, this.query.floorNo ? `${this.query.floorNo}层` : '']
+          .filter(Boolean)
+          .join(' · ');
+      }
+      if (this.isFloorSelection) {
+        return [this.currentPark.name, this.currentBuilding.name].filter(Boolean).join(' · ');
       }
       return this.currentPark.name ? `${this.currentPark.name} · 房态与经营概况` : '请选择左侧园区或建筑';
     },
-    buildingInfoItems() {
+    isFloorSelection() {
+      return !this.isRoomSelection && this.query.floorNo !== undefined && this.query.floorNo !== null && this.query.floorNo !== '';
+    },
+    isRoomSelection() {
+      return this.selectedRoomId !== undefined && this.selectedRoomId !== null && this.selectedRoomId !== '';
+    },
+    buildingBasicInfoItems() {
       return [
         { label: '所属园区', value: this.displayValue(this.currentPark.name || this.currentBuilding.parkName) },
-        { label: '园区编码', value: this.displayValue(this.currentPark.code) },
-        { label: '建筑名称', value: this.displayValue(this.currentBuilding.name) },
-        { label: '建筑编码', value: this.displayValue(this.currentBuilding.code) },
-        { label: '建筑地址', value: this.displayValue(this.currentBuilding.address || this.currentPark.detailAddress) },
-        { label: '楼层数', value: this.currentBuilding.floors ? `${this.currentBuilding.floors} 层` : '-' },
-        { label: '建筑面积', value: `${this.formatNumber(this.currentBuilding.area)}㎡` },
-        { label: '可租面积', value: `${this.formatNumber(this.currentBuilding.rentableArea)}㎡` },
-        { label: '管理面积', value: `${this.formatNumber(this.overview.managementArea)}㎡` },
-        { label: '联系人', value: this.displayValue(this.currentPark.contactName) },
-        { label: '联系电话', value: this.displayValue(this.currentPark.contactPhone) },
-        { label: '状态', value: this.currentBuilding.status === '1' ? '停用' : '启用' },
+        { label: '楼宇名称', value: this.displayValue(this.currentBuilding.name) },
+        { label: '楼宇编码', value: this.displayValue(this.currentBuilding.code) },
+        { label: '楼宇类型', value: this.displayValue(this.currentBuilding.buildingType) },
+        { label: '楼宇地址', value: this.displayValue(this.currentBuilding.address || this.currentPark.detailAddress), wide: true },
+        { label: '所属地区', value: this.displayValue(this.currentBuilding.region) },
+        { label: '建筑面积', value: this.formatMeasure(this.currentBuilding.area, '㎡') },
+        { label: '管理面积', value: this.formatMeasure(this.overview.managementArea, '㎡') },
+        { label: '可租面积', value: this.formatMeasure(this.currentBuilding.rentableArea, '㎡') },
+        { label: '房源数量', value: this.formatMeasure(this.currentBuilding.roomCount || this.overview.totalRoomCount, '间') },
+        { label: '在租房源', value: this.formatMeasure(this.overview.rentedRoomCount, '间') },
+        { label: '楼宇简介', value: this.displayValue(this.currentBuilding.memo), full: true },
       ];
+    },
+    buildingExtensionInfoItems() {
+      return [
+        { label: '排序值', value: this.displayValue(this.currentBuilding.sortNum) },
+        { label: '楼层数', value: this.formatMeasure(this.currentBuilding.floors, '层') },
+        { label: '标准层高', value: this.formatMeasure(this.currentBuilding.standardFloorHeight, 'm') },
+        { label: '产权面积', value: this.formatMeasure(this.currentBuilding.propertyArea, '㎡') },
+        { label: '自用面积', value: this.formatMeasure(this.currentBuilding.selfUseArea, '㎡') },
+        { label: '配套面积', value: this.formatMeasure(this.currentBuilding.supportingArea, '㎡') },
+        { label: '车位面积', value: this.formatMeasure(this.currentBuilding.parkingArea, '㎡') },
+        { label: '不动产编号', value: this.displayValue(this.currentBuilding.realEstateNo) },
+        { label: '产权编号', value: this.displayValue(this.currentBuilding.propertyNo) },
+        { label: '土地编号', value: this.displayValue(this.currentBuilding.landNo) },
+        { label: '状态', value: this.currentBuilding.status === '1' ? '停用' : '启用' },
+        { label: '创建时间', value: this.displayValue(this.currentBuilding.createTime) },
+      ];
+    },
+    buildingImageList() {
+      return this.parseRoomImageUrls(this.currentBuilding.sceneImages);
     },
     roomDetailImageList() {
       return this.parseRoomImageUrls(this.roomDetail.sceneImages);
+    },
+    workorderFilterRoomIds() {
+      if (!this.query.buildingId) return '';
+      const ids = this.floors.flatMap(floor => (floor.rooms || []).map(room => room.id)).filter(Boolean);
+      return ids.length ? ids.join(',') : '-1';
+    },
+    workorderDefaultRoomInfo() {
+      return [
+        this.currentPark.name,
+        this.currentBuilding.name,
+        this.query.floorNo ? `${this.query.floorNo}F` : '',
+      ].filter(Boolean).join(' / ');
     },
     roomParkOptions() {
       const parks = this.getTreeParks();
@@ -692,11 +810,16 @@ export default {
         (park.buildings || []).forEach(building => {
           if (this.query.buildingId && String(this.query.buildingId) === String(building.id)) {
             expanded.push(`building-${building.id}`);
+            if (this.query.floorNo) {
+              expanded.push(`floor-${building.id}-${this.query.floorNo}`);
+            }
           }
         });
       });
       this.defaultExpandedKeys = expanded;
-      if (this.query.floorNo && this.query.buildingId) {
+      if (this.isRoomSelection) {
+        this.selectedKey = `room-${this.selectedRoomId}`;
+      } else if (this.query.floorNo && this.query.buildingId) {
         this.selectedKey = `floor-${this.query.buildingId}-${this.query.floorNo}`;
       } else if (this.query.buildingId) {
         this.selectedKey = `building-${this.query.buildingId}`;
@@ -706,25 +829,48 @@ export default {
     },
     handleTreeNodeClick(node) {
       if (node.type === 'park') {
+        this.clearRoomSelection();
         this.query.parkId = node.id;
         this.query.buildingId = undefined;
         this.query.floorNo = undefined;
         this.activeTab = 'overview';
       }
       if (node.type === 'building') {
+        this.clearRoomSelection();
         this.query.parkId = node.parkId;
         this.query.buildingId = node.id;
         this.query.floorNo = undefined;
         this.activeTab = 'rooms';
       }
       if (node.type === 'floor') {
+        this.clearRoomSelection();
         this.query.parkId = node.parkId;
         this.query.buildingId = node.buildingId;
         this.query.floorNo = node.floorNo;
         this.activeTab = 'rooms';
       }
+      if (node.type === 'room') {
+        this.selectRoom(node);
+      }
       this.selectedKey = node.key;
       this.loadBoard();
+    },
+    clearRoomSelection() {
+      this.selectedRoomId = undefined;
+      this.selectedRoom = {};
+      this.selectedRoomDetail = {};
+    },
+    selectRoom(room) {
+      this.query.parkId = room.parkId || this.query.parkId;
+      this.query.buildingId = room.buildingId || this.query.buildingId;
+      this.query.floorNo = room.floorNo || room.floor || this.query.floorNo;
+      this.selectedRoomId = room.roomId || room.id;
+      this.selectedRoom = { ...room };
+      this.selectedRoomDetail = { ...room };
+      this.selectedKey = `room-${this.selectedRoomId}`;
+    },
+    handleRoomLoaded(room) {
+      this.selectedRoomDetail = room || {};
     },
     handleReset() {
       const { parkId, buildingId, floorNo } = this.query;
@@ -801,6 +947,10 @@ export default {
     displayValue(value) {
       return value === null || value === undefined || value === '' ? '-' : value;
     },
+    formatMeasure(value, unit) {
+      if (value === null || value === undefined || value === '') return '-';
+      return `${this.formatNumber(value)}${unit}`;
+    },
     normalizeStatus(status) {
       return ['0', '1', '2', '3', '4', '5', '6', '7'].includes(String(status)) ? String(status) : '0';
     },
@@ -834,10 +984,8 @@ export default {
       this.roomFormVisible = true;
     },
     openRoom(room) {
-      getRoomDetail(room.id).then(res => {
-        this.roomDetail = res.data.data || {};
-        this.roomDetailVisible = true;
-      });
+      this.selectRoom(room);
+      this.loadBoard();
     },
     handleEditRoom(room) {
       this.roomForm = Object.assign(this.emptyRoomForm(), room);
@@ -865,6 +1013,12 @@ export default {
         .then(() => {
           ElMessage.success('删除成功');
           this.roomDetailVisible = false;
+          if (String(this.selectedRoomId || '') === String(room.id || '')) {
+            this.clearRoomSelection();
+            this.activeTab = 'rooms';
+            this.selectedKey = `floor-${this.query.buildingId}-${this.query.floorNo}`;
+          }
+          this.treeLoaded = false;
           this.loadBoard();
         });
     },
@@ -881,6 +1035,8 @@ export default {
         .then(() => {
           ElMessage.success('状态已更新');
           this.roomDetailVisible = false;
+          this.roomRevision += 1;
+          this.treeLoaded = false;
           this.loadBoard();
         });
     },
@@ -968,6 +1124,8 @@ export default {
           .then(() => {
             ElMessage.success('保存成功');
             this.roomFormVisible = false;
+            this.roomRevision += 1;
+            this.treeLoaded = false;
             this.loadBoard();
           })
           .finally(() => {
@@ -1065,19 +1223,6 @@ export default {
     roomCoverImage(room = {}) {
       return this.parseRoomImageUrls(room.sceneImages)[0] || '';
     },
-    loadWorkorders() {
-      getWorkorders().then(res => {
-        const data = res.data.data || {};
-        this.workorderStats = Object.assign(this.workorderStats, data.stats || {});
-        this.workorderMessage = data.message || '';
-      });
-    },
-    handleReportWorkorder() {
-      reportWorkorder({}).then(res => {
-        const data = res.data.data || {};
-        ElMessage.info(data.message || '工单模块暂未迁移');
-      });
-    },
   },
 };
 </script>
@@ -1108,6 +1253,34 @@ export default {
 .tree-scroll {
   height: 560px;
   padding: 8px;
+}
+
+.rent-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+  padding-right: 8px;
+}
+
+.rent-tree-node .el-icon {
+  flex: 0 0 auto;
+  color: #7b8794;
+}
+
+.rent-tree-node__label {
+  overflow: hidden;
+  flex: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rent-tree-node__status {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
 }
 
 .rent-main {
@@ -1144,6 +1317,22 @@ export default {
   width: 118px;
 }
 
+.rent-main :deep(.el-tabs__nav) {
+  display: flex;
+}
+
+.rent-main :deep(#tab-rooms) {
+  order: -1;
+}
+
+.floor-only-tabs :deep(.el-tabs__header) {
+  display: none;
+}
+
+.floor-only-tabs :deep(.el-tabs__content) {
+  padding-top: 4px;
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1154,9 +1343,7 @@ export default {
 .metric-item,
 .analysis-item,
 .ranking-panel,
-.floor-row,
-.workorder-head,
-.building-info {
+.floor-row {
   border: 1px solid #ebeef5;
   border-radius: 6px;
   background: #fff;
@@ -1435,64 +1622,74 @@ export default {
   border-left: 4px solid #22c55e;
 }
 
-.workorder-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  margin-bottom: 12px;
+.building-profile {
+  padding: 20px 22px;
+  border: 1px solid #ebeef5;
+  border-radius: 10px;
+  background: #fff;
 }
 
-.workorder-metrics {
-  display: grid;
-  grid-template-columns: repeat(4, 130px);
-  gap: 10px;
+.building-profile-section + .building-profile-section {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid #ebeef5;
 }
 
-.workorder-metrics div {
-  display: grid;
-  gap: 4px;
-}
-
-.workorder-metrics span {
-  color: #909399;
-  font-size: 12px;
-}
-
-.workorder-metrics strong {
+.building-profile-section h3 {
+  margin: 0 0 16px;
   color: #303133;
-  font-size: 20px;
+  font-size: 16px;
+  font-weight: 600;
 }
 
-.workorder-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.building-info {
+.building-profile-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0;
-  overflow: hidden;
+  column-gap: 32px;
+  row-gap: 16px;
 }
 
-.building-info div {
+.building-profile-item {
   display: grid;
-  gap: 6px;
-  padding: 14px;
-  border-right: 1px solid #ebeef5;
-  border-bottom: 1px solid #ebeef5;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+  line-height: 24px;
 }
 
-.building-info span {
+.building-profile-item.is-wide {
+  grid-column: span 2;
+}
+
+.building-profile-item.is-full {
+  grid-column: 1 / -1;
+}
+
+.building-profile-item span {
   color: #909399;
-  font-size: 12px;
+  white-space: nowrap;
 }
 
-.building-info strong {
-  color: #303133;
-  font-weight: 500;
+.building-profile-item strong {
+  min-width: 0;
+  color: #606266;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.building-profile-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 144px);
+  gap: 12px;
+}
+
+.building-profile-images :deep(.el-image) {
+  width: 144px;
+  height: 104px;
+  overflow: hidden;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+  background: #f5f7fa;
 }
 
 .form-tip {
@@ -1554,29 +1751,35 @@ export default {
 
   .metric-grid,
   .analysis-grid,
-  .building-info {
+  .building-profile-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .building-profile-item.is-full {
+    grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 720px) {
   .rent-header,
-  .workorder-head,
   .room-toolbar {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .rent-actions,
-  .workorder-actions {
+  .rent-actions {
     flex-wrap: wrap;
   }
 
   .metric-grid,
   .analysis-grid,
-  .building-info,
-  .workorder-metrics {
+  .building-profile-grid {
     grid-template-columns: 1fr;
+  }
+
+  .building-profile-item.is-wide,
+  .building-profile-item.is-full {
+    grid-column: auto;
   }
 
   .floor-row {

@@ -160,4 +160,8 @@ public class ServiceWorkorder implements Serializable {
 	@Schema(description = "当前用户")
 	private String currentUser;
 
+	@TableField(exist = false)
+	@Schema(description = "租控房源范围筛选，多个房间ID用英文逗号分隔")
+	private String filterRoomIds;
+
 }

@@ -430,6 +430,41 @@
             </el-col>
           </el-row>
         </section>
+
+        <section class="building-edit-section">
+          <div class="section-title">楼宇图片</div>
+          <div v-if="drawerReadonly" class="building-image-gallery">
+            <el-image
+              v-for="image in buildingImageUrls"
+              :key="image"
+              :src="image"
+              :preview-src-list="buildingImageUrls"
+              fit="cover"
+              preview-teleported
+            />
+            <el-empty v-if="!buildingImageUrls.length" description="暂无楼宇图片" :image-size="64" />
+          </div>
+          <el-form-item v-else label="实景图片">
+            <el-upload
+              v-model:file-list="buildingImageFileList"
+              action="/api/blade-resource/oss/endpoint/put-file-attach"
+              :headers="uploadHeaders"
+              list-type="picture-card"
+              accept="image/*"
+              multiple
+              :limit="9"
+              :before-upload="beforeBuildingImageUpload"
+              :on-success="handleBuildingImageUploadSuccess"
+              :on-preview="handleBuildingImagePreview"
+              :on-remove="handleBuildingImageRemove"
+              :on-error="handleBuildingImageUploadError"
+              :on-exceed="handleBuildingImageExceed"
+            >
+              <el-button v-if="buildingImageFileList.length < 9" :icon="Upload" text>上传</el-button>
+            </el-upload>
+            <div class="building-form-tip">支持 jpg、png 等图片格式，最多上传 9 张，单张不超过 10MB。</div>
+          </el-form-item>
+        </section>
       </el-form>
       <template #footer>
         <div class="building-drawer-footer">
@@ -444,14 +479,20 @@
       </template>
     </el-drawer>
 
+    <el-dialog v-model="buildingImagePreviewVisible" title="楼宇图片预览" width="760px" append-to-body>
+      <el-image :src="buildingImagePreviewUrl" fit="contain" class="building-image-preview" />
+    </el-dialog>
+
   </basic-container>
 </template>
 
 <script>
 import { mapGetters } from 'vuex';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { Upload } from '@element-plus/icons-vue';
 import { getList, getDetail, remove, submit } from '@/api/park/building';
 import { getList as getParkList } from '@/api/park/park';
+import { getToken } from '@/utils/auth';
 
 const statusOptions = [
   { label: '启用', value: '0' },
@@ -481,6 +522,7 @@ const buildingFormFields = [
   'supportingArea',
   'parkingArea',
   'standardFloorHeight',
+  'sceneImages',
   'memo',
 ];
 
@@ -505,6 +547,7 @@ const createDefaultBuildingForm = () => ({
   supportingArea: null,
   parkingArea: null,
   standardFloorHeight: null,
+  sceneImages: '',
   memo: '',
 });
 
@@ -528,6 +571,14 @@ export default {
       saving: false,
       statusChangingMap: {},
       drawerForm: createDefaultBuildingForm(),
+      buildingImageFileList: [],
+      buildingImagePreviewVisible: false,
+      buildingImagePreviewUrl: '',
+      uploadHeaders: {
+        'Blade-Auth': `bearer ${getToken()}`,
+        'Blade-Requested-With': 'BladeHttpRequest',
+      },
+      Upload,
       drawerRules: {
         parkId: [{ required: true, message: '请选择所属园区', trigger: 'change' }],
         code: [{ required: true, message: '请输入建筑编码', trigger: 'blur' }],
@@ -558,6 +609,9 @@ export default {
     },
     totalFloorArea() {
       return this.floorAreaList.reduce((total, item) => total + Number(item.area || 0), 0);
+    },
+    buildingImageUrls() {
+      return this.parseBuildingImageUrls(this.drawerForm.sceneImages);
     },
     buildingSummaryCards() {
       const total = this.data.length;
@@ -622,6 +676,7 @@ export default {
     openCreateDrawer() {
       this.drawerMode = 'add';
       this.drawerForm = createDefaultBuildingForm();
+      this.buildingImageFileList = [];
       this.floorAreaList = [];
       this.syncFloorAreaList(this.drawerForm.floors);
       this.drawerVisible = true;
@@ -640,12 +695,14 @@ export default {
       this.drawerVisible = true;
       this.drawerLoading = true;
       this.drawerForm = this.buildDrawerForm(row);
+      this.buildingImageFileList = this.parseBuildingImageFiles(this.drawerForm.sceneImages);
       this.floorAreaList = [];
       this.syncFloorAreaList(this.drawerForm.floors);
       getDetail(row.id)
         .then(res => {
           const detail = res.data.data || row;
           this.drawerForm = this.buildDrawerForm(detail);
+          this.buildingImageFileList = this.parseBuildingImageFiles(this.drawerForm.sceneImages);
           this.syncFloorAreaList(this.drawerForm.floors);
           this.applyFloorAreas(detail.floorAreas || []);
           this.$nextTick(() => {
@@ -661,6 +718,9 @@ export default {
       this.drawerLoading = false;
       this.saving = false;
       this.drawerForm = createDefaultBuildingForm();
+      this.buildingImageFileList = [];
+      this.buildingImagePreviewVisible = false;
+      this.buildingImagePreviewUrl = '';
       this.floorAreaList = [];
       this.$nextTick(() => {
         this.$refs.buildingDrawerFormRef && this.$refs.buildingDrawerFormRef.clearValidate();
@@ -673,6 +733,10 @@ export default {
       });
     },
     submitDrawerForm() {
+      if (this.hasUploadingBuildingImages()) {
+        ElMessage.warning('楼宇图片正在上传，请稍后保存');
+        return;
+      }
       this.$refs.buildingDrawerFormRef.validate(valid => {
         if (!valid) return;
         this.saving = true;
@@ -694,6 +758,88 @@ export default {
       if (!this.floorAreaList.length) {
         this.syncFloorAreaList(this.drawerForm.floors);
       }
+    },
+    beforeBuildingImageUpload(file) {
+      const isImage = file.type && file.type.indexOf('image/') === 0;
+      const isValidSize = file.size / 1024 / 1024 <= 10;
+      if (!isImage) ElMessage.warning('请上传图片文件');
+      if (!isValidSize) ElMessage.warning('单张图片不能超过 10MB');
+      return isImage && isValidSize;
+    },
+    handleBuildingImageUploadSuccess(response, uploadFile, uploadFiles) {
+      const success = response && (response.success || response.code === 200 || response.code === 0);
+      const data = response && response.data;
+      const url = typeof data === 'string' ? data : (data && (data.link || data.url)) || '';
+      if (!success || !url) {
+        this.buildingImageFileList = (uploadFiles || []).filter(file => file.uid !== uploadFile.uid);
+        this.syncBuildingImageField();
+        ElMessage.error((response && response.msg) || '上传失败');
+        return;
+      }
+      uploadFile.url = url;
+      uploadFile.name = (data && (data.originalName || data.name)) || uploadFile.name;
+      uploadFile.status = 'success';
+      this.buildingImageFileList = this.normalizeBuildingImageFiles(uploadFiles || []);
+      this.syncBuildingImageField();
+      ElMessage.success('上传成功');
+    },
+    handleBuildingImagePreview(file) {
+      this.buildingImagePreviewUrl = file.url || '';
+      this.buildingImagePreviewVisible = Boolean(this.buildingImagePreviewUrl);
+    },
+    handleBuildingImageRemove(file, uploadFiles) {
+      this.buildingImageFileList = this.normalizeBuildingImageFiles(uploadFiles || []);
+      this.syncBuildingImageField();
+    },
+    handleBuildingImageUploadError() {
+      ElMessage.error('上传失败');
+    },
+    handleBuildingImageExceed() {
+      ElMessage.warning('楼宇图片最多上传 9 张');
+    },
+    hasUploadingBuildingImages() {
+      return this.buildingImageFileList.some(file => file.status && file.status !== 'success');
+    },
+    syncBuildingImageField() {
+      this.drawerForm.sceneImages = this.buildingImageFileList.map(file => file.url).filter(Boolean).join(',');
+    },
+    normalizeBuildingImageFiles(files) {
+      return (Array.isArray(files) ? files : [])
+        .map((file, index) => {
+          const responseData = file.response && file.response.data;
+          const url = file.url || (typeof responseData === 'string' ? responseData : responseData && (responseData.link || responseData.url)) || '';
+          return {
+            uid: file.uid || `${Date.now()}-${index}`,
+            name: file.name || (url ? url.split('/').pop() : `楼宇图片${index + 1}`),
+            url,
+            status: file.status || 'success',
+          };
+        })
+        .filter(file => file.url || file.status !== 'success');
+    },
+    parseBuildingImageFiles(value) {
+      return this.parseBuildingImageUrls(value).map((url, index) => ({
+        uid: `${Date.now()}-${index}`,
+        name: url.split('/').pop() || `楼宇图片${index + 1}`,
+        url,
+        status: 'success',
+      }));
+    },
+    parseBuildingImageUrls(value) {
+      if (!value) return [];
+      if (Array.isArray(value)) {
+        return value.map(item => (typeof item === 'string' ? item : item.url || item.link || '')).filter(Boolean);
+      }
+      const text = String(value).trim();
+      if (!text) return [];
+      if (text.startsWith('[')) {
+        try {
+          return this.parseBuildingImageUrls(JSON.parse(text));
+        } catch (error) {
+          return [];
+        }
+      }
+      return text.split(',').map(item => item.trim()).filter(Boolean);
     },
     applyFloorAreas(floorAreas) {
       const floorMap = {};
@@ -1049,6 +1195,41 @@ export default {
   margin-bottom: 12px;
   color: #606266;
   font-size: 13px;
+}
+
+.building-image-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 136px);
+  gap: 12px;
+  min-height: 96px;
+}
+
+.building-image-gallery :deep(.el-image) {
+  width: 136px;
+  height: 96px;
+  overflow: hidden;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+  background: #f5f7fa;
+}
+
+.building-image-gallery :deep(.el-empty) {
+  grid-column: 1 / -1;
+  padding: 8px 0;
+}
+
+.building-form-tip {
+  width: 100%;
+  margin-top: 6px;
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.building-image-preview {
+  display: block;
+  width: 100%;
+  height: min(68vh, 620px);
 }
 
 .building-drawer-footer {

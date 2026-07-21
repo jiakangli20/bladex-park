@@ -1,8 +1,8 @@
 <template>
   <div class="workorder-panel">
-    <stat-cards :items="statItems" />
+    <stat-cards v-if="showStatistics" :items="statItems" />
 
-    <section class="contract-search">
+    <section v-if="showSearch" class="contract-search">
       <el-form :inline="true" :model="query">
         <el-form-item label="工单号">
           <el-input v-model="query.orderNo" clearable placeholder="请输入工单号" @keyup.enter="$emit('search')" />
@@ -60,7 +60,7 @@
         </el-table-column>
         <el-table-column prop="assignTo" label="指派人" width="120" align="center" show-overflow-tooltip />
         <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
-        <el-table-column label="操作" width="210" fixed="right" align="center">
+        <el-table-column v-if="showActions" label="操作" width="210" fixed="right" align="center">
           <template #default="{ row }">
             <div class="table-actions">
               <el-button v-if="permissionList.workorderViewBtn" type="primary" text @click="$emit('view', row)">详情</el-button>
@@ -106,6 +106,9 @@ export default {
     showServiceFilter: { type: Boolean, default: true },
     createLabel: { type: String, default: '创建工单' },
     showReload: { type: Boolean, default: true },
+    showActions: { type: Boolean, default: true },
+    showStatistics: { type: Boolean, default: true },
+    showSearch: { type: Boolean, default: true },
   },
   emits: ['search', 'reset', 'reload', 'size-change', 'current-change', 'create', 'view', 'dispose', 'rate', 'remove'],
   computed: {

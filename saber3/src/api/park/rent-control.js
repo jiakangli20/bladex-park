@@ -58,6 +58,62 @@ export const getRoomDetail = id => {
   });
 };
 
+export const getRoomPaymentPage = (roomId, current = 1, size = 10) => {
+  return request({
+    url: '/blade-park/rent-control/room-payments',
+    method: 'get',
+    params: {
+      roomId,
+      current,
+      size,
+    },
+  });
+};
+
+export const getRoomContractPage = (roomId, current = 1, size = 10) => {
+  return request({
+    url: '/blade-park/rent-control/room-contracts',
+    method: 'get',
+    params: { roomId, current, size },
+  });
+};
+
+export const getRoomUtilityPage = (roomId, current = 1, size = 10) => request({
+  url: '/blade-park/room-extension/utility/page',
+  method: 'get',
+  params: { roomId, current, size },
+});
+
+export const submitRoomUtility = data => request({
+  url: '/blade-park/room-extension/utility/submit',
+  method: 'post',
+  data,
+});
+
+export const removeRoomUtility = recordId => request({
+  url: '/blade-park/room-extension/utility/remove',
+  method: 'post',
+  params: { recordId },
+});
+
+export const getRoomVehiclePage = (roomId, current = 1, size = 10) => request({
+  url: '/blade-park/room-extension/vehicle/page',
+  method: 'get',
+  params: { roomId, current, size },
+});
+
+export const submitRoomVehicle = data => request({
+  url: '/blade-park/room-extension/vehicle/submit',
+  method: 'post',
+  data,
+});
+
+export const removeRoomVehicle = vehicleId => request({
+  url: '/blade-park/room-extension/vehicle/remove',
+  method: 'post',
+  params: { vehicleId },
+});
+
 export const submitRoom = row => {
   return request({
     url: '/blade-park/room/submit',

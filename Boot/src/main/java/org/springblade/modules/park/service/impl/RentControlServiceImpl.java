@@ -25,9 +25,17 @@
  */
 package org.springblade.modules.park.service.impl;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import org.springblade.core.tool.utils.Func;
+import org.springblade.modules.business.pojo.entity.ServiceWorkorder;
+import org.springblade.modules.business.service.IPropertyWorkorderService;
+import org.springblade.modules.contract.pojo.entity.Contract;
+import org.springblade.modules.contract.pojo.entity.ContractPayment;
+import org.springblade.modules.contract.service.IContractService;
+import org.springblade.modules.ics.service.IPaymentService;
 import org.springblade.modules.park.pojo.entity.Building;
 import org.springblade.modules.park.pojo.entity.Floor;
 import org.springblade.modules.park.pojo.entity.Room;
@@ -64,6 +72,9 @@ public class RentControlServiceImpl implements IRentControlService {
 	private final IBuildingService buildingService;
 	private final IFloorService floorService;
 	private final IRoomService roomService;
+	private final IPropertyWorkorderService propertyWorkorderService;
+	private final IContractService contractService;
+	private final IPaymentService paymentService;
 
 	@Override
 	public Map<String, Object> getBoard(Long parkId, Long buildingId, Integer floorNo, String keyword, String searchType, String status, String orientation, boolean includeTree) {
@@ -132,27 +143,39 @@ public class RentControlServiceImpl implements IRentControlService {
 	}
 
 	@Override
+	public IPage<Contract> roomContracts(IPage<Contract> page, Long roomId) {
+		Contract query = new Contract();
+		query.setRoomId(roomId);
+		return contractService.selectContractPage(page, query);
+	}
+
+	@Override
+	public IPage<ContractPayment> roomPayments(IPage<ContractPayment> page, Long roomId) {
+		ContractPayment query = new ContractPayment();
+		query.setSelectedRoomIds(String.valueOf(roomId));
+		return paymentService.selectPaymentPage(page, query, null);
+	}
+
+	@Override
 	public Map<String, Object> workorders() {
+		ServiceWorkorder query = new ServiceWorkorder();
+		IPage<ServiceWorkorder> page = propertyWorkorderService.selectWorkorderPage(new Page<>(1, 20), query);
 		Map<String, Object> result = new LinkedHashMap<>();
-		Map<String, Object> stats = new LinkedHashMap<>();
-		stats.put("pendingAssign", 0);
-		stats.put("overdueOpen", 0);
-		stats.put("processing", 0);
-		stats.put("monthOverdueRate", 0);
-		stats.put("monthOverdue", 0);
-		stats.put("monthSatisfaction", 0);
-		stats.put("monthRated", 0);
-		result.put("records", new ArrayList<>());
-		result.put("stats", stats);
-		result.put("message", "工单模块暂未迁移，当前为租控入口占位");
+		result.put("records", page.getRecords());
+		result.put("total", page.getTotal());
+		result.put("stats", propertyWorkorderService.selectWorkorderStatistics(query));
+		result.put("message", "已接入企业服务工单处理");
 		return result;
 	}
 
 	@Override
-	public Map<String, Object> reportWorkorder() {
+	public Map<String, Object> reportWorkorder(ServiceWorkorder workorder) {
+		boolean success = propertyWorkorderService.insertWorkorder(workorder);
 		Map<String, Object> result = new LinkedHashMap<>();
-		result.put("success", false);
-		result.put("message", "工单模块暂未迁移，暂不支持上报工单");
+		result.put("success", success);
+		result.put("orderId", workorder.getOrderId());
+		result.put("orderNo", workorder.getOrderNo());
+		result.put("message", success ? "工单上报成功" : "工单上报失败");
 		return result;
 	}
 
@@ -222,8 +245,37 @@ public class RentControlServiceImpl implements IRentControlService {
 			item.put("name", building.getName());
 			item.put("code", building.getCode());
 			item.put("floors", floors);
+			item.put("floorNodes", buildFloorNodes(floors, roomsByBuilding.getOrDefault(building.getId(), new ArrayList<>())));
 			item.put("roomCount", roomsByBuilding.getOrDefault(building.getId(), new ArrayList<>()).size());
 			result.add(item);
+		}
+		return result;
+	}
+
+	private List<Map<String, Object>> buildFloorNodes(List<Integer> floors, List<RoomVO> rooms) {
+		Map<Integer, List<RoomVO>> roomsByFloor = rooms.stream()
+			.filter(room -> room.getFloor() != null)
+			.collect(Collectors.groupingBy(Room::getFloor, LinkedHashMap::new, Collectors.toList()));
+		List<Map<String, Object>> result = new ArrayList<>();
+		for (Integer floorNo : floors) {
+			Map<String, Object> floorNode = new LinkedHashMap<>();
+			floorNode.put("floorNo", floorNo);
+			List<Map<String, Object>> roomNodes = roomsByFloor.getOrDefault(floorNo, new ArrayList<>()).stream()
+				.sorted(Comparator.comparing(room -> Objects.toString(room.getName(), ""), String.CASE_INSENSITIVE_ORDER))
+				.map(room -> {
+					Map<String, Object> roomNode = new LinkedHashMap<>();
+					roomNode.put("id", room.getId());
+					roomNode.put("parkId", room.getParkId());
+					roomNode.put("buildingId", room.getBuildingId());
+					roomNode.put("floorNo", room.getFloor());
+					roomNode.put("name", room.getName());
+					roomNode.put("area", room.getArea());
+					roomNode.put("status", room.getStatus());
+					return roomNode;
+				})
+				.toList();
+			floorNode.put("rooms", roomNodes);
+			result.add(floorNode);
 		}
 		return result;
 	}

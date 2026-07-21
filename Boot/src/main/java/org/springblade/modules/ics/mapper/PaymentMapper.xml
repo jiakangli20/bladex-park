@@ -201,6 +201,13 @@
 		<if test="payment != null and payment.buildingNameQuery != null and payment.buildingNameQuery != ''">
 			AND c.building_name LIKE CONCAT('%', #{payment.buildingNameQuery}, '%')
 		</if>
+		<if test="payment != null and payment.selectedRoomIds != null and payment.selectedRoomIds != ''">
+			AND (
+				FIND_IN_SET(#{payment.selectedRoomIds}, REPLACE(COALESCE(p.selected_room_ids, ''), 'room_', '')) &gt; 0
+				OR c.room_id = CAST(#{payment.selectedRoomIds} AS UNSIGNED)
+				OR FIND_IN_SET(#{payment.selectedRoomIds}, REPLACE(COALESCE(c.room_ids, ''), 'room_', '')) &gt; 0
+			)
+		</if>
 		<if test="payment != null and payment.deadlineStartDate != null">
 			AND p.pay_deadline &gt;= #{payment.deadlineStartDate}
 		</if>

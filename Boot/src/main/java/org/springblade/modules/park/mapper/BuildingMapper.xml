@@ -22,6 +22,7 @@
         <result column="supporting_area" property="supportingArea"/>
         <result column="parking_area" property="parkingArea"/>
         <result column="standard_floor_height" property="standardFloorHeight"/>
+        <result column="scene_images" property="sceneImages"/>
         <result column="building_type" property="buildingType"/>
         <result column="status" property="status"/>
         <result column="memo" property="memo"/>
@@ -44,7 +45,7 @@
         b.id, b.park_id, p.name AS park_name, b.name, b.code, b.address, b.region,
         b.real_estate_no, b.property_no, b.land_no, b.sort_num, b.floors, b.area,
         b.property_area, b.rentable_area, b.self_use_area, b.supporting_area, b.parking_area,
-        b.standard_floor_height, b.building_type, b.status, b.memo, b.create_by, b.create_time,
+        b.standard_floor_height, b.scene_images, b.building_type, b.status, b.memo, b.create_by, b.create_time,
         b.update_by, b.update_time
     </sql>
 

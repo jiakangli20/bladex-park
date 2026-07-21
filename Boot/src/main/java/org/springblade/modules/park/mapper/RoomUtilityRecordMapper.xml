@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.park.mapper.RoomUtilityRecordMapper">
+
+	<select id="selectRecordPage" resultType="org.springblade.modules.park.pojo.entity.RoomUtilityRecord">
+		SELECT ur.record_id AS recordId, ur.room_id AS roomId, ur.device_id AS deviceId,
+		       ur.record_type AS recordType, ur.reading_time AS readingTime,
+		       ur.previous_reading AS previousReading, ur.current_reading AS currentReading,
+		       ur.usage_amount AS usageAmount, ur.amount, ur.operator_name AS operatorName,
+		       ur.remark, ur.del_flag AS delFlag, ur.create_by AS createBy,
+		       ur.create_time AS createTime, ur.update_by AS updateBy, ur.update_time AS updateTime,
+		       r.name AS roomName, d.device_name AS deviceName, d.device_code AS deviceCode
+		FROM biz_room_utility_record ur
+		LEFT JOIN ics_room r ON r.id = ur.room_id
+		LEFT JOIN biz_smart_device d ON d.device_id = ur.device_id
+		WHERE ur.del_flag = '0' AND ur.room_id = #{roomId}
+		ORDER BY ur.reading_time DESC, ur.record_id DESC
+	</select>
+
+	<update id="deleteRecord">
+		UPDATE biz_room_utility_record
+		SET del_flag = '1', update_by = #{updateBy}, update_time = NOW()
+		WHERE record_id = #{recordId} AND del_flag = '0'
+	</update>
+</mapper>

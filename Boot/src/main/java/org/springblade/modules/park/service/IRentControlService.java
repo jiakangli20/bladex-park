@@ -25,6 +25,11 @@
  */
 package org.springblade.modules.park.service;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import org.springblade.modules.business.pojo.entity.ServiceWorkorder;
+import org.springblade.modules.contract.pojo.entity.Contract;
+import org.springblade.modules.contract.pojo.entity.ContractPayment;
+
 import java.util.Map;
 
 /**
@@ -50,17 +55,28 @@ public interface IRentControlService {
 	Map<String, Object> getBoard(Long parkId, Long buildingId, Integer floorNo, String keyword, String searchType, String status, String orientation, boolean includeTree);
 
 	/**
-	 * 查询工单占位数据
+	 * 查询房源关联合同
+	 */
+	IPage<Contract> roomContracts(IPage<Contract> page, Long roomId);
+
+	/**
+	 * 查询房源关联账单
+	 */
+	IPage<ContractPayment> roomPayments(IPage<ContractPayment> page, Long roomId);
+
+	/**
+	 * 查询物业工单数据
 	 *
-	 * @return 工单占位数据
+	 * @return 工单数据
 	 */
 	Map<String, Object> workorders();
 
 	/**
-	 * 上报工单占位
+	 * 上报物业工单
 	 *
-	 * @return 提示信息
+	 * @param workorder 工单信息
+	 * @return 保存结果
 	 */
-	Map<String, Object> reportWorkorder();
+	Map<String, Object> reportWorkorder(ServiceWorkorder workorder);
 
 }
