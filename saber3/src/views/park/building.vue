@@ -104,9 +104,9 @@
         <el-table-column prop="rentRate" label="出租率(%)" min-width="105" align="center">
           <template #default="{ row }">{{ formatRate(row.rentRate) }}</template>
         </el-table-column>
-        <el-table-column label="操作" min-width="150" align="center">
+        <el-table-column label="操作" width="156" fixed="right" align="center">
           <template #default="{ row }">
-            <div class="building-table-actions">
+            <div class="table-row-actions">
               <el-button
                 v-if="permission.building_view"
                 text
@@ -994,35 +994,6 @@ export default {
   width: 100%;
 }
 
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.summary-card {
-  min-height: 76px;
-  padding: 14px 16px;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.summary-card span {
-  color: #606266;
-  font-size: 13px;
-}
-
-.summary-card strong {
-  margin-top: 5px;
-  color: #1f2937;
-  font-size: 22px;
-  font-weight: 600;
-}
-
 .building-search,
 .building-toolbar {
   border-radius: 10px;
@@ -1073,18 +1044,6 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.building-table-actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  white-space: nowrap;
-}
-
-.building-table-actions .el-button + .el-button {
-  margin-left: 0;
 }
 
 .building-pagination {

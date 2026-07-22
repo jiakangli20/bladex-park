@@ -80,7 +80,7 @@
           class="overdue-table"
           @selection-change="selectionChange"
         >
-          <el-table-column type="selection" width="50" align="center" />
+          <el-table-column type="selection" width="44" align="center" />
           <el-table-column prop="customerName" label="对方名称" min-width="180" align="center">
             <template #default="{ row }">
               <el-button text type="primary" class="customer-link" @click="openBillDrawer(row)">
@@ -249,7 +249,7 @@
                   <el-table-column prop="fileName" label="文件名称" min-width="220" align="center" show-overflow-tooltip />
                   <el-table-column prop="source" label="来源" width="140" align="center" />
                   <el-table-column prop="businessNo" label="关联编号" min-width="180" align="center" show-overflow-tooltip />
-                  <el-table-column label="操作" width="150" align="center" fixed="right">
+                  <el-table-column label="操作" width="156" align="center" fixed="right">
                     <template #default="{ row }">
                       <div class="tenant-table-actions">
                         <el-button text type="primary" @click="openAttachment(row)">查看</el-button>

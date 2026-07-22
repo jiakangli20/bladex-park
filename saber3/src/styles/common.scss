@@ -181,6 +181,50 @@ a {
   gap: 10px;
 }
 
+.table-row-actions {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.table-row-actions .el-button,
+.table-row-actions .el-button + .el-button {
+  min-width: 0;
+  padding-right: 3px;
+  padding-left: 3px;
+  margin-left: 0;
+}
+
+.el-table .table-actions,
+.el-table .operation-actions,
+.el-table .attachment-table-actions,
+.el-table .archive-table-actions,
+.el-table .bill-table-actions,
+.el-table .profile-table-actions,
+.el-table .tenant-table-actions {
+  display: inline-flex;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.el-table .table-actions .el-button,
+.el-table .operation-actions .el-button,
+.el-table .attachment-table-actions .el-button,
+.el-table .archive-table-actions .el-button,
+.el-table .bill-table-actions .el-button,
+.el-table .profile-table-actions .el-button,
+.el-table .tenant-table-actions .el-button {
+  min-width: 0;
+  margin-left: 0;
+}
+
 .customer-tag-chip-list {
   display: flex;
   width: 100%;

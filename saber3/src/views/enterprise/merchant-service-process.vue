@@ -78,14 +78,21 @@
           <el-table-column prop="createTime" label="申请时间" width="180" align="center">
             <template #default="{ row }"><span class="single-line-cell">{{ row.createTime || '-' }}</span></template>
           </el-table-column>
-        <el-table-column label="操作" width="244" fixed="right" align="center">
+        <el-table-column label="操作" width="210" fixed="right" align="center">
           <template #default="{ row }">
             <div class="table-actions">
               <el-button v-if="permissionList.viewBtn" type="primary" text @click="openDetail(row)">详情</el-button>
               <el-button v-if="canFollow(row)" type="primary" text @click="openFollow(row)">处理</el-button>
-              <el-button v-if="canDeal(row)" type="success" text @click="openDeal(row)">成交</el-button>
-              <el-button v-if="canClose(row)" type="warning" text @click="openClose(row)">关闭</el-button>
-              <el-button v-if="permissionList.delBtn" type="danger" text @click="removeRow(row)">删除</el-button>
+              <el-dropdown v-if="canDeal(row) || canClose(row) || permissionList.delBtn" trigger="click">
+                <el-button type="primary" text icon="el-icon-more">更多</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item v-if="canDeal(row)" @click="openDeal(row)">成交</el-dropdown-item>
+                    <el-dropdown-item v-if="canClose(row)" @click="openClose(row)">关闭</el-dropdown-item>
+                    <el-dropdown-item v-if="permissionList.delBtn" divided @click="removeRow(row)">删除</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </div>
           </template>
         </el-table-column>
@@ -95,7 +102,7 @@
           <el-pagination
             background
             :current-page="page.currentPage"
-            :page-sizes="[10, 20, 30, 50]"
+            :page-sizes="[10, 20, 30, 40, 50, 100]"
             :page-size="page.pageSize"
             layout="total, sizes, prev, pager, next, jumper"
             :total="page.total"
@@ -758,7 +765,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 10px;
   white-space: nowrap;
 }
 

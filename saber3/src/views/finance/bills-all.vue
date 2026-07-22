@@ -87,7 +87,7 @@
           class="bill-table"
           @selection-change="selectionChange"
         >
-          <el-table-column type="selection" width="50" align="center" />
+          <el-table-column type="selection" width="44" align="center" />
           <el-table-column prop="customerName" label="对方名称" min-width="150" align="center" show-overflow-tooltip>
             <template #default="{ row }">
               <el-button text type="primary" class="bill-link" @click="openBillDetail(row)">

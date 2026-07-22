@@ -26,74 +26,76 @@
         </el-form>
       </section>
 
-      <section class="contract-toolbar">
-        <div class="toolbar-left">
-          <el-button v-if="permissionList.serviceAddBtn" type="primary" icon="el-icon-plus" @click="openServiceDialog()">新增服务</el-button>
+      <section class="service-table-card">
+        <div class="contract-toolbar">
+          <div class="toolbar-left">
+            <el-button v-if="permissionList.serviceAddBtn" type="primary" icon="el-icon-plus" @click="openServiceDialog()">新增服务</el-button>
+          </div>
+          <el-tooltip content="刷新" placement="top">
+            <el-button icon="el-icon-refresh" circle @click="reloadService" />
+          </el-tooltip>
         </div>
-        <el-tooltip content="刷新" placement="top">
-          <el-button icon="el-icon-refresh" circle @click="reloadService" />
-        </el-tooltip>
+
+        <el-table v-loading="serviceLoading" :data="serviceData" border row-key="serviceId" class="contract-table">
+          <el-table-column prop="serviceName" label="服务名称" min-width="150" align="center" show-overflow-tooltip />
+          <el-table-column prop="serviceType" label="服务类型" width="130" align="center">
+            <template #default="{ row }">
+              <el-tag effect="plain">{{ serviceTypeText(row.serviceType) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="chargeStandard" label="收费标准" min-width="150" align="center" show-overflow-tooltip />
+          <el-table-column prop="requiredMaterials" label="申请材料" min-width="180" align="center" show-overflow-tooltip>
+            <template #default="{ row }">
+              {{ row.requiredMaterials || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="serviceFlow" label="办理流程" min-width="200" align="center" show-overflow-tooltip>
+            <template #default="{ row }">
+              {{ row.serviceFlow || '小程序申请-工单受理-处置完成-用户评价' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="timeLimit" label="处理时限" width="110" align="center">
+            <template #default="{ row }">
+              {{ row.timeLimit ? `${row.timeLimit}小时` : '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
+          <el-table-column prop="status" label="小程序上架" width="120" align="center">
+            <template #default="{ row }">
+              <el-switch
+                :model-value="row.status === '0'"
+                :disabled="!permissionList.serviceEditBtn"
+                active-text="上架"
+                inactive-text="下架"
+                inline-prompt
+                @change="checked => toggleServiceStatus(row, checked)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="210" fixed="right" align="center">
+            <template #default="{ row }">
+              <div class="table-actions">
+                <el-button v-if="permissionList.serviceViewBtn" type="primary" text @click="openServiceDialog(row, true)">查看</el-button>
+                <el-button v-if="permissionList.serviceEditBtn" type="primary" text @click="openServiceDialog(row)">编辑</el-button>
+                <el-button v-if="permissionList.serviceDelBtn" type="danger" text @click="deleteService(row)">删除</el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="contract-pagination">
+          <el-pagination
+            background
+            :current-page="servicePage.currentPage"
+            :page-size="servicePage.pageSize"
+            :page-sizes="[10, 20, 30, 40, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="servicePage.total"
+            @size-change="size => changeServiceSize(size)"
+            @current-change="page => changeServiceCurrent(page)"
+          />
+        </div>
       </section>
-
-      <el-table v-loading="serviceLoading" :data="serviceData" border row-key="serviceId" class="contract-table">
-        <el-table-column prop="serviceName" label="服务名称" min-width="150" align="center" show-overflow-tooltip />
-        <el-table-column prop="serviceType" label="服务类型" width="130" align="center">
-          <template #default="{ row }">
-            <el-tag effect="plain">{{ serviceTypeText(row.serviceType) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="chargeStandard" label="收费标准" min-width="150" align="center" show-overflow-tooltip />
-        <el-table-column prop="requiredMaterials" label="申请材料" min-width="180" align="center" show-overflow-tooltip>
-          <template #default="{ row }">
-            {{ row.requiredMaterials || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="serviceFlow" label="办理流程" min-width="200" align="center" show-overflow-tooltip>
-          <template #default="{ row }">
-            {{ row.serviceFlow || '小程序申请-工单受理-处置完成-用户评价' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="timeLimit" label="处理时限" width="110" align="center">
-          <template #default="{ row }">
-            {{ row.timeLimit ? `${row.timeLimit}小时` : '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
-        <el-table-column prop="status" label="小程序上架" width="120" align="center">
-          <template #default="{ row }">
-            <el-switch
-              :model-value="row.status === '0'"
-              :disabled="!permissionList.serviceEditBtn"
-              active-text="上架"
-              inactive-text="下架"
-              inline-prompt
-              @change="checked => toggleServiceStatus(row, checked)"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="190" fixed="right" align="center">
-          <template #default="{ row }">
-            <div class="table-actions">
-              <el-button v-if="permissionList.serviceViewBtn" type="primary" text @click="openServiceDialog(row, true)">查看</el-button>
-              <el-button v-if="permissionList.serviceEditBtn" type="primary" text @click="openServiceDialog(row)">编辑</el-button>
-              <el-button v-if="permissionList.serviceDelBtn" type="danger" text @click="deleteService(row)">删除</el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="contract-pagination">
-        <el-pagination
-          background
-          :current-page="servicePage.currentPage"
-          :page-size="servicePage.pageSize"
-          :page-sizes="[10, 20, 30, 50]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="servicePage.total"
-          @size-change="size => changeServiceSize(size)"
-          @current-change="page => changeServiceCurrent(page)"
-        />
-      </div>
 
       <el-dialog
         v-model="serviceDialogVisible"
@@ -325,8 +327,7 @@ export default {
   min-width: 0;
 }
 
-.contract-search,
-.contract-toolbar {
+.contract-search {
   border-radius: 10px;
 }
 
@@ -346,13 +347,17 @@ export default {
   width: 190px;
 }
 
+.service-table-card {
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+}
+
 .contract-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
 }
 
 .toolbar-left {
@@ -375,15 +380,15 @@ export default {
 .table-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 2px;
+  justify-content: center;
+  gap: 10px;
   white-space: nowrap;
 }
 
 .contract-pagination {
   display: flex;
   justify-content: flex-end;
-  padding: 12px 0 0;
+  padding: 12px 16px 14px;
 }
 
 .property-service-config-page :deep(.el-button),

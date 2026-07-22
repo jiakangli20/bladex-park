@@ -6,7 +6,8 @@
     "prod": "vite --mode production",
     "build": "vite build",
     "build:prod": "vite build --mode production",
-    "serve": "vite preview --host"
+    "serve": "vite preview --host",
+    "check:business-table-ui": "node scripts/check-business-table-ui.mjs"
   },
   "dependencies": {
     "element-plus": "^2.10.1",

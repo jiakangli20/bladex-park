@@ -60,13 +60,6 @@
         </el-form>
       </section>
 
-      <section class="notice-toolbar">
-        <div></div>
-        <el-button type="primary" plain icon="el-icon-view" :disabled="selectionList.length !== 1" @click="previewSelected">
-          预览
-        </el-button>
-      </section>
-
       <section class="notice-table-wrap">
         <el-table
           v-loading="loading"
@@ -74,9 +67,7 @@
           border
           row-key="paymentId"
           class="notice-table"
-          @selection-change="selectionChange"
         >
-          <el-table-column type="selection" width="48" align="center" />
           <el-table-column prop="customerName" label="客商名称" min-width="140" align="center" show-overflow-tooltip />
           <el-table-column prop="buildingName" label="楼宇" width="120" align="center" show-overflow-tooltip />
           <el-table-column label="楼号/房号" min-width="160" align="center" show-overflow-tooltip>
@@ -99,13 +90,20 @@
             </template>
           </el-table-column>
           <el-table-column prop="generatedDate" label="生成日期" width="120" align="center" />
-          <el-table-column label="操作" width="286" align="center" fixed="right">
+          <el-table-column label="操作" width="156" align="center" fixed="right">
             <template #default="{ row }">
-              <div class="notice-actions">
-                <el-button text type="primary" @click="handleSendSms(row)">发短信</el-button>
-                <el-button text type="primary" @click="handleSendEmail(row)">发邮件</el-button>
-                <el-button text type="primary" @click="handleSendMiniApp(row)">发小程序</el-button>
+              <div class="table-row-actions">
                 <el-button text type="primary" @click="handlePreview(row)">预览</el-button>
+                <el-dropdown trigger="click">
+                  <el-button text type="primary">更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item @click="handleSendSms(row)">发短信</el-dropdown-item>
+                      <el-dropdown-item @click="handleSendEmail(row)">发邮件</el-dropdown-item>
+                      <el-dropdown-item @click="handleSendMiniApp(row)">发小程序</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </div>
             </template>
           </el-table-column>
@@ -170,7 +168,6 @@ export default {
       buildingOptions: [],
       loading: false,
       data: [],
-      selectionList: [],
       page: {
         currentPage: 1,
         pageSize: 10,
@@ -255,9 +252,6 @@ export default {
       this.page.currentPage = 1;
       this.loadPage();
     },
-    selectionChange(selection) {
-      this.selectionList = selection;
-    },
     handleSendMiniApp(row) {
       if (!row || !row.paymentId) return;
       this.$confirm('确定发送该收款通知到小程序吗？', '提示', {
@@ -320,10 +314,6 @@ export default {
         '开票申请单预览'
       );
     },
-    previewSelected() {
-      if (this.selectionList.length !== 1) return;
-      this.handlePreview(this.selectionList[0]);
-    },
     noticeFallbackName(row) {
       return `${(row && (row.paymentNo || row.paymentId)) || '收款通知'}-开票申请单.docx`;
     },
@@ -369,7 +359,6 @@ export default {
 .notice-title,
 .notice-summary,
 .notice-search,
-.notice-toolbar,
 .notice-table-wrap {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
@@ -451,13 +440,6 @@ export default {
   margin-bottom: 12px;
 }
 
-.notice-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-}
-
 .notice-table-wrap {
   padding: 0;
   overflow: hidden;
@@ -465,23 +447,6 @@ export default {
 
 .notice-table {
   width: 100%;
-}
-
-.notice-actions {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  white-space: nowrap;
-}
-
-.notice-actions :deep(.el-button) {
-  min-width: 50px;
-  padding: 0 2px;
-}
-
-.notice-actions .el-button + .el-button {
-  margin-left: 0;
 }
 
 .notice-pagination {

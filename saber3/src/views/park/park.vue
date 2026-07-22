@@ -106,9 +106,9 @@
           <el-table-column prop="contactPhone" label="联系电话" min-width="112" align="center" show-overflow-tooltip>
             <template #default="{ row }">{{ row.contactPhone || '-' }}</template>
           </el-table-column>
-          <el-table-column label="操作" min-width="150" align="center">
+          <el-table-column label="操作" width="156" fixed="right" align="center">
             <template #default="{ row }">
-              <div class="park-table-actions">
+              <div class="table-row-actions">
                 <el-button
                   v-if="permission.park_view"
                   text
@@ -844,18 +844,6 @@ export default {
   justify-content: center;
 }
 
-.park-table-actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  white-space: nowrap;
-}
-
-.park-table-actions .el-button + .el-button {
-  margin-left: 0;
-}
-
 .park-pagination {
   display: flex;
   justify-content: flex-end;
@@ -865,6 +853,10 @@ export default {
 .park-status-switch {
   --el-switch-on-color: #19be4b;
   --el-switch-off-color: #dcdfe6;
+}
+
+.park-page :deep(.el-button) {
+  border-radius: 6px;
 }
 
 .park-page :deep(.el-table),

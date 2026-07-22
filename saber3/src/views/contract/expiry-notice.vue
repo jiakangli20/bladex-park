@@ -65,7 +65,7 @@
               <el-tag type="success" effect="plain">{{ row.contractStatusName || '生效' }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="96" align="center">
+          <el-table-column label="操作" width="96" fixed="right" align="center">
             <template #default="{ row }">
               <button type="button" class="expiry-action-link" @click="openNotice(row)">查看提醒</button>
             </template>
@@ -75,7 +75,7 @@
           <el-pagination
             background
             :current-page="page.currentPage"
-            :page-sizes="[10, 20, 30, 50]"
+            :page-sizes="[10, 20, 30, 40, 50, 100]"
             :page-size="page.pageSize"
             layout="total, sizes, prev, pager, next, jumper"
             :total="page.total"

@@ -1,4 +1,4 @@
--- 逾期管理 - 我的逾期通知
+-- 逾期管理 - 逾期通知
 -- 说明：为拥有逾期管理一级菜单的角色增加个人通知入口，可重复执行。
 
 SET NAMES utf8mb4;
@@ -6,7 +6,7 @@ SET NAMES utf8mb4;
 INSERT INTO `blade_menu`
   (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `component`, `sort`, `category`, `action`, `is_open`, `remark`, `is_deleted`)
 VALUES
-  (1890000000006000600, 1890000000006000000, 'finance_overdue_notice', '我的逾期通知', 'menu', '/finance/overdue-notice', 'iconfont iconicon_sms', 'views/finance/overdue-notice', 6, 1, 0, 1, '当前账号收到的首次逾期通知', 0)
+  (1890000000006000600, 1890000000006000000, 'finance_overdue_notice', '逾期通知', 'menu', '/finance/overdue-notice', 'iconfont iconicon_sms', 'views/finance/overdue-notice', 6, 1, 0, 1, '当前账号收到的首次逾期通知', 0)
 ON DUPLICATE KEY UPDATE
   `parent_id` = VALUES(`parent_id`),
   `code` = VALUES(`code`),

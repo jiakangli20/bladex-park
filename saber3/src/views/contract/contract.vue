@@ -299,7 +299,7 @@
                         新增附件
                       </el-button>
                     </div>
-                    <el-table :data="supplements" class="contract-detail-table">
+                    <el-table :data="supplements" border class="contract-detail-table">
                       <el-table-column prop="fileName" label="文件名称" width="240" show-overflow-tooltip>
                         <template #default="{ row }">{{ row.fileName || row.agreementName || '-' }}</template>
                       </el-table-column>
@@ -329,6 +329,7 @@
                     <el-table
                       v-loading="paymentLoading"
                       :data="paymentData"
+                      border
                       class="contract-detail-table"
                     >
                       <el-table-column prop="contractNo" label="合同编号" min-width="150" show-overflow-tooltip />
@@ -473,7 +474,7 @@
         class="contract-table"
         @selection-change="selectionChange"
       >
-        <el-table-column type="selection" width="48" align="center" />
+        <el-table-column type="selection" width="44" align="center" />
         <el-table-column
           prop="customerName"
           label="租客名称"
@@ -547,7 +548,7 @@
         <el-table-column prop="signDate" label="签订日期" width="120" align="center">
           <template #default="{ row }">{{ row.signDate || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="150" align="center" fixed="right">
+        <el-table-column label="操作" width="156" align="center" fixed="right">
           <template #default="{ row }">
             <div class="table-actions">
               <el-button text type="primary" @click="openDetail(row)">详情</el-button>
@@ -1235,7 +1236,7 @@
               }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="170" fixed="right">
+          <el-table-column label="操作" width="170" fixed="right" align="center">
             <template #default="{ row }">
               <div class="bill-table-actions">
                 <template v-if="row.payStatus !== '1'">
@@ -4332,7 +4333,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 10px;
   white-space: nowrap;
 }
 
@@ -4562,7 +4563,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 10px;
   white-space: nowrap;
 }
 

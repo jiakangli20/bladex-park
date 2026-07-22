@@ -60,13 +60,20 @@
         </el-table-column>
         <el-table-column prop="assignTo" label="指派人" width="120" align="center" show-overflow-tooltip />
         <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
-        <el-table-column v-if="showActions" label="操作" width="210" fixed="right" align="center">
+        <el-table-column v-if="showActions" label="操作" width="156" fixed="right" align="center">
           <template #default="{ row }">
-            <div class="table-actions">
+            <div class="table-row-actions">
               <el-button v-if="permissionList.workorderViewBtn" type="primary" text @click="$emit('view', row)">详情</el-button>
-              <el-button v-if="canDispose(row)" type="primary" text @click="$emit('dispose', row)">处置</el-button>
-              <el-button v-if="canRate(row)" type="success" text @click="$emit('rate', row)">评价</el-button>
-              <el-button v-if="permissionList.workorderDelBtn" type="danger" text @click="$emit('remove', row)">删除</el-button>
+              <el-dropdown v-if="canDispose(row) || canRate(row) || permissionList.workorderDelBtn" trigger="click">
+                <el-button type="primary" text icon="el-icon-more">更多</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item v-if="canDispose(row)" @click="$emit('dispose', row)">处置</el-dropdown-item>
+                    <el-dropdown-item v-if="canRate(row)" @click="$emit('rate', row)">评价</el-dropdown-item>
+                    <el-dropdown-item v-if="permissionList.workorderDelBtn" divided @click="$emit('remove', row)">删除</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </div>
           </template>
         </el-table-column>
@@ -77,7 +84,7 @@
           background
           :current-page="page.currentPage"
           :page-size="page.pageSize"
-          :page-sizes="[10, 20, 30, 50]"
+          :page-sizes="[10, 20, 30, 40, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper"
           :total="page.total"
           @size-change="size => $emit('size-change', size)"
@@ -201,14 +208,6 @@ export default {
 .contract-table {
   width: 100%;
   border-radius: 0;
-}
-
-.table-actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  white-space: nowrap;
 }
 
 .contract-pagination {

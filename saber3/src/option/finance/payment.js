@@ -31,7 +31,7 @@ export const tableOption = {
   viewBtn: false,
   refreshBtn: false,
   columnBtn: true,
-  menuWidth: 240,
+  menuWidth: 210,
   menuType: 'text',
   menuAlign: 'center',
   menuHeaderAlign: 'center',

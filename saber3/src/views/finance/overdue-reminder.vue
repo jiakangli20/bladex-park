@@ -28,13 +28,6 @@
         </el-form>
       </section>
 
-      <section class="reminder-toolbar">
-        <div class="toolbar-left"></div>
-        <el-tooltip content="刷新" placement="top">
-          <el-button icon="el-icon-refresh" circle @click="reload" />
-        </el-tooltip>
-      </section>
-
       <section class="reminder-table-wrap">
         <el-table
           v-loading="loading"
@@ -93,11 +86,14 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="88" align="center" fixed="right">
+          <el-table-column label="操作" width="96" align="center" fixed="right">
             <template #default="{ row }">
               <el-button text type="primary" @click="openReminderDrawer(row)">处理</el-button>
             </template>
           </el-table-column>
+          <template #append>
+            <div class="table-scroll-gutter" aria-hidden="true"></div>
+          </template>
         </el-table>
 
         <div class="reminder-pagination">
@@ -337,7 +333,7 @@
             max-height="420"
             @selection-change="handleRecipientSelectionChange"
           >
-            <el-table-column type="selection" width="48" align="center" reserve-selection :selectable="recipientSelectable" />
+            <el-table-column type="selection" width="44" align="center" reserve-selection :selectable="recipientSelectable" />
             <el-table-column prop="userName" label="用户姓名" min-width="100" align="center" show-overflow-tooltip />
             <el-table-column prop="account" label="账号" min-width="110" align="center" show-overflow-tooltip />
             <el-table-column prop="deptName" label="所属部门" min-width="130" align="center" show-overflow-tooltip>
@@ -1242,7 +1238,6 @@ export default {
 }
 
 .reminder-search,
-.reminder-toolbar,
 .reminder-table-wrap {
   border-radius: 10px;
   border: 1px solid #e5e7eb;
@@ -1263,23 +1258,6 @@ export default {
   width: 190px;
 }
 
-.reminder-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-}
-
-.toolbar-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.toolbar-left {
-  flex-wrap: wrap;
-}
-
 .reminder-table-wrap {
   padding: 0;
   overflow: hidden;
@@ -1296,13 +1274,23 @@ export default {
 }
 
 .reminder-table :deep(.el-scrollbar__bar.is-horizontal) {
-  bottom: 2px;
-  height: 8px;
+  right: 8px;
+  bottom: 5px;
+  left: 8px;
+  height: 12px;
   opacity: 1;
+  border-radius: 6px;
+  background: #eef1f5;
 }
 
 .reminder-table :deep(.el-scrollbar__bar.is-horizontal .el-scrollbar__thumb) {
-  background-color: #aeb5c2;
+  min-width: 96px;
+  border-radius: 6px;
+  background-color: #9aa4b2;
+}
+
+.table-scroll-gutter {
+  height: 32px;
 }
 
 .period-cell {

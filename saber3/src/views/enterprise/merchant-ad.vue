@@ -58,7 +58,7 @@
           class="contract-table"
           @selection-change="selectionChange"
         >
-        <el-table-column type="selection" width="48" align="center" />
+        <el-table-column type="selection" width="44" align="center" />
         <el-table-column prop="adTitle" label="广告标题" min-width="170" align="center" show-overflow-tooltip />
         <el-table-column prop="adPosition" label="广告位置" width="130" align="center">
           <template #default="{ row }">{{ positionText(row.adPosition) }}</template>
@@ -115,7 +115,7 @@
           <el-pagination
             background
             :current-page="page.currentPage"
-            :page-sizes="[10, 20, 30, 50]"
+            :page-sizes="[10, 20, 30, 40, 50, 100]"
             :page-size="page.pageSize"
             layout="total, sizes, prev, pager, next, jumper"
             :total="page.total"
@@ -616,7 +616,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 10px;
   white-space: nowrap;
 }
 

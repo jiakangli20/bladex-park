@@ -182,10 +182,10 @@
 
           <div class="log-title">操作日志</div>
           <el-table v-loading="logLoading" :data="logs" border row-key="logId">
-            <el-table-column prop="operateTime" label="时间" width="180" />
-            <el-table-column prop="action" label="操作" width="110" />
-            <el-table-column prop="operator" label="操作人" width="120" />
-            <el-table-column prop="actionDesc" label="说明" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="operateTime" label="时间" width="180" align="center" />
+            <el-table-column prop="action" label="操作" width="110" align="center" />
+            <el-table-column prop="operator" label="操作人" width="120" align="center" />
+            <el-table-column prop="actionDesc" label="说明" min-width="180" align="center" show-overflow-tooltip />
           </el-table>
         </template>
       </el-drawer>

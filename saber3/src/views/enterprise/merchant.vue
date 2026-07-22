@@ -58,7 +58,7 @@
           class="contract-table"
           @selection-change="selectionChange"
         >
-          <el-table-column type="selection" width="48" align="center" />
+          <el-table-column type="selection" width="44" align="center" />
           <el-table-column prop="merchantName" label="服务商名称" min-width="200" align="center" show-overflow-tooltip />
           <el-table-column prop="businessType" label="服务类型" width="120" align="center">
             <template #default="{ row }">
@@ -77,7 +77,7 @@
           <el-table-column prop="createTime" label="创建时间" width="180" align="center">
             <template #default="{ row }"><span class="single-line-cell">{{ row.createTime || '-' }}</span></template>
           </el-table-column>
-          <el-table-column label="操作" width="190" fixed="right" align="center">
+          <el-table-column label="操作" width="210" fixed="right" align="center">
             <template #default="{ row }">
               <div class="table-actions">
                 <el-button v-if="permissionList.viewBtn" type="primary" text @click="openView(row)">查看</el-button>
@@ -102,7 +102,7 @@
           <el-pagination
             background
             :current-page="page.currentPage"
-            :page-sizes="[10, 20, 30, 50]"
+              :page-sizes="[10, 20, 30, 40, 50, 100]"
             :page-size="page.pageSize"
             layout="total, sizes, prev, pager, next, jumper"
             :total="page.total"
@@ -594,7 +594,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 10px;
   white-space: nowrap;
 }
 

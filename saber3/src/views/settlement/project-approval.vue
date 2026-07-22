@@ -25,53 +25,65 @@
         </el-form>
       </section>
 
-      <section class="tenant-entry-toolbar">
-        <div class="toolbar-left">
-          <el-button type="primary" icon="el-icon-plus" @click="openStart">发起审核</el-button>
+      <section class="tenant-entry-list-panel">
+        <div class="tenant-entry-toolbar">
+          <div class="tenant-entry-toolbar__title">
+            <strong>入驻审核记录</strong>
+            <span>共 {{ page.total }} 条</span>
+          </div>
+          <div class="toolbar-actions">
+            <el-button type="primary" icon="el-icon-plus" @click="openStart">发起审核</el-button>
+            <el-tooltip content="刷新" placement="top">
+              <el-button icon="el-icon-refresh" circle @click="reload" />
+            </el-tooltip>
+          </div>
+        </div>
+
+        <el-table v-loading="loading" :data="data" border row-key="rowKey" class="tenant-entry-table">
+          <el-table-column
+            prop="enterpriseName"
+            label="企业名称"
+            min-width="200"
+            align="center"
+            show-overflow-tooltip
+            class-name="enterprise-name-column"
+          />
+          <el-table-column prop="processDefinitionName" label="审批类型" min-width="180" align="center" show-overflow-tooltip />
+          <el-table-column prop="taskName" label="当前节点" min-width="170" align="center" show-overflow-tooltip />
+          <el-table-column prop="statusLabel" label="状态" width="110" align="center">
+            <template #default="{ row }">
+              <el-tag :type="statusTag(row)" effect="plain">{{ row.statusLabel }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="startUsername" label="发起人" width="120" align="center" show-overflow-tooltip />
+          <el-table-column prop="createTime" label="发起/到达时间" min-width="190" align="center" />
+          <el-table-column label="操作" width="156" fixed="right" align="center">
+            <template #default="{ row }">
+              <div class="table-row-actions">
+                <el-button v-if="row.scope === 'todo'" text type="primary" @click="openDetail(row)">处理</el-button>
+                <el-button v-else text type="primary" @click="openDetail(row)">详情</el-button>
+                <el-button v-if="canExportApprovalForm(row)" text type="primary" @click="openApprovalForm(row)">导出审核表</el-button>
+              </div>
+            </template>
+          </el-table-column>
+          <template #empty>
+            <el-empty description="暂无入驻审核记录" />
+          </template>
+        </el-table>
+
+        <div class="tenant-entry-pagination">
+          <el-pagination
+            background
+            :current-page="page.currentPage"
+            :page-sizes="[10, 20, 30, 40, 50, 100]"
+            :page-size="page.pageSize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="page.total"
+            @size-change="sizeChange"
+            @current-change="currentChange"
+          />
         </div>
       </section>
-
-      <el-table v-loading="loading" :data="data" border row-key="rowKey" class="tenant-entry-table">
-        <el-table-column
-          prop="enterpriseName"
-          label="企业名称"
-          width="180"
-          align="center"
-          show-overflow-tooltip
-          class-name="enterprise-name-column"
-        />
-        <el-table-column prop="processDefinitionName" label="审批类型" min-width="180" align="center" show-overflow-tooltip />
-        <el-table-column prop="taskName" label="当前节点" min-width="170" align="center" show-overflow-tooltip />
-        <el-table-column prop="statusLabel" label="状态" width="110" align="center">
-          <template #default="{ row }">
-            <el-tag :type="statusTag(row)" effect="plain">{{ row.statusLabel }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="startUsername" label="发起人" width="120" align="center" show-overflow-tooltip />
-        <el-table-column prop="createTime" label="发起/到达时间" min-width="210" align="center" />
-        <el-table-column label="操作" width="220" fixed="right" align="center">
-          <template #default="{ row }">
-            <div class="operation-actions">
-              <el-button v-if="row.scope === 'todo'" text type="primary" @click="openDetail(row)">处理</el-button>
-              <el-button v-else text type="primary" @click="openDetail(row)">详情</el-button>
-              <el-button v-if="canExportApprovalForm(row)" text type="primary" @click="openApprovalForm(row)">导出审核表</el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="tenant-entry-pagination">
-        <el-pagination
-          background
-          :current-page="page.currentPage"
-          :page-sizes="[10, 20, 30, 50]"
-          :page-size="page.pageSize"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="page.total"
-          @size-change="sizeChange"
-          @current-change="currentChange"
-        />
-      </div>
 
       <el-dialog v-model="startVisible" title="发起入驻审核" width="620px" append-to-body>
         <el-form label-width="100px">
@@ -255,6 +267,10 @@ export default {
         .finally(() => {
           this.loading = false;
         });
+    },
+    reload() {
+      this.loadSummary();
+      this.onLoad();
     },
     normalizeRow(row) {
       const vars = row.variables || {};
@@ -479,14 +495,18 @@ export default {
 .tenant-entry-page {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+}
+
+.tenant-entry-search,
+.tenant-entry-list-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
 }
 
 .tenant-entry-search {
-  padding: 16px 18px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #fff;
+  padding: 16px 18px 4px;
 }
 
 .tenant-entry-search :deep(.el-form-item) {
@@ -516,17 +536,38 @@ export default {
 
 .tenant-entry-toolbar {
   display: flex;
+  min-height: 58px;
   align-items: center;
   justify-content: space-between;
-  padding: 0;
-  border: 0;
-  background: transparent;
+  gap: 16px;
 }
 
-.toolbar-left {
+.tenant-entry-list-panel {
+  overflow: hidden;
+  padding: 0 18px 18px;
+}
+
+.tenant-entry-toolbar__title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.tenant-entry-toolbar__title strong {
+  color: #1f2937;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.tenant-entry-toolbar__title span {
+  color: #909399;
+  font-size: 13px;
+}
+
+.toolbar-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .tenant-entry-table {
@@ -551,22 +592,10 @@ export default {
   word-break: keep-all;
 }
 
-.tenant-entry-table :deep(.operation-actions) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.tenant-entry-table :deep(.operation-actions .el-button) {
-  margin-left: 0;
-}
-
 .tenant-entry-pagination {
   display: flex;
   justify-content: flex-end;
-  padding: 12px 0 0;
+  padding-top: 16px;
 }
 
 .option-extra {

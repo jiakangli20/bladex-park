@@ -83,7 +83,7 @@
           class="customer-table"
           @selection-change="selectionChange"
         >
-          <el-table-column type="selection" width="48" align="center" />
+          <el-table-column type="selection" width="44" align="center" />
           <el-table-column prop="enterpriseName" label="企业名称" min-width="220" align="center" show-overflow-tooltip>
             <template #default="{ row }">
               <el-button text type="primary" @click="openDetail(row)">{{ row.enterpriseName || '-' }}</el-button>
@@ -126,14 +126,16 @@
             </template>
           </el-table-column>
           <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
-          <el-table-column label="操作" width="120" fixed="right" align="center">
+          <el-table-column label="操作" width="156" fixed="right" align="center">
             <template #default="{ row }">
-              <el-button v-if="permissionList.viewBtn" class="table-action-btn" text type="primary" icon="el-icon-view" @click="openDetail(row)">
-                查看
-              </el-button>
-              <el-button v-if="permissionList.editBtn" class="table-action-btn" text type="primary" icon="el-icon-edit" @click="openEdit(row)">
-                编辑
-              </el-button>
+              <div class="table-row-actions">
+                <el-button v-if="permissionList.viewBtn" text type="primary" icon="el-icon-view" @click="openDetail(row)">
+                  查看
+                </el-button>
+                <el-button v-if="permissionList.editBtn" text type="primary" icon="el-icon-edit" @click="openEdit(row)">
+                  编辑
+                </el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -564,7 +566,13 @@
                 :closable="false"
                 class="detail-alert"
               />
-              <el-table :data="industryRuleList" border size="small" empty-text="暂无园区行业准入规则">
+              <el-table
+                :data="industryRuleList"
+                border
+                size="small"
+                empty-text="暂无园区行业准入规则"
+                class="detail-table"
+              >
                 <el-table-column prop="industryKeyword" label="行业关键词" min-width="160" />
                 <el-table-column prop="accessType" label="准入类型" width="110" align="center">
                   <template #default="{ row }">
@@ -719,10 +727,12 @@
                 </el-table-column>
                 <el-table-column prop="createBy" label="上传人" width="100" />
                 <el-table-column prop="createTime" label="上传时间" width="160" />
-                <el-table-column label="操作" width="120" align="center">
+                <el-table-column label="操作" width="156" align="center">
                   <template #default="{ row }">
-                    <el-button text type="primary" :disabled="!row.fileUrl" @click="openAttachment(row)">查看</el-button>
-                    <el-button text type="danger" @click="handleDeleteAttachment(row)">删除</el-button>
+                    <div class="table-row-actions">
+                      <el-button text type="primary" :disabled="!row.fileUrl" @click="openAttachment(row)">查看</el-button>
+                      <el-button text type="danger" @click="handleDeleteAttachment(row)">删除</el-button>
+                    </div>
                   </template>
                 </el-table-column>
               </el-table>
@@ -1908,6 +1918,11 @@ export default {
 
 .detail-table {
   width: 100%;
+}
+
+.detail-table :deep(.el-table__header th),
+.detail-table :deep(.el-table__cell) {
+  text-align: center;
 }
 
 .contract-tab-toolbar {

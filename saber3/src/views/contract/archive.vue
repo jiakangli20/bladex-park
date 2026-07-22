@@ -89,7 +89,7 @@
 
             <el-tab-pane label="合同" name="contract">
               <section class="archive-detail-section archive-table-section">
-                <el-table :data="contractRows" class="archive-flat-table">
+                <el-table :data="contractRows" border class="archive-flat-table">
                   <el-table-column prop="contractNo" label="合同编号" min-width="160" align="center">
                     <template #default="{ row }">
                       <el-link type="primary" underline="never" @click="handlePrint(row)">
@@ -135,7 +135,7 @@
 
             <el-tab-pane label="变更记录" name="change">
               <section class="archive-detail-section archive-table-section">
-                <el-table :data="changes" class="archive-flat-table">
+                <el-table :data="changes" border class="archive-flat-table">
                   <el-table-column prop="changeNo" label="变更单号" min-width="180" align="center" />
                   <el-table-column prop="changeType" label="变更类型" width="150" align="center" />
                   <el-table-column label="租金单价变更" min-width="220" align="center">
@@ -184,7 +184,7 @@
 
             <el-tab-pane label="账单" name="bill">
               <section class="archive-detail-section archive-table-section">
-                <el-table :data="payments" class="archive-flat-table">
+                <el-table :data="payments" border class="archive-flat-table">
                   <el-table-column prop="contractNo" label="合同编号" min-width="150" show-overflow-tooltip />
                   <el-table-column prop="feeName" label="账单名称" min-width="150" />
                   <el-table-column label="账期" min-width="200" align="center">
@@ -220,7 +220,7 @@
                     新增附件
                   </el-button>
                 </div>
-                <el-table :data="attachmentRows" class="archive-flat-table">
+                <el-table :data="attachmentRows" border class="archive-flat-table">
                   <el-table-column prop="fileName" label="文件名称" width="240" show-overflow-tooltip>
                     <template #default="{ row }">{{ row.fileName || row.agreementName || '-' }}</template>
                   </el-table-column>
@@ -248,67 +248,124 @@
       </el-skeleton>
     </div>
 
-    <avue-crud
-      v-else
-      class="archive-crud"
-      :option="option"
-      :table-loading="loading"
-      :data="data"
-      v-model:page="page"
-      ref="crud"
-      :permission="permissionList"
-      @search-change="searchChange"
-      @search-reset="searchReset"
-      @current-change="currentChange"
-      @size-change="sizeChange"
-      @refresh-change="refreshChange"
-      @on-load="onLoad"
-    >
-      <template #customerName="{ row }">
-        <el-link
-          type="primary"
-          underline="never"
-          class="archive-customer-link"
-          @click="openArchive(row)"
-        >
-          {{ row.customerName || '-' }}
-        </el-link>
-      </template>
-      <template #rentPrice="{ row }">
-        <span>{{ formatUnitPrice(row.rentPrice) }}</span>
-      </template>
-      <template #rentArea="{ row }">
-        <span>{{ formatArea(row.rentArea) }}</span>
-      </template>
-      <template #contractNo="{ row }">
-        <span class="archive-single-line">{{ row.contractNo || '-' }}</span>
-      </template>
-      <template #parentContractId="{ row }">
-        <span>{{ contractSourceText(row) }}</span>
-      </template>
-      <template #contractStatus="{ row }">
-        <el-tag :type="statusType(row.contractStatus)" effect="plain">
-          {{ row.contractStatusName || statusText(row.contractStatus) }}
-        </el-tag>
-      </template>
-      <template #propertyFee="{ row }">
-        <span>{{ formatUnitPrice(row.propertyFee) }}</span>
-      </template>
-      <template #deposit="{ row }">
-        <span>{{ formatMoneyWithUnit(row.deposit) }}</span>
-      </template>
-      <template #menu="{ row }">
-        <div class="archive-table-actions">
-          <el-button
-            type="primary"
-            text
-            v-if="permission.contract_archive_detail"
-            @click="openArchive(row)"
-            >查看档案
-          </el-button>
+    <div v-else class="archive-list-page">
+      <section class="archive-search-panel">
+        <el-form :inline="true" :model="query">
+          <el-form-item label="签订人名称">
+            <el-input
+              v-model="query.customerName"
+              clearable
+              placeholder="请输入签订人名称"
+              @keyup.enter="searchChange"
+            />
+          </el-form-item>
+          <el-form-item label="合同编号">
+            <el-input
+              v-model="query.contractNo"
+              clearable
+              placeholder="请输入合同编号"
+              @keyup.enter="searchChange"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" icon="el-icon-search" @click="searchChange">搜索</el-button>
+            <el-button icon="el-icon-delete" @click="searchReset">清空</el-button>
+          </el-form-item>
+        </el-form>
+      </section>
+
+      <section class="archive-list-toolbar">
+        <div class="archive-list-toolbar__title">
+          <strong>合同归档</strong>
+          <span>共 {{ page.total }} 条</span>
         </div>
-      </template>
-    </avue-crud>
+        <el-tooltip content="刷新" placement="top">
+          <el-button icon="el-icon-refresh" circle @click="reload" />
+        </el-tooltip>
+      </section>
+
+      <el-table
+        v-loading="loading"
+        :data="data"
+        border
+        row-key="contractId"
+        table-layout="fixed"
+        class="archive-list-table"
+      >
+        <el-table-column prop="customerName" label="租客名称" min-width="180" align="center" show-overflow-tooltip>
+          <template #default="{ row }">
+            <el-button text type="primary" class="archive-customer-link" @click="openArchive(row)">
+              {{ row.customerName || '-' }}
+            </el-button>
+          </template>
+        </el-table-column>
+        <el-table-column prop="contractNo" label="合同编号" min-width="170" align="center" show-overflow-tooltip />
+        <el-table-column prop="contractStatus" label="合同状态" width="150" align="center">
+          <template #default="{ row }">
+            <el-tag :type="statusType(row.contractStatus)" effect="plain">
+              {{ row.contractStatusName || statusText(row.contractStatus) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="approvalStatus" label="审批状态" width="120" align="center" show-overflow-tooltip>
+          <template #default="{ row }">
+            <el-tag :type="approvalStatusType(row.approvalStatus)" effect="plain">
+              {{ approvalStatusText(row.approvalStatus) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="parkName" label="园区名称" width="130" align="center" show-overflow-tooltip />
+        <el-table-column prop="roomName" label="房源信息" width="130" align="center" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.roomName || '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="startDate" label="开始日" width="115" align="center" />
+        <el-table-column prop="endDate" label="结束日" width="145" align="center" />
+        <el-table-column prop="rentPrice" label="租赁单价" width="120" align="center">
+          <template #default="{ row }">{{ formatUnitPrice(row.rentPrice) }}</template>
+        </el-table-column>
+        <el-table-column prop="signDate" label="签订日期" width="120" align="center">
+          <template #default="{ row }">{{ row.signDate || '-' }}</template>
+        </el-table-column>
+        <el-table-column
+          label="操作"
+          width="96"
+          fixed="right"
+          align="center"
+          class-name="archive-operation-cell"
+          label-class-name="archive-operation-header"
+        >
+          <template #default="{ row }">
+            <div class="table-row-actions">
+              <el-button
+                v-if="permission.contract_archive_detail"
+                class="archive-list-action"
+                type="primary"
+                text
+                @click="openArchive(row)"
+              >
+                查看档案
+              </el-button>
+            </div>
+          </template>
+        </el-table-column>
+        <template #empty>
+          <el-empty description="暂无合同归档记录" />
+        </template>
+      </el-table>
+
+      <div class="archive-list-pagination">
+        <el-pagination
+          background
+          :current-page="page.currentPage"
+          :page-sizes="[10, 20, 30, 40, 50, 100]"
+          :page-size="page.pageSize"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="page.total"
+          @size-change="sizeChange"
+          @current-change="currentChange"
+        />
+      </div>
+    </div>
 
     <el-drawer
       v-model="drawerVisible"
@@ -644,7 +701,6 @@ import { getCustomerDetail } from '@/api/business/customer';
 import {
   approvalStatusDic,
   paymentStatusDic,
-  tableOption,
   terminationApprovalStatusDic,
   terminationStatusDic,
 } from '@/option/contract/archive';
@@ -671,7 +727,6 @@ export default {
         currentPage: 1,
         total: 0,
       },
-      option: tableOption,
       data: [],
       detailMode: false,
       drawerVisible: false,
@@ -720,14 +775,6 @@ export default {
   },
   computed: {
     ...mapGetters(['permission']),
-    permissionList() {
-      return {
-        addBtn: false,
-        viewBtn: this.validData(this.permission.contract_archive_detail, false),
-        delBtn: false,
-        editBtn: false,
-      };
-    },
     customerTitle() {
       return this.customerDetail.enterpriseName || this.current.customerName || '客户详情';
     },
@@ -780,6 +827,7 @@ export default {
     if (this.$route.query.contractNo) {
       this.query.contractNo = this.$route.query.contractNo;
     }
+    this.onLoad(this.page, this.query);
   },
   methods: {
     openArchive(row) {
@@ -1140,21 +1188,20 @@ export default {
     },
     searchReset() {
       this.query = {};
+      this.page.currentPage = 1;
       this.reload();
     },
-    searchChange(params, done) {
-      this.query = params;
+    searchChange() {
       this.page.currentPage = 1;
-      this.onLoad(this.page, params);
-      done();
+      this.reload();
     },
     currentChange(currentPage) {
       this.page.currentPage = currentPage;
+      this.reload();
     },
     sizeChange(pageSize) {
       this.page.pageSize = pageSize;
-    },
-    refreshChange() {
+      this.page.currentPage = 1;
       this.reload();
     },
     reload() {
@@ -1292,64 +1339,70 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.archive-crud :deep(.avue-crud__search) {
-  padding: 16px 18px 4px;
-  margin-bottom: 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  background: #fff;
-  overflow: hidden;
-}
-
-.archive-crud :deep(.avue-crud__search .el-card) {
+.archive-list-page {
+  display: flex;
   width: 100%;
-  border: 0;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.archive-search-panel,
+.archive-list-toolbar {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   border-radius: 10px;
-  background: transparent;
-  box-shadow: none;
 }
 
-.archive-crud :deep(.avue-crud__search .el-card__body) {
-  padding: 0;
+.archive-search-panel {
+  padding: 16px 18px 4px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
 }
 
-.archive-crud :deep(.avue-crud__search .el-row) {
-  margin-right: 0 !important;
-  margin-left: 0 !important;
-}
-
-.archive-crud :deep(.avue-crud__search .el-col) {
-  flex: 0 0 auto;
-  width: auto;
-  max-width: none;
-  padding-right: 0 !important;
-  padding-left: 0 !important;
-}
-
-.archive-crud :deep(.avue-crud__search .el-form-item) {
+.archive-search-panel :deep(.el-form-item) {
   margin-right: 20px;
   margin-bottom: 12px;
 }
 
-.archive-crud :deep(.avue-crud__search .el-input),
-.archive-crud :deep(.avue-crud__search .el-select) {
+.archive-search-panel :deep(.el-input) {
   width: 190px;
 }
 
-.archive-crud :deep(.avue-crud__search .avue-form__menu--left) {
-  margin-left: 0;
+.archive-list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
 }
 
-.archive-crud :deep(.avue-crud__search .el-button + .el-button) {
-  margin-left: 10px;
+.archive-list-toolbar__title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
 }
 
-.archive-crud :deep(.avue-crud__table .el-card__body) {
-  padding-bottom: 0;
+.archive-list-toolbar__title strong {
+  color: #1f2937;
+  font-size: 16px;
+  font-weight: 600;
 }
 
-.archive-crud :deep(.el-table__header th),
-.archive-crud :deep(.el-table__cell),
+.archive-list-toolbar__title span {
+  color: #909399;
+  font-size: 13px;
+}
+
+.archive-list-table {
+  width: 100%;
+}
+
+.archive-list-table :deep(.el-table__header th),
+.archive-list-table :deep(.el-table__cell),
 .archive-detail-page :deep(.el-table__header th),
 .archive-detail-page :deep(.el-table__cell),
 .archive-detail-drawer :deep(.el-table__header th),
@@ -1357,16 +1410,37 @@ export default {
   text-align: center;
 }
 
-.archive-crud :deep(.el-table__inner-wrapper::before) {
-  display: none;
+.archive-list-table :deep(.el-scrollbar__bar.is-horizontal) {
+  bottom: 0;
 }
 
-.archive-crud :deep(.el-table__body-wrapper) {
+.archive-list-table :deep(.archive-operation-cell .cell),
+.archive-list-table :deep(.archive-operation-header .cell) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0;
   padding-bottom: 0;
 }
 
-.archive-crud :deep(.el-scrollbar__bar.is-horizontal) {
-  bottom: 0;
+.archive-list-table :deep(.archive-list-action.el-button),
+.archive-list-table :deep(.archive-list-action.el-button:hover),
+.archive-list-table :deep(.archive-list-action.el-button:focus),
+.archive-list-table :deep(.archive-list-action.el-button:active) {
+  min-width: 0;
+  height: 32px;
+  padding: 0 3px;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+}
+
+.archive-list-pagination {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 0 0;
 }
 
 .archive-detail-page {
@@ -1603,21 +1677,17 @@ export default {
 }
 
 .archive-customer-link {
+  display: inline-flex;
+  max-width: 100%;
+  overflow: hidden;
+  vertical-align: middle;
   white-space: nowrap;
 }
 
-.archive-table-actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
+.archive-customer-link :deep(span) {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.archive-table-actions :deep(.el-button) {
-  min-width: 64px;
-  padding: 0 3px;
-  margin-left: 0;
 }
 
 .archive-actions {

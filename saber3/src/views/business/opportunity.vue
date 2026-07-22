@@ -88,7 +88,7 @@
         class="opportunity-table"
         @selection-change="selectionChange"
       >
-        <el-table-column type="selection" width="48" align="center" />
+        <el-table-column type="selection" width="44" align="center" />
         <el-table-column
           prop="opportunityNo"
           label="商机编号"

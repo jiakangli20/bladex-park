@@ -41,10 +41,12 @@
       </el-table-column>
       <el-table-column prop="reason" label="规则说明" min-width="220" align="center" show-overflow-tooltip />
       <el-table-column prop="updateTime" label="更新时间" width="170" align="center" />
-      <el-table-column label="操作" width="116" fixed="right" align="center">
+      <el-table-column label="操作" width="156" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button text type="primary" class="table-action-btn" @click="handleEdit(row)">编辑</el-button>
-          <el-button text type="danger" class="table-action-btn" @click="handleDelete(row)">删除</el-button>
+          <div class="table-row-actions">
+            <el-button text type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button text type="danger" @click="handleDelete(row)">删除</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -220,8 +222,4 @@ export default {
   justify-content: center;
 }
 
-.table-action-btn {
-  padding: 0 4px;
-  font-weight: 400;
-}
 </style>

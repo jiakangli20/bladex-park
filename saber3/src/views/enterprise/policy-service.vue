@@ -70,13 +70,20 @@
           <el-table-column prop="createTime" label="创建时间" width="180" align="center">
             <template #default="{ row }"><span class="single-line-cell">{{ row.createTime || '-' }}</span></template>
           </el-table-column>
-          <el-table-column label="操作" width="250" fixed="right" align="center">
+          <el-table-column label="操作" width="156" fixed="right" align="center">
             <template #default="{ row }">
-              <div class="table-actions">
+              <div class="table-row-actions">
                 <el-button v-if="permissionList.editBtn" type="primary" text @click="openEdit(row)">编辑</el-button>
-                <el-button v-if="permissionList.addBtn" type="primary" text @click="copyRow(row)">复制</el-button>
-                <el-button v-if="permissionList.viewBtn" type="primary" text @click="openRecord(row)">提交记录</el-button>
-                <el-button v-if="permissionList.delBtn" type="danger" text @click="removeRow(row)">删除</el-button>
+                <el-dropdown v-if="permissionList.addBtn || permissionList.viewBtn || permissionList.delBtn" trigger="click">
+                  <el-button type="primary" text icon="el-icon-more">更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item v-if="permissionList.addBtn" @click="copyRow(row)">复制</el-dropdown-item>
+                      <el-dropdown-item v-if="permissionList.viewBtn" @click="openRecord(row)">提交记录</el-dropdown-item>
+                      <el-dropdown-item v-if="permissionList.delBtn" divided @click="removeRow(row)">删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </div>
             </template>
           </el-table-column>
@@ -86,7 +93,7 @@
           <el-pagination
             background
             :current-page="page.currentPage"
-            :page-sizes="[10, 20, 30, 50]"
+            :page-sizes="[10, 20, 30, 40, 50, 100]"
             :page-size="page.pageSize"
             layout="total, sizes, prev, pager, next, jumper"
             :total="page.total"
@@ -542,14 +549,6 @@ export default {
 
 .single-line-cell {
   display: inline-block;
-  white-space: nowrap;
-}
-
-.table-actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
   white-space: nowrap;
 }
 

@@ -26,13 +26,6 @@
         </el-form>
       </section>
 
-      <section class="notice-toolbar">
-        <strong>我的逾期通知</strong>
-        <el-tooltip content="刷新" placement="top">
-          <el-button icon="el-icon-refresh" circle @click="reload" />
-        </el-tooltip>
-      </section>
-
       <section class="notice-table-wrap">
         <el-table v-loading="loading" :data="data" border row-key="noticeId" class="notice-table">
           <el-table-column prop="noticeTitle" label="通知标题" min-width="170" align="center" show-overflow-tooltip />
@@ -69,7 +62,7 @@
           <el-pagination
             background
             :current-page="page.currentPage"
-            :page-sizes="[10, 20, 30, 50]"
+            :page-sizes="[10, 20, 30, 40, 50, 100]"
             :page-size="page.pageSize"
             layout="total, sizes, prev, pager, next, jumper"
             :total="page.total"
@@ -295,7 +288,6 @@ export default {
 
 .notice-summary,
 .notice-search,
-.notice-toolbar,
 .notice-table-wrap {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
@@ -347,19 +339,6 @@ export default {
   width: 220px;
 }
 
-.notice-toolbar {
-  min-height: 56px;
-  padding: 0 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.notice-toolbar strong {
-  color: #1f2937;
-  font-size: 15px;
-}
-
 .notice-table-wrap {
   overflow: hidden;
 }
@@ -372,7 +351,7 @@ export default {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   white-space: nowrap;
 }
 

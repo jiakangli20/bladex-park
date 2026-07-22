@@ -12,23 +12,29 @@
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" plain icon="el-icon-search" @click="searchChange">
-              搜索
-            </el-button>
-            <el-button plain icon="el-icon-refresh-left" @click="searchReset">重置</el-button>
-            <el-button type="primary" plain icon="el-icon-plus" @click="handleAdd">新增</el-button>
+            <el-button type="primary" icon="el-icon-search" @click="searchChange">搜索</el-button>
+            <el-button icon="el-icon-delete" @click="searchReset">清空</el-button>
           </el-form-item>
         </el-form>
       </section>
 
-      <section class="expiring-table-wrap">
-        <el-table
-          v-loading="loading"
-          :data="data"
-          border
-          row-key="ruleId"
-          class="expiring-table"
-        >
+      <section class="expiring-toolbar">
+        <div class="toolbar-left">
+          <el-button type="primary" icon="el-icon-plus" @click="handleAdd">新增</el-button>
+        </div>
+        <el-tooltip content="刷新" placement="top">
+          <el-button icon="el-icon-refresh" circle @click="onLoad" />
+        </el-tooltip>
+      </section>
+
+      <el-table
+        v-loading="loading"
+        :data="data"
+        border
+        row-key="ruleId"
+        table-layout="fixed"
+        class="expiring-table"
+      >
           <el-table-column
             prop="ruleName"
             label="名称"
@@ -66,7 +72,7 @@
             align="center"
             class-name="expiring-time-cell"
           />
-          <el-table-column label="操作" width="180" align="center" fixed="right">
+          <el-table-column label="操作" width="156" align="center" fixed="right">
             <template #default="{ row }">
               <div class="expiring-actions">
                 <el-button text type="primary" @click="handleEdit(row)">编辑</el-button>
@@ -74,20 +80,19 @@
               </div>
             </template>
           </el-table-column>
-        </el-table>
-        <div class="expiring-pagination">
-          <el-pagination
-            background
-            :current-page="page.currentPage"
-            :page-sizes="[10, 20, 30, 40, 50, 100]"
-            :page-size="page.pageSize"
-            layout="total, sizes, prev, pager, next, jumper"
-            :total="page.total"
-            @size-change="sizeChange"
-            @current-change="currentChange"
-          />
-        </div>
-      </section>
+      </el-table>
+      <div class="expiring-pagination">
+        <el-pagination
+          background
+          :current-page="page.currentPage"
+          :page-sizes="[10, 20, 30, 40, 50, 100]"
+          :page-size="page.pageSize"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="page.total"
+          @size-change="sizeChange"
+          @current-change="currentChange"
+        />
+      </div>
 
       <el-dialog
         v-model="dialogVisible"
@@ -314,37 +319,52 @@ export default {
 .contract-expiring-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .expiring-search,
-.expiring-table-wrap {
+.expiring-toolbar {
   border-radius: 10px;
-  background: #fff;
 }
 
 .expiring-search {
-  padding: 14px 20px;
+  padding: 16px 18px 4px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
 }
 
 .expiring-search :deep(.el-form-item) {
-  margin-bottom: 0;
+  margin-right: 20px;
+  margin-bottom: 12px;
 }
 
 .expiring-search :deep(.el-input) {
-  width: 240px;
+  width: 190px;
 }
 
-.expiring-table-wrap {
-  padding: 20px;
+.expiring-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.toolbar-left {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .expiring-table {
   width: 100%;
+  border-radius: 0;
 }
 
+.expiring-table :deep(.el-table__header th),
 .expiring-table :deep(.el-table__cell) {
-  height: 44px;
+  text-align: center;
 }
 
 .expiring-table :deep(.expiring-main-cell .cell) {
@@ -362,18 +382,20 @@ export default {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   white-space: nowrap;
 }
 
 .expiring-actions :deep(.el-button) {
+  min-width: 40px;
+  padding: 0 3px;
   margin-left: 0;
 }
 
 .expiring-pagination {
   display: flex;
   justify-content: flex-end;
-  padding-top: 14px;
+  padding: 12px 0 0;
 }
 
 .rule-form {

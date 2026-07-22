@@ -130,10 +130,17 @@
     background: #f8fafd !important;
     color: #344054;
     font-weight: 600;
+    text-align: center;
   }
 
   td.el-table__cell {
     color: #4d5b6c;
+    text-align: center;
+  }
+
+  th.el-table__cell .cell,
+  td.el-table__cell .cell {
+    text-align: center;
   }
 }
 

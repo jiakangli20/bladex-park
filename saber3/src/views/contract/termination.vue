@@ -110,7 +110,7 @@
         <el-table-column prop="approvalTime" label="完成时间" width="170" align="center">
           <template #default="{ row }">{{ row.approvalTime || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="120" align="center" fixed="right">
+        <el-table-column label="操作" width="96" align="center" fixed="right">
           <template #default="{ row }">
             <div class="table-actions">
               <el-button text type="primary" @click="openTerminationDetail(row)">查看</el-button>
@@ -1933,7 +1933,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 10px;
   white-space: nowrap;
 }
 

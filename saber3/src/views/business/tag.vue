@@ -119,7 +119,7 @@
           class="tag-table"
           @selection-change="selectionChange"
         >
-          <el-table-column type="selection" width="48" align="center" />
+          <el-table-column type="selection" width="44" align="center" />
           <el-table-column type="index" label="#" width="56" align="center" />
           <el-table-column prop="tagName" label="标签名称" min-width="160" align="center">
             <template #default="{ row }">
@@ -144,7 +144,7 @@
             </template>
           </el-table-column>
           <el-table-column prop="createTime" label="创建时间" width="180" align="center" />
-          <el-table-column label="操作" width="90" fixed="right" align="center">
+          <el-table-column label="操作" width="96" fixed="right" align="center">
             <template #default="{ row }">
               <el-button
                 v-if="permissionList.editBtn"

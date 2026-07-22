@@ -8,7 +8,7 @@
         </div>
       </section>
 
-      <section class="floor-toolbar">
+      <section class="floor-search-panel">
         <el-form :model="query" inline class="floor-search">
           <el-form-item label="所属建筑">
             <el-select
@@ -43,32 +43,36 @@
         </el-form>
       </section>
 
-      <div class="table-action-bar">
-        <el-button v-if="permission.floor_add" type="primary" :icon="Plus" @click="openCreate">
-          新增楼层
-        </el-button>
-        <el-button
-          v-if="permission.floor_delete"
-          type="danger"
-          plain
-          :icon="Delete"
-          :disabled="selectionList.length === 0"
-          @click="handleBatchDelete"
-        >
-          批量删除
-        </el-button>
-      </div>
+      <section class="floor-toolbar">
+        <div class="floor-toolbar-left">
+          <el-button v-if="permission.floor_add" type="primary" :icon="Plus" @click="openCreate">
+            新增楼层
+          </el-button>
+          <el-button
+            v-if="permission.floor_delete"
+            type="danger"
+            plain
+            :icon="Delete"
+            :disabled="selectionList.length === 0"
+            @click="handleBatchDelete"
+          >
+            批量删除
+          </el-button>
+        </div>
+        <el-tooltip content="刷新" placement="top">
+          <el-button :icon="Refresh" circle @click="loadData" />
+        </el-tooltip>
+      </section>
 
       <el-table
         v-loading="loading"
         :data="data"
         row-key="id"
         border
-        stripe
         class="floor-table"
         @selection-change="handleSelectionChange"
       >
-        <el-table-column type="selection" width="48" align="center" />
+        <el-table-column type="selection" width="44" align="center" />
         <el-table-column v-if="permission.floor_room_view" type="expand" width="48">
           <template #default="{ row: floor }">
             <div class="room-panel">
@@ -156,13 +160,13 @@
           </template>
         </el-table-column>
         <el-table-column prop="memo" label="备注" min-width="140" align="center" show-overflow-tooltip />
-        <el-table-column label="操作" width="150" fixed="right" align="center">
+        <el-table-column label="操作" width="156" fixed="right" align="center">
           <template #default="{ row }">
-            <div class="row-actions">
-              <el-button v-if="permission.floor_view" link type="primary" :icon="View" @click="openView(row)">
+            <div class="table-row-actions">
+              <el-button v-if="permission.floor_view" text type="primary" :icon="View" @click="openView(row)">
                 查看
               </el-button>
-              <el-button v-if="permission.floor_edit" link type="primary" :icon="Edit" @click="openEdit(row)">
+              <el-button v-if="permission.floor_edit" text type="primary" :icon="Edit" @click="openEdit(row)">
                 编辑
               </el-button>
             </div>
@@ -170,11 +174,11 @@
         </el-table-column>
       </el-table>
 
-      <div class="page-footer">
+      <div class="floor-pagination">
         <el-pagination
           v-model:current-page="page.currentPage"
           v-model:page-size="page.pageSize"
-          :page-sizes="[10, 20, 50, 100]"
+          :page-sizes="[10, 20, 30, 40, 50, 100]"
           :total="page.total"
           background
           layout="total, sizes, prev, pager, next, jumper"
@@ -938,59 +942,75 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  width: 100%;
 }
 
+.floor-search-panel,
 .floor-toolbar {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid #e5e7eb;
   border-radius: 10px;
+}
+
+.floor-search-panel {
+  padding: 16px 18px 4px;
+  border: 1px solid #e5e7eb;
   background: #fff;
-  box-shadow: 0 8px 18px rgba(16, 89, 198, 0.05);
 }
 
 .floor-page :deep(.el-button) {
   border-radius: 6px;
 }
 
-.floor-page .table-action-bar {
-  gap: 10px;
-}
-
 .floor-search {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
 }
 
 .floor-search :deep(.el-form-item) {
-  margin-bottom: 0;
+  margin-right: 20px;
+  margin-bottom: 12px;
 }
 
-.floor-search :deep(.el-select) {
-  width: 220px;
-}
-
+.floor-search :deep(.el-select),
 .floor-search :deep(.el-input-number) {
-  width: 130px;
+  width: 190px;
+}
+
+.floor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.floor-toolbar-left {
+  display: flex;
+  gap: 10px;
 }
 
 .floor-table {
   width: 100%;
+  border-radius: 0;
 }
 
-.row-actions {
-  display: inline-flex;
+.floor-page :deep(.el-table th),
+.floor-page :deep(.el-table td),
+.floor-page :deep(.el-table .cell) {
+  text-align: center;
+}
+
+.floor-page :deep(.el-table .cell) {
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  white-space: nowrap;
 }
 
-.row-actions :deep(.el-button) {
-  margin-left: 0;
+.floor-page :deep(.el-table),
+.floor-page :deep(.el-table__inner-wrapper),
+.floor-page :deep(.el-table__header-wrapper),
+.floor-page :deep(.el-table__body-wrapper),
+.floor-page :deep(.el-table__border-left-patch) {
+  border-radius: 0;
 }
 
 .room-panel {
@@ -1129,10 +1149,10 @@ export default {
   line-height: 24px;
 }
 
-.page-footer {
+.floor-pagination {
   display: flex;
   justify-content: flex-end;
-  padding-top: 2px;
+  padding: 12px 0 0;
 }
 
 :deep(.el-drawer__body) {
@@ -1144,11 +1164,11 @@ export default {
 }
 
 @media (max-width: 960px) {
-  .floor-toolbar {
-    flex-direction: column;
+  .floor-toolbar-left {
+    flex-wrap: wrap;
   }
 
-  .page-footer {
+  .floor-pagination {
     justify-content: flex-start;
     overflow-x: auto;
   }
