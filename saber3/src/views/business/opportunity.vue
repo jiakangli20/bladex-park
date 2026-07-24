@@ -37,6 +37,11 @@
               />
             </el-select>
           </el-form-item>
+          <el-form-item label="所属园区">
+            <el-select v-model="query.parkId" clearable filterable placeholder="全部园区">
+              <el-option v-for="park in parkList" :key="park.id" :label="park.name" :value="park.id" />
+            </el-select>
+          </el-form-item>
           <el-form-item label="招商渠道">
             <el-select v-model="query.channel" clearable placeholder="全部渠道">
               <el-option v-for="item in channelOptions" :key="item" :label="item" :value="item" />
@@ -117,6 +122,9 @@
             </el-button>
             <span v-else>{{ row.enterpriseName || '-' }}</span>
           </template>
+        </el-table-column>
+        <el-table-column prop="parkId" label="所属园区" min-width="150" align="center" show-overflow-tooltip>
+          <template #default="{ row }">{{ parkName(row.parkId) }}</template>
         </el-table-column>
         <el-table-column label="背景调查" width="110" align="center">
           <template #default="{ row }">
@@ -409,6 +417,15 @@
           <section class="form-section">
             <header>入驻需求信息</header>
             <el-row :gutter="18">
+              <el-col :span="24">
+                <el-form-item label="所属园区" prop="parkId">
+                  <el-select v-model="form.parkId" filterable placeholder="请选择所属园区" style="width: 100%">
+                    <el-option v-for="park in parkList" :key="park.id" :label="park.name" :value="park.id" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="18">
               <el-col :span="12">
                 <el-form-item label="意向载体" prop="carrierTypeArray">
                   <el-select v-model="form.carrierTypeArray" multiple style="width: 100%">
@@ -684,6 +701,15 @@
           <section class="form-section">
             <header>入驻需求信息</header>
             <el-row :gutter="18">
+              <el-col :span="24">
+                <el-form-item label="所属园区" prop="parkId">
+                  <el-select v-model="form.parkId" filterable placeholder="请选择所属园区" style="width: 100%">
+                    <el-option v-for="park in parkList" :key="park.id" :label="park.name" :value="park.id" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="18">
               <el-col :span="12">
                 <el-form-item label="意向载体" prop="carrierTypeArray">
                   <el-select v-model="form.carrierTypeArray" multiple style="width: 100%">
@@ -823,6 +849,9 @@
         <template #footer>
           <div class="drawer-footer">
             <el-button @click="closeFormDrawer">关闭</el-button>
+            <el-button v-if="view && permissionList.editBtn" type="primary" @click="formMode = 'edit'">
+              编辑
+            </el-button>
             <el-button v-if="!view" type="primary" :loading="submitLoading" @click="handleSubmit">
               保存
             </el-button>
@@ -851,12 +880,14 @@ import {
   uploadOpportunityFile,
 } from '@/api/business/opportunity';
 import { checkIndustryRule } from '@/api/business/customer';
+import { getList as getParkList } from '@/api/park/park';
 import { getList as getUserList } from '@/api/system/user';
 import CustomerTagSelector from './modules/customer-tag-selector.vue';
 import { mapGetters } from 'vuex';
 import { getToken } from '@/utils/auth';
 
 const createDefaultForm = () => ({
+  parkId: undefined,
   opportunityStatus: 'INITIAL',
   followUserId: '',
   followUser: '',
@@ -900,6 +931,7 @@ export default {
       followList: [],
       fileList: [],
       idCardFileList: [],
+      parkList: [],
       userOptions: [],
       currentRecord: null,
       followPageVisible: false,
@@ -943,6 +975,7 @@ export default {
       },
       rules: {
         enterpriseName: [{ required: true, message: '请输入企业名称', trigger: 'blur' }],
+        parkId: [{ required: true, message: '请选择所属园区', trigger: 'change' }],
         creditCode: [{ required: true, message: '请输入统一信用代码', trigger: 'blur' }],
         followUserId: [{ required: true, message: '请选择跟进人', trigger: 'change' }],
         contactName: [{ required: true, message: '请输入负责人姓名', trigger: 'blur' }],
@@ -1008,6 +1041,7 @@ export default {
     },
   },
   created() {
+    this.loadParkList();
     this.loadUserOptions();
     this.loadStatistics();
     this.onLoad(this.page);
@@ -1019,6 +1053,18 @@ export default {
     },
     responseData(res) {
       return res && res.data ? (res.data.data || res.data) : {};
+    },
+    loadParkList() {
+      getParkList(1, 999, {}).then(res => {
+        const data = this.responseData(res) || {};
+        this.parkList = Array.isArray(data.records) ? data.records : [];
+      }).catch(() => {
+        this.parkList = [];
+      });
+    },
+    parkName(parkId) {
+      const park = this.parkList.find(item => String(item.id) === String(parkId));
+      return park ? park.name : '-';
     },
     loadUserOptions() {
       getUserList(1, 500, { status: 1 }).then(res => {

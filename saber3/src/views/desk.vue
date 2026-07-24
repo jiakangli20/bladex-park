@@ -572,7 +572,7 @@ export default {
   min-height: 86px;
   padding: 16px 58px 16px 16px;
   border: none;
-  border-radius: 10px;
+  border-radius: 0;
   background: #fff;
   box-shadow: 0 4px 16px rgba(30, 64, 120, 0.06);
   color: inherit;
@@ -691,7 +691,7 @@ export default {
   grid-template-columns: minmax(0, 1fr) 36%;
   min-height: 198px;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: 0;
   background: linear-gradient(110deg, #1167e8 0%, #1f7cff 58%, #d8e8ff 100%);
 }
 
@@ -731,7 +731,7 @@ export default {
 
 .panel {
   padding: 20px;
-  border-radius: 10px;
+  border-radius: 0;
   background: #fff;
   box-shadow: 0 4px 16px rgba(30, 64, 120, 0.06);
 }
@@ -771,7 +771,7 @@ export default {
   min-height: 68px;
   padding: 14px 40px 14px 62px;
   border: 1px solid #e6edf6;
-  border-radius: 2px;
+  border-radius: 0;
   background: #fff;
   color: inherit;
   text-align: left;
@@ -883,7 +883,7 @@ export default {
   min-height: 58px;
   padding: 10px;
   border: 1px solid #e6edf6;
-  border-radius: 2px;
+  border-radius: 0;
   background: #fff;
   color: inherit;
   text-align: left;

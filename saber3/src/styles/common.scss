@@ -117,7 +117,7 @@ a {
   overflow-y: auto;
   overflow-x: hidden;
   margin-bottom: 0;
-  padding: 22px;
+  padding: 11px;
   box-sizing: border-box;
   background: #f4f4f6;
 }
@@ -137,6 +137,97 @@ a {
     color: #666;
     font-size: 12px;
   }
+}
+
+.nf-container {
+  margin: 0 !important;
+  padding: 16px !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+  box-sizing: border-box;
+}
+
+.nf-crud {
+  color: #1f2d3d;
+}
+
+.nf-crud__search {
+  margin-bottom: 16px !important;
+  padding: 0 0 14px !important;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.nf-crud__header {
+  min-height: 32px !important;
+  margin-bottom: 12px !important;
+  background: #fff !important;
+}
+
+.nf-crud__header--left,
+.nf-crud__header--right,
+.nf-crud__table--menu {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px;
+}
+
+.nf-crud__table--menu {
+  justify-content: center !important;
+  white-space: nowrap;
+}
+
+.nf-crud__table--menu .el-button,
+.nf-crud__table--menu .el-dropdown {
+  margin: 0 !important;
+  vertical-align: middle;
+}
+
+.nf-crud__tree {
+  margin-right: 16px;
+  padding-right: 12px;
+  border-right: 1px solid #ebeef5;
+  box-sizing: border-box;
+}
+
+.nf-crud__tree--search {
+  margin: 0 0 12px !important;
+}
+
+.nf-crud__tree .el-input__wrapper {
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px #dcdfe6 inset;
+}
+
+.nf-crud__tree .el-tree-node__content {
+  height: 32px;
+  border-radius: 6px;
+  color: #3d4f67;
+}
+
+.nf-crud__tree .el-tree-node__content:hover,
+.nf-crud__tree .el-tree-node.is-current > .el-tree-node__content {
+  background: #e8f1ff;
+  color: #1059c6;
+}
+
+.nf-crud__table .el-table {
+  border: 1px solid #ebeef5;
+  border-bottom: 0;
+  border-right: 0;
+}
+
+.nf-crud__table .el-table th.el-table__cell {
+  background: #f7f9fc !important;
+}
+
+.nf-crud__table .el-table th.el-table__cell > .cell,
+.nf-crud__table .el-table td.el-table__cell > .cell {
+  text-align: center;
+}
+
+.nf-crud__pagination {
+  padding: 12px 0 0 !important;
+  justify-content: flex-end !important;
 }
 
 .summary-grid {

@@ -19,8 +19,11 @@ import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.util.Comparator;
 import java.util.HexFormat;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -92,8 +95,9 @@ public class OfficePdfConversionService {
 			Files.write(sourceFile, fileBytes, StandardOpenOption.CREATE_NEW);
 			copyFontConfig(fontConfigFile);
 
+			String executable = resolveSofficeExecutable();
 			ProcessBuilder processBuilder = new ProcessBuilder(
-				sofficeCommand,
+				executable,
 				"--headless",
 				"--nologo",
 				"--nodefault",
@@ -128,6 +132,44 @@ public class OfficePdfConversionService {
 			conversionSlots.release();
 			deleteDirectory(workDir);
 		}
+	}
+
+	private String resolveSofficeExecutable() throws IOException {
+		if (StringUtil.isNotBlank(sofficeCommand) && sofficeCommand.contains("/")) {
+			Path configured = Path.of(sofficeCommand).toAbsolutePath().normalize();
+			if (Files.isExecutable(configured)) {
+				return configured.toString();
+			}
+			throw new IOException("配置的 LibreOffice 命令不可执行：" + configured);
+		}
+
+		Set<Path> candidates = new LinkedHashSet<>();
+		String commandName = StringUtil.isBlank(sofficeCommand) ? "soffice" : sofficeCommand.trim();
+		String pathValue = System.getenv("PATH");
+		if (StringUtil.isNotBlank(pathValue)) {
+			for (String directory : pathValue.split(java.io.File.pathSeparator)) {
+				if (StringUtil.isNotBlank(directory)) {
+					candidates.add(Path.of(directory).resolve(commandName));
+				}
+			}
+		}
+		candidates.addAll(List.of(
+			Path.of("/Applications/LibreOffice.app/Contents/MacOS/soffice"),
+			Path.of("/usr/bin/soffice"),
+			Path.of("/usr/local/bin/soffice"),
+			Path.of("/opt/homebrew/bin/soffice"),
+			Path.of("/opt/libreoffice/program/soffice")
+		));
+		String userHome = System.getProperty("user.home");
+		if (StringUtil.isNotBlank(userHome)) {
+			candidates.add(Path.of(userHome, ".cache", "codex-runtimes", "codex-primary-runtime", "dependencies", "bin", "override", "soffice"));
+		}
+		return candidates.stream()
+			.map(Path::toAbsolutePath)
+			.filter(Files::isExecutable)
+			.map(Path::toString)
+			.findFirst()
+			.orElseThrow(() -> new IOException("未找到 LibreOffice 可执行文件，请配置 blade.contract.preview.soffice-command"));
 	}
 
 	private void copyFontConfig(Path target) throws IOException {

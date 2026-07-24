@@ -5,6 +5,7 @@
 package org.springblade.modules.home.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.springblade.core.mp.support.Query;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.business.pojo.entity.PolicyService;
@@ -17,6 +18,9 @@ import org.springblade.modules.home.pojo.vo.HomeTodoVO;
 import org.springblade.modules.home.pojo.vo.HomeWorkbenchVO;
 import org.springblade.modules.home.service.IHomeService;
 import org.springblade.modules.ics.service.IPaymentService;
+import org.springblade.plugin.workflow.core.constant.WfProcessConstant;
+import org.springblade.plugin.workflow.process.model.WfProcess;
+import org.springblade.plugin.workflow.process.service.IWfProcessService;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -35,6 +39,7 @@ public class HomeServiceImpl implements IHomeService {
 	private final HomeMapper homeMapper;
 	private final IPaymentService paymentService;
 	private final IPolicyServiceService policyServiceService;
+	private final IWfProcessService wfProcessService;
 
 	@Override
 	public HomeWorkbenchVO workbench() {
@@ -45,7 +50,7 @@ public class HomeServiceImpl implements IHomeService {
 		Long roomCount = zeroIfNull(homeMapper.countRooms(parkId));
 		Long customerCount = zeroIfNull(homeMapper.countCustomers(parkId));
 		Long expiringContractCount = zeroIfNull(homeMapper.countExpiringContracts(parkId));
-		Long approvalTodoCount = zeroIfNull(homeMapper.countApprovalTodos(parkId, currentUser, admin));
+		Long approvalTodoCount = countWorkflowTodos();
 		Long workorderTodoCount = zeroIfNull(homeMapper.countWorkorderTodos(parkId, currentUser, admin));
 		Long overdueNoticeCount = zeroIfNull(paymentService.unreadOverdueNoticeCount());
 
@@ -103,6 +108,13 @@ public class HomeServiceImpl implements IHomeService {
 	private String currentUserName() {
 		String userName = AuthUtil.getUserName();
 		return StringUtil.isBlank(userName) ? AuthUtil.getNickName() : userName;
+	}
+
+	private Long countWorkflowTodos() {
+		WfProcess process = new WfProcess();
+		process.setStatus(WfProcessConstant.STATUS_TODO);
+		Query query = new Query().setCurrent(1).setSize(1);
+		return wfProcessService.selectTaskPage(process, query).getTotal();
 	}
 
 	private Long zeroIfNull(Long value) {

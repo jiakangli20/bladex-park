@@ -17,6 +17,7 @@ import org.springblade.core.mp.support.Query;
 import org.springblade.core.secure.annotation.PreAuth;
 import org.springblade.core.tenant.annotation.NonDS;
 import org.springblade.core.tool.api.R;
+import org.springblade.core.tool.support.Kv;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunity;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunityFile;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunityFollow;
@@ -176,8 +177,16 @@ public class BusinessOpportunityController extends BladeController {
 		writeDocument(businessOpportunityService.exportTenantEntryApprovalForm(opportunityId, processInsId), response);
 	}
 
-	@PostMapping("/submitAudit/{opportunityId}")
+	@GetMapping("/tenant-entry/approval-form-preview/{opportunityId}")
 	@ApiOperationSupport(order = 19)
+	@Operation(summary = "企业入驻审批表预览", description = "按原始 Word 模板生成并预览入驻审批表")
+	public R<Kv> tenantEntryApprovalFormPreview(@PathVariable Long opportunityId,
+										   @RequestParam(value = "processInsId", required = false) String processInsId) {
+		return R.data(businessOpportunityService.previewTenantEntryApprovalForm(opportunityId, processInsId));
+	}
+
+	@PostMapping("/submitAudit/{opportunityId}")
+	@ApiOperationSupport(order = 20)
 	@Operation(summary = "提交审核", description = "提交入驻审核")
 	public R<BusinessOpportunity> submitAudit(@PathVariable Long opportunityId,
 											  @RequestParam(value = "flowId", required = false) Long flowId) {

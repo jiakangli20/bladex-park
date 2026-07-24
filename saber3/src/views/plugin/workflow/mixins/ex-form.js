@@ -48,6 +48,8 @@ export default {
     // 动态路由跳转
     dynamicRoute(row, type, async = false) {
       const { id, taskId, processInstanceId, processId, formKey, formUrl, processDefKey, params } = row;
+      const businessType = row && row.variables ? row.variables.businessType : '';
+      const resolvedFormKey = businessType === 'tenant_entry' ? 'wf_ex_TenantEntry' : formKey;
       let param = window.btoa(
         JSON.stringify({
           processId: id,
@@ -60,7 +62,7 @@ export default {
       const encodedParam = encodeURIComponent(param);
 
       return new Promise(resolve => {
-        if (formKey && formKey.startsWith('wf_ex_')) {
+        if (resolvedFormKey && resolvedFormKey.startsWith('wf_ex_')) {
           if (formUrl) {
             // 配置了自定义路由
             const url = formUrl.startsWith('/workflow/process')
@@ -68,7 +70,7 @@ export default {
               : formUrl;
             this.$router.push(url + `?p=${encodedParam}`);
           } else {
-            const exFormKey = formKey.substring(6);
+            const exFormKey = resolvedFormKey.substring(6);
             // 动态添加路由
             this.$router.addRoute({
               path: `/plugin/workflow/pages/process/external`,

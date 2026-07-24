@@ -149,6 +149,14 @@
             </div>
             <div class="tenant-drawer-actions">
               <el-button type="primary" plain :disabled="!drawerRow.contractId" @click="openContract(drawerRow)">编辑</el-button>
+              <el-button
+                type="success"
+                plain
+                :disabled="!canConfirmPayment(drawerRow)"
+                @click="openPaymentConfirm(drawerRow)"
+              >
+                确认缴费
+              </el-button>
               <el-button type="warning" plain :disabled="!drawerRow.paymentId" @click="handleRemind(drawerRow)">记录催缴</el-button>
               <el-button type="primary" :disabled="!drawerRow.paymentId" @click="goOverdueReminder(drawerRow)">逾期提醒</el-button>
             </div>
@@ -285,6 +293,50 @@
         <el-empty v-else description="请选择逾期账单" />
       </el-drawer>
 
+      <el-dialog
+        v-model="confirmVisible"
+        title="确认逾期缴费"
+        width="520px"
+        append-to-body
+        :before-close="closePaymentConfirm"
+      >
+        <el-form ref="confirmFormRef" :model="confirmForm" :rules="confirmRules" label-width="132px">
+          <el-form-item label="账单编号">
+            <el-input :model-value="confirmRow.paymentId ? `ZD${confirmRow.paymentId}` : '-'" disabled />
+          </el-form-item>
+          <el-form-item label="合同编号">
+            <el-input :model-value="confirmRow.contractNo || '-'" disabled />
+          </el-form-item>
+          <el-form-item label="应收金额">
+            <el-input :model-value="formatMoney(confirmRow.amountDue)" disabled>
+              <template #append>元</template>
+            </el-input>
+          </el-form-item>
+          <el-form-item label="当前已收金额">
+            <el-input :model-value="formatMoney(confirmRow.amountPaid)" disabled>
+              <template #append>元</template>
+            </el-input>
+          </el-form-item>
+          <el-form-item label="确认后累计实收" prop="amountPaid">
+            <el-input-number
+              v-model="confirmForm.amountPaid"
+              :min="0.01"
+              :precision="2"
+              :step="100"
+              controls-position="right"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input v-model="confirmForm.remark" type="textarea" :rows="3" maxlength="500" show-word-limit />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="closePaymentConfirm">取消</el-button>
+          <el-button type="primary" :loading="confirmLoading" @click="submitPaymentConfirm">确认缴费</el-button>
+        </template>
+      </el-dialog>
+
       <el-dialog v-model="logDialogVisible" title="合同联动日志" width="680px" append-to-body>
         <div v-loading="drawerLogLoading" class="drawer-log-list">
           <el-timeline v-if="drawerLogs.length">
@@ -320,6 +372,7 @@
 <script>
 import { mapGetters } from 'vuex';
 import {
+  confirmPayment,
   getPaymentByContract,
   getOverduePaymentPage,
   getPaymentSummary,
@@ -365,6 +418,18 @@ export default {
       drawerLogs: [],
       drawerLogLoading: false,
       attachmentUploadLoading: false,
+      confirmVisible: false,
+      confirmLoading: false,
+      confirmRow: {},
+      confirmForm: {
+        amountPaid: null,
+        remark: '',
+      },
+      confirmRules: {
+        amountPaid: [
+          { required: true, message: '请输入确认后的累计实收金额', trigger: 'blur' },
+        ],
+      },
       uploadHeaders: {
         'Blade-Auth': `bearer ${getToken()}`,
         'Blade-Requested-With': 'BladeHttpRequest',
@@ -759,6 +824,57 @@ export default {
           this.reload();
         })
         .catch(() => {});
+    },
+    canConfirmPayment(row) {
+      return Boolean(row && row.paymentId && String(row.payStatus) !== '1' && this.unpaidAmount(row) > 0);
+    },
+    openPaymentConfirm(row) {
+      if (!this.canConfirmPayment(row)) {
+        this.$message.warning(String((row && row.payStatus) || '') === '1' ? '该账单已缴费' : '当前账单不能确认缴费');
+        return;
+      }
+      this.confirmRow = { ...row };
+      this.confirmForm = {
+        amountPaid: Number(row.amountDue || 0),
+        remark: row.remark || '',
+      };
+      this.confirmVisible = true;
+    },
+    closePaymentConfirm() {
+      if (this.confirmLoading) return;
+      this.confirmVisible = false;
+      this.confirmRow = {};
+      this.confirmForm = {
+        amountPaid: null,
+        remark: '',
+      };
+      if (this.$refs.confirmFormRef) {
+        this.$refs.confirmFormRef.clearValidate();
+      }
+    },
+    submitPaymentConfirm() {
+      this.$refs.confirmFormRef.validate(valid => {
+        if (!valid) return;
+        const paymentId = this.confirmRow.paymentId;
+        const contractId = this.confirmRow.contractId;
+        const fullyPaid = Number(this.confirmForm.amountPaid || 0) >= Number(this.confirmRow.amountDue || 0);
+        this.confirmLoading = true;
+        confirmPayment(paymentId, this.confirmForm)
+          .then(() => {
+            this.$message.success('缴费确认成功');
+            this.confirmLoading = false;
+            this.closePaymentConfirm();
+            if (fullyPaid) {
+              this.drawerVisible = false;
+            } else {
+              this.loadTenantDrawerData({ ...this.drawerRow, contractId });
+            }
+            this.reload();
+          })
+          .finally(() => {
+            this.confirmLoading = false;
+          });
+      });
     },
     openContract(row) {
       if (!row || !row.contractId) return;

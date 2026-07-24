@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.springblade.core.tool.utils.DateUtil;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -42,6 +43,7 @@ public class BusinessOpportunity implements Serializable {
 	private Long opportunityId;
 
 	@JsonSerialize(using = ToStringSerializer.class)
+	@NotNull(message = "所属园区不能为空")
 	@Schema(description = "园区ID")
 	private Long parkId;
 

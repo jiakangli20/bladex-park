@@ -17,7 +17,6 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.BreakType;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
@@ -36,6 +35,7 @@ import org.w3c.dom.Node;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -671,10 +671,7 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 			return;
 		}
 		if ("附件八：退租审批表.docx".equals(templateFileName)) {
-			List<XWPFParagraph> paragraphs = document.getParagraphs();
-			if (paragraphs.size() >= 2 && !hasPageBreak(paragraphs.get(1))) {
-				paragraphs.get(1).createRun().addBreak(BreakType.PAGE);
-			}
+			normalizeTerminationApprovalLayout(document);
 		}
 		if ("附件四：君联大厦付款通知单.docx".equals(templateFileName)) {
 			for (XWPFParagraph paragraph : document.getParagraphs()) {
@@ -701,6 +698,73 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		}
 	}
 
+	private void normalizeTerminationApprovalLayout(XWPFDocument document) {
+		List<XWPFParagraph> paragraphs = document.getParagraphs();
+		if (!paragraphs.isEmpty()) {
+			XWPFParagraph title = paragraphs.get(0);
+			replaceParagraphTextPreservingStyles(title.getCTP().getDomNode(), paragraphText(title), "退租审批表");
+			title.setAlignment(ParagraphAlignment.CENTER);
+			if (title.getCTP().getPPr() != null && title.getCTP().getPPr().isSetInd()) {
+				title.getCTP().getPPr().unsetInd();
+			}
+			title.setSpacingBefore(0);
+			title.setSpacingAfter(0);
+		}
+		if (paragraphs.size() >= 2 && StringUtil.isBlank(paragraphText(paragraphs.get(1)))) {
+			int bodyIndex = document.getPosOfParagraph(paragraphs.get(1));
+			if (bodyIndex >= 0) {
+				document.removeBodyElement(bodyIndex);
+			}
+		}
+		if (!document.getTables().isEmpty()) {
+			XWPFTable table = document.getTables().get(0);
+			if (table.getCTTbl().getTblPr() != null && table.getCTTbl().getTblPr().isSetTblpPr()) {
+				table.getCTTbl().getTblPr().unsetTblpPr();
+			}
+			compactTerminationApprovalRows(table);
+		}
+		if (document.getDocument().getBody().getSectPr() != null
+			&& document.getDocument().getBody().getSectPr().getPgMar() != null) {
+			document.getDocument().getBody().getSectPr().getPgMar().setTop(BigInteger.valueOf(720));
+			document.getDocument().getBody().getSectPr().getPgMar().setBottom(BigInteger.valueOf(720));
+		}
+	}
+
+	private void compactTerminationApprovalRows(XWPFTable table) {
+		for (XWPFTableRow row : table.getRows()) {
+			String text = row.getTableCells().stream().map(this::cellText).reduce("", String::concat);
+			String normalized = normalizeLabel(text);
+			if (!startsWithAny(normalized, "部门", "运营中心", "财务部", "分管领导", "总经理")) {
+				continue;
+			}
+			row.setHeight(600);
+			row.setHeightRule(TableRowHeightRule.AT_LEAST);
+			for (XWPFTableCell cell : row.getTableCells()) {
+				for (int index = cell.getParagraphs().size() - 1; index > 0; index--) {
+					if (normalizeLabel(paragraphText(cell.getParagraphs().get(index))).startsWith("签字")) {
+						cell.removeParagraph(index);
+					}
+				}
+				for (XWPFParagraph paragraph : cell.getParagraphs()) {
+					paragraph.setSpacingBefore(0);
+					paragraph.setSpacingAfter(0);
+				}
+			}
+		}
+	}
+
+	private boolean startsWithAny(String value, String... prefixes) {
+		if (StringUtil.isBlank(value) || prefixes == null) {
+			return false;
+		}
+		for (String prefix : prefixes) {
+			if (value.startsWith(prefix)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private void preserveInvoiceCrossPageRow(XWPFTableRow row) {
 		if (row == null || row.getTableCells().size() < 2) {
 			return;
@@ -709,35 +773,6 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		if (contentCell.getParagraphs().size() == 2) {
 			contentCell.getCTTc().insertNewP(1).addNewR().addNewT().setStringValue(" ");
 		}
-	}
-
-	private boolean hasPageBreak(XWPFParagraph paragraph) {
-		if (paragraph == null) {
-			return false;
-		}
-		Node paragraphNode = paragraph.getCTP().getDomNode();
-		for (Node node = paragraphNode.getFirstChild(); node != null; node = node.getNextSibling()) {
-			if (hasPageBreakNode(node)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private boolean hasPageBreakNode(Node node) {
-		if (node == null) {
-			return false;
-		}
-		if (hasLocalName(node, "br") && node instanceof Element element
-			&& "page".equals(element.getAttributeNS(WORD_NAMESPACE, "type"))) {
-			return true;
-		}
-		for (Node child = node.getFirstChild(); child != null; child = child.getNextSibling()) {
-			if (hasPageBreakNode(child)) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	private void setParagraphText(XWPFParagraph paragraph, String value) {
@@ -1044,11 +1079,31 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		Node runNode = firstDescendant(paragraphNode, "r");
 		if (runNode == null) {
 			runNode = paragraphNode.getOwnerDocument().createElementNS(WORD_NAMESPACE, "w:r");
+			copyParagraphRunProperties(paragraphNode, runNode);
 			paragraphNode.appendChild(runNode);
 		}
 		Node textNode = paragraphNode.getOwnerDocument().createElementNS(WORD_NAMESPACE, "w:t");
 		runNode.appendChild(textNode);
 		setTextNodeValue(textNode, value);
+	}
+
+	private void copyParagraphRunProperties(Node paragraphNode, Node runNode) {
+		Node paragraphProperties = null;
+		for (Node child = paragraphNode.getFirstChild(); child != null; child = child.getNextSibling()) {
+			if (hasLocalName(child, "pPr")) {
+				paragraphProperties = child;
+				break;
+			}
+		}
+		if (paragraphProperties == null) {
+			return;
+		}
+		for (Node child = paragraphProperties.getFirstChild(); child != null; child = child.getNextSibling()) {
+			if (hasLocalName(child, "rPr")) {
+				runNode.appendChild(child.cloneNode(true));
+				return;
+			}
+		}
 	}
 
 	private Node firstDescendant(Node root, String localName) {

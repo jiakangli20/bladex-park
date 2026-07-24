@@ -30,6 +30,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import org.springblade.core.tool.utils.Func;
+import org.springblade.modules.business.pojo.entity.Customer;
+import org.springblade.modules.business.service.ICustomerService;
 import org.springblade.modules.business.pojo.entity.ServiceWorkorder;
 import org.springblade.modules.business.service.IPropertyWorkorderService;
 import org.springblade.modules.contract.pojo.entity.Contract;
@@ -54,9 +56,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -73,6 +77,7 @@ public class RentControlServiceImpl implements IRentControlService {
 	private final IFloorService floorService;
 	private final IRoomService roomService;
 	private final IPropertyWorkorderService propertyWorkorderService;
+	private final ICustomerService customerService;
 	private final IContractService contractService;
 	private final IPaymentService paymentService;
 
@@ -101,10 +106,19 @@ public class RentControlServiceImpl implements IRentControlService {
 		roomQuery.setFloor(floorNo);
 		roomQuery.setStatus(status);
 		roomQuery.setOrientation(orientation);
-		if (!"building".equals(searchType) && hasText(keyword)) {
+		if ("room".equals(searchType) && hasText(keyword)) {
 			roomQuery.setName(keyword);
 		}
 		List<RoomVO> roomList = roomService.selectRoomList(roomQuery);
+		if (hasText(keyword) && ("tenant".equals(searchType) || "mobile".equals(searchType))) {
+			Set<Long> matchedRoomIds = searchContractRoomIds(parkId, keyword, searchType);
+			roomList = roomList.stream()
+				.filter(room -> room.getId() != null && matchedRoomIds.contains(room.getId()))
+				.toList();
+		}
+		if (hasText(keyword) && !"building".equals(searchType)) {
+			floorList = filterFloorsByRooms(floorList, roomList, selectedBuildingId);
+		}
 		if ("building".equals(searchType)) {
 			List<Long> buildingIds = buildingList.stream().map(Building::getId).filter(Objects::nonNull).toList();
 			roomList = roomList.stream()
@@ -140,6 +154,83 @@ public class RentControlServiceImpl implements IRentControlService {
 		result.put("floors", buildFloorRows(selectedBuildingId, floorList, roomList, buildingList));
 		result.put("summary", buildStatusSummary(roomList));
 		return result;
+	}
+
+	private Set<Long> searchContractRoomIds(Long parkId, String keyword, String searchType) {
+		Set<Long> matchedCustomerIds = new LinkedHashSet<>();
+		if ("mobile".equals(searchType)) {
+			matchedCustomerIds.addAll(customerService.list(Wrappers.<Customer>lambdaQuery()
+					.eq(Customer::getDelFlag, "0")
+					.eq(parkId != null, Customer::getParkId, parkId)
+					.like(Customer::getContactPhone, keyword)).stream()
+				.map(Customer::getCustomerId)
+				.filter(Objects::nonNull)
+				.toList());
+		}
+		if ("tenant".equals(searchType)) {
+			matchedCustomerIds.addAll(customerService.list(Wrappers.<Customer>lambdaQuery()
+					.eq(Customer::getDelFlag, "0")
+					.eq(parkId != null, Customer::getParkId, parkId)
+					.like(Customer::getEnterpriseName, keyword)).stream()
+				.map(Customer::getCustomerId)
+				.filter(Objects::nonNull)
+				.toList());
+		}
+
+		List<Contract> contracts = contractService.list(Wrappers.<Contract>lambdaQuery()
+			.eq(Contract::getDelFlag, "0")
+			.eq(parkId != null, Contract::getParkId, parkId)
+			.and(wrapper -> {
+				if ("tenant".equals(searchType)) {
+					wrapper.like(Contract::getCustomerName, keyword);
+					if (!matchedCustomerIds.isEmpty()) {
+						wrapper.or().in(Contract::getCustomerId, matchedCustomerIds);
+					}
+				} else if (!matchedCustomerIds.isEmpty()) {
+					wrapper.in(Contract::getCustomerId, matchedCustomerIds);
+				} else {
+					wrapper.eq(Contract::getCustomerId, -1L);
+				}
+			}));
+		Set<Long> roomIds = new LinkedHashSet<>();
+		for (Contract contract : contracts) {
+			roomIds.addAll(resolveContractRoomIds(contract));
+		}
+		return roomIds;
+	}
+
+	private Set<Long> resolveContractRoomIds(Contract contract) {
+		Set<Long> roomIds = new LinkedHashSet<>();
+		if (contract == null) {
+			return roomIds;
+		}
+		if (contract.getRoomId() != null) {
+			roomIds.add(contract.getRoomId());
+		}
+		String roomIdsText = Func.toStr(contract.getRoomIds(), "");
+		if (hasText(roomIdsText)) {
+			for (String rawRoomId : roomIdsText.split(",")) {
+				String roomIdText = rawRoomId == null ? "" : rawRoomId.trim().replace("room_", "");
+				if (!hasText(roomIdText)) {
+					continue;
+				}
+				try {
+					roomIds.add(Long.valueOf(roomIdText));
+				} catch (NumberFormatException ignored) {
+					// 忽略历史非数字房源标记
+				}
+			}
+		}
+		return roomIds;
+	}
+
+	private List<Floor> filterFloorsByRooms(List<Floor> floorList, List<RoomVO> roomList, Long selectedBuildingId) {
+		Set<String> roomFloorKeys = roomList.stream()
+			.map(room -> buildFloorKey(selectedBuildingId, room.getBuildingId(), room.getFloor()))
+			.collect(Collectors.toCollection(LinkedHashSet::new));
+		return floorList.stream()
+			.filter(floor -> roomFloorKeys.contains(buildFloorKey(selectedBuildingId, floor.getBuildingId(), floor.getFloorNo())))
+			.toList();
 	}
 
 	@Override
@@ -261,7 +352,7 @@ public class RentControlServiceImpl implements IRentControlService {
 			Map<String, Object> floorNode = new LinkedHashMap<>();
 			floorNode.put("floorNo", floorNo);
 			List<Map<String, Object>> roomNodes = roomsByFloor.getOrDefault(floorNo, new ArrayList<>()).stream()
-				.sorted(Comparator.comparing(room -> Objects.toString(room.getName(), ""), String.CASE_INSENSITIVE_ORDER))
+				.sorted(this::compareRoomNo)
 				.map(room -> {
 					Map<String, Object> roomNode = new LinkedHashMap<>();
 					roomNode.put("id", room.getId());
@@ -299,7 +390,9 @@ public class RentControlServiceImpl implements IRentControlService {
 		List<Map<String, Object>> floors = new ArrayList<>();
 		for (String floorKey : floorKeys) {
 			Floor floorInfo = floorMap.get(floorKey);
-			List<RoomVO> rooms = roomGroup.getOrDefault(floorKey, new ArrayList<>());
+			List<RoomVO> rooms = roomGroup.getOrDefault(floorKey, new ArrayList<>()).stream()
+				.sorted(this::compareRoomNo)
+				.toList();
 			RoomVO firstRoom = rooms.isEmpty() ? null : rooms.get(0);
 			Long rowBuildingId = selectedBuildingId != null ? selectedBuildingId : firstNonNull(firstRoom == null ? null : firstRoom.getBuildingId(), floorInfo == null ? null : floorInfo.getBuildingId());
 			Integer rowFloorNo = firstNonNull(firstRoom == null ? null : firstRoom.getFloor(), floorInfo == null ? null : floorInfo.getFloorNo(), 0);
@@ -440,6 +533,31 @@ public class RentControlServiceImpl implements IRentControlService {
 			return buildingCompare;
 		}
 		return Integer.compare(parseInt(rightParts[1]), parseInt(leftParts[1]));
+	}
+
+	private int compareRoomNo(Room left, Room right) {
+		int roomNoCompare = Long.compare(roomSortNo(left), roomSortNo(right));
+		if (roomNoCompare != 0) {
+			return roomNoCompare;
+		}
+		int nameCompare = Objects.toString(left == null ? null : left.getName(), "")
+			.compareToIgnoreCase(Objects.toString(right == null ? null : right.getName(), ""));
+		if (nameCompare != 0) {
+			return nameCompare;
+		}
+		return Long.compare(left == null || left.getId() == null ? 0L : left.getId(), right == null || right.getId() == null ? 0L : right.getId());
+	}
+
+	private long roomSortNo(Room room) {
+		String digits = Objects.toString(room == null ? null : room.getName(), "").replaceAll("\\D+", "");
+		if (digits.isBlank()) {
+			return Long.MAX_VALUE;
+		}
+		try {
+			return Long.parseLong(digits);
+		} catch (NumberFormatException ignored) {
+			return Long.MAX_VALUE;
+		}
 	}
 
 	private int parseInt(String value) {

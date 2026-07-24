@@ -12,7 +12,7 @@ export default {
   props: {
     radius: {
       type: [String, Number],
-      default: 10,
+      default: 0,
     },
     background: {
       type: String,
@@ -48,7 +48,7 @@ export default {
 
   &__card {
     width: 100%;
-    border-radius: 10px;
+    border-radius: 0;
     background: #fff;
 
     > .el-card__body {

@@ -32,11 +32,6 @@ public interface HomeMapper {
 	Long countExpiringContracts(@Param("parkId") Long parkId);
 
 	/**
-	 * 审批待办数量.
-	 */
-	Long countApprovalTodos(@Param("parkId") Long parkId, @Param("currentUser") String currentUser, @Param("admin") Boolean admin);
-
-	/**
 	 * 物业工单待办数量.
 	 */
 	Long countWorkorderTodos(@Param("parkId") Long parkId, @Param("currentUser") String currentUser, @Param("admin") Boolean admin);

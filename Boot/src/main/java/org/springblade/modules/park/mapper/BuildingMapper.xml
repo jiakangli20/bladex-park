@@ -58,11 +58,57 @@
         LEFT JOIN (
             SELECT building_id,
                    COUNT(1) AS room_count,
-                   SUM(CASE WHEN status = '1' THEN 1 ELSE 0 END) AS rented_count,
-                   SUM(CASE WHEN status = '1' THEN COALESCE(area, 0) ELSE 0 END) AS rented_area
-            FROM ics_room
+                   SUM(COALESCE(area, 0)) AS room_area,
+                   SUM(CASE WHEN COALESCE(display_status, '0') &lt;&gt; '0' THEN 1 ELSE 0 END) AS rented_count,
+                   SUM(CASE WHEN COALESCE(display_status, '0') &lt;&gt; '0' THEN COALESCE(area, 0) ELSE 0 END) AS rented_area
+            FROM (
+                SELECT r.building_id,
+                       r.area,
+                       CASE
+                           WHEN IFNULL(contract_room_status.has_exiting, 0) = 1 THEN '3'
+                           WHEN IFNULL(contract_room_status.has_expiring30, 0) = 1 THEN '5'
+                           WHEN IFNULL(contract_room_status.has_expiring90, 0) = 1 THEN '4'
+                           WHEN IFNULL(contract_room_status.has_active, 0) = 1 THEN '7'
+                           WHEN IFNULL(contract_room_status.has_expired, 0) = 1 THEN '6'
+                           ELSE r.status
+                       END AS display_status
+                FROM ics_room r
+                <include refid="roomContractStatusJoin"/>
+            ) room_status
             GROUP BY building_id
         ) rs ON rs.building_id = b.id
+    </sql>
+
+    <sql id="roomContractStatusJoin">
+        LEFT JOIN (
+            SELECT room_id,
+                   MAX(CASE WHEN contract_status IN ('6', '7', '8') THEN 1 ELSE 0 END) AS has_exiting,
+                   MAX(CASE WHEN contract_status = '2' OR (contract_status = '1' AND end_date &lt; CURDATE()) THEN 1 ELSE 0 END) AS has_expired,
+                   MAX(CASE WHEN contract_status = '1' AND end_date &gt;= CURDATE() AND end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) AS has_expiring30,
+                   MAX(CASE WHEN contract_status = '1' AND end_date &gt; DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 90 DAY) THEN 1 ELSE 0 END) AS has_expiring90,
+                   MAX(CASE WHEN contract_status = '1' THEN 1 ELSE 0 END) AS has_active
+            FROM (
+                SELECT c.room_id AS room_id, c.contract_status, c.end_date
+                FROM biz_contract c
+                WHERE c.del_flag = '0'
+                  AND c.room_id IS NOT NULL
+                UNION ALL
+                SELECT CAST(REPLACE(TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(c.room_ids, ',', numbers.n), ',', -1)), 'room_', '') AS UNSIGNED) AS room_id,
+                       c.contract_status,
+                       c.end_date
+                FROM biz_contract c
+                INNER JOIN (
+                    SELECT 1 AS n UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
+                    UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
+                ) numbers ON numbers.n &lt;= 1 + LENGTH(COALESCE(c.room_ids, '')) - LENGTH(REPLACE(COALESCE(c.room_ids, ''), ',', ''))
+                WHERE c.del_flag = '0'
+                  AND c.room_ids IS NOT NULL
+                  AND c.room_ids != ''
+            ) contract_room
+            WHERE room_id IS NOT NULL
+              AND room_id &gt; 0
+            GROUP BY room_id
+        ) contract_room_status ON contract_room_status.room_id = r.id
     </sql>
 
     <sql id="buildingWhere">
@@ -85,8 +131,8 @@
         COALESCE(fs.management_area, 0) AS management_area,
         COALESCE(rs.room_count, 0) AS room_count,
         CASE
-            WHEN COALESCE(rs.room_count, 0) = 0 THEN 0
-            ELSE ROUND(COALESCE(rs.rented_count, 0) * 100 / rs.room_count, 2)
+            WHEN COALESCE(rs.room_area, 0) = 0 THEN 0
+            ELSE ROUND(COALESCE(rs.rented_area, 0) * 100 / rs.room_area, 2)
         END AS rent_rate,
         COALESCE(rs.rented_area, 0) AS rented_area,
         0 AS active_contract_count
@@ -103,8 +149,8 @@
         COALESCE(fs.management_area, 0) AS management_area,
         COALESCE(rs.room_count, 0) AS room_count,
         CASE
-            WHEN COALESCE(rs.room_count, 0) = 0 THEN 0
-            ELSE ROUND(COALESCE(rs.rented_count, 0) * 100 / rs.room_count, 2)
+            WHEN COALESCE(rs.room_area, 0) = 0 THEN 0
+            ELSE ROUND(COALESCE(rs.rented_area, 0) * 100 / rs.room_area, 2)
         END AS rent_rate,
         COALESCE(rs.rented_area, 0) AS rented_area,
         0 AS active_contract_count
@@ -121,8 +167,8 @@
         COALESCE(fs.management_area, 0) AS management_area,
         COALESCE(rs.room_count, 0) AS room_count,
         CASE
-            WHEN COALESCE(rs.room_count, 0) = 0 THEN 0
-            ELSE ROUND(COALESCE(rs.rented_count, 0) * 100 / rs.room_count, 2)
+            WHEN COALESCE(rs.room_area, 0) = 0 THEN 0
+            ELSE ROUND(COALESCE(rs.rented_area, 0) * 100 / rs.room_area, 2)
         END AS rent_rate,
         COALESCE(rs.rented_area, 0) AS rented_area,
         0 AS active_contract_count
@@ -138,8 +184,8 @@
         COALESCE(fs.management_area, 0) AS management_area,
         COALESCE(rs.room_count, 0) AS room_count,
         CASE
-            WHEN COALESCE(rs.room_count, 0) = 0 THEN 0
-            ELSE ROUND(COALESCE(rs.rented_count, 0) * 100 / rs.room_count, 2)
+            WHEN COALESCE(rs.room_area, 0) = 0 THEN 0
+            ELSE ROUND(COALESCE(rs.rented_area, 0) * 100 / rs.room_area, 2)
         END AS rent_rate,
         COALESCE(rs.rented_area, 0) AS rented_area,
         0 AS active_contract_count

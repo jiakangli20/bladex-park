@@ -420,7 +420,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 
 	private ContractNoticeFileVO buildTerminationApproval(NoticeContext context) {
 		Map<String, String> fields = createTerminationApprovalFields(context);
-		Map<String, String> replacements = createTerminationReplacements(context);
+		Map<String, String> replacements = createTerminationReplacements(context, fields);
 		return contractTemplateRenderService.render(
 			NOTICE_TERMINATION,
 			"退租审批表",
@@ -945,7 +945,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			formValue(context, "a178228940119047948", "申请内容", "terminationReason", "退租原因", "reason"),
 			buildTerminationSummary(context)
 		));
-		mergeWorkflowApprovalFields(context, fields, "分管领导", "总经理");
+		mergeWorkflowApprovalFields(context, fields, "部门审批", "运营中心", "财务部", "分管领导", "总经理");
 		return fields;
 	}
 
@@ -970,7 +970,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		return fields;
 	}
 
-	private Map<String, String> createTerminationReplacements(NoticeContext context) {
+	private Map<String, String> createTerminationReplacements(NoticeContext context, Map<String, String> fields) {
 		Map<String, String> replacements = new LinkedHashMap<>();
 		Contract contract = context.contract;
 		String terminationDate = firstNotBlank(formValue(context, "expectedTerminationDate", "退租日期", "申请退租日期", "terminationDate"), formatDate(DateUtil.now()));
@@ -985,7 +985,26 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		replacements.put("楼     m2", roomArea);
 		replacements.put(exactReplacementKey("楼m2"), roomArea);
 		replacements.put(exactReplacementKey("自年月日至年月日止"), "自 " + formatChineseDate(contract == null ? null : contract.getStartDate()) + " 至 " + formatChineseDate(contract == null ? null : contract.getEndDate()) + "止");
+		putApprovalRowReplacement(replacements, fields, "部门：", "部门审批", "部门经理", "经理审批");
+		putApprovalRowReplacement(replacements, fields, "运营中心：", "运营中心");
+		putApprovalRowReplacement(replacements, fields, "财务部：", "财务部");
+		putApprovalRowReplacement(replacements, fields, "分管领导：", "分管领导", "分管领导审批");
+		putApprovalRowReplacement(replacements, fields, "总经理：", "总经理", "总经理审批");
 		return replacements;
+	}
+
+	private void putApprovalRowReplacement(Map<String, String> replacements, Map<String, String> fields,
+									  String label, String... fieldNames) {
+		String approval = "";
+		if (fields != null && fieldNames != null) {
+			for (String fieldName : fieldNames) {
+				if (hasActualApprovalValue(fields.get(fieldName))) {
+					approval = fields.get(fieldName);
+					break;
+				}
+			}
+		}
+		replacements.put(exactReplacementKey(label), label + approval);
 	}
 
 	private Map<String, String> createRoomReviewReplacements(NoticeContext context) {

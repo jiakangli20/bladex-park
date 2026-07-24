@@ -11,6 +11,7 @@ import org.springblade.modules.business.pojo.entity.BusinessOpportunityFile;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunityFollow;
 import org.springblade.modules.business.pojo.entity.Tag;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
+import org.springblade.core.tool.support.Kv;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -56,6 +57,8 @@ public interface IBusinessOpportunityService extends IService<BusinessOpportunit
 	BusinessOpportunity createApprovalProjectFromOpportunity(Long opportunityId, Long flowId);
 
 	ContractNoticeFileVO exportTenantEntryApprovalForm(Long opportunityId, String processInsId);
+
+	Kv previewTenantEntryApprovalForm(Long opportunityId, String processInsId);
 
 	Map<String, Object> selectOpportunityStatistics();
 

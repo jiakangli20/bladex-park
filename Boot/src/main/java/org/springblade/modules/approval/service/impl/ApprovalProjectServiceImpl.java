@@ -65,7 +65,7 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 	private static final String NODE_TYPE_SUBMIT = "submit";
 	private static final String NODE_TYPE_CC = "cc";
 	private static final String NODE_TYPE_APPROVE = "approve";
-	private static final String TEMPLATE_TENANT_ENTRY_APPROVAL = "君联大厦招商管理办法2023/附件一：企业入驻审批表.xlsx";
+	private static final String TEMPLATE_TENANT_ENTRY_APPROVAL = "君联大厦招商管理办法2023/附件一：企业入驻审批表.docx";
 
 	private final ApprovalFlowMapper approvalFlowMapper;
 	private final ApprovalNodeMapper approvalNodeMapper;

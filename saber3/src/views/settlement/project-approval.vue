@@ -136,6 +136,16 @@
         </template>
       </el-dialog>
 
+      <notice-preview-dialog
+        v-model="approvalPreview.visible"
+        :title="approvalPreview.title"
+        :html="approvalPreview.html"
+        :loading="approvalPreview.loading"
+        :download-url="approvalPreview.downloadUrl"
+        :download-label="approvalPreview.downloadLabel"
+        @download="downloadApprovalForm"
+      />
+
     </div>
   </basic-container>
 </template>
@@ -150,9 +160,14 @@ import {
   todoList,
 } from '@/views/plugin/workflow/api/process/process';
 import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
-import { exportTenantEntryApprovalForm, getOpportunityList } from '@/api/business/opportunity';
+import {
+  exportTenantEntryApprovalForm,
+  getOpportunityList,
+  previewTenantEntryApprovalForm,
+} from '@/api/business/opportunity';
+import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
 import { downloadFile } from '@/utils/util';
-import { resolveDownloadFilename } from '@/utils/contract-notice';
+import { createNoticePreviewState, resolveDownloadFilename } from '@/utils/contract-notice';
 
 const DEFAULT_PROCESS_KEY = 'tenant_entry-1';
 const TENANT_ENTRY_BUSINESS_TYPE = 'tenant_entry';
@@ -160,6 +175,7 @@ const COPY_FORM_KEYS = ['wf_ex_TenantEntry', 'wf_ex_入驻'];
 
 export default {
   name: 'SettlementProjectApproval',
+  components: { NoticePreviewDialog },
   data() {
     return {
       loading: false,
@@ -202,6 +218,8 @@ export default {
       processOptions: [],
       opportunityLoading: false,
       opportunityOptions: [],
+      approvalPreview: createNoticePreviewState(),
+      approvalPreviewRow: null,
     };
   },
   created() {
@@ -479,9 +497,39 @@ export default {
       return row.opportunityId && ['done', 'send', 'myDone'].includes(row.scope);
     },
     openApprovalForm(row) {
+      const processInsId = row.processInstanceId || row.processId;
+      this.approvalPreviewRow = row;
+      this.approvalPreview.visible = true;
+      this.approvalPreview.loading = true;
+      this.approvalPreview.title = '企业入驻审批表预览';
+      this.approvalPreview.html = '';
+      this.approvalPreview.downloadUrl = `/blade-park/opportunity/tenant-entry/approval-form/${row.opportunityId}`;
+      this.approvalPreview.downloadLabel = '下载Word';
+      previewTenantEntryApprovalForm(row.opportunityId, processInsId)
+        .then(res => {
+          const data = res.data.data || {};
+          this.approvalPreview.title = data.noticeName || '企业入驻审批表预览';
+          this.approvalPreview.html = data.html || '';
+          this.approvalPreview.fallbackName = data.fileName
+            || `企业入驻审批表-${row.enterpriseName || row.opportunityId}.docx`;
+        })
+        .catch(error => {
+          this.approvalPreview.visible = false;
+          throw error;
+        })
+        .finally(() => {
+          this.approvalPreview.loading = false;
+        });
+    },
+    downloadApprovalForm() {
+      const row = this.approvalPreviewRow;
+      if (!row) return;
       exportTenantEntryApprovalForm(row.opportunityId, row.processInstanceId || row.processId).then(res => {
         const disposition = res.headers && res.headers['content-disposition'];
-        const filename = resolveDownloadFilename(disposition, `企业入驻审批表-${row.enterpriseName || row.opportunityId}.xlsx`);
+        const filename = resolveDownloadFilename(
+          disposition,
+          this.approvalPreview.fallbackName || `企业入驻审批表-${row.enterpriseName || row.opportunityId}.docx`
+        );
         const contentType = (res.headers && res.headers['content-type']) || 'application/octet-stream';
         downloadFile(res.data, filename, contentType);
         this.$message.success('导出成功');

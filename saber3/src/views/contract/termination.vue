@@ -151,7 +151,7 @@
           </section>
 
           <section class="detail-section">
-            <div class="detail-section-title">流程文件</div>
+            <div class="detail-section-title">业务操作</div>
             <div class="drawer-actions">
               <el-button type="primary" @click="openArchive(detailRecord)">合同归档</el-button>
               <el-button type="primary" plain @click="handleOfflineRoomReview(detailRecord)">
@@ -162,22 +162,6 @@
               </el-button>
               <el-button type="primary" plain @click="handleOfflineDepositRefund(detailRecord)">
                 上传支付凭证
-              </el-button>
-              <el-button
-                v-if="detailRecord.printFileUrl"
-                type="primary"
-                plain
-                @click="openWorkflowFile(detailRecord.printFileUrl, detailRecord)"
-              >
-                审批表
-              </el-button>
-              <el-button
-                v-if="terminationAgreementUrl(detailRecord)"
-                type="primary"
-                plain
-                @click="openWorkflowFile(terminationAgreementUrl(detailRecord), detailRecord)"
-              >
-                解除协议
               </el-button>
             </div>
           </section>
@@ -586,18 +570,15 @@ import { statusDic } from '@/option/contract/contract';
 import { mapGetters } from 'vuex';
 import { getToken } from '@/utils/auth';
 import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
-import { noticePrintUrl } from '@/api/contract/print';
 import {
   createNoticePreviewState,
   downloadNoticeFile,
   openAttachmentPreview,
-  openNoticePreview,
 } from '@/utils/contract-notice';
 
 const TERMINATION_BUSINESS_TYPE = 'contract_termination';
 const ROOM_REVIEW_BUSINESS_TYPE = 'contract_room_review';
 const PAYMENT_BUSINESS_TYPE = 'contract_payment';
-const TERMINATION_AGREEMENT_KEY = 'termination-agreement';
 const MATERIAL_TYPE_OPTIONS = [
   { value: 'approval', label: '审批资料' },
   { value: 'room_acceptance', label: '房屋验收资料' },
@@ -1733,61 +1714,9 @@ export default {
       this.workflowProcessOptions = [];
       this.workflowForm.processDefKey = '';
     },
-    openWorkflowFile(url, row) {
-      if (!url || !row) return;
-      const noticeType = this.noticeTypeByUrl(url, row);
-      if (!noticeType) {
-        downloadNoticeFile(url, '退租流程文件');
-        return;
-      }
-      openNoticePreview(
-        this,
-        this.noticePreview,
-        {
-          noticeType,
-          contractId: row.contractId,
-          formDataJson: row.formDataJson || '',
-        },
-        noticePrintUrl(noticeType, { contractId: row.contractId }),
-        '退租流程文件',
-        '审批表预览'
-      );
-    },
-    noticeTypeByUrl(url, row) {
-      if (url === this.terminationAgreementUrl(row) || String(url).includes('termination-agreement')) {
-        return 'termination-agreement';
-      }
-      if (String(url).includes('room-review')) {
-        return 'room-review';
-      }
-      if (String(url).includes('payment-notice')) {
-        return 'payment-notice';
-      }
-      if (String(url).includes('invoice-apply')) {
-        return 'invoice-apply';
-      }
-      if (row.businessType === PAYMENT_BUSINESS_TYPE) {
-        return row.processDefKey && String(row.processDefKey).includes('invoice')
-          ? 'invoice-apply'
-          : 'payment-notice';
-      }
-      return 'termination-approval';
-    },
     downloadNoticePreviewFile() {
       if (!this.noticePreview.downloadUrl) return;
       downloadNoticeFile(this.noticePreview.downloadUrl, this.noticePreview.fallbackName);
-    },
-    terminationAgreementUrl(row) {
-      return this.attachmentUrl(row, TERMINATION_AGREEMENT_KEY);
-    },
-    attachmentUrl(row, key) {
-      if (!row || !row.attachmentJson || !key) return '';
-      try {
-        const attachment = JSON.parse(row.attachmentJson);
-        return attachment && attachment[key] ? attachment[key] : '';
-      } catch (error) {
-        return '';
-      }
     },
     terminationStageText(row) {
       if (!row) return '-';

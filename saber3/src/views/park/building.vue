@@ -101,7 +101,7 @@
         <el-table-column prop="roomCount" label="房间总数" min-width="105" align="center">
           <template #default="{ row }">{{ row.roomCount || 0 }}</template>
         </el-table-column>
-        <el-table-column prop="rentRate" label="出租率(%)" min-width="105" align="center">
+        <el-table-column prop="rentRate" label="出租率" min-width="105" align="center">
           <template #default="{ row }">{{ formatRate(row.rentRate) }}</template>
         </el-table-column>
         <el-table-column label="操作" width="156" fixed="right" align="center">
@@ -249,13 +249,13 @@
               <el-form-item label="楼层数" prop="floors">
                 <div class="unit-input">
                   <el-input-number
-                    v-model="drawerForm.floors"
+                    :model-value="floorAreaList.length"
                     :min="1"
                     :precision="0"
                     :controls="false"
+                    disabled
                     controls-position="right"
-                    placeholder="请输入楼层数"
-                    @change="handleFloorsChange"
+                    placeholder="请在下方新增楼层"
                   />
                   <span class="unit-input-suffix">层</span>
                 </div>
@@ -292,7 +292,6 @@
                     :controls="false"
                     controls-position="right"
                     placeholder="请输入建筑面积"
-                    @change="handleAreaChange"
                   />
                   <span class="unit-input-suffix">㎡</span>
                 </div>
@@ -406,11 +405,18 @@
         </section>
 
         <section class="building-edit-section">
-          <div class="section-title">楼层面积配置</div>
+          <div class="floor-area-header">
+            <div class="section-title">楼层面积配置</div>
+            <div v-if="!drawerReadonly" class="floor-area-actions">
+              <el-button type="primary" plain :icon="Plus" @click="addFloorArea">新增楼层</el-button>
+              <el-button v-if="canRemoveNewFloor" plain :icon="Minus" @click="removeLastAddedFloor">撤销新增</el-button>
+            </div>
+          </div>
           <div class="floor-area-summary">
             <span>楼层数：{{ floorAreaList.length }} 层</span>
             <span>楼层面积合计：{{ formatArea(totalFloorArea) }}㎡</span>
             <span>建筑面积：{{ formatArea(drawerForm.area) }}㎡</span>
+            <span class="floor-area-tip">新增楼层面积需单独填写，原楼层面积不会重新分配</span>
           </div>
           <el-row :gutter="16">
             <el-col v-for="item in floorAreaList" :key="item.floorNo" :xs="24" :sm="12" :md="6">
@@ -489,7 +495,7 @@
 <script>
 import { mapGetters } from 'vuex';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Upload } from '@element-plus/icons-vue';
+import { Minus, Plus, Upload } from '@element-plus/icons-vue';
 import { getList, getDetail, remove, submit } from '@/api/park/building';
 import { getList as getParkList } from '@/api/park/park';
 import { getToken } from '@/utils/auth';
@@ -565,6 +571,7 @@ export default {
       data: [],
       parkList: [],
       floorAreaList: [],
+      persistedFloorNos: [],
       drawerVisible: false,
       drawerMode: 'add',
       drawerLoading: false,
@@ -579,6 +586,8 @@ export default {
         'Blade-Requested-With': 'BladeHttpRequest',
       },
       Upload,
+      Plus,
+      Minus,
       drawerRules: {
         parkId: [{ required: true, message: '请选择所属园区', trigger: 'change' }],
         code: [{ required: true, message: '请输入建筑编码', trigger: 'blur' }],
@@ -610,6 +619,14 @@ export default {
     totalFloorArea() {
       return this.floorAreaList.reduce((total, item) => total + Number(item.area || 0), 0);
     },
+    canRemoveNewFloor() {
+      const lastFloor = this.floorAreaList[this.floorAreaList.length - 1];
+      return Boolean(
+        lastFloor
+        && this.floorAreaList.length > 1
+        && !this.persistedFloorNos.includes(Number(lastFloor.floorNo))
+      );
+    },
     buildingImageUrls() {
       return this.parseBuildingImageUrls(this.drawerForm.sceneImages);
     },
@@ -631,7 +648,7 @@ export default {
         },
         {
           key: 'rentedArea',
-          label: '在租面积',
+          label: '已出租面积',
           value: `${this.formatArea(rentedArea)} ㎡`,
         },
         {
@@ -645,16 +662,6 @@ export default {
   created() {
     this.loadParkList();
     this.onLoad(this.page);
-  },
-  watch: {
-    'drawerForm.floors'(value) {
-      this.syncFloorAreaList(value);
-    },
-    'drawerForm.area'() {
-      if (!this.floorAreaList.length) {
-        this.syncFloorAreaList(this.drawerForm.floors);
-      }
-    },
   },
   methods: {
     loadParkList() {
@@ -678,6 +685,7 @@ export default {
       this.drawerForm = createDefaultBuildingForm();
       this.buildingImageFileList = [];
       this.floorAreaList = [];
+      this.persistedFloorNos = [];
       this.syncFloorAreaList(this.drawerForm.floors);
       this.drawerVisible = true;
       this.$nextTick(() => {
@@ -697,6 +705,7 @@ export default {
       this.drawerForm = this.buildDrawerForm(row);
       this.buildingImageFileList = this.parseBuildingImageFiles(this.drawerForm.sceneImages);
       this.floorAreaList = [];
+      this.persistedFloorNos = [];
       this.syncFloorAreaList(this.drawerForm.floors);
       getDetail(row.id)
         .then(res => {
@@ -705,6 +714,10 @@ export default {
           this.buildingImageFileList = this.parseBuildingImageFiles(this.drawerForm.sceneImages);
           this.syncFloorAreaList(this.drawerForm.floors);
           this.applyFloorAreas(detail.floorAreas || []);
+          this.persistedFloorNos = Array.from(
+            { length: Number(this.drawerForm.floors || 0) },
+            (_, index) => index + 1
+          );
           this.$nextTick(() => {
             this.$refs.buildingDrawerFormRef && this.$refs.buildingDrawerFormRef.clearValidate();
           });
@@ -722,6 +735,7 @@ export default {
       this.buildingImagePreviewVisible = false;
       this.buildingImagePreviewUrl = '';
       this.floorAreaList = [];
+      this.persistedFloorNos = [];
       this.$nextTick(() => {
         this.$refs.buildingDrawerFormRef && this.$refs.buildingDrawerFormRef.clearValidate();
       });
@@ -735,6 +749,14 @@ export default {
     submitDrawerForm() {
       if (this.hasUploadingBuildingImages()) {
         ElMessage.warning('楼宇图片正在上传，请稍后保存');
+        return;
+      }
+      const missingNewFloor = this.floorAreaList.find(item =>
+        !this.persistedFloorNos.includes(Number(item.floorNo))
+        && (item.area === null || item.area === undefined || item.area === '')
+      );
+      if (missingNewFloor) {
+        ElMessage.warning(`请填写${missingNewFloor.floorNo}F楼层面积`);
         return;
       }
       this.$refs.buildingDrawerFormRef.validate(valid => {
@@ -751,13 +773,20 @@ export default {
           });
       });
     },
-    handleFloorsChange(value) {
-      this.syncFloorAreaList(value);
+    addFloorArea() {
+      const nextFloorNo = this.floorAreaList.length + 1;
+      this.floorAreaList.push({
+        floorNo: nextFloorNo,
+        area: null,
+      });
+      this.drawerForm.floors = this.floorAreaList.length;
     },
-    handleAreaChange() {
-      if (!this.floorAreaList.length) {
-        this.syncFloorAreaList(this.drawerForm.floors);
+    removeLastAddedFloor() {
+      if (!this.canRemoveNewFloor) {
+        return;
       }
+      this.floorAreaList.pop();
+      this.drawerForm.floors = this.floorAreaList.length;
     },
     beforeBuildingImageUpload(file) {
       const isImage = file.type && file.type.indexOf('image/') === 0;
@@ -916,21 +945,13 @@ export default {
       this.floorAreaList.forEach(item => {
         areaMap[item.floorNo] = item.area;
       });
-      const defaultArea = this.defaultFloorArea(floorCount);
       this.floorAreaList = Array.from({ length: floorCount }, (_, index) => {
         const floorNo = index + 1;
         return {
           floorNo,
-          area: areaMap[floorNo] !== undefined ? areaMap[floorNo] : defaultArea,
+          area: Object.prototype.hasOwnProperty.call(areaMap, floorNo) ? areaMap[floorNo] : null,
         };
       });
-    },
-    defaultFloorArea(floorCount) {
-      const area = Number(this.drawerForm.area || 0);
-      if (!area || !floorCount) {
-        return undefined;
-      }
-      return Number((area / floorCount).toFixed(2));
     },
     searchChange() {
       this.page.currentPage = 1;
@@ -1154,6 +1175,28 @@ export default {
   margin-bottom: 12px;
   color: #606266;
   font-size: 13px;
+}
+
+.floor-area-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.building-modal-form .floor-area-header .section-title {
+  margin-bottom: 0;
+}
+
+.floor-area-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.floor-area-tip {
+  color: #e6a23c;
 }
 
 .building-image-gallery {

@@ -58,6 +58,7 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements IR
 
 	private static final String STATUS_VACANT = "0";
 	private static final String SYNC_PENDING = "0";
+	private static final BigDecimal AREA_COMPARE_TOLERANCE = new BigDecimal("0.01");
 
 	private final IBuildingService buildingService;
 	private final IFloorService floorService;
@@ -130,7 +131,7 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements IR
 		if (room == null) {
 			throw new ServiceException("房源不存在");
 		}
-		if (!List.of("0", "1", "2", "3").contains(status)) {
+		if (!List.of("0", "1", "2", "3", "4", "5", "6", "7").contains(status)) {
 			throw new ServiceException("房源状态不正确");
 		}
 		boolean resetVacantSince = STATUS_VACANT.equals(status) && !STATUS_VACANT.equals(room.getStatus());
@@ -181,7 +182,7 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements IR
 		}
 		BigDecimal usedArea = baseMapper.sumRoomAreaByFloor(room.getBuildingId(), room.getFloor(), room.getId());
 		BigDecimal remainingArea = floor.getArea().subtract(usedArea == null ? BigDecimal.ZERO : usedArea);
-		if (room.getArea().compareTo(remainingArea) > 0) {
+		if (room.getArea().compareTo(remainingArea.add(AREA_COMPARE_TOLERANCE)) > 0) {
 			throw new ServiceException("房源面积不能超过当前楼层剩余面积：" + remainingArea.max(BigDecimal.ZERO).stripTrailingZeros().toPlainString() + "㎡");
 		}
 	}

@@ -133,6 +133,7 @@ export default {
       ].filter(Boolean).join('，');
       this.form = {
         ...this.form,
+        parkId: data.parkId || this.form.parkId,
         businessKey: data.opportunityId || this.form.businessKey,
         opportunityId: data.opportunityId || this.form.opportunityId,
         customerId: data.customerId || this.form.customerId,
@@ -160,6 +161,10 @@ export default {
       return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     },
     handleSubmit() {
+      if (this.form.opportunityId && !this.form.parkId) {
+        this.$message.warning('该商机尚未选择所属园区，请先到商机管理补充后再发起');
+        return;
+      }
       this.form.processDefKey = this.form.processDefKey || DEFAULT_PROCESS_KEY;
       this.form.businessType = BUSINESS_TYPE;
       this.form.applicant = this.form.applicant || this.userInfo.nick_name;

@@ -3,21 +3,55 @@
     <div class="rent-control-page">
       <aside class="rent-sidebar">
         <div class="side-search">
-          <el-segmented v-model="query.searchType" :options="searchTypeOptions" size="small" />
-          <el-input
-            v-model="query.keyword"
-            :placeholder="query.searchType === 'building' ? '搜索建筑' : '搜索房号'"
-            clearable
-            @keyup.enter="loadBoard"
-            @clear="loadBoard"
-          >
-            <template #append>
-              <el-button :icon="Search" @click="loadBoard" />
-            </template>
-          </el-input>
+          <div class="side-search-bar">
+            <el-select
+              v-model="query.searchType"
+              class="side-search-type"
+              size="small"
+              @change="handleSearchTypeChange"
+            >
+              <el-option
+                v-for="item in searchTypeOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+            <el-input
+              v-model="query.keyword"
+              class="side-search-input"
+              :placeholder="searchPlaceholder"
+              clearable
+              size="small"
+              @keyup.enter="handleSearch"
+              @clear="handleSearchClear"
+            />
+            <el-button class="side-search-button" size="small" type="primary" @click="handleSearch">
+              搜索
+            </el-button>
+          </div>
         </div>
 
-        <el-scrollbar class="tree-scroll">
+        <el-scrollbar v-if="hasSearchKeyword" class="search-result-scroll">
+          <div v-if="!searchResultRooms.length" class="search-result-empty">暂无匹配房源</div>
+          <button
+            v-for="room in searchResultRooms"
+            :key="room.id"
+            type="button"
+            class="room-search-item"
+            :class="{ 'is-active': String(selectedRoomId || drawerRoomId || '') === String(room.id || '') }"
+            @click="handleSearchRoomClick(room)"
+          >
+            <el-icon><OfficeBuilding /></el-icon>
+            <span class="room-search-item__body">
+              <span>房间号：{{ searchRoomNo(room) }}</span>
+              <em>楼宇：{{ searchRoomBuilding(room) }}</em>
+            </span>
+            <el-icon class="room-search-item__tenant"><UserFilled /></el-icon>
+          </button>
+        </el-scrollbar>
+
+        <el-scrollbar v-else class="tree-scroll">
           <el-tree
             ref="tree"
             node-key="key"
@@ -98,13 +132,23 @@
           :park-id="query.parkId"
           :building-id="query.buildingId"
           :floor-no="query.floorNo"
-          :park-name="currentPark.name"
-          :building-name="currentBuilding.name"
+          :park-name="selectedRoomDetail.parkName || selectedRoom.parkName || currentPark.name"
+          :building-name="selectedRoomDetail.buildingName || selectedRoom.buildingName || currentBuilding.name"
           @loaded="handleRoomLoaded"
         />
 
-        <el-tabs v-else v-model="activeTab" :class="{ 'floor-only-tabs': isFloorSelection }">
-          <el-tab-pane v-if="!isFloorSelection" label="项目概况" name="overview">
+        <div v-else class="rent-tabs-shell">
+          <el-button
+            v-if="activeTab === 'rooms' && !isFloorSelection && permission.rent_control_room_add"
+            class="room-add-tab-button"
+            type="primary"
+            :icon="Plus"
+            @click="handleAddRoom"
+          >
+            新增房间
+          </el-button>
+          <el-tabs v-model="activeTab" :class="{ 'floor-only-tabs': isFloorSelection }">
+            <el-tab-pane v-if="!isFloorSelection" label="项目概况" name="overview">
             <section class="metric-grid">
               <div class="metric-item">
                 <span>在租房间数</span>
@@ -179,16 +223,13 @@
             </section>
           </el-tab-pane>
 
-          <el-tab-pane label="房态管理" name="rooms">
+            <el-tab-pane label="房态管理" name="rooms">
             <section class="room-toolbar">
               <div class="status-legend">
                 <span v-for="item in statusOptions" :key="item.value">
                   <i :class="'status-' + item.value"></i>{{ item.label }}
                 </span>
               </div>
-              <el-button v-if="permission.rent_control_room_add" type="primary" :icon="Plus" @click="handleAddRoom">
-                新增房间
-              </el-button>
             </section>
 
             <el-empty v-if="!floors.length" description="暂无房态数据" />
@@ -200,54 +241,61 @@
                   <em>{{ formatNumber(floor.totalArea) }}㎡</em>
                 </div>
                 <div class="room-grid">
-                  <button
-                    v-for="room in floor.rooms"
-                    :key="room.id"
-                    type="button"
-                    class="room-tile"
-                    :class="'status-' + normalizeStatus(room.status)"
-                    @click="openRoom(room)"
+                  <div
+                    v-for="(roomRow, rowIndex) in splitFloorRoomRows(floor)"
+                    :key="`${floorRowKey(floor, index)}-${rowIndex}`"
+                    class="room-grid-line"
                   >
-                    <span class="room-cover">
-                      <el-image v-if="roomCoverImage(room)" :src="roomCoverImage(room)" fit="cover" />
-                      <span v-else class="room-cover__empty">暂无实景图</span>
-                    </span>
-                    <span class="room-tile__body">
-                      <span class="room-name">{{ room.name }}</span>
-                      <span class="room-area">{{ formatNumber(room.area) }}㎡</span>
-                      <span class="room-meta">{{ statusLabel(room.status) }} · {{ formatNumber(room.rentPrice) }}元/月</span>
-                      <span class="room-sync">{{ room.syncStatus === '1' ? '已同步' : '待同步' }}</span>
-                    </span>
-                  </button>
+                    <button
+                      v-for="room in roomRow"
+                      :key="room.id"
+                      type="button"
+                      class="room-tile"
+                      :class="'status-' + normalizeStatus(room.status)"
+                      :style="roomTileStyle(room, floor)"
+                      @click="openRoom(room)"
+                    >
+                      <span class="room-cover">
+                        <el-image v-if="roomCoverImage(room)" :src="roomCoverImage(room)" fit="cover" />
+                        <span v-else class="room-cover__empty">暂无实景图</span>
+                      </span>
+                      <span class="room-tile__body">
+                        <span class="room-name">{{ room.name }}</span>
+                        <span class="room-area">{{ formatNumber(room.area) }}㎡</span>
+                        <span class="room-meta">{{ statusLabel(room.status) }} · {{ formatNumber(room.rentPrice) }}元/月</span>
+                        <span class="room-sync">{{ room.syncStatus === '1' ? '已同步' : '待同步' }}</span>
+                      </span>
+                    </button>
+                  </div>
                 </div>
               </section>
             </template>
-          </el-tab-pane>
+            </el-tab-pane>
 
-          <el-tab-pane v-if="!isFloorSelection" label="工单记录" name="workorders" lazy>
+            <el-tab-pane v-if="!isFloorSelection" label="工单记录" name="workorders" lazy>
             <EnterprisePropertyWorkorder
               embedded
               :park-id="query.parkId"
               :filter-room-ids="workorderFilterRoomIds"
               :default-room-info="workorderDefaultRoomInfo"
             />
-          </el-tab-pane>
+            </el-tab-pane>
 
-          <el-tab-pane v-if="!isFloorSelection" label="资产记录" name="assets" lazy>
+            <el-tab-pane v-if="!isFloorSelection" label="资产记录" name="assets" lazy>
             <AssetLedger
               :park-id="query.parkId"
               :building-id="query.buildingId"
               :floor-no="query.floorNo"
             />
-          </el-tab-pane>
-          <el-tab-pane v-if="!isFloorSelection" label="智能水电表" name="meters" lazy>
+            </el-tab-pane>
+            <el-tab-pane v-if="!isFloorSelection" label="智能水电表" name="meters" lazy>
             <SmartDeviceLedger
               :park-id="query.parkId"
               :building-id="query.buildingId"
               :floor-no="query.floorNo"
             />
-          </el-tab-pane>
-          <el-tab-pane v-if="!isFloorSelection" label="楼宇信息" name="building">
+            </el-tab-pane>
+            <el-tab-pane v-if="!isFloorSelection" label="楼宇信息" name="building">
             <el-empty v-if="!currentBuilding.id" description="请从左侧选择具体楼宇" />
             <section v-else class="building-profile">
               <div class="building-profile-section">
@@ -290,8 +338,9 @@
                 <el-empty v-else description="暂无楼宇图片，可在楼宇管理中上传" :image-size="72" />
               </div>
             </section>
-          </el-tab-pane>
-        </el-tabs>
+            </el-tab-pane>
+          </el-tabs>
+        </div>
       </main>
     </div>
 
@@ -393,6 +442,52 @@
       </template>
     </el-drawer>
 
+    <el-drawer
+      v-model="roomWorkbenchVisible"
+      class="room-workbench-drawer"
+      size="60%"
+      direction="rtl"
+      :with-header="false"
+      destroy-on-close
+    >
+      <div class="room-workbench-drawer__header">
+        <div>
+          <div class="room-workbench-drawer__title">{{ drawerRoomTitle }}</div>
+          <div class="room-workbench-drawer__subtitle">{{ drawerRoomSubtitle }}</div>
+        </div>
+        <div class="room-workbench-drawer__actions">
+          <el-button
+            v-if="permission.rent_control_room_delete"
+            :icon="Delete"
+            type="danger"
+            plain
+            @click="handleDeleteRoom(drawerRoomDetail)"
+          >
+            删除
+          </el-button>
+          <el-button
+            v-if="permission.rent_control_room_edit"
+            :icon="Edit"
+            type="primary"
+            @click="handleEditRoom(drawerRoomDetail)"
+          >
+            编辑
+          </el-button>
+        </div>
+      </div>
+      <RoomWorkbench
+        v-if="roomWorkbenchVisible && drawerRoomId"
+        :key="`drawer-${drawerRoomId}-${roomRevision}`"
+        :room-id="drawerRoomId"
+        :park-id="drawerRoomParkId"
+        :building-id="drawerRoomBuildingId"
+        :floor-no="drawerRoomFloorNo"
+        :park-name="drawerRoomParkName"
+        :building-name="drawerRoomBuildingName"
+        @loaded="handleDrawerRoomLoaded"
+      />
+    </el-drawer>
+
     <el-drawer v-model="roomDetailVisible" title="房源详情" size="460px">
       <section v-if="roomDetail.id" class="room-detail">
         <div><span>房间名称</span><strong>{{ roomDetail.name }}</strong></div>
@@ -465,7 +560,7 @@ import {
   submitRoom,
   syncRoomMini,
 } from '@/api/park/rent-control';
-import { Collection, Delete, Edit, House, OfficeBuilding, Plus, Refresh, RefreshRight, Search, Upload } from '@element-plus/icons-vue';
+import { Collection, Delete, Edit, House, OfficeBuilding, Plus, Refresh, RefreshRight, Upload, UserFilled } from '@element-plus/icons-vue';
 import { getToken } from '@/utils/auth';
 import EnterprisePropertyWorkorder from '@/views/enterprise/property-workorder.vue';
 import AssetLedger from './asset-ledger.vue';
@@ -473,10 +568,10 @@ import RoomWorkbench from './room-workbench.vue';
 import SmartDeviceLedger from './smart-device.vue';
 
 export default {
-  components: { AssetLedger, Collection, EnterprisePropertyWorkorder, House, OfficeBuilding, RoomWorkbench, SmartDeviceLedger },
+  components: { AssetLedger, Collection, EnterprisePropertyWorkorder, House, OfficeBuilding, RoomWorkbench, SmartDeviceLedger, UserFilled },
   data() {
     return {
-      Search,
+      UserFilled,
       Plus,
       Refresh,
       RefreshRight,
@@ -493,6 +588,10 @@ export default {
       selectedRoom: {},
       selectedRoomDetail: {},
       roomRevision: 0,
+      roomWorkbenchVisible: false,
+      drawerRoomId: undefined,
+      drawerRoom: {},
+      drawerRoomDetail: {},
       query: {
         parkId: undefined,
         buildingId: undefined,
@@ -504,7 +603,8 @@ export default {
       },
       searchTypeOptions: [
         { label: '房号', value: 'room' },
-        { label: '建筑', value: 'building' },
+        { label: '租客名', value: 'tenant' },
+        { label: '手机号', value: 'mobile' },
       ],
       statusOptions: [
         { label: '空置', value: '0' },
@@ -521,6 +621,10 @@ export default {
         { label: '待清退/短租', value: '1' },
         { label: '预留', value: '2' },
         { label: '待退出', value: '3' },
+        { label: '90天内到期', value: '4' },
+        { label: '30天内到期', value: '5' },
+        { label: '已到期', value: '6' },
+        { label: '已出租', value: '7' },
       ],
       orientationOptions: ['朝南', '朝北', '朝东', '朝西', '南北通透'],
       treeProps: {
@@ -608,6 +712,32 @@ export default {
         }),
       }));
     },
+    hasSearchKeyword() {
+      return String(this.query.keyword || '').trim().length > 0;
+    },
+    searchPlaceholder() {
+      const option = this.searchTypeOptions.find(item => item.value === this.query.searchType);
+      return `请输入${option ? option.label : '房号'}`;
+    },
+    searchResultRooms() {
+      const roomMap = new Map();
+      (this.floors || []).forEach(floor => {
+        (floor.rooms || []).forEach(room => {
+          if (!room || !room.id || roomMap.has(String(room.id))) {
+            return;
+          }
+          roomMap.set(String(room.id), {
+            ...room,
+            floor: room.floor || room.floorNo || floor.floor,
+            floorNo: room.floorNo || room.floor || floor.floor,
+            buildingId: room.buildingId || floor.buildingId,
+            buildingName: room.buildingName || floor.buildingName,
+            parkName: room.parkName || this.currentPark.name,
+          });
+        });
+      });
+      return Array.from(roomMap.values());
+    },
     currentTitle() {
       if (this.isRoomSelection) {
         return this.selectedRoomDetail.name || this.selectedRoom.name || '房源信息';
@@ -619,7 +749,11 @@ export default {
     },
     currentSubtitle() {
       if (this.isRoomSelection) {
-        return [this.currentPark.name, this.currentBuilding.name, this.query.floorNo ? `${this.query.floorNo}层` : '']
+        return [
+          this.selectedRoomDetail.parkName || this.selectedRoom.parkName || this.currentPark.name,
+          this.selectedRoomDetail.buildingName || this.selectedRoom.buildingName || this.currentBuilding.name,
+          this.query.floorNo ? `${this.query.floorNo}层` : '',
+        ]
           .filter(Boolean)
           .join(' · ');
       }
@@ -633,6 +767,29 @@ export default {
     },
     isRoomSelection() {
       return this.selectedRoomId !== undefined && this.selectedRoomId !== null && this.selectedRoomId !== '';
+    },
+    drawerRoomTitle() {
+      return this.drawerRoomDetail.name || this.drawerRoom.name || '房源详情';
+    },
+    drawerRoomSubtitle() {
+      return [this.drawerRoomParkName, this.drawerRoomBuildingName, this.drawerRoomFloorNo ? `${this.drawerRoomFloorNo}层` : '']
+        .filter(Boolean)
+        .join(' · ');
+    },
+    drawerRoomParkId() {
+      return this.drawerRoomDetail.parkId || this.drawerRoom.parkId || this.query.parkId;
+    },
+    drawerRoomBuildingId() {
+      return this.drawerRoomDetail.buildingId || this.drawerRoom.buildingId || this.query.buildingId;
+    },
+    drawerRoomFloorNo() {
+      return this.drawerRoomDetail.floorNo || this.drawerRoomDetail.floor || this.drawerRoom.floorNo || this.drawerRoom.floor || this.query.floorNo;
+    },
+    drawerRoomParkName() {
+      return this.drawerRoomDetail.parkName || this.drawerRoom.parkName || this.currentPark.name;
+    },
+    drawerRoomBuildingName() {
+      return this.drawerRoomDetail.buildingName || this.drawerRoom.buildingName || this.currentBuilding.name;
     },
     buildingBasicInfoItems() {
       return [
@@ -800,6 +957,34 @@ export default {
         this.allBuildings = res.data.data || [];
       });
     },
+    handleSearchTypeChange() {
+      if (this.hasSearchKeyword) {
+        this.handleSearch();
+      }
+    },
+    handleSearch() {
+      this.clearRoomSelection();
+      this.roomWorkbenchVisible = false;
+      this.query.buildingId = undefined;
+      this.query.floorNo = undefined;
+      this.activeTab = 'rooms';
+      this.loadBoard();
+    },
+    handleSearchClear() {
+      this.clearRoomSelection();
+      this.roomWorkbenchVisible = false;
+      this.loadBoard();
+    },
+    handleSearchRoomClick(room) {
+      this.selectRoom(room);
+    },
+    searchRoomNo(room = {}) {
+      const floorNo = room.floorNo || room.floor;
+      return [floorNo ? `${floorNo}层` : '', room.name || '-'].filter(Boolean).join(' / ');
+    },
+    searchRoomBuilding(room = {}) {
+      return [room.parkName || this.currentPark.name, room.buildingName || '-'].filter(Boolean).join(' / ');
+    },
     getTreeParks() {
       return this.treeParks.length ? this.treeParks : this.parks;
     },
@@ -958,6 +1143,50 @@ export default {
       const option = this.statusOptions.find(item => item.value === this.normalizeStatus(status));
       return option ? option.label : '空置';
     },
+    splitFloorRoomRows(floor = {}) {
+      const rooms = Array.isArray(floor.rooms) ? floor.rooms : [];
+      if (rooms.length <= 4) {
+        return [rooms];
+      }
+
+      const roomAreas = rooms.map(room => Math.max(Number(room.area || 0), 1));
+      const totalArea = roomAreas.reduce((total, area) => total + area, 0);
+      const lowerSplit = Math.floor(rooms.length / 2);
+      const upperSplit = Math.ceil(rooms.length / 2);
+      let firstRowCount = upperSplit;
+      let bestAreaDifference = Number.POSITIVE_INFINITY;
+
+      for (let split = lowerSplit; split <= upperSplit; split += 1) {
+        const firstRowArea = roomAreas.slice(0, split).reduce((total, area) => total + area, 0);
+        const areaDifference = Math.abs(totalArea - firstRowArea * 2);
+        if (areaDifference < bestAreaDifference) {
+          bestAreaDifference = areaDifference;
+          firstRowCount = split;
+        }
+      }
+
+      return [
+        rooms.slice(0, firstRowCount),
+        rooms.slice(firstRowCount),
+      ].filter(row => row.length);
+    },
+    roomTileStyle(room = {}, floor = {}) {
+      const rooms = Array.isArray(floor.rooms) ? floor.rooms : [];
+      const maxArea = rooms
+        .map(item => Number(item.area || 0))
+        .filter(area => area > 0)
+        .reduce((max, area) => Math.max(max, area), 0);
+      const area = Number(room.area || 0);
+      if (!maxArea || !area) {
+        return {};
+      }
+      const width = Math.round(210 + (area / maxArea) * 220);
+      return {
+        flexBasis: `${Math.min(Math.max(width, 210), 430)}px`,
+        flexGrow: Math.max(area, 1),
+        flexShrink: 1,
+      };
+    },
     floorRowKey(floor, index) {
       return `${floor.buildingId || 'building'}-${floor.floor || index}`;
     },
@@ -984,8 +1213,13 @@ export default {
       this.roomFormVisible = true;
     },
     openRoom(room) {
-      this.selectRoom(room);
-      this.loadBoard();
+      this.drawerRoomId = room.roomId || room.id;
+      this.drawerRoom = { ...room };
+      this.drawerRoomDetail = { ...room };
+      this.roomWorkbenchVisible = true;
+    },
+    handleDrawerRoomLoaded(room) {
+      this.drawerRoomDetail = room || { ...this.drawerRoom };
     },
     handleEditRoom(room) {
       this.roomForm = Object.assign(this.emptyRoomForm(), room);
@@ -999,6 +1233,7 @@ export default {
       this.roomImageFileList = this.parseRoomImageFiles(this.roomForm.sceneImages);
       this.roomDetail = Object.assign({}, room);
       this.roomDetailVisible = false;
+      this.roomWorkbenchVisible = false;
       this.syncCurrentBuildingFloors();
       this.syncFloorAreaInfo();
       this.roomFormVisible = true;
@@ -1013,6 +1248,12 @@ export default {
         .then(() => {
           ElMessage.success('删除成功');
           this.roomDetailVisible = false;
+          if (String(this.drawerRoomId || '') === String(room.id || '')) {
+            this.roomWorkbenchVisible = false;
+            this.drawerRoomId = undefined;
+            this.drawerRoom = {};
+            this.drawerRoomDetail = {};
+          }
           if (String(this.selectedRoomId || '') === String(room.id || '')) {
             this.clearRoomSelection();
             this.activeTab = 'rooms';
@@ -1024,12 +1265,12 @@ export default {
     },
     handleChangeRoomStatus(room) {
       const currentStatus = this.normalizeBaseStatus(room.baseStatus || room.status);
-      ElMessageBox.prompt('请输入目标状态：0空置、1待清退/短租、2预留、3待退出', '状态流转', {
+      ElMessageBox.prompt('请输入目标状态：0空置、1待清退/短租、2预留、3待退出、4为90天内到期、5为30天内到期、6为已到期、7为已出租', '状态流转', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         inputValue: currentStatus,
-        inputPattern: /^[0-3]$/,
-        inputErrorMessage: '状态值必须为 0-3',
+        inputPattern: /^[0-7]$/,
+        inputErrorMessage: '状态值必须为 0-7',
       })
         .then(({ value }) => changeRoomStatus(room.id, value))
         .then(() => {
@@ -1041,7 +1282,7 @@ export default {
         });
     },
     normalizeBaseStatus(status) {
-      return ['0', '1', '2', '3'].includes(String(status)) ? String(status) : '0';
+      return ['0', '1', '2', '3', '4', '5', '6', '7'].includes(String(status)) ? String(status) : '0';
     },
     handleSyncRoom(room) {
       syncRoomMini(room.id).then(() => {
@@ -1114,7 +1355,7 @@ export default {
         if (
           this.currentFloorRemainArea !== null &&
           this.roomForm.area !== undefined &&
-          Number(this.roomForm.area || 0) > Number(this.currentFloorRemainArea || 0)
+          Math.round(Number(this.roomForm.area || 0) * 100) > Math.round(Number(this.currentFloorRemainArea || 0) * 100)
         ) {
           ElMessage.warning(`房源面积不能超过当前楼层剩余面积 ${this.formatNumber(this.currentFloorRemainArea)}㎡`);
           return;
@@ -1232,27 +1473,131 @@ export default {
   display: grid;
   grid-template-columns: 276px minmax(0, 1fr);
   gap: 14px;
-  min-height: calc(100vh - 160px);
-}
-
-.rent-sidebar {
-  border: 1px solid #ebeef5;
-  border-radius: 6px;
-  background: #fff;
+  height: calc(100vh - 160px);
   min-height: 620px;
   overflow: hidden;
 }
 
+.rent-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden;
+}
+
 .side-search {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
+  padding: 14px 12px 10px;
   border-bottom: 1px solid #ebeef5;
 }
 
+.side-search-bar {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr) 48px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.side-search-type,
+.side-search-input {
+  width: 100%;
+}
+
+.side-search-bar :deep(.el-select__wrapper),
+.side-search-bar :deep(.el-input__wrapper) {
+  min-height: 30px;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.side-search-type :deep(.el-select__wrapper) {
+  background: #f5f7fa;
+  border-right: 1px solid #dcdfe6;
+}
+
+.side-search-input :deep(.el-input__wrapper) {
+  padding-left: 8px;
+}
+
+.side-search-button {
+  width: 48px;
+  height: 32px;
+  border-radius: 0;
+  padding: 0;
+}
+
 .tree-scroll {
-  height: 560px;
+  flex: 1;
+  min-height: 0;
   padding: 8px;
+}
+
+.search-result-scroll {
+  flex: 1;
+  min-height: 0;
+  padding: 8px 12px;
+}
+
+.search-result-empty {
+  padding: 28px 0;
+  color: #909399;
+  font-size: 13px;
+  text-align: center;
+}
+
+.room-search-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 18px;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 4px;
+  border: 0;
+  border-bottom: 1px solid #dcdfe6;
+  background: transparent;
+  color: #606266;
+  text-align: left;
+  cursor: pointer;
+}
+
+.room-search-item:hover,
+.room-search-item.is-active {
+  background: #ecf5ff;
+}
+
+.room-search-item > .el-icon {
+  margin-top: 4px;
+  color: #4b5563;
+  font-size: 16px;
+}
+
+.room-search-item__body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.room-search-item__body span,
+.room-search-item__body em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-search-item__body em {
+  color: #303133;
+  font-style: normal;
+}
+
+.room-search-item .room-search-item__tenant {
+  color: #52c41a;
+  font-size: 14px;
 }
 
 .rent-tree-node {
@@ -1284,11 +1629,16 @@ export default {
 }
 
 .rent-main {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .rent-header {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -1317,12 +1667,63 @@ export default {
   width: 118px;
 }
 
+.rent-tabs-shell {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.room-add-tab-button {
+  position: absolute;
+  top: -9px;
+  right: 10px;
+  z-index: 8;
+  height: 32px;
+}
+
 .rent-main :deep(.el-tabs__nav) {
   display: flex;
 }
 
+.rent-main :deep(.el-tabs) {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.rent-main :deep(.el-tabs__header) {
+  flex: 0 0 auto;
+  min-height: 46px;
+  margin-bottom: 0;
+  padding-right: 150px;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.rent-main :deep(.el-tabs__nav-wrap) {
+  min-height: 46px;
+}
+
+.rent-main :deep(.el-tabs__nav-wrap::after) {
+  display: none;
+}
+
+.rent-main :deep(.el-tabs__content) {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-top: 10px;
+}
+
 .rent-main :deep(#tab-rooms) {
   order: -1;
+  padding-left: 0;
+}
+
+.rent-main :deep(#tab-overview) {
+  padding-left: 20px;
 }
 
 .floor-only-tabs :deep(.el-tabs__header) {
@@ -1330,7 +1731,7 @@ export default {
 }
 
 .floor-only-tabs :deep(.el-tabs__content) {
-  padding-top: 4px;
+  padding-top: 0;
 }
 
 .metric-grid {
@@ -1428,7 +1829,9 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
+  padding: 0 0 4px;
+  background: #fff;
 }
 
 .status-legend {
@@ -1490,17 +1893,26 @@ export default {
 
 .room-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  overflow: hidden;
+  padding: 10px;
+}
+
+.room-grid-line {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
 }
 
 .room-tile {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
-  gap: 10px;
-  min-height: 112px;
-  padding: 9px;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 8px;
+  min-height: 98px;
+  flex: 0 0 210px;
+  min-width: 0;
+  padding: 8px;
   border: 1px solid #dcdfe6;
   border-radius: 6px;
   background: #fff;
@@ -1510,8 +1922,8 @@ export default {
 
 .room-cover {
   display: flex;
-  width: 92px;
-  height: 92px;
+  width: 82px;
+  height: 82px;
   align-items: center;
   justify-content: center;
   overflow: hidden;
@@ -1538,12 +1950,17 @@ export default {
   min-width: 0;
   grid-template-rows: repeat(4, auto);
   align-content: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .room-tile:hover {
   border-color: #409eff;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.room-tile:hover .room-cover {
+  border-color: #409eff;
+  box-shadow: 0 0 0 1px rgba(64, 158, 255, 0.18);
 }
 
 .room-name {
@@ -1620,6 +2037,12 @@ export default {
 
 .room-tile.status-7 {
   border-left: 4px solid #22c55e;
+}
+
+.room-tile:hover {
+  border: 1px solid #409eff;
+  padding-left: 11px;
+  outline: none;
 }
 
 .building-profile {
@@ -1736,17 +2159,79 @@ export default {
   overflow: hidden;
 }
 
+:deep(.room-workbench-drawer) {
+  max-width: calc(100vw - 486px);
+}
+
+:deep(.room-workbench-drawer .el-drawer__body) {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  background: #f4f4f6;
+}
+
+.room-workbench-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid #e4e7ed;
+  background: #fff;
+}
+
+.room-workbench-drawer__title {
+  color: #303133;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.room-workbench-drawer__subtitle {
+  margin-top: 6px;
+  color: #909399;
+  font-size: 13px;
+}
+
+.room-workbench-drawer__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.room-workbench-drawer__actions :deep(.el-button) {
+  min-width: 76px;
+  height: 34px;
+  padding: 0 16px;
+  font-size: 13px;
+}
+
+:deep(.room-workbench-drawer .room-workbench) {
+  flex: 1;
+  min-height: 0;
+  padding: 14px 24px 24px;
+  overflow: auto;
+}
+
 @media (max-width: 1100px) {
   .rent-control-page {
     grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
   }
 
   .rent-sidebar {
     min-height: auto;
   }
 
-  .tree-scroll {
+  .tree-scroll,
+  .search-result-scroll {
     height: 260px;
+    flex: none;
+  }
+
+  :deep(.room-workbench-drawer) {
+    max-width: calc(100vw - 140px);
   }
 
   .metric-grid,

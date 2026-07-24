@@ -18,6 +18,7 @@ import org.springblade.core.tool.jackson.JsonUtil;
 import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.FileUtil;
 import org.springblade.core.tool.utils.Func;
+import org.springblade.core.tool.support.Kv;
 import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.business.mapper.BusinessOpportunityMapper;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunity;
@@ -29,6 +30,7 @@ import org.springblade.modules.business.service.ITagService;
 import org.springblade.modules.approval.service.impl.WorkflowApprovalTraceService;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractTemplateRenderService;
+import org.springblade.modules.contract.service.impl.ContractDocumentPreviewService;
 import org.springblade.modules.resource.builder.OssBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,13 +62,14 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	private static final String STATUS_INITIAL = "INITIAL";
 	private static final String STATUS_DEAL = "DEAL";
 	private static final String BUSINESS_TYPE_TENANT_ENTRY = "tenant_entry";
-	private static final String TEMPLATE_TENANT_ENTRY_APPROVAL = "君联大厦招商管理办法2023/附件一：企业入驻审批表.xlsx";
+	private static final String TEMPLATE_TENANT_ENTRY_APPROVAL = "君联大厦招商管理办法2023/附件一：企业入驻审批表.docx";
 
 	private final ITagService tagService;
 	private final OssBuilder ossBuilder;
 	private final HistoryService historyService;
 	private final WorkflowApprovalTraceService workflowApprovalTraceService;
 	private final IContractTemplateRenderService contractTemplateRenderService;
+	private final ContractDocumentPreviewService contractDocumentPreviewService;
 
 	@Override
 	public BusinessOpportunity selectBusinessOpportunityById(Long opportunityId) {
@@ -306,6 +309,9 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (Func.isEmpty(opportunity)) {
 			throw new ServiceException("商机不存在");
 		}
+		if (Func.isEmpty(opportunity.getParkId())) {
+			throw new ServiceException("请先在商机管理中选择所属园区");
+		}
 		assertApprovalTablesReady();
 		Long selectedFlowId = baseMapper.selectApprovalFlowId(opportunity.getParkId(), flowId);
 		if (Func.isEmpty(selectedFlowId)) {
@@ -332,6 +338,34 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 
 	@Override
 	public ContractNoticeFileVO exportTenantEntryApprovalForm(Long opportunityId, String processInsId) {
+		return buildTenantEntryApprovalDocument(opportunityId, processInsId).document();
+	}
+
+	@Override
+	public Kv previewTenantEntryApprovalForm(Long opportunityId, String processInsId) {
+		TenantEntryApprovalDocument preview = buildTenantEntryApprovalDocument(opportunityId, processInsId);
+		Map<String, String> summary = new LinkedHashMap<>();
+		summary.put("企业名称", value(preview.opportunity().getEnterpriseName()));
+		summary.put("文件格式", "Word");
+		List<String> missingFields = List.of("企业名称", "经营范围", "负责人", "联系方式")
+			.stream()
+			.filter(field -> StringUtil.isBlank(preview.fields().get(field)))
+			.toList();
+		ContractNoticeFileVO document = preview.document();
+		return Kv.create()
+			.set("noticeType", document.getNoticeType())
+			.set("noticeName", document.getNoticeName())
+			.set("fileName", document.getFileName())
+			.set("contentType", document.getContentType())
+			.set("generatedAt", document.getGeneratedAt())
+			.set("summary", summary)
+			.set("fields", preview.fields())
+			.set("missingFields", missingFields)
+			.set("previewMode", "document")
+			.set("html", contractDocumentPreviewService.render(document, summary, missingFields));
+	}
+
+	private TenantEntryApprovalDocument buildTenantEntryApprovalDocument(Long opportunityId, String processInsId) {
 		BusinessOpportunity opportunity = selectBusinessOpportunityById(opportunityId);
 		if (Func.isEmpty(opportunity)) {
 			throw new ServiceException("商机不存在");
@@ -341,7 +375,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		variables.put("applyUserName", firstNotBlank(opportunity.getCreateBy(), currentUserName()));
 		Map<String, String> fields = createTenantEntryApprovalFields(opportunity, variables);
 		fields.putAll(workflowApprovalTraceService.approvalFields(resolvedProcessInsId));
-		return contractTemplateRenderService.render(
+		ContractNoticeFileVO document = contractTemplateRenderService.render(
 			"tenant_entry_approval",
 			"企业入驻审批表",
 			TEMPLATE_TENANT_ENTRY_APPROVAL,
@@ -349,6 +383,12 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 			fields,
 			Collections.emptyMap()
 		);
+		return new TenantEntryApprovalDocument(opportunity, fields, document);
+	}
+
+	private record TenantEntryApprovalDocument(BusinessOpportunity opportunity,
+										 Map<String, String> fields,
+										 ContractNoticeFileVO document) {
 	}
 
 	private Map<String, String> createTenantEntryApprovalFields(BusinessOpportunity opportunity, Map<String, Object> variables) {
