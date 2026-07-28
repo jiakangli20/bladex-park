@@ -156,8 +156,8 @@
             </div>
             <div class="bill-drawer-actions">
               <el-button :disabled="!detailRow.contractId" @click="openContract(detailRow)">查看合同</el-button>
-              <el-button type="primary" plain :disabled="!detailRow.paymentId" @click="handleGeneratePaymentNotice(detailRow)">
-                生成缴费通知单
+              <el-button type="primary" plain :disabled="!detailRow.paymentId" @click="openApplicationWorkflow(detailRow)">
+                {{ applicationActionLabel }}
               </el-button>
             </div>
           </div>
@@ -217,25 +217,127 @@
                 <el-table-column prop="remark" label="账单备注" min-width="160" align="center" show-overflow-tooltip />
               </el-table>
             </section>
+
+            <section class="bill-detail-section bill-detail-lines bill-application-files">
+              <div class="bill-detail-section__title">审批生成文件</div>
+              <el-table :data="applicationFileRows" border class="bill-detail-table">
+                <el-table-column prop="name" label="文件类型" width="180" align="center" />
+                <el-table-column prop="status" label="审批状态" width="150" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="workflowStatusType(row.status)" effect="plain">
+                      {{ workflowStatusText(row.status) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="currentNode" label="当前节点" width="180" align="center" class-name="bill-current-node-column">
+                  <template #default="{ row }">
+                    <span class="bill-current-node">{{ row.currentNode }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="fileName" label="生成文件" min-width="360" align="center" class-name="bill-file-name-column">
+                  <template #default="{ row }">
+                    <span class="bill-file-name">{{ row.fileName }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="132" align="center">
+                  <template #default="{ row }">
+                    <div class="bill-file-actions">
+                      <el-button text type="primary" :disabled="!row.fileUrl" @click="previewApplicationFile(row)">预览</el-button>
+                      <el-button text type="primary" :disabled="!row.fileUrl" @click="downloadApplicationFile(row)">下载</el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </section>
           </template>
           <el-empty v-else description="暂无账单详情" />
         </div>
       </el-drawer>
+
+      <el-dialog
+        v-model="workflowVisible"
+        :title="workflowDialogTitle"
+        width="640px"
+        append-to-body
+        destroy-on-close
+        @closed="resetWorkflowDialog"
+      >
+        <div class="bill-workflow-dialog">
+          <section class="bill-workflow-summary">
+            <div v-for="item in workflowSummaryItems" :key="item.label">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
+          </section>
+          <el-form :model="workflowForm" label-width="96px">
+            <el-form-item label="审批流程" required>
+              <el-select
+                v-model="workflowForm.processDefKey"
+                filterable
+                :loading="workflowLoading"
+                :placeholder="workflowProcessPlaceholder"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in workflowProcessOptions"
+                  :key="`${item.id || item.key}-${item.version || ''}`"
+                  :label="workflowProcessLabel(item)"
+                  :value="item.key"
+                />
+              </el-select>
+            </el-form-item>
+          </el-form>
+        </div>
+        <template #footer>
+          <el-button @click="workflowVisible = false">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="workflowLoading"
+            :disabled="!workflowForm.processDefKey || workflowLoading"
+            @click="goApplicationWorkflow"
+          >
+            发起申请
+          </el-button>
+        </template>
+      </el-dialog>
+
+      <notice-preview-dialog
+        v-model="noticePreview.visible"
+        :title="noticePreview.title"
+        :html="noticePreview.html"
+        :loading="noticePreview.loading"
+        :download-url="noticePreview.downloadUrl"
+        @download="downloadNoticePreviewFile"
+      />
     </div>
   </basic-container>
 </template>
 
 <script>
+import { Base64 } from 'js-base64';
+import { mapGetters } from 'vuex';
+import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
+import { getWorkflowRecords } from '@/api/contract/contract';
 import { noticePrintUrl } from '@/api/contract/print';
-import { generateContractNotice, getPaymentDetail, getPaymentPage, getPaymentSummary, updatePaymentDeadline } from '@/api/ics/payment';
+import { getPaymentDetail, getPaymentPage, getPaymentSummary, updatePaymentDeadline } from '@/api/ics/payment';
 import { payStatusDic } from '@/option/finance/payment';
-import { downloadNoticeFile } from '@/utils/contract-notice';
+import {
+  createNoticePreviewState,
+  downloadNoticeFile,
+  openNoticePreview,
+} from '@/utils/contract-notice';
+import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
 import BillCreateDrawer from './components/bill-create-drawer.vue';
+
+const PAYMENT_WORKFLOW_BUSINESS_TYPE = 'contract_payment';
+const PAYMENT_APPLICATION_TEMPLATE = 'payment-notice';
+const INVOICE_APPLICATION_TEMPLATE = 'invoice-apply';
 
 export default {
   name: 'FinanceBillsAll',
   components: {
     BillCreateDrawer,
+    NoticePreviewDialog,
   },
   data() {
     return {
@@ -254,6 +356,15 @@ export default {
       createDirection: 'receivable',
       detailDeadline: '',
       detailRow: {},
+      workflowVisible: false,
+      workflowLoading: false,
+      workflowRow: {},
+      workflowProcessOptions: [],
+      workflowExistingRecord: {},
+      workflowForm: {
+        processDefKey: '',
+      },
+      noticePreview: createNoticePreviewState(),
       data: [],
       selectionList: [],
       summary: {},
@@ -270,8 +381,35 @@ export default {
     };
   },
   computed: {
+    ...mapGetters(['userInfo']),
     isPayable() {
       return this.direction === 'payable';
+    },
+    applicationActionLabel() {
+      return this.isPayable ? '付款申请' : '开票申请';
+    },
+    workflowIsPayable() {
+      return String((this.workflowRow || {}).direction || this.direction) === 'payable';
+    },
+    workflowDialogTitle() {
+      return this.workflowIsPayable ? '发起付款申请' : '发起开票申请';
+    },
+    workflowProcessPlaceholder() {
+      return this.workflowIsPayable ? '请选择已部署的付款申请流程' : '请选择已部署的开票申请流程';
+    },
+    workflowTemplateKey() {
+      return this.workflowIsPayable ? PAYMENT_APPLICATION_TEMPLATE : INVOICE_APPLICATION_TEMPLATE;
+    },
+    workflowSummaryItems() {
+      const row = this.workflowRow || {};
+      return [
+        { label: '对方名称', value: row.customerName || '-' },
+        { label: '合同编号', value: row.contractNo || '-' },
+        { label: '费用类型', value: row.feeName || '-' },
+        { label: this.workflowIsPayable ? '申请付款金额' : '申请开票金额', value: this.formatMoney(row.amountDue) },
+        { label: '账单方向', value: this.workflowIsPayable ? '付款' : '收款' },
+        { label: '申请状态', value: this.workflowStatusText((this.workflowExistingRecord || {}).processStatus) },
+      ];
     },
     amountDueLabel() {
       return this.isPayable ? '应付金额' : '应收金额';
@@ -377,6 +515,29 @@ export default {
           periodStart: row.periodStart || '-',
           periodEnd: row.periodEnd || '-',
           remark: row.remark || '-',
+        },
+      ];
+    },
+    applicationFileRows() {
+      const row = this.detailRow || {};
+      const payable = String(row.direction || this.direction) === 'payable';
+      const status = payable ? row.paymentApprovalStatus : row.invoiceApprovalStatus;
+      const fileUrl = payable ? row.paymentFileUrl : row.invoiceFileUrl;
+      const fileLabel = payable ? '付款通知单' : '开票申请单';
+      const resolvedFileUrl = fileUrl || (status === 'approved'
+        ? noticePrintUrl(payable ? PAYMENT_APPLICATION_TEMPLATE : INVOICE_APPLICATION_TEMPLATE, {
+            paymentId: row.paymentId,
+            contractId: row.contractId,
+          })
+        : '');
+      return [
+        {
+          name: fileLabel,
+          status: status || '',
+          currentNode: (payable ? row.paymentCurrentNodeName : row.invoiceCurrentNodeName) || '-',
+          fileUrl: resolvedFileUrl,
+          fileName: resolvedFileUrl ? `${row.contractNo || `ZD${row.paymentId}`}-${fileLabel}.docx` : '审批完成后自动生成',
+          templateKey: payable ? PAYMENT_APPLICATION_TEMPLATE : INVOICE_APPLICATION_TEMPLATE,
         },
       ];
     },
@@ -569,26 +730,168 @@ export default {
         },
       });
     },
-    handleGeneratePaymentNotice(row) {
-      if (!row || !row.paymentId) return;
-      const noticeType = 'payment-notice';
-      generateContractNotice({
-        noticeType,
-        paymentId: row.paymentId,
-        contractId: row.contractId,
-      }).then(res => {
-        const file = res.data.data || {};
-        const url =
-          file.fileUrl ||
-          noticePrintUrl(noticeType, {
-            paymentId: row.paymentId,
-            contractId: row.contractId,
-          });
-        const fallbackName = file.fileName || `${row.contractNo ? `${row.contractNo}-` : ''}缴费通知单.docx`;
-        return downloadNoticeFile(url, fallbackName).then(() => {
-          this.$message.success('缴费通知单已生成');
+    openApplicationWorkflow(row) {
+      if (!row || !row.paymentId || !row.contractId) {
+        this.$message.warning('当前账单缺少合同信息，无法发起申请');
+        return;
+      }
+      this.workflowRow = { ...row };
+      this.workflowProcessOptions = [];
+      this.workflowExistingRecord = {};
+      this.workflowForm.processDefKey = '';
+      this.workflowVisible = true;
+      this.workflowLoading = true;
+      Promise.all([
+        getDeploymentList(1, -1, { status: 1 }),
+        getWorkflowRecords(row.contractId),
+      ])
+        .then(([deploymentRes, workflowRes]) => {
+          const deployments = (deploymentRes.data.data || {}).records || [];
+          this.workflowProcessOptions = deployments
+            .filter(item => this.isApplicationWorkflowProcess(item))
+            .sort((a, b) => Number(b.version || 0) - Number(a.version || 0));
+          this.workflowForm.processDefKey = this.resolveApplicationProcessKey(this.workflowProcessOptions);
+
+          const records = workflowRes.data.data || [];
+          this.workflowExistingRecord = records
+            .filter(item => this.isCurrentPaymentWorkflow(item, row.paymentId))
+            .sort((a, b) => Number(b.recordId || 0) - Number(a.recordId || 0))[0] || {};
+          if (this.workflowProcessOptions.length === 0) {
+            this.$message.warning(`未找到可用的${this.workflowIsPayable ? '付款申请' : '开票申请'}流程，请先在部署管理激活流程`);
+          }
+        })
+        .finally(() => {
+          this.workflowLoading = false;
         });
-      });
+    },
+    isApplicationWorkflowProcess(item = {}) {
+      const name = String(item.name || '');
+      const key = String(item.key || '');
+      const formKey = String(item.formKey || '');
+      if (this.workflowIsPayable) {
+        return formKey === 'pay' || key === 'pay' || name.includes('付款');
+      }
+      return formKey === 'invoice' || key === 'invoice' || name.includes('开票');
+    },
+    resolveApplicationProcessKey(options = []) {
+      const formKey = this.workflowIsPayable ? 'pay' : 'invoice';
+      const preferred = options.find(item => item.formKey === formKey)
+        || options.find(item => item.key === formKey)
+        || options[0];
+      return preferred ? preferred.key : '';
+    },
+    isCurrentPaymentWorkflow(record, paymentId) {
+      if (!record || String(record.paymentId || '') !== String(paymentId || '')) return false;
+      if (record.businessType !== PAYMENT_WORKFLOW_BUSINESS_TYPE) return false;
+      const marker = `${record.templateKey || ''}|${record.formKey || ''}|${record.processDefKey || ''}`.toLowerCase();
+      return this.workflowIsPayable
+        ? marker.includes('payment-notice') || marker.includes('|pay|') || marker.endsWith('|pay')
+        : marker.includes('invoice');
+    },
+    workflowStatusText(status) {
+      const map = {
+        running: '审批中',
+        approved: '已完成',
+        rejected: '被驳回',
+        canceled: '已撤回',
+        deleted: '已撤回',
+      };
+      return map[status] || '未发起';
+    },
+    workflowStatusType(status) {
+      const map = {
+        running: 'primary',
+        approved: 'success',
+        rejected: 'danger',
+        canceled: 'info',
+        deleted: 'info',
+      };
+      return map[status] || 'info';
+    },
+    previewApplicationFile(file) {
+      if (!file || !file.fileUrl || !this.detailRow.paymentId) return;
+      openNoticePreview(
+        this,
+        this.noticePreview,
+        {
+          noticeType: file.templateKey,
+          paymentId: this.detailRow.paymentId,
+          contractId: this.detailRow.contractId,
+        },
+        file.fileUrl,
+        file.fileName,
+        `${file.name}预览`
+      );
+    },
+    downloadApplicationFile(file) {
+      if (!file || !file.fileUrl) return;
+      downloadNoticeFile(file.fileUrl, file.fileName);
+    },
+    downloadNoticePreviewFile() {
+      if (!this.noticePreview.downloadUrl) return;
+      downloadNoticeFile(this.noticePreview.downloadUrl, this.noticePreview.fallbackName);
+    },
+    workflowProcessLabel(item = {}) {
+      const name = item.name || item.key || '-';
+      const version = item.version ? ` v${item.version}` : '';
+      const key = item.key ? ` / ${item.key}` : '';
+      return `${name}${version}${key}`;
+    },
+    goApplicationWorkflow() {
+      const row = this.workflowRow || {};
+      const existingStatus = (this.workflowExistingRecord || {}).processStatus;
+      if (existingStatus === 'running') {
+        this.$message.warning(`该账单${this.workflowIsPayable ? '付款申请' : '开票申请'}正在审批中`);
+        return;
+      }
+      if (existingStatus === 'approved') {
+        this.$message.warning(`该账单${this.workflowIsPayable ? '付款申请' : '开票申请'}已审批完成，可在当前账单详情的“审批生成文件”中预览和下载`);
+        return;
+      }
+      if (!row.paymentId || !row.contractId || !this.workflowForm.processDefKey) {
+        this.$message.warning('请选择审批流程');
+        return;
+      }
+      const selectedProcess = this.workflowProcessOptions.find(item => item.key === this.workflowForm.processDefKey) || {};
+      const payload = {
+        processDefKey: this.workflowForm.processDefKey,
+        params: {
+          processDefKey: this.workflowForm.processDefKey,
+          formKey: selectedProcess.formKey || (this.workflowIsPayable ? 'pay' : 'invoice'),
+          businessType: PAYMENT_WORKFLOW_BUSINESS_TYPE,
+          businessTable: 'biz_contract_payment',
+          businessKey: String(row.paymentId),
+          contractId: row.contractId,
+          paymentId: row.paymentId,
+          contractNo: row.contractNo,
+          contractName: row.contractName,
+          customerName: row.customerName,
+          roomName: row.roomName,
+          buildingName: row.buildingName,
+          parkId: row.parkId,
+          feeType: row.feeType,
+          feeName: row.feeName,
+          direction: this.workflowIsPayable ? 'payable' : 'receivable',
+          periodStart: row.periodStart,
+          periodEnd: row.periodEnd,
+          amountDue: row.amountDue,
+          amountPaid: row.amountPaid,
+          payDeadline: row.payDeadline,
+          templateKey: this.workflowTemplateKey,
+          applicant: (this.userInfo || {}).nick_name || (this.userInfo || {}).user_name || '',
+          applicantDept: (this.userInfo || {}).dept_name || '',
+          applyTime: this.formatDateTime(new Date()),
+        },
+      };
+      const encodedParam = encodeURIComponent(Base64.encode(JSON.stringify(payload)));
+      this.workflowVisible = false;
+      this.$router.push(`/plugin/workflow/pages/process/form/start/${encodedParam}`);
+    },
+    resetWorkflowDialog() {
+      this.workflowRow = {};
+      this.workflowProcessOptions = [];
+      this.workflowExistingRecord = {};
+      this.workflowForm.processDefKey = '';
     },
     handleExport() {
       this.$message.info('导出接口预留中，后续接入账单导出服务');
@@ -620,6 +923,11 @@ export default {
       if (!value) return '';
       return String(value).slice(0, 10);
     },
+    formatDateTime(value) {
+      const date = value instanceof Date ? value : new Date(value);
+      const pad = number => String(number).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    },
   },
 };
 </script>
@@ -647,7 +955,7 @@ export default {
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .bill-direction__item {
@@ -1000,6 +1308,52 @@ export default {
   min-height: 0;
 }
 
+.bill-application-files {
+  margin-bottom: 20px;
+}
+
+.bill-file-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.bill-file-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+.bill-file-name {
+  display: inline-block;
+  max-width: none;
+  white-space: nowrap;
+}
+
+.bill-current-node {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.bill-application-files :deep(.bill-current-node-column .cell) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.bill-application-files :deep(.bill-file-name-column .cell) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .bill-detail-drawer :deep(.el-drawer__header) {
   margin: 0;
   padding: 14px 20px;
@@ -1015,9 +1369,50 @@ export default {
   text-align: center;
 }
 
-.bill-detail-table :deep(.el-table__header-wrapper col),
-.bill-detail-table :deep(.el-table__body-wrapper col) {
-  width: auto;
+.bill-workflow-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.bill-workflow-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid #e5e7eb;
+}
+
+.bill-workflow-summary > div {
+  min-width: 0;
+  min-height: 72px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.bill-workflow-summary > div:nth-child(2n) {
+  border-right: 0;
+}
+
+.bill-workflow-summary > div:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.bill-workflow-summary span {
+  color: #909399;
+  font-size: 13px;
+}
+
+.bill-workflow-summary strong {
+  overflow: hidden;
+  color: #303133;
+  font-size: 14px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 1100px) {

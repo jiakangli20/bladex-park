@@ -17,6 +17,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.LineSpacingRule;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
@@ -56,6 +57,7 @@ import java.util.Set;
  */
 @Service
 public class ContractTemplateRenderServiceImpl implements IContractTemplateRenderService {
+	private static final int TERMINATION_APPROVAL_BLOCK_HEIGHT = 1200;
 
 	private static final String MATERIAL_ROOT = "saber3/public/系统所需材料";
 	private static final String CONTENT_TYPE_DOC = "application/msword";
@@ -101,6 +103,7 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 			 XWPFDocument document = new XWPFDocument(input);
 			 ByteArrayOutputStream output = new ByteArrayOutputStream()) {
 				replaceParagraphs(document.getParagraphs(), replacements);
+				replaceStructuredDocumentTagParagraphs(document.getDocument().getDomNode(), replacements);
 				fillInlineFieldParagraphs(document.getParagraphs(), fields);
 				fillSignatureDate(document.getParagraphs(), fields);
 				for (XWPFTable table : document.getTables()) {
@@ -626,6 +629,9 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		if (normalized.startsWith("合同编号：") && normalized.length() > 18) {
 			return 8;
 		}
+		if (normalized.startsWith("合同名称：") && normalized.length() > 22) {
+			return 10;
+		}
 		if (normalized.startsWith("合同事项：") && normalized.length() > 24) {
 			return 8;
 		}
@@ -673,6 +679,14 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		if ("附件八：退租审批表.docx".equals(templateFileName)) {
 			normalizeTerminationApprovalLayout(document);
 		}
+		if ("附件七：项目审批表.docx".equals(templateFileName) && !document.getTables().isEmpty()) {
+			XWPFTable table = document.getTables().get(0);
+			if (table.getNumberOfRows() > 6) {
+				XWPFTableRow approvalContentRow = table.getRow(6);
+				approvalContentRow.setHeight(1600);
+				approvalContentRow.setHeightRule(TableRowHeightRule.AT_LEAST);
+			}
+		}
 		if ("附件四：君联大厦付款通知单.docx".equals(templateFileName)) {
 			for (XWPFParagraph paragraph : document.getParagraphs()) {
 				String text = editableParagraphText(paragraph.getCTP().getDomNode());
@@ -688,12 +702,20 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		}
 		if ("开票申请.docx".equals(templateFileName) && !document.getTables().isEmpty()) {
 			XWPFTable table = document.getTables().get(0);
-			if (table.getNumberOfRows() >= 5) {
+			if (table.getNumberOfRows() >= 4) {
 				XWPFTableRow accountRow = table.getRow(3);
-				accountRow.setHeight(3000);
+				accountRow.setHeight(2600);
 				accountRow.setHeightRule(TableRowHeightRule.AT_LEAST);
-				XWPFTableRow lastRow = table.getRow(4);
-				preserveInvoiceCrossPageRow(lastRow);
+			}
+		}
+		if ("附件九：关于君联大厦租赁合同解除之补充协议.docx".equals(templateFileName)) {
+			for (XWPFParagraph paragraph : document.getParagraphs()) {
+				String text = normalizeLabel(paragraphText(paragraph));
+				if (text.startsWith("乙方（承租方）") || !text.startsWith("乙方") || !text.contains("盖章")) {
+					continue;
+				}
+				paragraph.setPageBreak(true);
+				break;
 			}
 		}
 	}
@@ -702,11 +724,14 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		List<XWPFParagraph> paragraphs = document.getParagraphs();
 		if (!paragraphs.isEmpty()) {
 			XWPFParagraph title = paragraphs.get(0);
-			replaceParagraphTextPreservingStyles(title.getCTP().getDomNode(), paragraphText(title), "退租审批表");
-			title.setAlignment(ParagraphAlignment.CENTER);
+			setParagraphText(title, "退租审批表");
 			if (title.getCTP().getPPr() != null && title.getCTP().getPPr().isSetInd()) {
 				title.getCTP().getPPr().unsetInd();
 			}
+			if (title.getCTP().getPPr() != null && title.getCTP().getPPr().isSetTabs()) {
+				title.getCTP().getPPr().unsetTabs();
+			}
+			title.setAlignment(ParagraphAlignment.CENTER);
 			title.setSpacingBefore(0);
 			title.setSpacingAfter(0);
 		}
@@ -723,6 +748,7 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 			}
 			compactTerminationApprovalRows(table);
 		}
+		compactTrailingParagraphAfterTerminationTable(document);
 		if (document.getDocument().getBody().getSectPr() != null
 			&& document.getDocument().getBody().getSectPr().getPgMar() != null) {
 			document.getDocument().getBody().getSectPr().getPgMar().setTop(BigInteger.valueOf(720));
@@ -730,27 +756,76 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		}
 	}
 
+	private void compactTrailingParagraphAfterTerminationTable(XWPFDocument document) {
+		List<XWPFParagraph> bodyParagraphs = document.getParagraphs();
+		if (bodyParagraphs.isEmpty()) {
+			return;
+		}
+		XWPFParagraph trailing = bodyParagraphs.get(bodyParagraphs.size() - 1);
+		if (StringUtil.isNotBlank(paragraphText(trailing)) || document.getPosOfParagraph(trailing) < 0) {
+			return;
+		}
+		trailing.setSpacingBefore(0);
+		trailing.setSpacingAfter(0);
+		trailing.setSpacingBetween(1, LineSpacingRule.EXACT);
+		XWPFRun run = trailing.getRuns().isEmpty() ? trailing.createRun() : trailing.getRuns().get(0);
+		run.setFontSize(1);
+	}
+
 	private void compactTerminationApprovalRows(XWPFTable table) {
-		for (XWPFTableRow row : table.getRows()) {
-			String text = row.getTableCells().stream().map(this::cellText).reduce("", String::concat);
-			String normalized = normalizeLabel(text);
-			if (!startsWithAny(normalized, "部门", "运营中心", "财务部", "分管领导", "总经理")) {
+		List<XWPFTableRow> rows = table.getRows();
+		for (int rowIndex = 0; rowIndex < rows.size(); ) {
+			String approvalLabel = terminationApprovalLabel(rows.get(rowIndex));
+			if (approvalLabel == null) {
+				rowIndex++;
 				continue;
 			}
-			row.setHeight(600);
-			row.setHeightRule(TableRowHeightRule.AT_LEAST);
-			for (XWPFTableCell cell : row.getTableCells()) {
-				for (int index = cell.getParagraphs().size() - 1; index > 0; index--) {
-					if (normalizeLabel(paragraphText(cell.getParagraphs().get(index))).startsWith("签字")) {
-						cell.removeParagraph(index);
+			int groupEnd = rowIndex + 1;
+			while (groupEnd < rows.size()) {
+				String nextLabel = terminationApprovalLabel(rows.get(groupEnd));
+				if (approvalLabel.equals(nextLabel) || (nextLabel == null && StringUtil.isBlank(terminationApprovalText(rows.get(groupEnd))))) {
+					groupEnd++;
+					continue;
+				}
+				break;
+			}
+			int rowHeight = TERMINATION_APPROVAL_BLOCK_HEIGHT / (groupEnd - rowIndex);
+			for (int index = rowIndex; index < groupEnd; index++) {
+				XWPFTableRow row = rows.get(index);
+				row.setHeight(rowHeight);
+				row.setHeightRule(TableRowHeightRule.AT_LEAST);
+				for (XWPFTableCell cell : row.getTableCells()) {
+					for (int paragraphIndex = cell.getParagraphs().size() - 1; paragraphIndex > 0; paragraphIndex--) {
+						if (normalizeLabel(paragraphText(cell.getParagraphs().get(paragraphIndex))).startsWith("签字")) {
+							cell.removeParagraph(paragraphIndex);
+						}
+					}
+					for (XWPFParagraph paragraph : cell.getParagraphs()) {
+						paragraph.setSpacingBefore(0);
+						paragraph.setSpacingAfter(0);
 					}
 				}
-				for (XWPFParagraph paragraph : cell.getParagraphs()) {
-					paragraph.setSpacingBefore(0);
-					paragraph.setSpacingAfter(0);
-				}
+			}
+			rowIndex = groupEnd;
+		}
+	}
+
+	private String terminationApprovalLabel(XWPFTableRow row) {
+		String normalized = terminationApprovalText(row);
+		for (String label : List.of("部门", "运营中心", "财务部", "分管领导", "总经理")) {
+			if (normalized.startsWith(label)) {
+				return label;
 			}
 		}
+		return null;
+	}
+
+	private String terminationApprovalText(XWPFTableRow row) {
+		if (row == null) {
+			return "";
+		}
+		String text = row.getTableCells().stream().map(this::cellText).reduce("", String::concat);
+		return normalizeLabel(text);
 	}
 
 	private boolean startsWithAny(String value, String... prefixes) {
@@ -763,16 +838,6 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 			}
 		}
 		return false;
-	}
-
-	private void preserveInvoiceCrossPageRow(XWPFTableRow row) {
-		if (row == null || row.getTableCells().size() < 2) {
-			return;
-		}
-		XWPFTableCell contentCell = row.getCell(1);
-		if (contentCell.getParagraphs().size() == 2) {
-			contentCell.getCTTc().insertNewP(1).addNewR().addNewT().setStringValue(" ");
-		}
 	}
 
 	private void setParagraphText(XWPFParagraph paragraph, String value) {
@@ -874,6 +939,25 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		}
 		for (Node child = root.getFirstChild(); child != null; child = child.getNextSibling()) {
 			replaceDomParagraphs(child, replacements);
+		}
+	}
+
+	private void replaceStructuredDocumentTagParagraphs(Node root, Map<String, String> replacements) {
+		if (root == null || replacements == null || replacements.isEmpty()) {
+			return;
+		}
+		if (hasLocalName(root, "sdtContent")) {
+			Map<String, String> exactReplacements = new LinkedHashMap<>();
+			for (Map.Entry<String, String> entry : replacements.entrySet()) {
+				if (isExactReplacement(entry.getKey())) {
+					exactReplacements.put(entry.getKey(), entry.getValue());
+				}
+			}
+			replaceDomParagraphs(root, exactReplacements);
+			return;
+		}
+		for (Node child = root.getFirstChild(); child != null; child = child.getNextSibling()) {
+			replaceStructuredDocumentTagParagraphs(child, replacements);
 		}
 	}
 

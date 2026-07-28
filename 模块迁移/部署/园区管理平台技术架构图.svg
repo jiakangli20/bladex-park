@@ -1,0 +1,209 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1840" height="1120" viewBox="0 0 1840 1120">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#39463f" flood-opacity="0.08"/>
+    </filter>
+    <linearGradient id="backendHeader" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ece4d9"/>
+      <stop offset="1" stop-color="#f0eee8"/>
+    </linearGradient>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 z" fill="#557a68"/>
+    </marker>
+    <style>
+      .title { font: 700 34px "PingFang SC", "Microsoft YaHei", sans-serif; fill: #29443a; }
+      .subtitle { font: 400 16px "PingFang SC", "Microsoft YaHei", sans-serif; fill: #6c776f; }
+      .layer-title { font: 700 20px "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .card-title { font: 700 18px "PingFang SC", "Microsoft YaHei", sans-serif; fill: #2c4138; }
+      .card-sub { font: 400 14px "PingFang SC", "Microsoft YaHei", sans-serif; fill: #66736c; }
+      .tech { font: 500 13px "PingFang SC", "Microsoft YaHei", sans-serif; fill: #4f685c; }
+      .badge { font: 700 12px "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .footer { font: 400 13px "PingFang SC", "Microsoft YaHei", sans-serif; fill: #718078; }
+    </style>
+  </defs>
+
+  <rect width="1840" height="1120" fill="#f3efe6"/>
+  <text x="920" y="48" text-anchor="middle" class="title">园区运营管理平台技术架构图</text>
+  <text x="920" y="76" text-anchor="middle" class="subtitle">BladeX Boot 单体架构 · 前后端分离 · Workflow 审批 · Office 原模板文档</text>
+
+  <!-- 用户与终端 -->
+  <rect x="35" y="98" width="1770" height="112" rx="15" fill="#edf3ec" stroke="#6d967c" stroke-width="2"/>
+  <text x="62" y="128" class="layer-title" fill="#527d65">用户与终端</text>
+
+  <g filter="url(#shadow)">
+    <rect x="240" y="120" width="420" height="68" rx="10" fill="#fffdf8" stroke="#b5cfbe"/>
+    <circle cx="276" cy="154" r="18" fill="#e6f0e8"/>
+    <path d="M266 144h20v15h-20zm7 18h6m-9 4h12" fill="none" stroke="#557f68" stroke-width="2" stroke-linecap="round"/>
+    <text x="310" y="149" class="card-title">PC 后台管理端</text>
+    <text x="310" y="171" class="card-sub">管理员、招商、运营、财务、法务、领导</text>
+
+    <rect x="710" y="120" width="400" height="68" rx="10" fill="#fffdf8" stroke="#b5cfbe"/>
+    <circle cx="746" cy="154" r="18" fill="#e6f0e8"/>
+    <rect x="740" y="141" width="12" height="24" rx="2" fill="none" stroke="#557f68" stroke-width="2"/>
+    <circle cx="746" cy="161" r="1.2" fill="#557f68"/>
+    <text x="780" y="149" class="card-title">小程序端</text>
+    <text x="780" y="171" class="card-sub">物业、政策、工单、通知服务</text>
+
+    <rect x="1160" y="120" width="400" height="68" rx="10" fill="#fffdf8" stroke="#b5cfbe"/>
+    <circle cx="1196" cy="154" r="18" fill="#e6f0e8"/>
+    <path d="M1185 147h22v15h-22zm0 0 11 8 11-8" fill="none" stroke="#557f68" stroke-width="2" stroke-linejoin="round"/>
+    <text x="1230" y="149" class="card-title">消息接收端</text>
+    <text x="1230" y="171" class="card-sub">短信、邮箱、小程序消息</text>
+  </g>
+
+  <line x1="920" y1="210" x2="920" y2="228" stroke="#557a68" stroke-width="3" marker-end="url(#arrowBlue)"/>
+
+  <!-- 前端展示层 -->
+  <rect x="35" y="232" width="1770" height="148" rx="15" fill="#eef4f0" stroke="#5d9b83" stroke-width="2"/>
+  <text x="62" y="263" class="layer-title" fill="#1488b7">前端展示层</text>
+  <g filter="url(#shadow)">
+    <rect x="170" y="272" width="335" height="82" rx="10" fill="#fffdf8" stroke="#b2cfbf"/>
+    <text x="337" y="302" text-anchor="middle" class="card-title">Saber3 单页应用</text>
+    <text x="337" y="327" text-anchor="middle" class="tech">Vue 3 · Vite 5 · JavaScript</text>
+
+    <rect x="530" y="272" width="335" height="82" rx="10" fill="#fffdf8" stroke="#b2cfbf"/>
+    <text x="697" y="302" text-anchor="middle" class="card-title">UI 与数据可视化</text>
+    <text x="697" y="327" text-anchor="middle" class="tech">Element Plus · Avue 3 · ECharts</text>
+
+    <rect x="890" y="272" width="335" height="82" rx="10" fill="#fffdf8" stroke="#b2cfbf"/>
+    <text x="1057" y="302" text-anchor="middle" class="card-title">前端基础能力</text>
+    <text x="1057" y="327" text-anchor="middle" class="tech">Vue Router · Vuex · Axios · SM Crypto</text>
+
+    <rect x="1250" y="272" width="420" height="82" rx="10" fill="#fffdf8" stroke="#b2cfbf"/>
+    <text x="1460" y="302" text-anchor="middle" class="card-title">后台工作台</text>
+    <text x="1460" y="327" text-anchor="middle" class="tech">顶部一级菜单 · 左侧业务菜单 · 动态路由</text>
+  </g>
+
+  <line x1="920" y1="380" x2="920" y2="398" stroke="#557a68" stroke-width="3" marker-end="url(#arrowBlue)"/>
+
+  <!-- 接入与安全 -->
+  <rect x="35" y="402" width="1770" height="118" rx="15" fill="#f3ede3" stroke="#a2875e" stroke-width="2"/>
+  <text x="62" y="433" class="layer-title" fill="#80683f">接入与安全层</text>
+  <g filter="url(#shadow)">
+    <rect x="170" y="442" width="335" height="58" rx="10" fill="#fffdf8" stroke="#d1c09e"/>
+    <text x="337" y="466" text-anchor="middle" class="card-title">Nginx + HTTPS</text>
+    <text x="337" y="487" text-anchor="middle" class="card-sub">静态资源托管与 /api 反向代理</text>
+
+    <rect x="530" y="442" width="335" height="58" rx="10" fill="#fffdf8" stroke="#d1c09e"/>
+    <text x="697" y="466" text-anchor="middle" class="card-title">REST API / JSON</text>
+    <text x="697" y="487" text-anchor="middle" class="card-sub">统一请求、参数校验、异常响应</text>
+
+    <rect x="890" y="442" width="335" height="58" rx="10" fill="#fffdf8" stroke="#d1c09e"/>
+    <text x="1057" y="466" text-anchor="middle" class="card-title">OAuth2 + Token + SM2</text>
+    <text x="1057" y="487" text-anchor="middle" class="card-sub">登录认证、签名验证、账号锁定</text>
+
+    <rect x="1250" y="442" width="420" height="58" rx="10" fill="#fffdf8" stroke="#d1c09e"/>
+    <text x="1460" y="466" text-anchor="middle" class="card-title">RBAC + 数据权限 + 审计</text>
+    <text x="1460" y="487" text-anchor="middle" class="card-sub">租户、用户、角色、菜单、按钮、数据范围</text>
+  </g>
+
+  <line x1="920" y1="520" x2="920" y2="538" stroke="#557a68" stroke-width="3" marker-end="url(#arrowBlue)"/>
+
+  <!-- 后端业务层 -->
+  <rect x="35" y="542" width="1770" height="338" rx="15" fill="#f0eee8" stroke="#8f755f" stroke-width="2"/>
+  <text x="62" y="574" class="layer-title" fill="#725b48">后端业务与公共能力层</text>
+  <rect x="360" y="558" width="1120" height="40" rx="20" fill="url(#backendHeader)" stroke="#c7ad8f"/>
+  <text x="920" y="584" text-anchor="middle" class="card-title">BladeX Boot 4.9 单体服务 · Spring Boot 3 · Java 17 · Undertow :8080 · MyBatis-Plus</text>
+
+  <text x="70" y="642" class="tech" fill="#82694e">业务中心</text>
+  <g filter="url(#shadow)">
+    <rect x="170" y="615" width="205" height="78" rx="10" fill="#fffdf8" stroke="#bfa68a"/>
+    <text x="272" y="646" text-anchor="middle" class="card-title">首页工作台</text>
+    <text x="272" y="671" text-anchor="middle" class="card-sub">指标、待办、提醒</text>
+
+    <rect x="390" y="615" width="205" height="78" rx="10" fill="#fffdf8" stroke="#bfa68a"/>
+    <text x="492" y="646" text-anchor="middle" class="card-title">园区与租控</text>
+    <text x="492" y="671" text-anchor="middle" class="card-sub">楼宇、楼层、房源、设备</text>
+
+    <rect x="610" y="615" width="205" height="78" rx="10" fill="#fffdf8" stroke="#bfa68a"/>
+    <text x="712" y="646" text-anchor="middle" class="card-title">入驻与客户</text>
+    <text x="712" y="671" text-anchor="middle" class="card-sub">商机、调查、审核、标签</text>
+
+    <rect x="830" y="615" width="205" height="78" rx="10" fill="#fffdf8" stroke="#bfa68a"/>
+    <text x="932" y="646" text-anchor="middle" class="card-title">合同管理</text>
+    <text x="932" y="671" text-anchor="middle" class="card-sub">创建、审批、归档、退租</text>
+
+    <rect x="1050" y="615" width="205" height="78" rx="10" fill="#fffdf8" stroke="#bfa68a"/>
+    <text x="1152" y="646" text-anchor="middle" class="card-title">账单与逾期</text>
+    <text x="1152" y="671" text-anchor="middle" class="card-sub">收付款、催交、通知、法务</text>
+
+    <rect x="1270" y="615" width="205" height="78" rx="10" fill="#fffdf8" stroke="#bfa68a"/>
+    <text x="1372" y="646" text-anchor="middle" class="card-title">企业服务</text>
+    <text x="1372" y="671" text-anchor="middle" class="card-sub">物业、工单、商户、政策</text>
+
+    <rect x="1490" y="615" width="205" height="78" rx="10" fill="#fffdf8" stroke="#bfa68a"/>
+    <text x="1592" y="646" text-anchor="middle" class="card-title">系统管理</text>
+    <text x="1592" y="671" text-anchor="middle" class="card-sub">机构、用户、角色、参数</text>
+  </g>
+
+  <text x="70" y="759" class="tech" fill="#82694e">公共能力</text>
+  <g filter="url(#shadow)">
+    <rect x="170" y="720" width="245" height="112" rx="10" fill="#fffdf8" stroke="#cbb99f"/>
+    <text x="292" y="751" text-anchor="middle" class="card-title">Workflow / Flowable</text>
+    <text x="292" y="777" text-anchor="middle" class="card-sub">流程设计、待办、审批</text>
+    <text x="292" y="800" text-anchor="middle" class="card-sub">审批人、意见、时间事实回流</text>
+
+    <rect x="430" y="720" width="245" height="112" rx="10" fill="#fffdf8" stroke="#cbb99f"/>
+    <text x="552" y="751" text-anchor="middle" class="card-title">原模板文档引擎</text>
+    <text x="552" y="777" text-anchor="middle" class="card-sub">Apache POI 精确字段替换</text>
+    <text x="552" y="800" text-anchor="middle" class="card-sub">DOCX / XLSX 下载</text>
+
+    <rect x="690" y="720" width="245" height="112" rx="10" fill="#fffdf8" stroke="#cbb99f"/>
+    <text x="812" y="751" text-anchor="middle" class="card-title">Office 预览转换</text>
+    <text x="812" y="777" text-anchor="middle" class="card-sub">LibreOffice / soffice</text>
+    <text x="812" y="800" text-anchor="middle" class="card-sub">Word / Excel → PDF 预览</text>
+
+    <rect x="950" y="720" width="245" height="112" rx="10" fill="#fffdf8" stroke="#cbb99f"/>
+    <text x="1072" y="751" text-anchor="middle" class="card-title">资源与附件服务</text>
+    <text x="1072" y="777" text-anchor="middle" class="card-sub">上传、预览、下载、删除</text>
+    <text x="1072" y="800" text-anchor="middle" class="card-sub">本地存储 / MinIO / OSS</text>
+
+    <rect x="1210" y="720" width="245" height="112" rx="10" fill="#fffdf8" stroke="#cbb99f"/>
+    <text x="1332" y="751" text-anchor="middle" class="card-title">通知中心</text>
+    <text x="1332" y="777" text-anchor="middle" class="card-sub">通知记录、接收人、发送状态</text>
+    <text x="1332" y="800" text-anchor="middle" class="card-sub">短信 / 邮箱 / 小程序适配</text>
+
+    <rect x="1470" y="720" width="225" height="112" rx="10" fill="#fffdf8" stroke="#cbb99f"/>
+    <text x="1582" y="751" text-anchor="middle" class="card-title">日志与审计</text>
+    <text x="1582" y="777" text-anchor="middle" class="card-sub">登录、接口、错误日志</text>
+    <text x="1582" y="800" text-anchor="middle" class="card-sub">业务操作与数据记录</text>
+  </g>
+
+  <line x1="920" y1="880" x2="920" y2="898" stroke="#557a68" stroke-width="3" marker-end="url(#arrowBlue)"/>
+
+  <!-- 数据与基础设施 -->
+  <rect x="35" y="902" width="1770" height="164" rx="15" fill="#e9efeb" stroke="#6f8a79" stroke-width="2"/>
+  <text x="62" y="934" class="layer-title" fill="#5d7467">数据与基础设施层</text>
+  <g filter="url(#shadow)">
+    <rect x="170" y="950" width="290" height="88" rx="10" fill="#fffdf8" stroke="#b6c6bb"/>
+    <ellipse cx="215" cy="970" rx="22" ry="8" fill="#dbe8df" stroke="#6d8b77"/>
+    <path d="M193 970v30c0 4 10 8 22 8s22-4 22-8v-30" fill="#f4f8f5" stroke="#6d8b77"/>
+    <path d="M193 985c0 4 10 8 22 8s22-4 22-8" fill="none" stroke="#6d8b77"/>
+    <text x="255" y="976" class="card-title">MySQL</text>
+    <text x="255" y="999" class="card-sub">BladeX 系统表、业务表</text>
+    <text x="255" y="1020" class="card-sub">Flowable 流程表</text>
+
+    <rect x="480" y="950" width="290" height="88" rx="10" fill="#fffdf8" stroke="#b6c6bb"/>
+    <text x="625" y="979" text-anchor="middle" class="card-title">Redis</text>
+    <text x="625" y="1003" text-anchor="middle" class="card-sub">缓存、验证码、锁</text>
+    <text x="625" y="1024" text-anchor="middle" class="card-sub">系统运行辅助状态</text>
+
+    <rect x="790" y="950" width="320" height="88" rx="10" fill="#fffdf8" stroke="#b6c6bb"/>
+    <text x="950" y="979" text-anchor="middle" class="card-title">MinIO / OSS / 本地文件</text>
+    <text x="950" y="1003" text-anchor="middle" class="card-sub">业务附件、Office 模板</text>
+    <text x="950" y="1024" text-anchor="middle" class="card-sub">生成的 Word、Excel、PDF</text>
+
+    <rect x="1130" y="950" width="290" height="88" rx="10" fill="#fffdf8" stroke="#b6c6bb"/>
+    <text x="1275" y="979" text-anchor="middle" class="card-title">LibreOffice + 中文字体</text>
+    <text x="1275" y="1003" text-anchor="middle" class="card-sub">预览与下载版式统一</text>
+    <text x="1275" y="1024" text-anchor="middle" class="card-sub">统一文档预览与下载渲染环境</text>
+
+    <rect x="1440" y="950" width="255" height="88" rx="10" fill="#fffdf8" stroke="#b6c6bb"/>
+    <text x="1567" y="979" text-anchor="middle" class="card-title">应用日志与备份</text>
+    <text x="1567" y="1003" text-anchor="middle" class="card-sub">滚动日志、数据库备份</text>
+    <text x="1567" y="1024" text-anchor="middle" class="card-sub">附件 / OSS 备份策略</text>
+  </g>
+
+  <text x="40" y="1100" class="footer">园区运营管理平台 · 技术架构设计</text>
+  <text x="1800" y="1100" text-anchor="end" class="footer">高可用 · 可扩展 · 安全可控 · 审批留痕</text>
+</svg>

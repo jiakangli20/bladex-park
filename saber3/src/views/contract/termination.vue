@@ -574,7 +574,9 @@ import {
   createNoticePreviewState,
   downloadNoticeFile,
   openAttachmentPreview,
+  openNoticePreview,
 } from '@/utils/contract-notice';
+import { noticePrintUrl } from '@/api/contract/print';
 
 const TERMINATION_BUSINESS_TYPE = 'contract_termination';
 const ROOM_REVIEW_BUSINESS_TYPE = 'contract_room_review';
@@ -760,6 +762,9 @@ export default {
               sourceType,
               recordId,
               deletable,
+              noticeType: item.noticeType || '',
+              contractId: item.contractId || '',
+              formDataJson: item.formDataJson || '',
             });
           }
         });
@@ -791,8 +796,33 @@ export default {
         appendDirect(attachment, 'roomReviewFileUrl', '房屋验收流程文件', sourceName, sourceType, recordId);
         appendDirect(attachment, 'paymentVoucherUrl', '押金退还支付凭证', sourceName, sourceType, recordId);
         appendDirect(attachment, 'terminationAgreementUrl', '租赁合同解除补充协议', sourceName, sourceType, recordId);
-        appendDirect(attachment, 'termination-approval', '退租审批表', sourceName, 'generated', recordId);
-        appendDirect(attachment, 'termination-agreement', '租赁合同解除补充协议', sourceName, 'generated', recordId);
+        if (isTerminationSource && this.detailRecord.contractId) {
+          const appendLiveNotice = (noticeType, fallbackName) => {
+            append(
+              {
+                fileUrl: noticePrintUrl(noticeType, {
+                  contractId: this.detailRecord.contractId,
+                }),
+                fileName: `${fallbackName}.docx`,
+                materialName: fallbackName,
+                remark: sourceName,
+                noticeType,
+                contractId: this.detailRecord.contractId,
+                formDataJson: this.detailRecord.formDataJson || '',
+              },
+              fallbackName,
+              sourceName,
+              'generated',
+              recordId,
+              false
+            );
+          };
+          appendLiveNotice('termination-approval', '退租审批表');
+          appendLiveNotice('termination-agreement', '租赁合同解除补充协议');
+        } else {
+          appendDirect(attachment, 'termination-approval', '退租审批表', sourceName, 'generated', recordId);
+          appendDirect(attachment, 'termination-agreement', '租赁合同解除补充协议', sourceName, 'generated', recordId);
+        }
         appendDirect(attachment, 'room-review', '房屋验收流程文件', sourceName, 'generated', recordId);
       });
       const seen = new Set();
@@ -1165,6 +1195,21 @@ export default {
     previewMaterial(file) {
       if (!file || !file.fileUrl) {
         this.$message.warning('暂无资料文件');
+        return;
+      }
+      if (file.noticeType && file.contractId) {
+        openNoticePreview(
+          this,
+          this.noticePreview,
+          {
+            noticeType: file.noticeType,
+            contractId: file.contractId,
+            formDataJson: file.formDataJson || '',
+          },
+          file.fileUrl,
+          file.fileName || file.materialName || '退租资料',
+          `${file.materialName || '退租资料'}预览`
+        );
         return;
       }
       openAttachmentPreview(this.noticePreview, file, '退租资料预览');

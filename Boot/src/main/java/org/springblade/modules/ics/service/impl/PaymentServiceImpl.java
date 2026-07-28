@@ -27,6 +27,7 @@ import org.springblade.modules.ics.mapper.PaymentNoticeMapper;
 import org.springblade.modules.ics.mapper.OverdueInternalNoticeMapper;
 import org.springblade.modules.ics.pojo.dto.OverdueNoticeSendDTO;
 import org.springblade.modules.ics.pojo.entity.OverdueInternalNotice;
+import org.springblade.modules.ics.pojo.entity.OverdueReminderRecord;
 import org.springblade.modules.ics.pojo.entity.PaymentNotice;
 import org.springblade.modules.ics.pojo.vo.OverdueDisposalDetailVO;
 import org.springblade.modules.ics.pojo.vo.OverdueInternalNoticeVO;
@@ -66,6 +67,7 @@ import java.util.Set;
 public class PaymentServiceImpl implements IPaymentService {
 
 	private static final String SCOPE_OVERDUE = "overdue";
+	private static final String SCOPE_OVERDUE_HISTORY = "overdue_history";
 	private static final String PAY_STATUS_PAID = "1";
 	private static final String PAY_STATUS_PARTIAL = "3";
 	private static final String PAY_STATUS_UNPAID = "0";
@@ -97,7 +99,12 @@ public class PaymentServiceImpl implements IPaymentService {
 	@Override
 	public IPage<ContractPayment> selectPaymentPage(IPage<ContractPayment> page, ContractPayment payment, String scope) {
 		ContractPayment query = normalizeQuery(payment);
-		page.setRecords(paymentMapper.selectPaymentPage(page, query, SCOPE_OVERDUE.equals(scope)));
+		page.setRecords(paymentMapper.selectPaymentPage(
+			page,
+			query,
+			SCOPE_OVERDUE.equals(scope),
+			SCOPE_OVERDUE_HISTORY.equals(scope)
+		));
 		return page;
 	}
 
@@ -116,12 +123,18 @@ public class PaymentServiceImpl implements IPaymentService {
 		ContractPayment query = new ContractPayment();
 		query.setContractId(contractId);
 		query = normalizeQuery(query);
-		return paymentMapper.selectPaymentPage(null, query, false);
+		return paymentMapper.selectPaymentPage(null, query, false, false);
 	}
 
 	@Override
 	public PaymentSummaryVO summary(ContractPayment payment) {
-		PaymentSummaryVO summary = paymentMapper.selectSummary(normalizeQuery(payment));
+		PaymentSummaryVO summary = paymentMapper.selectSummary(normalizeQuery(payment), false);
+		return summary == null ? new PaymentSummaryVO() : summary;
+	}
+
+	@Override
+	public PaymentSummaryVO overdueReminderSummary(ContractPayment payment) {
+		PaymentSummaryVO summary = paymentMapper.selectSummary(normalizeQuery(payment), true);
 		return summary == null ? new PaymentSummaryVO() : summary;
 	}
 
@@ -217,23 +230,34 @@ public class PaymentServiceImpl implements IPaymentService {
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
-	public boolean remind(Long paymentId) {
+	public boolean remind(Long paymentId, String source) {
 		ContractPayment existing = requirePayment(paymentId);
 		assertAccessible(existing);
-		if (PAY_STATUS_PAID.equals(existing.getPayStatus())) {
-			throw new ServiceException("已缴账单无需催缴");
-		}
 		Date now = DateUtil.now();
+		validateOverdueReceivable(existing, now);
 		ContractPayment update = new ContractPayment();
 		update.setPaymentId(paymentId);
 		update.setRemindStatus(REMIND_STATUS_REMINDED);
 		update.setRemindTime(now);
 		update.setUpdateBy(currentUserName());
 		update.setUpdateTime(now);
-			boolean result = contractPaymentMapper.updateById(update) > 0;
-			if (result) {
-				addLog(existing.getContractId(), "remind", "发起催缴提醒");
-			}
+		boolean result = contractPaymentMapper.updateById(update) > 0;
+		if (result) {
+			OverdueReminderRecord record = new OverdueReminderRecord();
+			record.setPaymentId(existing.getPaymentId());
+			record.setContractId(existing.getContractId());
+			record.setOperatorUserId(AuthUtil.getUserId());
+			record.setOperatorAccount(AuthUtil.getUserName());
+			record.setOperatorName(currentOperatorName());
+			record.setSource(normalizeRemindSource(source));
+			record.setRemindTime(now);
+			record.setParkId(existing.getParkId());
+			record.setDelFlag(DEFAULT_DEL_FLAG);
+			record.setCreateBy(currentUserName());
+			record.setCreateTime(now);
+			overdueInternalNoticeMapper.insertReminderRecord(record);
+			addLog(existing.getContractId(), "remind", "发起催缴提醒，账单ID：" + existing.getPaymentId());
+		}
 		return result;
 	}
 
@@ -287,7 +311,7 @@ public class PaymentServiceImpl implements IPaymentService {
 		}
 		ContractPayment query = new ContractPayment();
 		query.setContractId(contractId);
-		List<ContractPayment> payments = paymentMapper.selectPaymentPage(null, normalizeQuery(query), false);
+		List<ContractPayment> payments = paymentMapper.selectPaymentPage(null, normalizeQuery(query), false, false);
 		if (payments.isEmpty()) {
 			return List.of();
 		}
@@ -298,6 +322,7 @@ public class PaymentServiceImpl implements IPaymentService {
 	public OverdueDisposalDetailVO overdueDisposalDetail(Long paymentId) {
 		ContractPayment payment = requirePayment(paymentId);
 		assertAccessible(payment);
+		validateOverdueHistoryReceivable(payment, DateUtil.now());
 		OverdueDisposalDetailVO detail = new OverdueDisposalDetailVO();
 		detail.setPaymentNotice(paymentNoticeMapper.selectNoticeByPaymentId(paymentId));
 		List<ContractLog> logs = payment.getContractId() == null ? List.of() : contractLogMapper.selectByContractId(payment.getContractId());
@@ -342,6 +367,7 @@ public class PaymentServiceImpl implements IPaymentService {
 	public List<OverdueNoticeRecipientVO> overdueNoticeRecipients(Long paymentId) {
 		ContractPayment payment = requirePayment(paymentId);
 		assertAccessible(payment);
+		validateOverdueReceivable(payment, DateUtil.now());
 		Contract contract = contractMapper.selectContractById(payment.getContractId());
 		if (contract == null) {
 			throw new ServiceException("账单关联合同不存在");
@@ -393,12 +419,7 @@ public class PaymentServiceImpl implements IPaymentService {
 		ContractPayment payment = requirePayment(dto.getPaymentId());
 		assertAccessible(payment);
 		Date now = DateUtil.now();
-		if (PAY_STATUS_PAID.equals(payment.getPayStatus())) {
-			throw new ServiceException("已缴账单无需发送逾期通知");
-		}
-		if (!isOverdue(payment, now)) {
-			throw new ServiceException("当前账单尚未逾期");
-		}
+		validateOverdueReceivable(payment, now);
 		Contract contract = contractMapper.selectContractById(payment.getContractId());
 		if (contract == null) {
 			throw new ServiceException("账单关联合同不存在");
@@ -426,7 +447,7 @@ public class PaymentServiceImpl implements IPaymentService {
 			notice.setRecipientAccount(user.getAccount());
 			notice.setRecipientName(firstNotBlank(user.getRealName(), user.getName(), user.getAccount()));
 			notice.setRecipientRoles(responsibilities);
-			notice.setNoticeTitle("合同账单首次逾期通知");
+			notice.setNoticeTitle("合同账单催缴通知");
 			notice.setNoticeContent(buildOverdueInternalNoticeContent(contract, payment));
 			notice.setReadStatus(NOTICE_READ_UNREAD);
 			notice.setParkId(payment.getParkId());
@@ -446,13 +467,15 @@ public class PaymentServiceImpl implements IPaymentService {
 	}
 
 	@Override
-	public IPage<OverdueInternalNoticeVO> overdueNoticePage(IPage<OverdueInternalNoticeVO> page, String customerName, String readStatus) {
+	public IPage<OverdueInternalNoticeVO> overdueNoticePage(IPage<OverdueInternalNoticeVO> page, String customerName,
+																		String readStatus, String recordType) {
 		Long userId = AuthUtil.getUserId();
 		if (Func.isEmpty(userId)) {
 			page.setRecords(List.of());
 			return page;
 		}
-		page.setRecords(overdueInternalNoticeMapper.selectNoticePage(page, userId, customerName, readStatus));
+		String normalizedRecordType = "notice".equals(recordType) || "reminder".equals(recordType) ? recordType : "";
+		page.setRecords(overdueInternalNoticeMapper.selectNoticePage(page, userId, customerName, readStatus, normalizedRecordType));
 		return page;
 	}
 
@@ -488,6 +511,7 @@ public class PaymentServiceImpl implements IPaymentService {
 	public PaymentNoticeVO resendNotice(Long paymentId) {
 		ContractPayment payment = requirePayment(paymentId);
 		assertAccessible(payment);
+		validateReceivableNoticePayment(payment);
 		PaymentNoticeVO detail = paymentNoticeMapper.selectNoticeByPaymentId(paymentId);
 		PaymentNotice notice = getOrCreateNotice(paymentId);
 		ContractNoticeFileVO file = contractNoticeService.uploadNotice(NOTICE_TYPE_RECEIPT, paymentId, null);
@@ -514,6 +538,7 @@ public class PaymentServiceImpl implements IPaymentService {
 	public ContractNoticeFileVO generatePaymentNoticeFile(Long paymentId) {
 		ContractPayment payment = requirePayment(paymentId);
 		assertAccessible(payment);
+		validateReceivableNoticePayment(payment);
 		ContractNoticeFileVO file = contractNoticeService.uploadNotice(NOTICE_TYPE_RECEIPT, paymentId, null);
 		PaymentNotice notice = getOrCreateNotice(paymentId);
 		notice.setNoticeType(NOTICE_TYPE_RECEIPT);
@@ -530,6 +555,7 @@ public class PaymentServiceImpl implements IPaymentService {
 	public PaymentNoticeVO sendMiniAppNotice(Long paymentId) {
 		ContractPayment payment = requirePayment(paymentId);
 		assertAccessible(payment);
+		validateReceivableNoticePayment(payment);
 		PaymentNotice notice = getOrCreateNotice(paymentId);
 		contractNoticeService.buildMiniAppPayload(NOTICE_TYPE_RECEIPT, paymentId, null);
 		Date now = DateUtil.now();
@@ -547,6 +573,7 @@ public class PaymentServiceImpl implements IPaymentService {
 	public PaymentNoticeVO sendSmsNotice(Long paymentId) {
 		ContractPayment payment = requirePayment(paymentId);
 		assertAccessible(payment);
+		validateReceivableNoticePayment(payment);
 		PaymentNoticeVO detail = paymentNoticeMapper.selectNoticeByPaymentId(paymentId);
 		PaymentNotice notice = getOrCreateNotice(paymentId);
 		Date now = DateUtil.now();
@@ -566,6 +593,7 @@ public class PaymentServiceImpl implements IPaymentService {
 	public PaymentNoticeVO sendEmailNotice(Long paymentId) {
 		ContractPayment payment = requirePayment(paymentId);
 		assertAccessible(payment);
+		validateReceivableNoticePayment(payment);
 		PaymentNoticeVO detail = paymentNoticeMapper.selectNoticeByPaymentId(paymentId);
 		PaymentNotice notice = getOrCreateNotice(paymentId);
 		Date now = DateUtil.now();
@@ -738,6 +766,24 @@ public class PaymentServiceImpl implements IPaymentService {
 	private boolean isOverdue(ContractPayment payment, Date now) {
 		return payment.getPayDeadline() != null
 			&& DateUtil.format(payment.getPayDeadline(), DateUtil.PATTERN_DATE).compareTo(DateUtil.format(now, DateUtil.PATTERN_DATE)) < 0;
+	}
+
+	private void validateOverdueReceivable(ContractPayment payment, Date now) {
+		if (!DIRECTION_RECEIVABLE.equals(normalizeDirection(payment == null ? null : payment.getDirection()))) {
+			throw new ServiceException("付款账单不允许进入逾期催缴");
+		}
+		if (PAY_STATUS_PAID.equals(payment.getPayStatus())) {
+			throw new ServiceException("已缴账单无需催缴");
+		}
+		if (!isOverdue(payment, now)) {
+			throw new ServiceException("当前账单尚未逾期");
+		}
+	}
+
+	private void validateReceivableNoticePayment(ContractPayment payment) {
+		if (!DIRECTION_RECEIVABLE.equals(normalizeDirection(payment == null ? null : payment.getDirection()))) {
+			throw new ServiceException("付款账单不能生成收款通知");
+		}
 	}
 
 	private static class NoticeRecipient {
@@ -1048,7 +1094,16 @@ public class PaymentServiceImpl implements IPaymentService {
 		if ("contract_overdue_legal".equals(businessType)) {
 			return Objects.equals(record.getPaymentId(), paymentId);
 		}
-		return "contract_termination".equals(businessType);
+		return "contract_termination".equals(businessType) || "contract_room_review".equals(businessType);
+	}
+
+	private void validateOverdueHistoryReceivable(ContractPayment payment, Date now) {
+		if (!DIRECTION_RECEIVABLE.equals(normalizeDirection(payment == null ? null : payment.getDirection()))) {
+			throw new ServiceException("付款账单不属于逾期处置记录");
+		}
+		if (!isOverdue(payment, now)) {
+			throw new ServiceException("当前账单没有逾期记录");
+		}
 	}
 
 	private void addLog(Long contractId, String action, String actionDesc) {
@@ -1069,6 +1124,19 @@ public class PaymentServiceImpl implements IPaymentService {
 	private String currentUserName() {
 		String userName = AuthUtil.getUserName();
 		return StringUtil.isBlank(userName) ? AuthUtil.getNickName() : userName;
+	}
+
+	private String currentOperatorName() {
+		String nickName = AuthUtil.getNickName();
+		return StringUtil.isBlank(nickName) ? currentUserName() : nickName;
+	}
+
+	private String normalizeRemindSource(String source) {
+		return switch (Func.toStr(source)) {
+			case "overdue_bill" -> "overdue_bill";
+			case "overdue_reminder" -> "overdue_reminder";
+			default -> "bill_management";
+		};
 	}
 
 	private BigDecimal nullToZero(BigDecimal value) {

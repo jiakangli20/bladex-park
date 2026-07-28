@@ -82,6 +82,7 @@
 	</sql>
 
 	<sql id="noticeConditions">
+		AND COALESCE(p.direction, 'receivable') = 'receivable'
 		<if test="query != null and query.parkId != null">
 			AND p.park_id = #{query.parkId}
 		</if>
@@ -186,6 +187,7 @@
 	<select id="selectNoticeByPaymentId" resultMap="noticeResultMap">
 		<include refid="selectNoticeVo"/>
 		WHERE p.payment_id = #{paymentId}
+		  AND COALESCE(p.direction, 'receivable') = 'receivable'
 		LIMIT 1
 	</select>
 

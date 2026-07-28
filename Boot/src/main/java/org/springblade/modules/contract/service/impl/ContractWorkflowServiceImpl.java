@@ -101,6 +101,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 	private static final String CONTRACT_STATUS_TERMINATION_RUNNING = "6";
 	private static final String CONTRACT_STATUS_TERMINATION_HANDOVER = "7";
 	private static final String CONTRACT_STATUS_ROOM_REVIEW_RUNNING = "8";
+	private static final String PAYMENT_DIRECTION_PAYABLE = "payable";
 	private static final String PAY_STATUS_PAID = "1";
 	private static final String PAY_STATUS_PARTIAL = "3";
 	private static final String FEE_TYPE_DEPOSIT_REFUND = "deposit_refund";
@@ -326,22 +327,16 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 				}
 			}
 			if (BUSINESS_TYPE_CONTRACT_PAYMENT.equals(record.getBusinessType()) && record.getPaymentId() != null) {
-				if (isInvoiceWorkflow(record)) {
-					String invoiceUrl = uploadNotice(IContractNoticeService.NOTICE_INVOICE, record.getPaymentId(), null);
-					if (StringUtil.isNotBlank(invoiceUrl)) {
-						record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), Map.of(IContractNoticeService.NOTICE_INVOICE, invoiceUrl)));
-						record.setPrintFileUrl(limit(invoiceUrl, 500));
-						return;
-					}
-					record.setPrintFileUrl(limit(firstNotBlank(record.getPrintFileUrl(), buildPrintFileUrl(record)), 500));
+				String noticeType = paymentApplicationNoticeType(record.getPaymentId());
+				String applicationUrl = uploadNotice(noticeType, record.getPaymentId(), null);
+				if (StringUtil.isNotBlank(applicationUrl)) {
+					record.setTemplateKey(noticeType);
+					record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), Map.of(noticeType, applicationUrl)));
+					record.setPrintFileUrl(limit(applicationUrl, 500));
 					return;
 				}
-				Map<String, String> paymentFiles = uploadPaymentPackage(record.getPaymentId());
-				if (!paymentFiles.isEmpty()) {
-					record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), paymentFiles));
-					record.setPrintFileUrl(limit(firstNotBlank(paymentFiles.get(IContractNoticeService.NOTICE_PAYMENT), paymentFiles.get(IContractNoticeService.NOTICE_INVOICE), record.getPrintFileUrl(), buildPrintFileUrl(record)), 500));
-					return;
-				}
+				record.setPrintFileUrl(limit(firstNotBlank(record.getPrintFileUrl(), buildPrintFileUrl(record)), 500));
+				return;
 			}
 			if (BUSINESS_TYPE_CONTRACT_OVERDUE_LEGAL.equals(record.getBusinessType()) && record.getPaymentId() != null) {
 				Map<String, String> noticeFiles = uploadOverduePackage(record.getPaymentId());
@@ -383,11 +378,6 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		}
 		if (BUSINESS_TYPE_CONTRACT_APPROVAL.equals(businessType)) {
 			updateContractApprovalState(record, type);
-		} else if (BUSINESS_TYPE_CONTRACT_PAYMENT.equals(businessType)) {
-			if (isInvoiceWorkflow(record)) {
-				return;
-			}
-			updatePaymentState(record, type);
 		} else if (BUSINESS_TYPE_CONTRACT_TERMINATION.equals(businessType)) {
 			updateTerminationState(record, type);
 		} else if (BUSINESS_TYPE_CONTRACT_ROOM_REVIEW.equals(businessType)) {
@@ -807,16 +797,10 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			return firstNotBlank(uploadNotice(IContractNoticeService.NOTICE_CONTRACT_APPROVAL, null, record.getContractId()), "/blade-contract/print/contract-approval/" + record.getContractId());
 		}
 		if (BUSINESS_TYPE_CONTRACT_PAYMENT.equals(record.getBusinessType()) && record.getPaymentId() != null) {
-			if (isInvoiceWorkflow(record)) {
-				return firstNotBlank(
-					uploadNotice(IContractNoticeService.NOTICE_INVOICE, record.getPaymentId(), null),
-					"/blade-contract/print/invoice-apply/" + record.getPaymentId()
-				);
-			}
+			String noticeType = paymentApplicationNoticeType(record.getPaymentId());
 			return firstNotBlank(
-				uploadNotice(IContractNoticeService.NOTICE_PAYMENT, record.getPaymentId(), null),
-				uploadNotice(IContractNoticeService.NOTICE_INVOICE, record.getPaymentId(), null),
-				"/blade-contract/print/payment-notice/" + record.getPaymentId()
+				uploadNotice(noticeType, record.getPaymentId(), null),
+				"/blade-contract/print/" + noticeType + "/" + record.getPaymentId()
 			);
 		}
 		if (BUSINESS_TYPE_CONTRACT_OVERDUE_LEGAL.equals(record.getBusinessType()) && record.getPaymentId() != null) {
@@ -857,6 +841,13 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			log.warn("付款审批文件包生成失败，paymentId={}", paymentId, exception);
 			return Map.of();
 		}
+	}
+
+	private String paymentApplicationNoticeType(Long paymentId) {
+		ContractPayment payment = paymentId == null ? null : contractPaymentMapper.selectById(paymentId);
+		return payment != null && PAYMENT_DIRECTION_PAYABLE.equals(payment.getDirection())
+			? IContractNoticeService.NOTICE_PAYMENT
+			: IContractNoticeService.NOTICE_INVOICE;
 	}
 
 	private boolean isInvoiceWorkflow(ContractWorkflowRecord record) {

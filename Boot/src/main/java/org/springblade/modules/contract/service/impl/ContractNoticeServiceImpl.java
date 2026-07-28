@@ -6,6 +6,8 @@ package org.springblade.modules.contract.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import org.springblade.common.cache.UserCache;
+import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.jackson.JsonUtil;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.oss.model.BladeFile;
@@ -24,6 +26,7 @@ import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractNoticeService;
 import org.springblade.modules.contract.service.IContractTemplateRenderService;
 import org.springblade.modules.resource.builder.OssBuilder;
+import org.springblade.modules.system.pojo.entity.User;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
@@ -478,9 +481,11 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	private ContractNoticeFileVO buildInvoiceApply(NoticeContext context) {
 		Map<String, String> fields = createInvoiceFields(context);
 		String applyDate = DateUtil.format(new Date(), "yyyy年 M月 d日");
-		String applicant = Func.toStr(context.contract == null ? null : context.contract.getCreateBy(), "经办人");
+		String applicant = firstNotBlank(fields.get("申请人"), "经办人");
+		String invoiceHeaderSpacing = " ".repeat(Math.max(4, 27 - context.contractNo().length()));
 		Map<String, String> replacements = new LinkedHashMap<>();
-		replacements.put("合同号：                          申请人：赵琪", "合同号：" + context.contractNo() + "                          申请人：" + applicant);
+		replacements.put(exactReplacementKey("合同号：申请人：赵琪"),
+			"合同号：" + context.contractNo() + invoiceHeaderSpacing + "申请人：" + applicant);
 		replacements.put("2025年 6月 17 日", applyDate);
 		replacements.put("申请人：赵琪", "申请人：" + applicant);
 		replacements.put("江苏弘业国际技术工程有限公司", context.customerName());
@@ -619,28 +624,11 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		return contractWorkflowTraceService.approvalFields(context.noticeType, businessType, context.contract.getContractId(), paymentId);
 	}
 
-	private void mergeWorkflowApprovalFields(NoticeContext context, Map<String, String> fields, String... fallbackSlots) {
+	private void mergeWorkflowApprovalFields(NoticeContext context, Map<String, String> fields) {
 		if (fields == null) {
 			return;
 		}
 		fields.putAll(workflowApprovalFields(context));
-		applyApprovalFallback(fields, fallbackSlots);
-	}
-
-	private void applyApprovalFallback(Map<String, String> fields, String... fallbackSlots) {
-		if (fields == null || fallbackSlots == null || fallbackSlots.length == 0) {
-			return;
-		}
-		String fallback = firstNotBlank(fields.get("最后审批记录"), fields.get("首个审批记录"), fields.get("通用审批意见"));
-		if (StringUtil.isBlank(fallback) || "-".equals(fallback.trim())) {
-			return;
-		}
-		for (String slot : fallbackSlots) {
-			if (hasActualApprovalValue(fields.get(slot))) {
-				return;
-			}
-		}
-		fields.put(fallbackSlots[0], fallback);
 	}
 
 	private boolean hasActualApprovalValue(String value) {
@@ -744,8 +732,9 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		fields.put("应收金额", formatMoney(context.payment == null ? null : context.payment.getAmountDue()));
 		fields.put("应付日期", formatDate(context.payment == null ? null : context.payment.getPayDeadline()));
 		fields.put("违约金", estimateLateFee(context));
-		fields.put("总计", formatMoney(context.unpaidAmount().add(parseMoney(estimateLateFee(context)))));
-		fields.put("合计人民币", formatMoney(context.unpaidAmount().add(parseMoney(estimateLateFee(context)))));
+		BigDecimal noticeTotal = parseMoney(fields.get("应收金额")).add(parseMoney(fields.get("违约金")));
+		fields.put("总计", formatMoney(noticeTotal));
+		fields.put("合计人民币", formatMoney(noticeTotal));
 		fields.put("通知日期", formatChineseDate(DateUtil.now()));
 		fields.put("催款通知送达日期", formatChineseDate(DateUtil.now()));
 		fields.put("支付期限天数", "5");
@@ -802,11 +791,10 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			formValue(context, "a178228613003148864", "保证金（元）"),
 			formatMoney(contract == null ? null : contract.getDeposit())
 		));
-		fields.put("经办人", Func.toStr(applicant, "-"));
+		fields.put("经办人", resolveUserDisplayName(applicant));
 		fields.put("部门", applicantDept);
 		fields.put("申请内容", applyContent);
 		fields.put("备注", "账单ID：" + (context.payment == null ? "-" : context.payment.getPaymentId()));
-		applyApprovalFallback(fields, "分管领导", "总经理");
 		return fields;
 	}
 
@@ -929,11 +917,10 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			formValue(context, "a178228928604722363", "保证金（元）"),
 			formatMoney(contract == null ? null : contract.getDeposit())
 		));
-		fields.put("经办人", firstNotBlank(
+		fields.put("经办人", resolveUserDisplayName(firstNotBlank(
 			formValue(context, "a178228930092178582", "经办人", "applicant"),
-			contract == null ? null : Func.toStr(firstNotBlank(contract.getFollowUser(), contract.getCreateBy()), "-"),
-			"-"
-		));
+			contract == null ? null : firstNotBlank(contract.getFollowUser(), contract.getCreateBy())
+		)));
 		fields.put("部门", firstNotBlank(
 			formValue(context, "a178228936466669312", "applicantDept", "申请部门", "送审部门", "部门"),
 			"-"
@@ -945,7 +932,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			formValue(context, "a178228940119047948", "申请内容", "terminationReason", "退租原因", "reason"),
 			buildTerminationSummary(context)
 		));
-		mergeWorkflowApprovalFields(context, fields, "部门审批", "运营中心", "财务部", "分管领导", "总经理");
+		mergeWorkflowApprovalFields(context, fields);
 		return fields;
 	}
 
@@ -966,7 +953,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			"退租审批通过，进入房屋退租交接验收"
 		));
 		fields.put("应退租赁押金", formatMoney(contract == null ? null : contract.getDeposit()));
-		mergeWorkflowApprovalFields(context, fields, "招商部签字", "运营中心签字", "物业管理处签字");
+		mergeWorkflowApprovalFields(context, fields);
 		return fields;
 	}
 
@@ -1110,10 +1097,12 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		fields.put("单价", formatMoney(contract == null ? null : contract.getRentPrice()));
 		fields.put("保证金（元）", formatMoney(contract == null ? null : contract.getDeposit()));
 		fields.put("保证金", formatMoney(contract == null ? null : contract.getDeposit()));
-		fields.put("经办人", firstNotBlank(
+		String contractHandler = resolveUserDisplayName(firstNotBlank(
 			formValue(context, "applicant", "经办人"),
-			contract == null ? "-" : Func.toStr(firstNotBlank(contract.getFollowUser(), contract.getCreateBy()), "-")
+			contract == null ? null : firstNotBlank(contract.getFollowUser(), contract.getCreateBy())
 		));
+		fields.put("经办人", contractHandler);
+		fields.put("合同经办人", contractHandler);
 		fields.put("管理费", formatMoney(contract == null ? null : contract.getManagementFee()));
 		fields.put("公摊费", formatMoney(contract == null ? null : contract.getPublicFee()));
 		fields.put("租金递增", contract == null ? "-" : Func.toStr(contract.getRentIncreaseNode(), "-"));
@@ -1129,7 +1118,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		fields.put("分管领导", firstNotBlank(formValue(context, "a178229196922319221", "分管领导"), "-"));
 		fields.put("总经理审批", firstNotBlank(formValue(context, "a17822920239039332", "总经理审批"), "-"));
 		fields.put("备注", contract == null ? "-" : Func.toStr(contract.getRemark(), "-"));
-		mergeWorkflowApprovalFields(context, fields, "部门经理", "风控审核", "律师意见", "综合管理部", "分管领导", "总经理审批");
+		mergeWorkflowApprovalFields(context, fields);
 		return fields;
 	}
 
@@ -1263,10 +1252,11 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			formValue(context, "a17822901960254579", "合同号"),
 			context.contractNo()
 		));
-		fields.put("申请人", firstNotBlank(
+		String applicant = firstNotBlank(
 			formValue(context, "a178229026327048309", "申请人", "applicant"),
-			context.contract == null ? "-" : Func.toStr(context.contract.getCreateBy(), "-")
-		));
+			context.contract == null ? null : context.contract.getCreateBy()
+		);
+		fields.put("申请人", resolveUserDisplayName(applicant));
 		String rentAmount = firstNotBlank(
 			formValue(context, "a178229043562386124"),
 			amountForFee(context, "rent", "租", "房租")
@@ -1324,8 +1314,31 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		if (StringUtil.isBlank(rentAmount) && StringUtil.isBlank(propertyAmount) && StringUtil.isBlank(depositAmount)) {
 			fields.put(context.feeName(), amount);
 		}
-		mergeWorkflowApprovalFields(context, fields, "分管领导", "部门经理");
+		mergeWorkflowApprovalFields(context, fields);
 		return fields;
+	}
+
+	private String resolveUserDisplayName(String userReference) {
+		String normalized = Func.toStr(userReference, "").trim();
+		if (StringUtil.isBlank(normalized)) {
+			return "-";
+		}
+		try {
+			User user;
+			if (normalized.matches("\\d+")) {
+				user = UserCache.getUser(Func.toLong(normalized));
+			} else {
+				String tenantId = firstNotBlank(AuthUtil.getTenantId(), "000000");
+				user = UserCache.getUser(tenantId, normalized);
+			}
+			return firstNotBlank(
+				user == null ? null : user.getRealName(),
+				user == null ? null : user.getName(),
+				normalized
+			);
+		} catch (Exception ignored) {
+			return normalized;
+		}
 	}
 
 	private String extractBankAccount(String value) {

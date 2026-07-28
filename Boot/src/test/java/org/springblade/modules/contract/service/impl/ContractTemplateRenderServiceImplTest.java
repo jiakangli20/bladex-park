@@ -8,6 +8,7 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.junit.jupiter.api.Test;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.w3c.dom.Node;
@@ -20,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -80,7 +82,7 @@ class ContractTemplateRenderServiceImplTest {
 	}
 
 	@Test
-	void preservesTerminationTableParagraphGeometry() throws Exception {
+	void keepsTerminationApprovalOnSinglePage() throws Exception {
 		Map<String, String> fields = new LinkedHashMap<>();
 		fields.put("退租申请单位（个人）", "苏州验收科技有限公司");
 		fields.put("申请时间", "2026-07-15");
@@ -102,9 +104,22 @@ class ContractTemplateRenderServiceImplTest {
 		ContractNoticeFileVO file = render(TERMINATION_APPROVAL, fields, Map.of());
 		try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(file.getFileBytes()))) {
 			assertTrue(document.getParagraphs().get(0).getText().contains("退租审批表"));
-			assertTrue(hasPageBreak(document.getParagraphs().get(1).getCTP().getDomNode()));
-			assertEquals(14, document.getTables().get(0).getNumberOfRows());
-			assertEquals(sourceParagraphs, tableParagraphCount(document.getTables().get(0)));
+			assertEquals(ParagraphAlignment.CENTER, document.getParagraphs().get(0).getAlignment());
+			assertFalse(document.getParagraphs().stream()
+				.anyMatch(paragraph -> hasPageBreak(paragraph.getCTP().getDomNode())));
+			XWPFTable table = document.getTables().get(0);
+			assertEquals(14, table.getNumberOfRows());
+			assertEquals(sourceParagraphs - 5, tableParagraphCount(table));
+			assertEquals(1200, table.getRow(7).getHeight());
+			assertEquals(1200, table.getRow(8).getHeight() + table.getRow(9).getHeight());
+			assertEquals(1200, table.getRow(10).getHeight());
+			assertEquals(1200, table.getRow(11).getHeight() + table.getRow(12).getHeight());
+			assertEquals(1200, table.getRow(13).getHeight());
+			XWPFParagraph trailing = document.getParagraphs().get(document.getParagraphs().size() - 1);
+			assertTrue(trailing.getText().isBlank());
+			assertEquals(0, trailing.getSpacingBefore());
+			assertEquals(0, trailing.getSpacingAfter());
+			assertEquals(1, trailing.getRuns().get(0).getFontSize());
 		}
 	}
 
@@ -147,10 +162,10 @@ class ContractTemplateRenderServiceImplTest {
 		ContractNoticeFileVO file = render(INVOICE_APPLY, Map.of(), Map.of());
 
 		try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(file.getFileBytes()))) {
-			assertEquals(3000, document.getTables().get(0).getRow(3).getHeight());
+			assertEquals(2600, document.getTables().get(0).getRow(3).getHeight());
 			assertEquals(1, document.getTables().get(0).getRow(4).getCell(0).getParagraphs().size());
 			assertEquals("开票内容及所属期", document.getTables().get(0).getRow(4).getCell(0).getText());
-			assertEquals(3, document.getTables().get(0).getRow(4).getCell(1).getParagraphs().size());
+			assertEquals(2, document.getTables().get(0).getRow(4).getCell(1).getParagraphs().size());
 		}
 	}
 

@@ -175,6 +175,22 @@ public class ContractPayment implements Serializable {
 	private String paymentFileUrl;
 
 	@TableField(exist = false)
+	@Schema(description = "开票流程实例ID")
+	private String invoiceProcessInsId;
+
+	@TableField(exist = false)
+	@Schema(description = "开票审批状态")
+	private String invoiceApprovalStatus;
+
+	@TableField(exist = false)
+	@Schema(description = "开票审批当前节点")
+	private String invoiceCurrentNodeName;
+
+	@TableField(exist = false)
+	@Schema(description = "开票审批文件地址")
+	private String invoiceFileUrl;
+
+	@TableField(exist = false)
 	@Schema(description = "逾期律师函流程实例ID")
 	private String overdueProcessInsId;
 

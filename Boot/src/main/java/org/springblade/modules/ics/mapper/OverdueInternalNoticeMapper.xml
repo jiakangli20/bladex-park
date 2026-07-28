@@ -14,6 +14,17 @@
 		)
 	</insert>
 
+	<insert id="insertReminderRecord" parameterType="org.springblade.modules.ics.pojo.entity.OverdueReminderRecord"
+			useGeneratedKeys="true" keyProperty="recordId" keyColumn="record_id">
+		INSERT INTO biz_overdue_reminder_record (
+			payment_id, contract_id, operator_user_id, operator_account, operator_name,
+			source, remind_time, park_id, del_flag, create_by, create_time
+		) VALUES (
+			#{paymentId}, #{contractId}, #{operatorUserId}, #{operatorAccount}, #{operatorName},
+			#{source}, #{remindTime}, #{parkId}, #{delFlag}, #{createBy}, #{createTime}
+		)
+	</insert>
+
 	<select id="selectByPaymentId" resultType="org.springblade.modules.ics.pojo.entity.OverdueInternalNotice">
 		SELECT *
 		FROM biz_overdue_internal_notice
@@ -31,42 +42,103 @@
 	</select>
 
 	<select id="selectNoticePage" resultType="org.springblade.modules.ics.pojo.vo.OverdueInternalNoticeVO">
-		SELECT
-			n.notice_id AS noticeId,
-			n.payment_id AS paymentId,
-			n.contract_id AS contractId,
-			n.recipient_user_id AS recipientUserId,
-			n.recipient_account AS recipientAccount,
-			n.recipient_name AS recipientName,
-			n.recipient_roles AS recipientRoles,
-			n.notice_title AS noticeTitle,
-			n.notice_content AS noticeContent,
-			n.read_status AS readStatus,
-			n.read_time AS readTime,
-			n.park_id AS parkId,
-			n.del_flag AS delFlag,
-			n.create_by AS createBy,
-			n.create_time AS createTime,
-			c.contract_no AS contractNo,
-			c.customer_name AS customerName,
-			p.fee_name AS feeName,
-			p.amount_due AS amountDue,
-			p.amount_paid AS amountPaid,
-			p.pay_deadline AS payDeadline,
-			COALESCE(p.selected_room_name, c.room_name) AS roomName,
-			COALESCE(p.selected_building_name, c.building_name) AS buildingName
-		FROM biz_overdue_internal_notice n
-		INNER JOIN biz_contract_payment p ON p.payment_id = n.payment_id
-		LEFT JOIN biz_contract c ON c.contract_id = n.contract_id
-		WHERE n.del_flag = '0'
-		  AND n.recipient_user_id = #{userId}
-		<if test="customerName != null and customerName != ''">
-			AND c.customer_name LIKE CONCAT('%', #{customerName}, '%')
-		</if>
-		<if test="readStatus != null and readStatus != ''">
-			AND n.read_status = #{readStatus}
-		</if>
-		ORDER BY n.read_status ASC, n.create_time DESC, n.notice_id DESC
+		SELECT center.*
+		FROM (
+			<if test="recordType == null or recordType == '' or recordType == 'notice'">
+				SELECT
+					CONCAT('notice-', n.notice_id) AS recordKey,
+					'notice' AS recordType,
+					n.notice_id AS noticeId,
+					n.payment_id AS paymentId,
+					n.contract_id AS contractId,
+					n.recipient_user_id AS recipientUserId,
+					n.recipient_account AS recipientAccount,
+					n.recipient_name AS recipientName,
+					n.recipient_roles AS recipientRoles,
+					n.notice_title AS noticeTitle,
+					n.notice_content AS noticeContent,
+					n.read_status AS readStatus,
+					n.read_time AS readTime,
+					n.park_id AS parkId,
+					n.del_flag AS delFlag,
+					n.create_by AS createBy,
+					n.create_time AS createTime,
+					c.contract_no AS contractNo,
+					c.customer_name AS customerName,
+					p.fee_name AS feeName,
+					p.amount_due AS amountDue,
+					p.amount_paid AS amountPaid,
+					p.pay_deadline AS payDeadline,
+					COALESCE(p.selected_room_name, c.room_name) AS roomName,
+					COALESCE(p.selected_building_name, c.building_name) AS buildingName,
+					NULL AS operatorName,
+					NULL AS source
+				FROM biz_overdue_internal_notice n
+				INNER JOIN biz_contract_payment p ON p.payment_id = n.payment_id
+				LEFT JOIN biz_contract c ON c.contract_id = n.contract_id
+				WHERE n.del_flag = '0'
+				  AND COALESCE(p.direction, 'receivable') = 'receivable'
+				  AND n.recipient_user_id = #{userId}
+				<if test="customerName != null and customerName != ''">
+					AND c.customer_name LIKE CONCAT('%', #{customerName}, '%')
+				</if>
+				<if test="readStatus != null and readStatus != ''">
+					AND n.read_status = #{readStatus}
+				</if>
+			</if>
+			<if test="recordType == null or recordType == ''">
+				UNION ALL
+			</if>
+			<if test="recordType == null or recordType == '' or recordType == 'reminder'">
+				SELECT
+					CONCAT('reminder-', r.record_id) AS recordKey,
+					'reminder' AS recordType,
+					r.record_id AS noticeId,
+					r.payment_id AS paymentId,
+					r.contract_id AS contractId,
+					r.operator_user_id AS recipientUserId,
+					r.operator_account AS recipientAccount,
+					r.operator_name AS recipientName,
+					'催缴经办人' AS recipientRoles,
+					'逾期催缴记录' AS noticeTitle,
+					CONCAT('由', COALESCE(NULLIF(r.operator_name, ''), r.operator_account, '-'), '在',
+						CASE r.source
+							WHEN 'overdue_bill' THEN '逾期账单'
+							WHEN 'overdue_reminder' THEN '逾期提醒'
+							ELSE '账单管理'
+						END,
+						'记录催缴') AS noticeContent,
+					'recorded' AS readStatus,
+					r.remind_time AS readTime,
+					r.park_id AS parkId,
+					r.del_flag AS delFlag,
+					r.create_by AS createBy,
+					r.create_time AS createTime,
+					c.contract_no AS contractNo,
+					c.customer_name AS customerName,
+					p.fee_name AS feeName,
+					p.amount_due AS amountDue,
+					p.amount_paid AS amountPaid,
+					p.pay_deadline AS payDeadline,
+					COALESCE(p.selected_room_name, c.room_name) AS roomName,
+					COALESCE(p.selected_building_name, c.building_name) AS buildingName,
+					r.operator_name AS operatorName,
+					r.source AS source
+				FROM biz_overdue_reminder_record r
+				INNER JOIN biz_contract_payment p ON p.payment_id = r.payment_id
+				LEFT JOIN biz_contract c ON c.contract_id = r.contract_id
+				WHERE r.del_flag = '0'
+				  AND COALESCE(p.direction, 'receivable') = 'receivable'
+				  AND r.operator_user_id = #{userId}
+				<if test="customerName != null and customerName != ''">
+					AND c.customer_name LIKE CONCAT('%', #{customerName}, '%')
+				</if>
+				<if test="readStatus != null and readStatus != ''">
+					AND 1 = 0
+				</if>
+			</if>
+		) center
+		ORDER BY center.createTime DESC, center.recordKey DESC
 	</select>
 
 	<update id="markRead">

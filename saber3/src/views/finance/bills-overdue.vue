@@ -66,8 +66,8 @@
           <span></span>
           <div class="overdue-toolbar__actions">
             <el-button icon="el-icon-download" @click="handleExport">导出</el-button>
-            <el-button type="primary" plain icon="el-icon-bell" :disabled="selectionList.length === 0" @click="batchRemind">
-              一键批量催缴
+            <el-button type="primary" plain icon="el-icon-bell" :disabled="selectionList.length === 0" @click="openBatchRecipientDialog">
+              批量催缴通知
             </el-button>
           </div>
         </div>
@@ -81,7 +81,12 @@
           @selection-change="selectionChange"
         >
           <el-table-column type="selection" width="44" align="center" />
-          <el-table-column prop="customerName" label="对方名称" min-width="180" align="center">
+          <el-table-column
+            prop="customerName"
+            label="对方名称"
+            :width="customerNameColumnWidth"
+            align="center"
+          >
             <template #default="{ row }">
               <el-button text type="primary" class="customer-link" @click="openBillDrawer(row)">
                 {{ row.customerName || '-' }}
@@ -148,7 +153,6 @@
               <strong>{{ drawerTenantName }}</strong>
             </div>
             <div class="tenant-drawer-actions">
-              <el-button type="primary" plain :disabled="!drawerRow.contractId" @click="openContract(drawerRow)">编辑</el-button>
               <el-button
                 type="success"
                 plain
@@ -157,7 +161,7 @@
               >
                 确认缴费
               </el-button>
-              <el-button type="warning" plain :disabled="!drawerRow.paymentId" @click="handleRemind(drawerRow)">记录催缴</el-button>
+              <el-button type="warning" plain :disabled="!drawerRow.paymentId" @click="openRecipientDialog(drawerRow)">催缴通知</el-button>
               <el-button type="primary" :disabled="!drawerRow.paymentId" @click="goOverdueReminder(drawerRow)">逾期提醒</el-button>
             </div>
           </section>
@@ -356,6 +360,13 @@
         </div>
       </el-dialog>
 
+      <overdue-recipient-dialog
+        v-model="recipientVisible"
+        :payment="recipientPayment"
+        :payments="recipientPayments"
+        @sent="handleRecipientSent"
+      />
+
       <notice-preview-dialog
         v-model="noticePreview.visible"
         :title="noticePreview.title"
@@ -384,6 +395,7 @@ import {
 import { getList as getContractList } from '@/api/contract/contract';
 import { feeTypeDic } from '@/option/finance/payment';
 import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
+import OverdueRecipientDialog from './components/overdue-recipient-dialog.vue';
 import { createNoticePreviewState, downloadNoticeFile, openAttachmentPreview } from '@/utils/contract-notice';
 import { getToken } from '@/utils/auth';
 
@@ -391,6 +403,7 @@ export default {
   name: 'FinanceBillsOverdue',
   components: {
     NoticePreviewDialog,
+    OverdueRecipientDialog,
   },
   data() {
     return {
@@ -435,6 +448,9 @@ export default {
         'Blade-Requested-With': 'BladeHttpRequest',
       },
       noticePreview: createNoticePreviewState(),
+      recipientVisible: false,
+      recipientPayment: {},
+      recipientPayments: [],
       logDialogVisible: false,
       page: {
         currentPage: 1,
@@ -452,6 +468,17 @@ export default {
     },
     feeTypeOptions() {
       return feeTypeDic;
+    },
+    customerNameColumnWidth() {
+      const longestUnits = this.data.reduce((maxUnits, row) => {
+        const name = String(row.customerName || '-');
+        const units = Array.from(name).reduce(
+          (total, character) => total + (/^[\u0000-\u00ff]$/.test(character) ? 0.6 : 1),
+          0
+        );
+        return Math.max(maxUnits, units);
+      }, 0);
+      return Math.max(180, Math.ceil(longestUnits * 15 + 48));
     },
     summaryCards() {
       return [
@@ -800,30 +827,35 @@ export default {
           this.drawerLogLoading = false;
         });
     },
-    handleRemind(row) {
+    openRecipientDialog(row) {
       if (!row || !row.paymentId) return;
-      this.$confirm(`确定记录“${row.customerName || '该租客'}”本次催缴吗？`, '记录催缴', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      })
-        .then(() => remindOverduePayment(row.paymentId))
-        .then(() => {
-          this.$message.success('催缴提醒已记录');
-          this.drawerRow = {
-            ...this.drawerRow,
-            remindStatus: '1',
-            remindTime: this.formatDate(new Date()),
-          };
-          this.drawerBills = this.drawerBills.map(item => (item.paymentId === row.paymentId
-            ? { ...item, remindStatus: '1', remindTime: this.formatDate(new Date()) }
-            : item));
-          if (this.permissionList.logBtn) {
-            this.loadDrawerLogs(row);
-          }
-          this.reload();
-        })
-        .catch(() => {});
+      this.recipientPayment = { ...row };
+      this.recipientPayments = [];
+      this.recipientVisible = true;
+    },
+    openBatchRecipientDialog() {
+      const rows = (this.selectionList || []).filter(item => item && item.paymentId);
+      if (!rows.length) return;
+      this.recipientPayment = { ...rows[0] };
+      this.recipientPayments = rows.map(item => ({ ...item }));
+      this.recipientVisible = true;
+    },
+    handleRecipientSent({ payment, payments = [] }) {
+      const sentPayments = payments.length ? payments : [payment];
+      Promise.all(sentPayments.map(item => remindOverduePayment(item.paymentId, 'overdue_bill'))).finally(() => {
+        const remindTime = this.formatDate(new Date());
+        const sentIds = new Set(sentPayments.map(item => String(item.paymentId)));
+        if (this.drawerRow && sentIds.has(String(this.drawerRow.paymentId))) {
+          this.drawerRow = { ...this.drawerRow, remindStatus: '1', remindTime };
+        }
+        this.drawerBills = this.drawerBills.map(item => (sentIds.has(String(item.paymentId))
+          ? { ...item, remindStatus: '1', remindTime }
+          : item));
+        if (this.permissionList.logBtn) {
+          this.loadDrawerLogs(payment || sentPayments[0]);
+        }
+        this.reload();
+      });
     },
     canConfirmPayment(row) {
       return Boolean(row && row.paymentId && String(row.payStatus) !== '1' && this.unpaidAmount(row) > 0);
@@ -1023,21 +1055,6 @@ export default {
         this.$message.error('附件下载失败，请稍后重试');
       });
     },
-    batchRemind() {
-      const rows = this.selectionList || [];
-      if (!rows.length) return;
-      this.$confirm(`确定对已选 ${rows.length} 条逾期账单记录催缴吗？`, '批量催缴', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      })
-        .then(() => Promise.all(rows.map(row => remindOverduePayment(row.paymentId))))
-        .then(() => {
-          this.$message.success('批量催缴已记录');
-          this.reload();
-        })
-        .catch(() => {});
-    },
     handleExport() {
       this.$message.info('导出接口预留中，后续接入逾期账单导出服务');
     },
@@ -1186,8 +1203,14 @@ export default {
 
 .customer-link {
   min-width: 0;
+  max-width: none;
   padding: 0;
   font-weight: 500;
+  overflow: visible;
+}
+
+.customer-link :deep(span) {
+  white-space: nowrap;
 }
 
 .overdue-pagination {

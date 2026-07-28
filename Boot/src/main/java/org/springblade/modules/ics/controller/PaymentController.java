@@ -95,7 +95,7 @@ public class PaymentController extends BladeController {
 	@ApiOperationSupport(order = 21)
 	@Operation(summary = "逾期提醒分页", description = "动态逾期提醒口径")
 	public R<IPage<ContractPayment>> overdueReminderPage(ContractPayment payment, Query query) {
-		return R.data(paymentService.selectPaymentPage(Condition.getPage(query), payment, "overdue"));
+		return R.data(paymentService.selectPaymentPage(Condition.getPage(query), payment, "overdue_history"));
 	}
 
 	@GetMapping("/overdue-reminder-summary")
@@ -103,8 +103,8 @@ public class PaymentController extends BladeController {
 	@ApiOperationSupport(order = 22)
 	@Operation(summary = "逾期提醒汇总", description = "动态逾期提醒汇总")
 	public R<PaymentSummaryVO> overdueReminderSummary(ContractPayment payment) {
-		payment.setPayStatus("2");
-		return R.data(paymentService.summary(payment));
+		payment.setDirection("receivable");
+		return R.data(paymentService.overdueReminderSummary(payment));
 	}
 
 	@GetMapping("/detail")
@@ -177,16 +177,18 @@ public class PaymentController extends BladeController {
 	@PreAuth(menu = "finance")
 	@ApiOperationSupport(order = 11)
 	@Operation(summary = "催缴", description = "传入paymentId")
-	public R remind(@Parameter(description = "账单ID") @RequestParam Long paymentId) {
-		return R.status(paymentService.remind(paymentId));
+	public R remind(@Parameter(description = "账单ID") @RequestParam Long paymentId,
+					 @Parameter(description = "催缴入口") @RequestParam(required = false) String source) {
+		return R.status(paymentService.remind(paymentId, source));
 	}
 
 	@PostMapping("/overdue-reminder-remind")
 	@PreAuth(menu = "finance_overdue_reminder")
 	@ApiOperationSupport(order = 23)
 	@Operation(summary = "逾期提醒催缴", description = "传入paymentId")
-	public R overdueReminderRemind(@Parameter(description = "账单ID") @RequestParam Long paymentId) {
-		return R.status(paymentService.remind(paymentId));
+	public R overdueReminderRemind(@Parameter(description = "账单ID") @RequestParam Long paymentId,
+									 @Parameter(description = "催缴入口") @RequestParam(required = false) String source) {
+		return R.status(paymentService.remind(paymentId, source));
 	}
 
 	@GetMapping("/log-list")
@@ -224,7 +226,7 @@ public class PaymentController extends BladeController {
 	@GetMapping("/overdue-internal-notice/recipients")
 	@PreAuth(menu = "finance_overdue_reminder")
 	@ApiOperationSupport(order = 27)
-	@Operation(summary = "首次逾期通知收件人", description = "默认推荐招商员、部门领导、分管领导和财务，支持人工调整")
+	@Operation(summary = "催缴通知收件人", description = "默认推荐招商员、部门领导、分管领导和财务，支持按账号筛选调整")
 	public R<List<OverdueNoticeRecipientVO>> overdueNoticeRecipients(@RequestParam Long paymentId) {
 		return R.data(paymentService.overdueNoticeRecipients(paymentId));
 	}
@@ -232,7 +234,7 @@ public class PaymentController extends BladeController {
 	@PostMapping("/overdue-internal-notice/send")
 	@PreAuth(menu = "finance_overdue_reminder")
 	@ApiOperationSupport(order = 28)
-	@Operation(summary = "发送首次逾期通知", description = "向选中的内部用户发送逾期通知")
+	@Operation(summary = "发送催缴通知", description = "向选中的内部用户账号发送逾期催缴通知")
 	public R<Integer> sendOverdueNotice(@RequestBody OverdueNoticeSendDTO dto) {
 		return R.data(paymentService.sendOverdueNotice(dto));
 	}
@@ -240,11 +242,12 @@ public class PaymentController extends BladeController {
 	@GetMapping("/overdue-internal-notice/page")
 	@PreAuth(menu = "finance_overdue_notice")
 	@ApiOperationSupport(order = 29)
-	@Operation(summary = "我的逾期通知", description = "只查询当前登录账号收到的逾期通知")
+	@Operation(summary = "逾期通知与催缴记录", description = "查询当前账号收到的逾期通知和发起的催缴记录")
 	public R<IPage<OverdueInternalNoticeVO>> overdueNoticePage(@RequestParam(required = false) String customerName,
 															 @RequestParam(required = false) String readStatus,
+															 @RequestParam(required = false) String recordType,
 															 Query query) {
-		return R.data(paymentService.overdueNoticePage(Condition.getPage(query), customerName, readStatus));
+		return R.data(paymentService.overdueNoticePage(Condition.getPage(query), customerName, readStatus, recordType));
 	}
 
 	@PostMapping("/overdue-internal-notice/read")

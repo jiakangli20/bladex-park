@@ -47,4 +47,16 @@ public class OverdueInternalNoticeVO extends OverdueInternalNotice {
 
 	private String buildingName;
 
+	@Schema(description = "记录唯一键")
+	private String recordKey;
+
+	@Schema(description = "记录类型：notice逾期通知 reminder催缴记录")
+	private String recordType;
+
+	@Schema(description = "催缴操作人")
+	private String operatorName;
+
+	@Schema(description = "催缴来源")
+	private String source;
+
 }

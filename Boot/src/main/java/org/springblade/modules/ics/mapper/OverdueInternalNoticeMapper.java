@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.apache.ibatis.annotations.Param;
 import org.springblade.modules.ics.pojo.entity.OverdueInternalNotice;
+import org.springblade.modules.ics.pojo.entity.OverdueReminderRecord;
 import org.springblade.modules.ics.pojo.vo.OverdueInternalNoticeVO;
 
 import java.util.List;
@@ -25,12 +26,15 @@ public interface OverdueInternalNoticeMapper extends BaseMapper<OverdueInternalN
 
 	int insertIgnore(OverdueInternalNotice notice);
 
+	int insertReminderRecord(OverdueReminderRecord record);
+
 	Long countUnread(@Param("userId") Long userId);
 
 	List<OverdueInternalNoticeVO> selectNoticePage(IPage<OverdueInternalNoticeVO> page,
-													 @Param("userId") Long userId,
-													 @Param("customerName") String customerName,
-													 @Param("readStatus") String readStatus);
+												 @Param("userId") Long userId,
+												 @Param("customerName") String customerName,
+												 @Param("readStatus") String readStatus,
+												 @Param("recordType") String recordType);
 
 	int markRead(@Param("paymentId") Long paymentId, @Param("userId") Long userId);
 

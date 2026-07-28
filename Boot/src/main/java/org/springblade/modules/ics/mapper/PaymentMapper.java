@@ -25,10 +25,14 @@ public interface PaymentMapper {
 	 *
 	 * @param page    分页对象
 	 * @param payment 查询条件
-	 * @param overdue 是否动态逾期口径
+	 * @param overdue        是否动态逾期口径
+	 * @param overdueHistory 是否逾期处置历史口径
 	 * @return 账单列表
 	 */
-	List<ContractPayment> selectPaymentPage(IPage<ContractPayment> page, @Param("payment") ContractPayment payment, @Param("overdue") Boolean overdue);
+	List<ContractPayment> selectPaymentPage(IPage<ContractPayment> page,
+											  @Param("payment") ContractPayment payment,
+											  @Param("overdue") Boolean overdue,
+											  @Param("overdueHistory") Boolean overdueHistory);
 
 	/**
 	 * 账单汇总.
@@ -36,7 +40,8 @@ public interface PaymentMapper {
 	 * @param payment 查询条件
 	 * @return 汇总
 	 */
-	PaymentSummaryVO selectSummary(@Param("payment") ContractPayment payment);
+	PaymentSummaryVO selectSummary(@Param("payment") ContractPayment payment,
+									 @Param("overdueHistory") Boolean overdueHistory);
 
 	/**
 	 * 账单详情.

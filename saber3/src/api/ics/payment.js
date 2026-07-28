@@ -173,22 +173,24 @@ export const updatePaymentAttachment = (paymentId, row) => {
   });
 };
 
-export const remindPayment = paymentId => {
+export const remindPayment = (paymentId, source = 'bill_management') => {
   return request({
     url: '/blade-ics/payment/remind',
     method: 'post',
     params: {
       paymentId,
+      source,
     },
   });
 };
 
-export const remindOverduePayment = paymentId => {
+export const remindOverduePayment = (paymentId, source = 'overdue_reminder') => {
   return request({
     url: '/blade-ics/payment/overdue-reminder-remind',
     method: 'post',
     params: {
       paymentId,
+      source,
     },
   });
 };

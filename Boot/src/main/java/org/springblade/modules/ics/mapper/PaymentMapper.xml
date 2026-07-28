@@ -45,6 +45,10 @@
 		<result column="payment_approval_status" property="paymentApprovalStatus"/>
 		<result column="payment_current_node_name" property="paymentCurrentNodeName"/>
 		<result column="payment_file_url" property="paymentFileUrl"/>
+		<result column="invoice_process_ins_id" property="invoiceProcessInsId"/>
+		<result column="invoice_approval_status" property="invoiceApprovalStatus"/>
+		<result column="invoice_current_node_name" property="invoiceCurrentNodeName"/>
+		<result column="invoice_file_url" property="invoiceFileUrl"/>
 		<result column="overdue_process_ins_id" property="overdueProcessInsId"/>
 		<result column="overdue_approval_status" property="overdueApprovalStatus"/>
 		<result column="overdue_current_node_name" property="overdueCurrentNodeName"/>
@@ -127,6 +131,10 @@
 			pay_cwr.process_status AS payment_approval_status,
 			pay_cwr.current_node AS payment_current_node_name,
 			pay_cwr.print_file_url AS payment_file_url,
+			invoice_cwr.process_ins_id AS invoice_process_ins_id,
+			invoice_cwr.process_status AS invoice_approval_status,
+			invoice_cwr.current_node AS invoice_current_node_name,
+			invoice_cwr.print_file_url AS invoice_file_url,
 			law_cwr.process_ins_id AS overdue_process_ins_id,
 			law_cwr.process_status AS overdue_approval_status,
 			law_cwr.current_node AS overdue_current_node_name,
@@ -143,10 +151,24 @@
 			WHERE business_type = 'contract_payment'
 			  AND COALESCE(process_def_key, '') != 'invoice'
 			  AND COALESCE(form_key, '') != 'invoice'
+			  AND COALESCE(template_key, '') != 'invoice-apply'
 			  AND del_flag = '0'
 			GROUP BY payment_id
 		) latest_pay_cwr ON latest_pay_cwr.payment_id = p.payment_id
 		LEFT JOIN biz_contract_workflow_record pay_cwr ON pay_cwr.record_id = latest_pay_cwr.record_id
+		LEFT JOIN (
+			SELECT payment_id, MAX(record_id) AS record_id
+			FROM biz_contract_workflow_record
+			WHERE business_type = 'contract_payment'
+			  AND (
+				COALESCE(process_def_key, '') = 'invoice'
+				OR COALESCE(form_key, '') = 'invoice'
+				OR COALESCE(template_key, '') = 'invoice-apply'
+			  )
+			  AND del_flag = '0'
+			GROUP BY payment_id
+		) latest_invoice_cwr ON latest_invoice_cwr.payment_id = p.payment_id
+		LEFT JOIN biz_contract_workflow_record invoice_cwr ON invoice_cwr.record_id = latest_invoice_cwr.record_id
 		LEFT JOIN (
 			SELECT payment_id, MAX(record_id) AS record_id
 			FROM biz_contract_workflow_record
@@ -247,11 +269,47 @@
 		</if>
 	</sql>
 
+	<sql id="overdueHistoryConditions">
+		AND COALESCE(p.direction, 'receivable') = 'receivable'
+		AND p.pay_deadline &lt; CURDATE()
+		AND (
+			COALESCE(p.pay_status, '0') != '1'
+			OR p.remind_status = '1'
+			OR EXISTS (
+				SELECT 1
+				FROM biz_overdue_reminder_record reminder_record
+				WHERE reminder_record.payment_id = p.payment_id
+				  AND reminder_record.del_flag = '0'
+			)
+			OR EXISTS (
+				SELECT 1
+				FROM biz_overdue_internal_notice internal_notice
+				WHERE internal_notice.payment_id = p.payment_id
+				  AND internal_notice.del_flag = '0'
+			)
+			OR EXISTS (
+				SELECT 1
+				FROM biz_contract_workflow_record workflow_record
+				WHERE workflow_record.del_flag = '0'
+				  AND workflow_record.business_type IN (
+					'contract_overdue_legal',
+					'contract_termination',
+					'contract_room_review'
+				  )
+				  AND workflow_record.payment_id = p.payment_id
+			)
+		)
+	</sql>
+
 	<select id="selectPaymentPage" resultMap="paymentResultMap">
 		<include refid="selectPaymentVo"/>
 		<where>
 			<include refid="paymentConditions"/>
-			<if test="overdue != null and overdue">
+			<if test="overdueHistory != null and overdueHistory">
+				<include refid="overdueHistoryConditions"/>
+			</if>
+			<if test="(overdueHistory == null or !overdueHistory) and overdue != null and overdue">
+				AND COALESCE(p.direction, 'receivable') = 'receivable'
 				AND COALESCE(p.pay_status, '0') != '1'
 				AND p.pay_deadline &lt; CURDATE()
 			</if>
@@ -274,6 +332,9 @@
 		LEFT JOIN biz_contract c ON c.contract_id = p.contract_id
 		<where>
 			<include refid="paymentConditions"/>
+			<if test="overdueHistory != null and overdueHistory">
+				<include refid="overdueHistoryConditions"/>
+			</if>
 		</where>
 	</select>
 

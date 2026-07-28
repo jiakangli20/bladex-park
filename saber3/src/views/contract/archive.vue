@@ -89,44 +89,69 @@
 
             <el-tab-pane label="合同" name="contract">
               <section class="archive-detail-section archive-table-section">
-                <el-table :data="contractRows" border class="archive-flat-table">
-                  <el-table-column prop="contractNo" label="合同编号" min-width="160" align="center">
+                <el-table
+                  :data="contractRows"
+                  border
+                  table-layout="fixed"
+                  class="archive-flat-table archive-contract-table"
+                >
+                  <el-table-column
+                    prop="contractNo"
+                    label="合同编号"
+                    min-width="210"
+                    align="center"
+                    show-overflow-tooltip
+                  >
                     <template #default="{ row }">
                       <el-link type="primary" underline="never" @click="handlePrint(row)">
                         {{ row.contractNo || '-' }}
                       </el-link>
                     </template>
                   </el-table-column>
-                  <el-table-column prop="contractStatus" label="合同状态" width="140" align="center">
+                  <el-table-column
+                    prop="contractStatus"
+                    label="合同状态"
+                    min-width="120"
+                    align="center"
+                  >
                     <template #default="{ row }">
                       <el-tag :type="statusType(row.contractStatus)" effect="plain">
                         {{ row.contractStatusName || statusText(row.contractStatus) }}
                       </el-tag>
                     </template>
                   </el-table-column>
-                  <el-table-column label="合同类型" width="140" align="center">
+                  <el-table-column label="合同类型" min-width="145" align="center" show-overflow-tooltip>
                     <template #default="{ row }">{{ contractTypeText(row) }}</template>
                   </el-table-column>
-                  <el-table-column label="租赁单价" width="160" align="center">
+                  <el-table-column label="租赁单价" min-width="165" align="center" show-overflow-tooltip>
                     <template #default="{ row }">{{ formatRentUnitPrice(row.rentPrice) }}</template>
                   </el-table-column>
-                  <el-table-column prop="signDate" label="签订日期" width="150" align="center">
+                  <el-table-column prop="signDate" label="签订日期" min-width="145" align="center">
                     <template #default="{ row }">{{ row.signDate || '-' }}</template>
                   </el-table-column>
-                  <el-table-column label="合同来源" width="140" align="center">
+                  <el-table-column label="合同来源" min-width="135" align="center" show-overflow-tooltip>
                     <template #default="{ row }">{{ contractSourceText(row) }}</template>
                   </el-table-column>
-                  <el-table-column label="操作" width="180" align="center" fixed="right">
+                  <el-table-column
+                    label="操作"
+                    width="156"
+                    align="center"
+                    fixed="right"
+                    class-name="archive-contract-operation-cell"
+                    label-class-name="archive-contract-operation-header"
+                  >
                     <template #default="{ row }">
-                      <el-button type="primary" text @click="handlePrint(row)">预览正文</el-button>
-                      <el-button
-                        v-if="permission.contract_archive_export_approval"
-                        type="primary"
-                        text
-                        @click="handleExportApproval(row)"
-                      >
-                        审批表
-                      </el-button>
+                      <div class="archive-contract-actions">
+                        <el-button type="primary" text @click="handlePrint(row)">预览正文</el-button>
+                        <el-button
+                          v-if="permission.contract_archive_export_approval"
+                          type="primary"
+                          text
+                          @click="handleExportApproval(row)"
+                        >
+                          审批表
+                        </el-button>
+                      </div>
                     </template>
                   </el-table-column>
                 </el-table>
@@ -1641,6 +1666,39 @@ export default {
 
 .archive-flat-table :deep(.el-table__inner-wrapper::before) {
   background-color: #edf0f5;
+}
+
+.archive-contract-table :deep(.cell) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.archive-contract-table :deep(.archive-contract-operation-cell .cell),
+.archive-contract-table :deep(.archive-contract-operation-header .cell) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding-right: 10px;
+  padding-left: 10px;
+  overflow: visible;
+}
+
+.archive-contract-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.archive-contract-actions :deep(.el-button) {
+  min-width: 0;
+  padding-right: 0;
+  padding-left: 0;
+  margin-left: 0;
 }
 
 .attachment-table-actions {

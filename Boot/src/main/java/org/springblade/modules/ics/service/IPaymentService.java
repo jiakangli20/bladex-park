@@ -64,6 +64,14 @@ public interface IPaymentService {
 	PaymentSummaryVO summary(ContractPayment payment);
 
 	/**
+	 * 逾期处置历史汇总.
+	 *
+	 * @param payment 查询条件
+	 * @return 汇总统计
+	 */
+	PaymentSummaryVO overdueReminderSummary(ContractPayment payment);
+
+	/**
 	 * 创建手工账单.
 	 *
 	 * @param payment 账单数据
@@ -110,9 +118,10 @@ public interface IPaymentService {
 	 * 催缴.
 	 *
 	 * @param paymentId 账单ID
+	 * @param source    催缴入口
 	 * @return 是否成功
 	 */
-	boolean remind(Long paymentId);
+	boolean remind(Long paymentId, String source);
 
 	/**
 	 * 合同日志.
@@ -170,14 +179,16 @@ public interface IPaymentService {
 	int sendOverdueNotice(OverdueNoticeSendDTO dto);
 
 	/**
-	 * 当前账号逾期通知分页.
+	 * 当前账号逾期通知与催缴记录分页.
 	 *
 	 * @param page         分页
 	 * @param customerName 客户名称
 	 * @param readStatus   已读状态
+	 * @param recordType 记录类型
 	 * @return 通知分页
 	 */
-	IPage<OverdueInternalNoticeVO> overdueNoticePage(IPage<OverdueInternalNoticeVO> page, String customerName, String readStatus);
+	IPage<OverdueInternalNoticeVO> overdueNoticePage(IPage<OverdueInternalNoticeVO> page, String customerName,
+													 String readStatus, String recordType);
 
 	/**
 	 * 收款通知占位.

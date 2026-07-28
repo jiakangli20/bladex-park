@@ -188,7 +188,7 @@
               <span class="title-icon"><i class="el-icon-message-solid" /></span>
               <strong>待发通知单租客</strong>
             </div>
-            <el-button text type="primary" @click="go('/finance/payment-notice')">更多</el-button>
+            <el-button text type="primary" @click="go('/contract/payment-notice')">更多</el-button>
           </div>
           <ul class="tenant-list">
             <li v-for="item in noticeTenantList" :key="item.id">
