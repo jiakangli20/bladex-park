@@ -369,18 +369,20 @@
 
 	<update id="updateCustomerCheckResult" parameterType="org.springblade.modules.business.pojo.entity.Customer">
 		update biz_customer
-		set verify_status = #{verifyStatus},
-			verify_message = #{verifyMessage},
-			verify_time = #{verifyTime},
-			industry_access_result = #{industryAccessResult},
-			industry_access_reason = #{industryAccessReason},
-			risk_level = #{riskLevel},
-			risk_summary = #{riskSummary},
-			legal_risk_flag = #{legalRiskFlag},
-			executive_risk_flag = #{executiveRiskFlag},
-			shareholder_risk_flag = #{shareholderRiskFlag},
-			update_by = #{updateBy},
+		<set>
+			<if test="verifyStatus != null">verify_status = #{verifyStatus},</if>
+			<if test="verifyMessage != null">verify_message = #{verifyMessage},</if>
+			<if test="verifyTime != null">verify_time = #{verifyTime},</if>
+			<if test="industryAccessResult != null">industry_access_result = #{industryAccessResult},</if>
+			<if test="industryAccessReason != null">industry_access_reason = #{industryAccessReason},</if>
+			<if test="riskLevel != null">risk_level = #{riskLevel},</if>
+			<if test="riskSummary != null">risk_summary = #{riskSummary},</if>
+			<if test="legalRiskFlag != null">legal_risk_flag = #{legalRiskFlag},</if>
+			<if test="executiveRiskFlag != null">executive_risk_flag = #{executiveRiskFlag},</if>
+			<if test="shareholderRiskFlag != null">shareholder_risk_flag = #{shareholderRiskFlag},</if>
+			<if test="updateBy != null">update_by = #{updateBy},</if>
 			update_time = now()
+		</set>
 		where customer_id = #{customerId}
 		  and del_flag = '0'
 	</update>

@@ -634,6 +634,9 @@
       :loading="noticePreview.loading"
       :download-url="noticePreview.downloadUrl"
       :download-label="noticePreview.downloadLabel"
+      :preview-type="noticePreview.previewType"
+      :document-blob="noticePreview.documentBlob"
+      :preview-error="noticePreview.previewError"
       @download="downloadNoticePreviewFile"
     />
 

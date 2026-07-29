@@ -26,6 +26,7 @@ import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractNoticeService;
+import org.springblade.modules.contract.service.impl.OfficePdfConversionService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -52,6 +53,7 @@ public class ContractPrintController extends BladeController {
 	private final IContractNoticeService contractNoticeService;
 	private final ContractPaymentMapper contractPaymentMapper;
 	private final ContractLogMapper contractLogMapper;
+	private final OfficePdfConversionService officePdfConversionService;
 
 	@GetMapping("/payment-notice/{paymentId}")
 	@PreAuth("hasAuth()")
@@ -165,6 +167,14 @@ public class ContractPrintController extends BladeController {
 		writeDocument(contractNoticeService.buildNotice(IContractNoticeService.NOTICE_ROOM_REVIEW, null, contractId), response);
 	}
 
+	@GetMapping("/termination-handover/{contractId}")
+	@PreAuth("hasAuth()")
+	@ApiOperationSupport(order = 15)
+	@Operation(summary = "退租交接单", description = "传入contractId")
+	public void terminationHandover(@Parameter(description = "合同ID") @PathVariable Long contractId, HttpServletResponse response) {
+		writeDocument(contractNoticeService.buildNotice(IContractNoticeService.NOTICE_HANDOVER, null, contractId), response);
+	}
+
 	@PostMapping("/generate")
 	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 15)
@@ -188,9 +198,18 @@ public class ContractPrintController extends BladeController {
 		return R.data(contractNoticeService.buildNoticePreview(noticeType, paymentId, contractId, formDataJson));
 	}
 
-	@PostMapping("/miniapp/send")
+	@GetMapping("/preview/pdf/{previewKey}")
 	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 17)
+	@Operation(summary = "通知文件 PDF 预览流", description = "传入预览缓存标识")
+	public void previewPdf(@Parameter(description = "预览缓存标识") @PathVariable String previewKey,
+						   HttpServletResponse response) {
+		writePreviewPdf(officePdfConversionService.readCachedPdf(previewKey), response);
+	}
+
+	@PostMapping("/miniapp/send")
+	@PreAuth("hasAuth()")
+	@ApiOperationSupport(order = 18)
 	@Operation(summary = "小程序发送预留接口", description = "传入noticeType、paymentId或contractId")
 	public R<Kv> miniAppSend(@RequestParam String noticeType,
 							 @RequestParam(required = false) Long paymentId,
@@ -249,6 +268,7 @@ public class ContractPrintController extends BladeController {
 			case IContractNoticeService.NOTICE_TERMINATION -> "退租审批表";
 			case IContractNoticeService.NOTICE_TERMINATION_AGREEMENT -> "合同解除补充协议";
 			case IContractNoticeService.NOTICE_ROOM_REVIEW -> "房屋退租交接验收单";
+			case IContractNoticeService.NOTICE_HANDOVER -> "退租交接单";
 			default -> noticeType;
 		};
 	}
@@ -261,6 +281,17 @@ public class ContractPrintController extends BladeController {
 		response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName);
 		response.setContentLength(document.getFileBytes().length);
 		response.getOutputStream().write(document.getFileBytes());
+		response.getOutputStream().flush();
+	}
+
+	@SneakyThrows
+	private void writePreviewPdf(byte[] pdfBytes, HttpServletResponse response) {
+		response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+		response.setContentType("application/pdf");
+		response.setHeader("Content-Disposition", "inline; filename=preview.pdf");
+		response.setHeader("Cache-Control", "private, max-age=3600");
+		response.setContentLength(pdfBytes.length);
+		response.getOutputStream().write(pdfBytes);
 		response.getOutputStream().flush();
 	}
 

@@ -318,41 +318,49 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		record.setCurrentNode(limit(currentNode(type, task), 200));
 		if (FINISH == type) {
 			record.setApprovalTime(DateUtil.now());
-			if (BUSINESS_TYPE_CONTRACT_APPROVAL.equals(record.getBusinessType()) && record.getContractId() != null) {
+			if (BUSINESS_TYPE_CONTRACT_APPROVAL.equals(record.getBusinessType())) {
+				requireWorkflowContractId(record, "合同审批");
 				Map<String, String> contractFiles = uploadContractApprovalPackage(record.getContractId());
-				if (!contractFiles.isEmpty()) {
-					record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), contractFiles));
-					record.setPrintFileUrl(limit(firstNotBlank(contractFiles.get(IContractNoticeService.NOTICE_CONTRACT_APPROVAL), record.getPrintFileUrl(), buildPrintFileUrl(record)), 500));
-					return;
-				}
-			}
-			if (BUSINESS_TYPE_CONTRACT_PAYMENT.equals(record.getBusinessType()) && record.getPaymentId() != null) {
-				String noticeType = paymentApplicationNoticeType(record.getPaymentId());
-				String applicationUrl = uploadNotice(noticeType, record.getPaymentId(), null);
-				if (StringUtil.isNotBlank(applicationUrl)) {
-					record.setTemplateKey(noticeType);
-					record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), Map.of(noticeType, applicationUrl)));
-					record.setPrintFileUrl(limit(applicationUrl, 500));
-					return;
-				}
-				record.setPrintFileUrl(limit(firstNotBlank(record.getPrintFileUrl(), buildPrintFileUrl(record)), 500));
+				String approvalFileUrl = requireGeneratedFile(contractFiles, IContractNoticeService.NOTICE_CONTRACT_APPROVAL, "合同会签审批表");
+				record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), contractFiles));
+				record.setPrintFileUrl(limit(approvalFileUrl, 500));
 				return;
 			}
-			if (BUSINESS_TYPE_CONTRACT_OVERDUE_LEGAL.equals(record.getBusinessType()) && record.getPaymentId() != null) {
-				Map<String, String> noticeFiles = uploadOverduePackage(record.getPaymentId());
-				if (!noticeFiles.isEmpty()) {
-					record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), noticeFiles));
-					record.setPrintFileUrl(limit(firstNotBlank(noticeFiles.get(IContractNoticeService.NOTICE_LEGAL), record.getPrintFileUrl(), buildPrintFileUrl(record)), 500));
-					return;
-				}
+			if (BUSINESS_TYPE_CONTRACT_PAYMENT.equals(record.getBusinessType())) {
+				requireWorkflowPaymentId(record, "付款或开票审批");
+				String noticeType = paymentApplicationNoticeType(record.getPaymentId());
+				String applicationUrl = uploadNotice(noticeType, record.getPaymentId(), null);
+				record.setTemplateKey(noticeType);
+				record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), Map.of(noticeType, applicationUrl)));
+				record.setPrintFileUrl(limit(applicationUrl, 500));
+				return;
 			}
-			if (BUSINESS_TYPE_CONTRACT_TERMINATION.equals(record.getBusinessType()) && record.getContractId() != null) {
+			if (BUSINESS_TYPE_CONTRACT_OVERDUE_LEGAL.equals(record.getBusinessType())) {
+				requireWorkflowPaymentId(record, "逾期律师函审批");
+				Map<String, String> noticeFiles = uploadOverduePackage(record.getPaymentId());
+				String legalFileUrl = requireGeneratedFile(noticeFiles, IContractNoticeService.NOTICE_LEGAL, "律师函");
+				record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), noticeFiles));
+				record.setPrintFileUrl(limit(legalFileUrl, 500));
+				return;
+			}
+			if (BUSINESS_TYPE_CONTRACT_TERMINATION.equals(record.getBusinessType())) {
+				requireWorkflowContractId(record, "退租审批");
 				Map<String, String> noticeFiles = uploadTerminationPackage(record.getContractId(), record.getFormDataJson());
-				if (!noticeFiles.isEmpty()) {
-					record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), noticeFiles));
-					record.setPrintFileUrl(limit(firstNotBlank(noticeFiles.get(IContractNoticeService.NOTICE_TERMINATION), record.getPrintFileUrl(), buildPrintFileUrl(record)), 500));
-					return;
-				}
+				String terminationFileUrl = requireGeneratedFile(noticeFiles, IContractNoticeService.NOTICE_TERMINATION, "退租审批表");
+				record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), noticeFiles));
+				record.setPrintFileUrl(limit(terminationFileUrl, 500));
+				return;
+			}
+			if (BUSINESS_TYPE_CONTRACT_ROOM_REVIEW.equals(record.getBusinessType())) {
+				requireWorkflowContractId(record, "房屋验收审批");
+				String reviewFileUrl = uploadNotice(IContractNoticeService.NOTICE_ROOM_REVIEW, null, record.getContractId());
+				String handoverFileUrl = uploadNotice(IContractNoticeService.NOTICE_HANDOVER, null, record.getContractId());
+				record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), Map.of(
+					IContractNoticeService.NOTICE_ROOM_REVIEW, reviewFileUrl,
+					IContractNoticeService.NOTICE_HANDOVER, handoverFileUrl
+				)));
+				record.setPrintFileUrl(limit(reviewFileUrl, 500));
+				return;
 			}
 			record.setPrintFileUrl(limit(firstNotBlank(record.getPrintFileUrl(), buildPrintFileUrl(record)), 500));
 		}
@@ -818,10 +826,13 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 	private String uploadNotice(String noticeType, Long paymentId, Long contractId) {
 		try {
 			ContractNoticeFileVO file = contractNoticeService.uploadNotice(noticeType, paymentId, contractId);
-			return file == null ? null : file.getFileUrl();
+			if (file == null || StringUtil.isBlank(file.getFileUrl())) {
+				throw new ServiceException("文书生成后未返回有效文件地址");
+			}
+			return file.getFileUrl();
 		} catch (Exception exception) {
-			log.warn("合同流程通知文件生成失败，noticeType={}, paymentId={}, contractId={}", noticeType, paymentId, contractId, exception);
-			return null;
+			log.error("合同流程通知文件生成失败，noticeType={}, paymentId={}, contractId={}", noticeType, paymentId, contractId, exception);
+			throw new ServiceException("审批文书生成或上传失败，流程未完成，请稍后重试");
 		}
 	}
 
@@ -829,17 +840,8 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		try {
 			return contractNoticeService.uploadContractApprovalPackage(contractId);
 		} catch (Exception exception) {
-			log.warn("合同审批文件包生成失败，contractId={}", contractId, exception);
-			return Map.of();
-		}
-	}
-
-	private Map<String, String> uploadPaymentPackage(Long paymentId) {
-		try {
-			return contractNoticeService.uploadPaymentPackage(paymentId);
-		} catch (Exception exception) {
-			log.warn("付款审批文件包生成失败，paymentId={}", paymentId, exception);
-			return Map.of();
+			log.error("合同审批文件包生成失败，contractId={}", contractId, exception);
+			throw new ServiceException("合同审批文件生成或上传失败，流程未完成，请稍后重试");
 		}
 	}
 
@@ -872,8 +874,8 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		try {
 			return contractNoticeService.uploadOverduePackage(paymentId);
 		} catch (Exception exception) {
-			log.warn("逾期审批通知文件包生成失败，paymentId={}", paymentId, exception);
-			return Map.of();
+			log.error("逾期审批通知文件包生成失败，paymentId={}", paymentId, exception);
+			throw new ServiceException("逾期审批文件生成或上传失败，流程未完成，请稍后重试");
 		}
 	}
 
@@ -881,9 +883,29 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		try {
 			return contractNoticeService.uploadTerminationPackage(contractId, formDataJson);
 		} catch (Exception exception) {
-			log.warn("退租审批归档文件包生成失败，contractId={}", contractId, exception);
-			return Map.of();
+			log.error("退租审批归档文件包生成失败，contractId={}", contractId, exception);
+			throw new ServiceException("退租审批文件生成或上传失败，流程未完成，请稍后重试");
 		}
+	}
+
+	private void requireWorkflowContractId(ContractWorkflowRecord record, String workflowName) {
+		if (record.getContractId() == null) {
+			throw new ServiceException(workflowName + "缺少合同ID，无法生成审批文书");
+		}
+	}
+
+	private void requireWorkflowPaymentId(ContractWorkflowRecord record, String workflowName) {
+		if (record.getPaymentId() == null) {
+			throw new ServiceException(workflowName + "缺少账单ID，无法生成审批文书");
+		}
+	}
+
+	private String requireGeneratedFile(Map<String, String> generatedFiles, String fileKey, String fileName) {
+		String fileUrl = generatedFiles == null ? null : generatedFiles.get(fileKey);
+		if (StringUtil.isBlank(fileUrl)) {
+			throw new ServiceException(fileName + "生成或上传失败，流程未完成，请稍后重试");
+		}
+		return fileUrl;
 	}
 
 	private String mergeAttachmentJson(String attachmentJson, Map<String, String> generatedFiles) {

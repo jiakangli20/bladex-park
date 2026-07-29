@@ -546,6 +546,9 @@
         :loading="noticePreview.loading"
         :download-url="noticePreview.downloadUrl"
         :download-label="noticePreview.downloadLabel"
+        :preview-type="noticePreview.previewType"
+        :document-blob="noticePreview.documentBlob"
+        :preview-error="noticePreview.previewError"
         @download="downloadNoticePreviewFile"
       />
     </div>
@@ -824,6 +827,7 @@ export default {
           appendDirect(attachment, 'termination-agreement', '租赁合同解除补充协议', sourceName, 'generated', recordId);
         }
         appendDirect(attachment, 'room-review', '房屋验收流程文件', sourceName, 'generated', recordId);
+        appendDirect(attachment, 'termination-handover', '退租交接单', sourceName, 'generated', recordId);
       });
       const seen = new Set();
       return files.filter(file => {

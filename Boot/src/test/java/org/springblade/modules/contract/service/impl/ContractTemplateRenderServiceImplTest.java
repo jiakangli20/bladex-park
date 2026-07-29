@@ -36,7 +36,8 @@ class ContractTemplateRenderServiceImplTest {
 	private static final String ROOM_REVIEW = "君联大厦招商管理办法2023/附件15：房屋退租交接验收单（思锐泰）.xlsx";
 	private static final String EXACT_PREFIX = "__exact__:";
 
-	private final ContractTemplateRenderServiceImpl service = new ContractTemplateRenderServiceImpl();
+	// 本测试仅覆盖仓库内置模板，不访问 OSS；生产环境由 Spring 注入 OssBuilder。
+	private final ContractTemplateRenderServiceImpl service = new ContractTemplateRenderServiceImpl(null);
 
 	@Test
 	void preservesContractSlotUnderlineWhenFillingInlineValues() throws Exception {

@@ -24,6 +24,7 @@ import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractNoticeService;
+import org.springblade.modules.contract.service.IContractPrintTemplateService;
 import org.springblade.modules.contract.service.IContractTemplateRenderService;
 import org.springblade.modules.resource.builder.OssBuilder;
 import org.springblade.modules.system.pojo.entity.User;
@@ -64,6 +65,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	private static final String TEMPLATE_TERMINATION_APPROVAL = "君联大厦招商管理办法2023/附件八：退租审批表.docx";
 	private static final String TEMPLATE_TERMINATION_AGREEMENT = "君联大厦招商管理办法2023/附件九：关于君联大厦租赁合同解除之补充协议.docx";
 	private static final String TEMPLATE_ROOM_REVIEW = "君联大厦招商管理办法2023/附件15：房屋退租交接验收单（思锐泰）.xlsx";
+	private static final String TEMPLATE_HANDOVER = "君联大厦招商管理办法2023/附件三：交接单.docx";
 	private static final String TEMPLATE_CONTRACT_FIXED = "君联合同/科技服务中心租赁合同（固定租金）202508版 - 解锁.docx";
 	private static final String TEMPLATE_CONTRACT_FLOATING = "君联合同/科技服务中心租赁合同（浮动租金）202508版 - 解锁.docx";
 	private static final String EXACT_REPLACEMENT_PREFIX = "__exact__:";
@@ -75,6 +77,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	private final OssBuilder ossBuilder;
 	private final IContractTemplateRenderService contractTemplateRenderService;
 	private final ContractDocumentPreviewService contractDocumentPreviewService;
+	private final IContractPrintTemplateService contractPrintTemplateService;
 
 	@Override
 	public ContractNoticeFileVO buildNotice(String noticeType, Long paymentId, Long contractId) {
@@ -97,6 +100,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			case NOTICE_TERMINATION -> buildTerminationApproval(context);
 			case NOTICE_TERMINATION_AGREEMENT -> buildTerminationAgreement(context);
 			case NOTICE_ROOM_REVIEW -> buildRoomReview(context);
+			case NOTICE_HANDOVER -> buildHandover(context);
 			default -> throw new ServiceException("不支持的通知类型");
 		};
 	}
@@ -117,14 +121,39 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 
 	@Override
 	public Map<String, String> uploadContractApprovalPackage(Long contractId) {
+		Contract contract = contractMapper.selectById(contractId);
+		if (contract == null) {
+			throw new ServiceException("合同不存在");
+		}
 		Map<String, String> fileMap = new LinkedHashMap<>();
 		ContractNoticeFileVO approval = uploadNotice(NOTICE_CONTRACT_APPROVAL, null, contractId);
 		fileMap.put(NOTICE_CONTRACT_APPROVAL, approval.getFileUrl());
-		ContractNoticeFileVO fixedContract = uploadNotice(NOTICE_CONTRACT_FIXED, null, contractId);
-		fileMap.put(NOTICE_CONTRACT_FIXED, fixedContract.getFileUrl());
-		ContractNoticeFileVO floatingContract = uploadNotice(NOTICE_CONTRACT_FLOATING, null, contractId);
-		fileMap.put(NOTICE_CONTRACT_FLOATING, floatingContract.getFileUrl());
+		String contractTextType = resolveContractTextType(contract);
+		ContractNoticeFileVO contractText = uploadNotice(contractTextType, null, contractId);
+		fileMap.put(contractTextType, contractText.getFileUrl());
 		return fileMap;
+	}
+
+	private String resolveContractTextType(Contract contract) {
+		String remark = Func.toStr(contract.getRemark(), "").trim();
+		if (remark.contains("浮动租金") || remark.contains("浮动计租")) {
+			return NOTICE_CONTRACT_FLOATING;
+		}
+		if (remark.contains("固定租金") || remark.contains("固定计租")) {
+			return NOTICE_CONTRACT_FIXED;
+		}
+		String increaseNode = Func.toStr(contract.getRentIncreaseNode(), "").trim();
+		if (Func.isBlank(increaseNode)) {
+			return NOTICE_CONTRACT_FIXED;
+		}
+		if ("[]".equals(increaseNode) || "{}".equals(increaseNode) || "0".equals(increaseNode)) {
+			return NOTICE_CONTRACT_FIXED;
+		}
+		if (increaseNode.startsWith("[") || increaseNode.startsWith("{")
+			|| contract.getRentIncreaseRate() != null) {
+			return NOTICE_CONTRACT_FLOATING;
+		}
+		throw new ServiceException("合同租金模式无法识别，请补充固定租金或浮动租金设置");
 	}
 
 	@Override
@@ -139,11 +168,17 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 
 	@Override
 	public Map<String, String> uploadOverduePackage(Long paymentId) {
+		ContractPayment payment = contractPaymentMapper.selectById(paymentId);
+		if (payment == null) {
+			throw new ServiceException("账单不存在");
+		}
+		String direction = Func.toStr(payment.getDirection(), "receivable").trim();
+		if (!"receivable".equals(direction)) {
+			throw new ServiceException("仅应收账单可以生成逾期法务文书");
+		}
 		Map<String, String> fileMap = new LinkedHashMap<>();
 		ContractNoticeFileVO projectApproval = uploadNotice(NOTICE_PROJECT_APPROVAL, paymentId, null);
 		fileMap.put(NOTICE_PROJECT_APPROVAL, projectApproval.getFileUrl());
-		ContractNoticeFileVO paymentNotice = uploadNotice(NOTICE_PAYMENT, paymentId, null);
-		fileMap.put(NOTICE_PAYMENT, paymentNotice.getFileUrl());
 		ContractNoticeFileVO reminderNotice = uploadNotice(NOTICE_REMINDER, paymentId, null);
 		fileMap.put(NOTICE_REMINDER, reminderNotice.getFileUrl());
 		ContractNoticeFileVO overdueNotice = uploadNotice(NOTICE_OVERDUE, paymentId, null);
@@ -201,6 +236,11 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		NoticeContext context = resolveContext(noticeType, paymentId, contractId, formData);
 		PreviewData previewData = buildPreviewData(normalizeNoticeType(noticeType), context);
 		ContractNoticeFileVO document = buildNotice(noticeType, paymentId, contractId, formData);
+		ContractDocumentPreviewService.CachedPreview preview = contractDocumentPreviewService.renderCached(
+			document,
+			previewData.summary,
+			previewData.missingFields
+		);
 		return Kv.create()
 			.set("noticeType", normalizeNoticeType(noticeType))
 			.set("noticeName", document.getNoticeName())
@@ -211,7 +251,11 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			.set("fields", previewData.fields)
 			.set("missingFields", previewData.missingFields)
 			.set("previewMode", "document")
-			.set("html", contractDocumentPreviewService.render(document, previewData.summary, previewData.missingFields));
+			.set("pdfUrl", "/blade-contract/print/preview/pdf/" + preview.cacheKey())
+			.set("pdfPlaceholder", preview.pdfPlaceholder())
+			.set("cacheHit", preview.cacheHit())
+			.set("previewPrepareMillis", preview.elapsedMillis())
+			.set("html", preview.html());
 	}
 
 	private Map<String, Object> buildMiniAppData(String noticeType, NoticeContext context, ContractNoticeFileVO document) {
@@ -287,7 +331,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			case NOTICE_REMINDER, NOTICE_OVERDUE -> "contract_overdue_notice";
 			case NOTICE_LEGAL, NOTICE_PROJECT_APPROVAL -> "contract_overdue_legal";
 			case NOTICE_MOVE_OUT -> "contract_move_out";
-			case NOTICE_TERMINATION, NOTICE_TERMINATION_AGREEMENT, NOTICE_ROOM_REVIEW -> "contract_termination";
+			case NOTICE_TERMINATION, NOTICE_TERMINATION_AGREEMENT, NOTICE_ROOM_REVIEW, NOTICE_HANDOVER -> "contract_termination";
 			case NOTICE_CONTRACT_APPROVAL, NOTICE_CONTRACT_FIXED, NOTICE_CONTRACT_FLOATING -> "contract_approval";
 			default -> "contract";
 		};
@@ -313,6 +357,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			case NOTICE_TERMINATION -> contractId == null ? null : "/blade-contract/print/termination-approval/" + contractId;
 			case NOTICE_TERMINATION_AGREEMENT -> contractId == null ? null : "/blade-contract/print/termination-agreement/" + contractId;
 			case NOTICE_ROOM_REVIEW -> contractId == null ? null : "/blade-contract/print/room-review/" + contractId;
+			case NOTICE_HANDOVER -> contractId == null ? null : "/blade-contract/print/termination-handover/" + contractId;
 			default -> null;
 		};
 	}
@@ -340,7 +385,12 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	}
 
 	private String resolveTemplateSource(String noticeType) {
-		return switch (normalizeNoticeType(noticeType)) {
+		String normalized = normalizeNoticeType(noticeType);
+		String enabledTemplateUrl = contractPrintTemplateService.resolveEnabledTemplateSource(normalized);
+		if (StringUtil.isNotBlank(enabledTemplateUrl)) {
+			return enabledTemplateUrl;
+		}
+		return switch (normalized) {
 			case NOTICE_PAYMENT -> TEMPLATE_PAYMENT;
 			case NOTICE_REMINDER -> TEMPLATE_REMINDER;
 			case NOTICE_INVOICE -> TEMPLATE_INVOICE;
@@ -352,6 +402,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			case NOTICE_TERMINATION -> TEMPLATE_TERMINATION_APPROVAL;
 			case NOTICE_TERMINATION_AGREEMENT -> TEMPLATE_TERMINATION_AGREEMENT;
 			case NOTICE_ROOM_REVIEW -> TEMPLATE_ROOM_REVIEW;
+			case NOTICE_HANDOVER -> TEMPLATE_HANDOVER;
 			default -> "";
 		};
 	}
@@ -362,7 +413,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		return contractTemplateRenderService.render(
 			NOTICE_PAYMENT,
 			"付款通知单",
-			TEMPLATE_PAYMENT,
+			resolveTemplateSource(NOTICE_PAYMENT),
 			"付款通知单-" + context.contractNo(),
 			fields,
 			replacements
@@ -375,7 +426,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		return contractTemplateRenderService.render(
 			NOTICE_REMINDER,
 			"催款通知书",
-			TEMPLATE_REMINDER,
+			resolveTemplateSource(NOTICE_REMINDER),
 			"催款通知书-" + context.contractNo(),
 			fields,
 			replacements
@@ -388,7 +439,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		return contractTemplateRenderService.render(
 			NOTICE_OVERDUE,
 			"租金逾期处理通知书",
-			TEMPLATE_OVERDUE,
+			resolveTemplateSource(NOTICE_OVERDUE),
 			"租金逾期处理通知书-" + context.contractNo(),
 			fields,
 			replacements
@@ -401,7 +452,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		return contractTemplateRenderService.render(
 			NOTICE_LEGAL,
 			"律师函",
-			TEMPLATE_OVERDUE,
+			resolveTemplateSource(NOTICE_LEGAL),
 			"律师函-" + context.contractNo(),
 			fields,
 			replacements
@@ -414,7 +465,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		return contractTemplateRenderService.render(
 			NOTICE_MOVE_OUT,
 			"限期搬离通知书",
-			TEMPLATE_OVERDUE,
+			resolveTemplateSource(NOTICE_MOVE_OUT),
 			"限期搬离通知书-" + context.contractNo(),
 			fields,
 			replacements
@@ -427,7 +478,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		return contractTemplateRenderService.render(
 			NOTICE_TERMINATION,
 			"退租审批表",
-			TEMPLATE_TERMINATION_APPROVAL,
+			resolveTemplateSource(NOTICE_TERMINATION),
 			"退租审批表-" + context.contractNo(),
 			fields,
 			replacements
@@ -440,8 +491,21 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		return contractTemplateRenderService.render(
 			NOTICE_ROOM_REVIEW,
 			"房屋退租交接验收单",
-			TEMPLATE_ROOM_REVIEW,
+			resolveTemplateSource(NOTICE_ROOM_REVIEW),
 			"房屋退租交接验收单-" + context.contractNo(),
+			fields,
+			replacements
+		);
+	}
+
+	private ContractNoticeFileVO buildHandover(NoticeContext context) {
+		Map<String, String> fields = createRoomReviewFields(context);
+		Map<String, String> replacements = createRoomReviewReplacements(context);
+		return contractTemplateRenderService.render(
+			NOTICE_HANDOVER,
+			"退租交接单",
+			resolveTemplateSource(NOTICE_HANDOVER),
+			"退租交接单-" + context.contractNo(),
 			fields,
 			replacements
 		);
@@ -453,7 +517,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		return contractTemplateRenderService.render(
 			NOTICE_TERMINATION_AGREEMENT,
 			"合同解除补充协议",
-			TEMPLATE_TERMINATION_AGREEMENT,
+			resolveTemplateSource(NOTICE_TERMINATION_AGREEMENT),
 			"合同解除补充协议-" + context.contractNo(),
 			fields,
 			replacements
@@ -471,7 +535,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		return contractTemplateRenderService.render(
 			NOTICE_CONTRACT_APPROVAL,
 			"合同会签审批表",
-			TEMPLATE_CONTRACT_APPROVAL,
+			resolveTemplateSource(NOTICE_CONTRACT_APPROVAL),
 			"合同会签审批表-" + context.contractNo(),
 			fields,
 			replacements
@@ -504,7 +568,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			return contractTemplateRenderService.render(
 			NOTICE_INVOICE,
 			"开票申请单",
-			TEMPLATE_INVOICE,
+			resolveTemplateSource(NOTICE_INVOICE),
 			"开票申请单-" + context.contractNo(),
 			fields,
 			replacements
@@ -516,7 +580,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		Map<String, String> replacements = createContractTextReplacements(context, fields, floatingRent);
 		String noticeType = floatingRent ? NOTICE_CONTRACT_FLOATING : NOTICE_CONTRACT_FIXED;
 		String noticeName = floatingRent ? "合同正文浮动租金版" : "合同正文固定租金版";
-		String template = floatingRent ? TEMPLATE_CONTRACT_FLOATING : TEMPLATE_CONTRACT_FIXED;
+		String template = resolveTemplateSource(noticeType);
 		return contractTemplateRenderService.render(
 			noticeType,
 			noticeName,
@@ -533,7 +597,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		return contractTemplateRenderService.render(
 			NOTICE_PROJECT_APPROVAL,
 			"项目审批表",
-			TEMPLATE_PROJECT_APPROVAL,
+			resolveTemplateSource(NOTICE_PROJECT_APPROVAL),
 			"项目审批表-" + context.contractNo(),
 			fields,
 			replacements
@@ -549,7 +613,8 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		ContractPayment payment = null;
 		Contract contract = null;
 		Customer customer = null;
-		if (NOTICE_TERMINATION.equals(normalized) || NOTICE_ROOM_REVIEW.equals(normalized) || Func.isNotEmpty(contractId)) {
+		if (NOTICE_TERMINATION.equals(normalized) || NOTICE_ROOM_REVIEW.equals(normalized)
+			|| NOTICE_HANDOVER.equals(normalized) || Func.isNotEmpty(contractId)) {
 			if (Func.isNotEmpty(contractId)) {
 				contract = contractMapper.selectContractById(contractId);
 			}
@@ -602,6 +667,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			case NOTICE_PAYMENT, NOTICE_INVOICE -> "contract_payment";
 			case NOTICE_TERMINATION, NOTICE_TERMINATION_AGREEMENT -> "contract_termination";
 			case NOTICE_ROOM_REVIEW -> "contract_room_review";
+			case NOTICE_HANDOVER -> "contract_room_review";
 			case NOTICE_PROJECT_APPROVAL, NOTICE_REMINDER, NOTICE_OVERDUE, NOTICE_LEGAL, NOTICE_MOVE_OUT -> "contract_overdue_legal";
 			case NOTICE_CONTRACT_APPROVAL, NOTICE_CONTRACT_FIXED, NOTICE_CONTRACT_FLOATING -> "contract_approval";
 			default -> null;
@@ -1591,6 +1657,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			case NOTICE_PROJECT_APPROVAL -> createProjectApprovalFields(context);
 			case NOTICE_TERMINATION, NOTICE_TERMINATION_AGREEMENT -> createTerminationApprovalFields(context);
 			case NOTICE_ROOM_REVIEW -> createRoomReviewFields(context);
+			case NOTICE_HANDOVER -> createRoomReviewFields(context);
 			default -> new LinkedHashMap<>();
 		};
 			Map<String, String> summary = buildPreviewSummary(noticeType, context, fields);
@@ -1649,6 +1716,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			case NOTICE_TERMINATION -> "退租审批表";
 			case NOTICE_TERMINATION_AGREEMENT -> "合同解除补充协议";
 			case NOTICE_ROOM_REVIEW -> "房屋退租交接验收单";
+			case NOTICE_HANDOVER -> "退租交接单";
 			default -> "审批文件";
 		};
 	}

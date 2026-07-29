@@ -40,29 +40,37 @@
           </header>
 
           <div class="upload-card">
+            <div class="upload-settings">
+              <el-select v-model="uploadBusinessType" placeholder="请选择模板类型">
+                <el-option v-for="item in templateTypes" :key="item.value" :label="item.label" :value="item.value" />
+              </el-select>
+              <el-input v-model="uploadVersion" maxlength="30" placeholder="版本号，如 2026V1" />
+            </div>
             <el-upload
               drag
               action="#"
               :auto-upload="false"
               :show-file-list="false"
-              accept=".doc,.docx,.pdf,.html,.htm,.txt"
+              accept=".doc,.docx,.xls,.xlsx"
               :on-change="handleTemplateUpload"
             >
               <div class="upload-text">
                 <strong>上传合同模板</strong>
-                <span>支持 doc/docx/pdf/html/txt</span>
+                <span>支持 doc/docx/xls/xlsx，文件不超过 20MB</span>
               </div>
             </el-upload>
           </div>
 
           <div class="template-items">
-            <button
+            <div
               v-for="item in filteredTemplates"
               :key="item.key"
-              type="button"
               class="template-item"
+              role="button"
+              tabindex="0"
               :class="{ 'is-active': currentTemplate && currentTemplate.key === item.key }"
               @click="selectTemplate(item)"
+              @keydown.enter="selectTemplate(item)"
             >
               <div class="template-item__main">
                 <strong>{{ item.name }}</strong>
@@ -73,8 +81,13 @@
                   {{ item.rentTypeName }}
                 </el-tag>
                 <em>{{ item.version }}</em>
+                <el-tag v-if="item.enabled" type="success" effect="plain">已启用</el-tag>
               </div>
-            </button>
+              <div v-if="item.persisted" class="template-item__actions" @click.stop>
+                <el-button v-if="!item.enabled" text type="primary" @click="enableTemplate(item)">启用</el-button>
+                <el-button text type="danger" @click="removeTemplate(item)">删除</el-button>
+              </div>
+            </div>
 
             <el-empty v-if="filteredTemplates.length === 0" description="暂无模板" />
           </div>
@@ -112,6 +125,13 @@
 </template>
 
 <script>
+import {
+  enablePrintTemplate,
+  getPrintTemplateList,
+  removePrintTemplate,
+  uploadPrintTemplate,
+} from '@/api/contract/print-template';
+
 const TEMPLATE_BASE = '/系统所需材料/君联合同';
 
 export default {
@@ -127,6 +147,24 @@ export default {
         rentType: '',
       },
       currentKey: 'fixed-rent',
+      uploadBusinessType: 'contract-fixed',
+      uploadVersion: '',
+      templateTypes: [
+        { value: 'project-approval', label: '项目审批表' },
+        { value: 'contract-approval', label: '合同会签审批表' },
+        { value: 'contract-fixed', label: '合同正文（固定租金）' },
+        { value: 'contract-floating', label: '合同正文（浮动租金）' },
+        { value: 'payment-notice', label: '付款通知单' },
+        { value: 'invoice-apply', label: '开票申请单' },
+        { value: 'reminder-notice', label: '催款通知书' },
+        { value: 'overdue-notice', label: '租金逾期处理通知书' },
+        { value: 'legal-letter', label: '律师函' },
+        { value: 'move-out-notice', label: '限期搬离通知书' },
+        { value: 'termination-approval', label: '退租审批表' },
+        { value: 'termination-agreement', label: '合同解除补充协议' },
+        { value: 'room-review', label: '房屋退租交接验收单' },
+        { value: 'termination-handover', label: '退租交接单' },
+      ],
       templates: [
         {
           key: 'fixed-rent',
@@ -152,6 +190,9 @@ export default {
         },
       ],
     };
+  },
+  created() {
+    this.loadTemplates();
   },
   computed: {
     summaryCards() {
@@ -218,30 +259,64 @@ export default {
     handleTemplateUpload(file) {
       const rawFile = file.raw;
       if (!rawFile) return;
-      const objectUrl = URL.createObjectURL(rawFile);
-      const extension = this.fileExtension(rawFile.name);
-      const previewTypeMap = {
-        html: 'html',
-        htm: 'html',
-        pdf: 'pdf',
-        txt: 'txt',
-      };
-      const template = {
-        key: `upload-${Date.now()}`,
-        name: rawFile.name.replace(/\.[^.]+$/, ''),
-        rentType: 'custom',
-        rentTypeName: '自定义',
-        version: '上传模板',
-        description: '本地上传的合同模板。',
-        fileName: rawFile.name,
-        objectUrl,
-        previewUrl: previewTypeMap[extension] ? objectUrl : '',
-        previewType: previewTypeMap[extension] || extension,
-      };
-      this.templates.unshift(template);
-      this.currentKey = template.key;
-      this.searchedQuery = { keyword: '', rentType: '' };
-      this.query = { keyword: '', rentType: '' };
+      if (!this.uploadVersion.trim()) {
+        this.$message.warning('请先填写模板版本号');
+        return;
+      }
+      const formData = new FormData();
+      formData.append('businessType', this.uploadBusinessType);
+      formData.append('templateName', rawFile.name.replace(/\.[^.]+$/, ''));
+      formData.append('versionNo', this.uploadVersion.trim());
+      formData.append('file', rawFile);
+      uploadPrintTemplate(formData).then(() => {
+        this.$message.success('模板已上传，请启用后用于文书生成');
+        this.uploadVersion = '';
+        this.loadTemplates();
+      });
+    },
+    loadTemplates() {
+      getPrintTemplateList().then(res => {
+        const records = res && res.data ? res.data.data || [] : [];
+        const builtin = this.templates.filter(item => !item.persisted);
+        const persisted = (Array.isArray(records) ? records : []).map(item => ({
+          key: `db-${item.templateId}`,
+          templateId: item.templateId,
+          persisted: true,
+          enabled: item.enabledFlag === '1',
+          name: item.templateName,
+          rentType: item.businessType === 'contract-fixed' ? 'fixed'
+            : item.businessType === 'contract-floating' ? 'floating' : 'custom',
+          rentTypeName: this.templateTypeName(item.businessType),
+          version: item.versionNo,
+          description: item.remark || '已持久化到 OSS 的正式模板。',
+          fileName: item.fileName,
+          objectUrl: item.fileUrl,
+          previewType: item.fileSuffix,
+        }));
+        this.templates = [...persisted, ...builtin];
+      });
+    },
+    templateTypeName(value) {
+      const item = this.templateTypes.find(type => type.value === value);
+      return item ? item.label : '自定义';
+    },
+    enableTemplate(row) {
+      this.$confirm(`确认启用“${row.name}”吗？同类型原启用版本将自动停用。`, '启用模板', { type: 'warning' })
+        .then(() => enablePrintTemplate(row.templateId))
+        .then(() => {
+          this.$message.success('模板已启用');
+          this.loadTemplates();
+        })
+        .catch(() => {});
+    },
+    removeTemplate(row) {
+      this.$confirm(`确认删除“${row.name}”吗？`, '删除模板', { type: 'warning' })
+        .then(() => removePrintTemplate(row.templateId))
+        .then(() => {
+          this.$message.success('模板已删除');
+          this.loadTemplates();
+        })
+        .catch(() => {});
     },
     fileExtension(fileName = '') {
       const match = fileName.toLowerCase().match(/\.([^.]+)$/);
@@ -335,6 +410,22 @@ export default {
 
 .upload-card {
   padding: 14px 14px 0;
+}
+
+.upload-settings {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.template-item__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
 }
 
 .upload-card :deep(.el-upload) {

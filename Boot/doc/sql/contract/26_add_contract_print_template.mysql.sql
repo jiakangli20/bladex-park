@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS `biz_contract_print_template` (
+  `template_id` bigint NOT NULL AUTO_INCREMENT COMMENT '模板ID',
+  `business_type` varchar(64) NOT NULL COMMENT '文书业务类型',
+  `template_name` varchar(200) NOT NULL COMMENT '模板名称',
+  `version_no` varchar(64) NOT NULL COMMENT '版本号',
+  `file_name` varchar(255) NOT NULL COMMENT '原文件名',
+  `file_url` varchar(1000) NOT NULL COMMENT 'OSS地址',
+  `file_object_name` varchar(500) DEFAULT NULL COMMENT 'OSS对象名',
+  `file_suffix` varchar(20) NOT NULL COMMENT '文件扩展名',
+  `file_size` bigint NOT NULL COMMENT '文件大小',
+  `enabled_flag` char(1) NOT NULL DEFAULT '0' COMMENT '启用标识',
+  `builtin_flag` char(1) NOT NULL DEFAULT '0' COMMENT '内置标识',
+  `remark` varchar(500) DEFAULT NULL,
+  `del_flag` char(1) NOT NULL DEFAULT '0',
+  `create_by` varchar(64) DEFAULT NULL,
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_by` varchar(64) DEFAULT NULL,
+  `update_time` datetime DEFAULT NULL,
+  PRIMARY KEY (`template_id`),
+  UNIQUE KEY `uk_contract_template_version` (`business_type`,`version_no`,`del_flag`),
+  KEY `idx_contract_template_enabled` (`business_type`,`enabled_flag`,`del_flag`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='合同打印模板版本';

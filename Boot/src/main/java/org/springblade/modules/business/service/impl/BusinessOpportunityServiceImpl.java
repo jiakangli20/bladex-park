@@ -5,6 +5,7 @@
 package org.springblade.modules.business.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
@@ -21,10 +22,14 @@ import org.springblade.core.tool.utils.Func;
 import org.springblade.core.tool.support.Kv;
 import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.business.mapper.BusinessOpportunityMapper;
+import org.springblade.modules.business.mapper.BackgroundInvestigationMapper;
+import org.springblade.modules.business.mapper.CustomerMapper;
+import org.springblade.modules.business.pojo.entity.BackgroundInvestigation;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunity;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunityFile;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunityFollow;
 import org.springblade.modules.business.pojo.entity.Tag;
+import org.springblade.modules.business.pojo.entity.Customer;
 import org.springblade.modules.business.service.IBusinessOpportunityService;
 import org.springblade.modules.business.service.ITagService;
 import org.springblade.modules.approval.service.impl.WorkflowApprovalTraceService;
@@ -32,19 +37,26 @@ import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractTemplateRenderService;
 import org.springblade.modules.contract.service.impl.ContractDocumentPreviewService;
 import org.springblade.modules.resource.builder.OssBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.io.BufferedInputStream;
+import java.io.InputStream;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 /**
  * 商机服务实现.
@@ -63,6 +75,12 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	private static final String STATUS_DEAL = "DEAL";
 	private static final String BUSINESS_TYPE_TENANT_ENTRY = "tenant_entry";
 	private static final String TEMPLATE_TENANT_ENTRY_APPROVAL = "君联大厦招商管理办法2023/附件一：企业入驻审批表.docx";
+	private static final Set<String> OPPORTUNITY_FILE_SUFFIXES = Set.of("doc", "docx", "xls", "xlsx", "pdf", "jpg", "jpeg", "png");
+	private static final Set<String> DANGEROUS_SUFFIXES = Set.of("exe", "com", "dll", "msi", "bat", "cmd", "sh", "js", "jar", "php", "jsp", "html", "htm", "svg", "scr");
+	private static final long MAX_OPENXML_EXPANDED_BYTES = 200L * 1024L * 1024L;
+
+	@Value("${blade.business.opportunity-file-max-bytes:20971520}")
+	private long opportunityFileMaxBytes;
 
 	private final ITagService tagService;
 	private final OssBuilder ossBuilder;
@@ -70,6 +88,8 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	private final WorkflowApprovalTraceService workflowApprovalTraceService;
 	private final IContractTemplateRenderService contractTemplateRenderService;
 	private final ContractDocumentPreviewService contractDocumentPreviewService;
+	private final BackgroundInvestigationMapper backgroundInvestigationMapper;
+	private final CustomerMapper customerMapper;
 
 	@Override
 	public BusinessOpportunity selectBusinessOpportunityById(Long opportunityId) {
@@ -226,7 +246,8 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (Func.isEmpty(opportunity)) {
 			throw new ServiceException("商机不存在");
 		}
-		String originalFilename = StringUtil.isBlank(file.getOriginalFilename()) ? "opportunity-file" : file.getOriginalFilename();
+		validateOpportunityFile(file);
+		String originalFilename = file.getOriginalFilename().trim();
 		BladeFile bladeFile = ossBuilder.template().putFile(originalFilename, file.getInputStream());
 
 		BusinessOpportunityFile fileEntity = new BusinessOpportunityFile();
@@ -239,6 +260,99 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		fileEntity.setCreateTime(DateUtil.now());
 		baseMapper.insertFile(fileEntity);
 		return fileEntity;
+	}
+
+	private void validateOpportunityFile(MultipartFile file) throws Exception {
+		if (file == null || file.isEmpty() || file.getSize() <= 0) {
+			throw new ServiceException("上传文件不能为空");
+		}
+		if (file.getSize() > Math.max(1L, opportunityFileMaxBytes)) {
+			throw new ServiceException("上传文件不能超过 " + Math.max(1L, opportunityFileMaxBytes / 1024L / 1024L) + "MB");
+		}
+		String originalFilename = StringUtil.isBlank(file.getOriginalFilename()) ? "" : file.getOriginalFilename().trim();
+		if (StringUtil.isBlank(originalFilename) || originalFilename.contains("/") || originalFilename.contains("\\")) {
+			throw new ServiceException("文件名不合法");
+		}
+		String lowerName = originalFilename.toLowerCase(Locale.ROOT);
+		String suffix = FileUtil.getFileExtension(lowerName);
+		if (!OPPORTUNITY_FILE_SUFFIXES.contains(suffix)) {
+			throw new ServiceException("仅支持 Word、Excel、PDF、JPG、PNG 文件");
+		}
+		String[] nameParts = lowerName.split("\\.");
+		for (int index = 0; index < nameParts.length - 1; index++) {
+			if (DANGEROUS_SUFFIXES.contains(nameParts[index])) {
+				throw new ServiceException("文件名包含危险的双扩展名");
+			}
+		}
+		validateDeclaredMime(file.getContentType(), suffix);
+		byte[] header = new byte[8];
+		int read;
+		try (BufferedInputStream input = new BufferedInputStream(file.getInputStream())) {
+			read = input.read(header);
+		}
+		boolean validHeader = switch (suffix) {
+			case "pdf" -> read >= 4 && header[0] == '%' && header[1] == 'P' && header[2] == 'D' && header[3] == 'F';
+			case "jpg", "jpeg" -> read >= 3 && (header[0] & 0xff) == 0xff && (header[1] & 0xff) == 0xd8 && (header[2] & 0xff) == 0xff;
+			case "png" -> read >= 8 && (header[0] & 0xff) == 0x89 && header[1] == 'P' && header[2] == 'N' && header[3] == 'G';
+			case "doc", "xls" -> read >= 4 && (header[0] & 0xff) == 0xd0 && (header[1] & 0xff) == 0xcf
+				&& (header[2] & 0xff) == 0x11 && (header[3] & 0xff) == 0xe0;
+			case "docx", "xlsx" -> read >= 4 && header[0] == 'P' && header[1] == 'K';
+			default -> false;
+		};
+		if (!validHeader) {
+			throw new ServiceException("文件扩展名与真实内容不一致");
+		}
+		if ("docx".equals(suffix) || "xlsx".equals(suffix)) {
+			validateOpenXmlPackage(file, suffix);
+		}
+	}
+
+	private void validateDeclaredMime(String contentType, String suffix) {
+		String mime = StringUtil.isBlank(contentType) ? "" : contentType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
+		Set<String> allowed = switch (suffix) {
+			case "doc" -> Set.of("application/msword", "application/octet-stream");
+			case "docx" -> Set.of("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/zip", "application/octet-stream");
+			case "xls" -> Set.of("application/vnd.ms-excel", "application/octet-stream");
+			case "xlsx" -> Set.of("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/zip", "application/octet-stream");
+			case "pdf" -> Set.of("application/pdf", "application/octet-stream");
+			case "jpg", "jpeg" -> Set.of("image/jpeg", "application/octet-stream");
+			case "png" -> Set.of("image/png", "application/octet-stream");
+			default -> Collections.emptySet();
+		};
+		if (!allowed.contains(mime)) {
+			throw new ServiceException("文件 MIME 类型与扩展名不一致");
+		}
+	}
+
+	private void validateOpenXmlPackage(MultipartFile file, String suffix) throws Exception {
+		boolean contentTypesFound = false;
+		boolean documentRootFound = false;
+		long expandedBytes = 0L;
+		int entryCount = 0;
+		byte[] buffer = new byte[8192];
+		try (InputStream raw = file.getInputStream(); ZipInputStream zip = new ZipInputStream(raw)) {
+			ZipEntry entry;
+			while ((entry = zip.getNextEntry()) != null) {
+				if (++entryCount > 10000) {
+					throw new ServiceException("Office 文件包含过多内部条目");
+				}
+				String name = entry.getName() == null ? "" : entry.getName().replace('\\', '/');
+				contentTypesFound |= "[Content_Types].xml".equals(name);
+				documentRootFound |= ("docx".equals(suffix) && name.startsWith("word/"))
+					|| ("xlsx".equals(suffix) && name.startsWith("xl/"));
+				int count;
+				while ((count = zip.read(buffer)) != -1) {
+					expandedBytes += count;
+					if (expandedBytes > MAX_OPENXML_EXPANDED_BYTES) {
+						throw new ServiceException("Office 文件解压后内容过大");
+					}
+				}
+				zip.closeEntry();
+			}
+		}
+		if (!contentTypesFound || !documentRootFound) {
+			throw new ServiceException("Office 文件结构与扩展名不一致");
+		}
 	}
 
 	@Override
@@ -284,7 +398,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (Func.isEmpty(opportunity)) {
 			throw new ServiceException("商机不存在");
 		}
-		return queryBackgroundInvestigationByName(opportunity.getEnterpriseName());
+		return buildBackgroundInvestigationResult(opportunity.getEnterpriseName(), opportunity);
 	}
 
 	@Override
@@ -292,14 +406,98 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (StringUtil.isBlank(enterpriseName)) {
 			throw new ServiceException("请先填写企业名称");
 		}
-		Map<String, Object> result = new HashMap<>(8);
-		result.put("found", false);
+		BusinessOpportunity opportunity = baseMapper.selectOne(Wrappers.<BusinessOpportunity>lambdaQuery()
+			.eq(BusinessOpportunity::getEnterpriseName, enterpriseName.trim())
+			.eq(BusinessOpportunity::getDelFlag, DEL_FLAG_NORMAL)
+			.orderByDesc(BusinessOpportunity::getCreateTime)
+			.last("limit 1"));
+		return buildBackgroundInvestigationResult(enterpriseName.trim(), opportunity);
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public Map<String, Object> saveBackgroundInvestigation(BackgroundInvestigation investigation) {
+		if (investigation == null || StringUtil.isBlank(investigation.getEnterpriseName())) {
+			throw new ServiceException("企业名称不能为空");
+		}
+		String enterpriseName = investigation.getEnterpriseName().trim();
+		BusinessOpportunity opportunity = investigation.getOpportunityId() == null ? null
+			: baseMapper.selectBusinessOpportunityById(investigation.getOpportunityId());
+		if (opportunity == null) {
+			opportunity = baseMapper.selectOne(Wrappers.<BusinessOpportunity>lambdaQuery()
+				.eq(BusinessOpportunity::getEnterpriseName, enterpriseName)
+				.eq(BusinessOpportunity::getDelFlag, DEL_FLAG_NORMAL)
+				.orderByDesc(BusinessOpportunity::getCreateTime)
+				.last("limit 1"));
+		}
+		if (opportunity != null) {
+			investigation.setOpportunityId(opportunity.getOpportunityId());
+			investigation.setCustomerId(opportunity.getCustomerId());
+		}
+		if (investigation.getCustomerId() == null) {
+			Customer customer = customerMapper.selectOne(Wrappers.<Customer>lambdaQuery()
+				.eq(Customer::getEnterpriseName, enterpriseName)
+				.eq(Customer::getDelFlag, DEL_FLAG_NORMAL)
+				.orderByDesc(Customer::getCreateTime)
+				.last("limit 1"));
+			if (customer != null) {
+				investigation.setCustomerId(customer.getCustomerId());
+			}
+		}
+		investigation.setInvestigationId(null);
+		investigation.setEnterpriseName(enterpriseName);
+		investigation.setVerifyStatus(firstNotBlank(investigation.getVerifyStatus(), "1"));
+		investigation.setRiskLevel(firstNotBlank(investigation.getRiskLevel(), "0"));
+		investigation.setLegalRiskFlag(normalizeRiskFlag(investigation.getLegalRiskFlag()));
+		investigation.setExecutiveRiskFlag(normalizeRiskFlag(investigation.getExecutiveRiskFlag()));
+		investigation.setShareholderRiskFlag(normalizeRiskFlag(investigation.getShareholderRiskFlag()));
+		investigation.setExternalStatus("reserved");
+		investigation.setCreateBy(currentUserName());
+		investigation.setCreateTime(DateUtil.now());
+		if (backgroundInvestigationMapper.insert(investigation) <= 0) {
+			throw new ServiceException("背景调查结果保存失败");
+		}
+		if (investigation.getCustomerId() != null) {
+			Customer customer = new Customer();
+			customer.setCustomerId(investigation.getCustomerId());
+			customer.setVerifyStatus(investigation.getVerifyStatus());
+			customer.setVerifyMessage(investigation.getSourceRemark());
+			customer.setVerifyTime(investigation.getCreateTime());
+			customer.setRiskLevel(investigation.getRiskLevel());
+			customer.setRiskSummary(investigation.getRiskSummary());
+			customer.setLegalRiskFlag(investigation.getLegalRiskFlag());
+			customer.setExecutiveRiskFlag(investigation.getExecutiveRiskFlag());
+			customer.setShareholderRiskFlag(investigation.getShareholderRiskFlag());
+			customer.setUpdateBy(currentUserName());
+			customerMapper.updateCustomerCheckResult(customer);
+		}
+		return buildBackgroundInvestigationResult(enterpriseName, opportunity);
+	}
+
+	private Map<String, Object> buildBackgroundInvestigationResult(String enterpriseName, BusinessOpportunity opportunity) {
+		List<BackgroundInvestigation> history = backgroundInvestigationMapper.selectList(
+			Wrappers.<BackgroundInvestigation>lambdaQuery()
+				.eq(BackgroundInvestigation::getEnterpriseName, enterpriseName)
+				.orderByDesc(BackgroundInvestigation::getCreateTime, BackgroundInvestigation::getInvestigationId));
+		BackgroundInvestigation latest = history.isEmpty() ? null : history.get(0);
+		Map<String, Object> result = new LinkedHashMap<>();
+		result.put("found", latest != null);
 		result.put("enterpriseName", enterpriseName);
+		result.put("opportunityId", opportunity == null ? null : opportunity.getOpportunityId());
+		result.put("customerId", opportunity == null ? (latest == null ? null : latest.getCustomerId()) : opportunity.getCustomerId());
+		result.put("latest", latest);
+		result.put("history", history);
+		result.put("externalStatus", "reserved");
+		result.put("externalMessage", "第三方工商及司法风险查询待接入，当前结果为人工核验记录");
 		result.put("litigationList", Collections.emptyList());
 		result.put("executorList", Collections.emptyList());
 		result.put("penaltyList", Collections.emptyList());
 		result.put("relatedRiskList", Collections.emptyList());
 		return result;
+	}
+
+	private String normalizeRiskFlag(String value) {
+		return "1".equals(value) ? "1" : "0";
 	}
 
 	@Override

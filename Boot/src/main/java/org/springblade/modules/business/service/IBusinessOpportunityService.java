@@ -9,6 +9,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunity;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunityFile;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunityFollow;
+import org.springblade.modules.business.pojo.entity.BackgroundInvestigation;
 import org.springblade.modules.business.pojo.entity.Tag;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.core.tool.support.Kv;
@@ -53,6 +54,8 @@ public interface IBusinessOpportunityService extends IService<BusinessOpportunit
 	Map<String, Object> queryBackgroundInvestigation(Long opportunityId);
 
 	Map<String, Object> queryBackgroundInvestigationByName(String enterpriseName);
+
+	Map<String, Object> saveBackgroundInvestigation(BackgroundInvestigation investigation);
 
 	BusinessOpportunity createApprovalProjectFromOpportunity(Long opportunityId, Long flowId);
 

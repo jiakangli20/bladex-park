@@ -14,6 +14,7 @@ import lombok.AllArgsConstructor;
 import org.springblade.core.boot.ctrl.BladeController;
 import org.springblade.core.mp.support.Condition;
 import org.springblade.core.mp.support.Query;
+import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.secure.annotation.PreAuth;
 import org.springblade.core.tenant.annotation.NonDS;
 import org.springblade.core.tool.api.R;
@@ -21,6 +22,7 @@ import org.springblade.core.tool.support.Kv;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunity;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunityFile;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunityFollow;
+import org.springblade.modules.business.pojo.entity.BackgroundInvestigation;
 import org.springblade.modules.business.pojo.entity.Tag;
 import org.springblade.modules.business.service.IBusinessOpportunityService;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
@@ -168,8 +170,15 @@ public class BusinessOpportunityController extends BladeController {
 		return R.data(businessOpportunityService.queryBackgroundInvestigationByName(enterpriseName));
 	}
 
-	@GetMapping("/tenant-entry/approval-form/{opportunityId}")
+	@PostMapping("/background/save")
 	@ApiOperationSupport(order = 18)
+	@Operation(summary = "保存背景调查", description = "保存人工核验结果并保留修改留痕")
+	public R<Map<String, Object>> saveBackground(@RequestBody BackgroundInvestigation investigation) {
+		return R.data(businessOpportunityService.saveBackgroundInvestigation(investigation));
+	}
+
+	@GetMapping("/tenant-entry/approval-form/{opportunityId}")
+	@ApiOperationSupport(order = 19)
 	@Operation(summary = "企业入驻审批表", description = "按原始模板导出入驻审批表文件")
 	public void tenantEntryApprovalForm(@PathVariable Long opportunityId,
 										@RequestParam(value = "processInsId", required = false) String processInsId,
@@ -178,7 +187,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@GetMapping("/tenant-entry/approval-form-preview/{opportunityId}")
-	@ApiOperationSupport(order = 19)
+	@ApiOperationSupport(order = 20)
 	@Operation(summary = "企业入驻审批表预览", description = "按原始 Word 模板生成并预览入驻审批表")
 	public R<Kv> tenantEntryApprovalFormPreview(@PathVariable Long opportunityId,
 										   @RequestParam(value = "processInsId", required = false) String processInsId) {
@@ -186,11 +195,11 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@PostMapping("/submitAudit/{opportunityId}")
-	@ApiOperationSupport(order = 20)
+	@ApiOperationSupport(order = 21)
 	@Operation(summary = "提交审核", description = "提交入驻审核")
 	public R<BusinessOpportunity> submitAudit(@PathVariable Long opportunityId,
 											  @RequestParam(value = "flowId", required = false) Long flowId) {
-		return R.data(businessOpportunityService.createApprovalProjectFromOpportunity(opportunityId, flowId));
+		throw new ServiceException("旧审批已停用，请使用协同办公流程");
 	}
 
 	private void writeDocument(ContractNoticeFileVO document, HttpServletResponse response) {

@@ -57,6 +57,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ContractDocumentPreviewService {
 
+	public static final String PDF_SOURCE_PLACEHOLDER = "__BLADEX_OFFICE_PREVIEW_PDF__";
 	private static final int MAX_PREVIEW_ROWS = 160;
 	private static final int MAX_PREVIEW_COLUMNS = 32;
 	private static final double DEFAULT_A4_WIDTH_PT = 595.3D;
@@ -74,9 +75,29 @@ public class ContractDocumentPreviewService {
 		return wrapDocument(document, summary, missingFields, body, extension);
 	}
 
+	public CachedPreview renderCached(ContractNoticeFileVO document, Map<String, String> summary, List<String> missingFields) {
+		String extension = extension(document == null ? null : document.getFileName());
+		OfficePdfConversionService.PreparedPreview prepared = officePdfConversionService.prepare(document);
+		String html = wrapDocument(document, summary, missingFields, renderPdfReference(), extension);
+		return new CachedPreview(
+			html,
+			prepared.cacheKey(),
+			prepared.cacheHit(),
+			prepared.elapsedMillis(),
+			PDF_SOURCE_PLACEHOLDER
+		);
+	}
+
 	private String renderPdf(byte[] pdfBytes) {
 		String source = "data:application/pdf;base64," + Base64.getEncoder().encodeToString(pdfBytes);
 		return "<object class=\"pdf-preview\" data-office-preview-pdf=\"true\" type=\"application/pdf\" data=\"" + source + "\">"
+			+ "<p class=\"pdf-preview-fallback\">当前浏览器无法内嵌 PDF，请下载原文件查看。</p>"
+			+ "</object>";
+	}
+
+	private String renderPdfReference() {
+		return "<object class=\"pdf-preview\" data-office-preview-pdf=\"true\" type=\"application/pdf\" data=\""
+			+ PDF_SOURCE_PLACEHOLDER + "\">"
 			+ "<p class=\"pdf-preview-fallback\">当前浏览器无法内嵌 PDF，请下载原文件查看。</p>"
 			+ "</object>";
 	}
@@ -818,6 +839,9 @@ public class ContractDocumentPreviewService {
 		private static SheetWindow emptyWindow() {
 			return new SheetWindow(0, -1, 0, 0, true);
 		}
+	}
+
+	public record CachedPreview(String html, String cacheKey, boolean cacheHit, long elapsedMillis, String pdfPlaceholder) {
 	}
 
 }

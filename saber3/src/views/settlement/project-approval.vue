@@ -143,6 +143,9 @@
         :loading="approvalPreview.loading"
         :download-url="approvalPreview.downloadUrl"
         :download-label="approvalPreview.downloadLabel"
+        :preview-type="approvalPreview.previewType"
+        :document-blob="approvalPreview.documentBlob"
+        :preview-error="approvalPreview.previewError"
         @download="downloadApprovalForm"
       />
 

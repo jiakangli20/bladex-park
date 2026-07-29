@@ -8,8 +8,16 @@
     @close="handleClose"
   >
     <div v-loading="loading" class="notice-preview-body">
+      <el-empty v-if="displayPreviewError" :description="displayPreviewError" />
+      <div
+        v-else-if="previewType === 'docx' && documentBlob"
+        class="notice-preview-word"
+      >
+        <div ref="docxStyle"></div>
+        <div ref="docxContainer" class="notice-preview-word-content"></div>
+      </div>
       <iframe
-        v-if="html"
+        v-else-if="html"
         ref="previewFrame"
         title="通知文件预览"
         class="notice-preview-frame"
@@ -37,6 +45,8 @@
 </template>
 
 <script>
+import { renderAsync } from 'docx-preview';
+
 export default {
   name: 'NoticePreviewDialog',
   props: {
@@ -68,8 +78,26 @@ export default {
       type: Boolean,
       default: false,
     },
+    previewType: {
+      type: String,
+      default: 'html',
+    },
+    documentBlob: {
+      type: Object,
+      default: null,
+    },
+    previewError: {
+      type: String,
+      default: '',
+    },
   },
   emits: ['update:modelValue', 'download', 'print'],
+  data() {
+    return {
+      localPreviewError: '',
+      renderVersion: 0,
+    };
+  },
   computed: {
     visible: {
       get() {
@@ -79,23 +107,68 @@ export default {
         this.$emit('update:modelValue', value);
       },
     },
+    displayPreviewError() {
+      return this.previewError || this.localPreviewError;
+    },
   },
   watch: {
     html: {
       handler() {
-        this.$nextTick(() => this.renderFrame());
+        this.scheduleRender();
       },
       immediate: true,
     },
+    documentBlob() {
+      this.localPreviewError = '';
+      this.scheduleRender();
+    },
+    previewType() {
+      this.localPreviewError = '';
+      this.scheduleRender();
+    },
     visible(value) {
       if (value) {
-        this.$nextTick(() => this.renderFrame());
+        this.scheduleRender();
       }
     },
   },
   methods: {
     handleClose() {
       this.$emit('update:modelValue', false);
+    },
+    scheduleRender() {
+      this.$nextTick(() => {
+        if (this.previewType === 'docx') {
+          this.renderDocx();
+          return;
+        }
+        this.renderFrame();
+      });
+    },
+    async renderDocx() {
+      const container = this.$refs.docxContainer;
+      if (!container || !this.documentBlob || !this.visible) return;
+      const currentVersion = ++this.renderVersion;
+      container.innerHTML = '';
+      this.localPreviewError = '';
+      try {
+        await renderAsync(this.documentBlob, container, this.$refs.docxStyle || null, {
+          className: 'docx-preview-page',
+          inWrapper: true,
+          breakPages: true,
+          ignoreWidth: false,
+          ignoreHeight: false,
+          ignoreFonts: false,
+          useBase64URL: true,
+          renderHeaders: true,
+          renderFooters: true,
+          renderFootnotes: true,
+        });
+      } catch (error) {
+        if (currentVersion === this.renderVersion) {
+          this.localPreviewError = 'Word 内容解析失败，可以下载原文件后查看。';
+        }
+      }
     },
     renderFrame() {
       const frame = this.$refs.previewFrame;
@@ -124,5 +197,29 @@ export default {
   min-height: 70vh;
   border: 0;
   background: #fff;
+}
+
+.notice-preview-word {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 70vh;
+  max-height: 70vh;
+  padding: 18px;
+  overflow: auto;
+  background: #eef1f5;
+}
+
+.notice-preview-word-content {
+  min-width: max-content;
+}
+
+:deep(.docx-wrapper) {
+  padding: 0;
+  background: transparent;
+}
+
+:deep(.docx-wrapper > section.docx-preview-page) {
+  margin: 0 auto 18px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
 }
 </style>

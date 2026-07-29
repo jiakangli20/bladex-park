@@ -5,6 +5,7 @@
 package org.springblade.modules.contract.service.impl;
 
 import lombok.SneakyThrows;
+import lombok.RequiredArgsConstructor;
 import org.apache.poi.hwpf.HWPFDocument;
 import org.apache.poi.hwpf.usermodel.Paragraph;
 import org.apache.poi.hwpf.usermodel.Range;
@@ -30,12 +31,16 @@ import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractTemplateRenderService;
+import org.springblade.modules.resource.builder.OssBuilder;
 import org.springframework.stereotype.Service;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,6 +61,7 @@ import java.util.Set;
  * @author BladeX
  */
 @Service
+@RequiredArgsConstructor
 public class ContractTemplateRenderServiceImpl implements IContractTemplateRenderService {
 	private static final int TERMINATION_APPROVAL_BLOCK_HEIGHT = 1200;
 
@@ -67,6 +73,7 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 	private static final String EXACT_REPLACEMENT_PREFIX = "__exact__:";
 	private static final String WORD_NAMESPACE = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 	private static final String XML_NAMESPACE = "http://www.w3.org/XML/1998/namespace";
+	private final OssBuilder ossBuilder;
 
 	@Override
 	@SneakyThrows
@@ -76,26 +83,33 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 									 String fileNamePrefix,
 									 Map<String, String> fields,
 									 Map<String, String> replacements) {
+		boolean remoteTemplate = isTemporaryTemplateSource(templateRelativePath);
 		Path templatePath = resolveTemplate(templateRelativePath);
-		String extension = extension(templatePath.getFileName().toString());
-		Map<String, String> normalizedFields = normalizeMap(fields);
-		Map<String, String> normalizedReplacements = createPlaceholderReplacements(normalizedFields);
-		normalizedReplacements.putAll(normalizeMap(replacements));
-		byte[] bytes = switch (extension) {
-			case "doc" -> fillDoc(templatePath, normalizedFields, normalizedReplacements);
-			case "docx" -> fillDocx(templatePath, normalizedFields, normalizedReplacements);
-			case "xls", "xlsx" -> fillWorkbook(templatePath, normalizedFields, normalizedReplacements);
-			default -> throw new ServiceException("暂不支持该模板格式：" + extension + "，请先转换为 doc/docx/xls/xlsx");
-		};
+		try {
+			String extension = extension(templatePath.getFileName().toString());
+			Map<String, String> normalizedFields = normalizeMap(fields);
+			Map<String, String> normalizedReplacements = createPlaceholderReplacements(normalizedFields);
+			normalizedReplacements.putAll(normalizeMap(replacements));
+			byte[] bytes = switch (extension) {
+				case "doc" -> fillDoc(templatePath, normalizedFields, normalizedReplacements);
+				case "docx" -> fillDocx(templatePath, normalizedFields, normalizedReplacements);
+				case "xls", "xlsx" -> fillWorkbook(templatePath, normalizedFields, normalizedReplacements);
+				default -> throw new ServiceException("暂不支持该模板格式：" + extension + "，请先转换为 doc/docx/xls/xlsx");
+			};
 
-		ContractNoticeFileVO vo = new ContractNoticeFileVO();
-		vo.setNoticeType(noticeType);
-		vo.setNoticeName(noticeName);
-		vo.setFileName(buildFileName(fileNamePrefix, extension));
-		vo.setContentType(contentType(extension));
-		vo.setGeneratedAt(DateUtil.formatDateTime(new Date()));
-		vo.setFileBytes(bytes);
-		return vo;
+			ContractNoticeFileVO vo = new ContractNoticeFileVO();
+			vo.setNoticeType(noticeType);
+			vo.setNoticeName(noticeName);
+			vo.setFileName(buildFileName(fileNamePrefix, extension));
+			vo.setContentType(contentType(extension));
+			vo.setGeneratedAt(DateUtil.formatDateTime(new Date()));
+			vo.setFileBytes(bytes);
+			return vo;
+		} finally {
+			if (remoteTemplate) {
+				Files.deleteIfExists(templatePath);
+			}
+		}
 	}
 
 	private byte[] fillDocx(Path templatePath, Map<String, String> fields, Map<String, String> replacements) throws Exception {
@@ -1289,6 +1303,55 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		if (StringUtil.isBlank(templateRelativePath)) {
 			throw new ServiceException("模板路径不能为空");
 		}
+		if (templateRelativePath.startsWith("oss://")) {
+			Path temporary = null;
+			try {
+				String objectName = URLDecoder.decode(templateRelativePath.substring("oss://".length()), StandardCharsets.UTF_8);
+				String suffix = extension(objectName);
+				if (!Set.of("doc", "docx", "xls", "xlsx").contains(suffix)) {
+					throw new ServiceException("OSS 模板格式不受支持");
+				}
+				temporary = Files.createTempFile("contract-template-", "." + suffix);
+				try (InputStream input = ossBuilder.template().statFileStream(objectName)) {
+					Files.copy(input, temporary, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+				}
+				if (Files.size(temporary) > 30L * 1024L * 1024L) {
+					throw new ServiceException("OSS 模板文件不能超过30MB");
+				}
+				return temporary;
+			} catch (ServiceException exception) {
+				deleteTemporaryTemplate(temporary);
+				throw exception;
+			} catch (Exception exception) {
+				deleteTemporaryTemplate(temporary);
+				throw new ServiceException("读取 OSS 合同模板失败");
+			}
+		}
+		if (isRemoteTemplate(templateRelativePath)) {
+			Path temporary = null;
+			try {
+				URI uri = URI.create(templateRelativePath);
+				String path = uri.getPath();
+				String suffix = extension(path == null ? "" : path);
+				if (!Set.of("doc", "docx", "xls", "xlsx").contains(suffix)) {
+					throw new ServiceException("远程模板格式不受支持");
+				}
+				temporary = Files.createTempFile("contract-template-", "." + suffix);
+				try (InputStream input = uri.toURL().openStream()) {
+					Files.copy(input, temporary, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+				}
+				if (Files.size(temporary) > 30L * 1024L * 1024L) {
+					throw new ServiceException("远程模板文件不能超过30MB");
+				}
+				return temporary;
+			} catch (ServiceException exception) {
+				deleteTemporaryTemplate(temporary);
+				throw exception;
+			} catch (Exception exception) {
+				deleteTemporaryTemplate(temporary);
+				throw new ServiceException("读取已启用合同模板失败");
+			}
+		}
 		Path userDir = Paths.get(System.getProperty("user.dir")).toAbsolutePath();
 		for (Path cursor = userDir; cursor != null; cursor = cursor.getParent()) {
 			Path candidate = cursor.resolve(MATERIAL_ROOT).resolve(templateRelativePath);
@@ -1297,6 +1360,25 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 			}
 		}
 		throw new ServiceException("模板文件不存在：" + templateRelativePath);
+	}
+
+	private void deleteTemporaryTemplate(Path path) {
+		if (path == null) {
+			return;
+		}
+		try {
+			Files.deleteIfExists(path);
+		} catch (Exception ignored) {
+			// 临时文件由系统临时目录后续清理。
+		}
+	}
+
+	private boolean isRemoteTemplate(String path) {
+		return path != null && (path.startsWith("https://") || path.startsWith("http://"));
+	}
+
+	private boolean isTemporaryTemplateSource(String path) {
+		return isRemoteTemplate(path) || (path != null && path.startsWith("oss://"));
 	}
 
 	private String extension(String fileName) {

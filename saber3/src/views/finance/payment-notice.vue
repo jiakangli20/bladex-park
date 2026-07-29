@@ -129,6 +129,9 @@
         :html="noticePreview.html"
         :loading="noticePreview.loading"
         :download-url="noticePreview.downloadUrl"
+        :preview-type="noticePreview.previewType"
+        :document-blob="noticePreview.documentBlob"
+        :preview-error="noticePreview.previewError"
         :show-print="true"
         @download="downloadNoticePreviewFile"
         @print="printNoticePreview"
@@ -177,6 +180,7 @@ export default {
       previewRow: null,
       noticeStatusOptions: [
         { label: '未发送', value: 'pending' },
+        { label: '待接入', value: 'reserved' },
         { label: '发送成功', value: 'success' },
         { label: '发送失败', value: 'failed' },
       ],
@@ -188,7 +192,7 @@ export default {
         { key: 'generated', label: '已生成', value: this.summary.generatedCount || 0 },
         { key: 'sms', label: '短信发送成功', value: this.summary.smsSuccessCount || 0 },
         { key: 'email', label: '邮箱发送成功', value: this.summary.emailSuccessCount || 0 },
-        { key: 'miniapp', label: '小程序发送成功', value: this.summary.miniappSuccessCount || 0 },
+        { key: 'miniapp', label: '小程序通道', value: '待接入' },
       ];
     },
   },
@@ -339,6 +343,7 @@ export default {
     noticeStatusType(value) {
       const map = {
         pending: 'info',
+        reserved: 'warning',
         success: 'success',
         failed: 'warning',
       };

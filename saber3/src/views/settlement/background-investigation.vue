@@ -130,6 +130,7 @@
       <background-investigation-dialog
         v-model="dialogVisible"
         :enterprise-name="currentEnterpriseName"
+        @saved="reload"
       />
     </div>
   </basic-container>

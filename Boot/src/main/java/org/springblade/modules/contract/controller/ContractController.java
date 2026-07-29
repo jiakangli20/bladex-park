@@ -46,6 +46,7 @@ import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.pojo.vo.ContractStatsVO;
 import org.springblade.modules.contract.pojo.vo.ContractExpirySummaryVO;
 import org.springblade.modules.contract.service.IContractService;
+import org.springblade.modules.ics.service.IPaymentService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -66,6 +67,7 @@ import java.util.Map;
 public class ContractController extends BladeController {
 
 	private final IContractService contractService;
+	private final IPaymentService paymentService;
 
 	/**
 	 * 合同详情
@@ -139,11 +141,11 @@ public class ContractController extends BladeController {
 	}
 
 	/**
-	 * 终止合同
+	 * 作废待审批合同
 	 */
 	@PostMapping("/terminate")
 	@ApiOperationSupport(order = 6)
-	@Operation(summary = "终止", description = "传入contractId")
+	@Operation(summary = "作废", description = "仅允许作废未进入运行中审批的待审批合同")
 	public R terminate(@RequestParam Long contractId) {
 		return R.status(contractService.terminateContract(contractId));
 	}
@@ -254,7 +256,7 @@ public class ContractController extends BladeController {
 	@ApiOperationSupport(order = 16)
 	@Operation(summary = "确认缴费", description = "传入paymentId")
 	public R confirmPayment(@RequestParam Long paymentId, @RequestBody ContractPayment payment) {
-		return R.status(contractService.confirmPayment(paymentId, payment));
+		return R.status(paymentService.confirm(paymentId, payment));
 	}
 
 	/**
@@ -264,7 +266,7 @@ public class ContractController extends BladeController {
 	@ApiOperationSupport(order = 17)
 	@Operation(summary = "催缴", description = "传入paymentId")
 	public R remind(@RequestParam Long paymentId) {
-		return R.status(contractService.remindPayment(paymentId));
+		return R.status(paymentService.remind(paymentId, "contract_detail"));
 	}
 
 	/**

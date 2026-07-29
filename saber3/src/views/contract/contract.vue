@@ -50,7 +50,7 @@
                     续租
                   </el-button>
                   <el-button
-                    v-if="permission.contract_contract_terminate && detailContract.contractStatus !== '4'"
+                    v-if="permission.contract_contract_terminate && detailContract.contractStatus === '0'"
                     type="danger"
                     @click="handleTerminate(detailContract)"
                   >
@@ -355,20 +355,28 @@
                           </el-tag>
                         </template>
                       </el-table-column>
-                      <el-table-column label="操作" width="270" align="center" fixed="right">
+                      <el-table-column label="操作" width="130" align="center" fixed="right">
                         <template #default="{ row }">
                           <div class="bill-table-actions">
-                            <template v-if="row.payStatus !== '1'">
-                              <el-button text type="primary" @click="handleConfirmPayment(row)">
-                                确认缴费
-                              </el-button>
-                              <el-button text type="primary" @click="handleRemind(row)">
-                                催缴
-                              </el-button>
-                              <el-button text type="danger" @click="handleStartOverdueApproval(row)">
+                            <template v-if="row.payStatus !== '1' && isReceivablePayment(row)">
+                              <el-button
+                                v-if="isOverdueReceivable(row)"
+                                text
+                                type="danger"
+                                @click="handleStartOverdueApproval(row)"
+                              >
                                 逾期处理
                               </el-button>
+                              <span v-else class="muted">待缴费</span>
                             </template>
+                            <el-button
+                              v-else-if="row.payStatus !== '1'"
+                              text
+                              type="primary"
+                              @click="handleStartPaymentApproval(row)"
+                            >
+                              付款申请
+                            </el-button>
                             <span v-else class="muted">已缴费</span>
                           </div>
                         </template>
@@ -644,7 +652,7 @@
               发起房屋验收
             </el-button>
             <el-button
-              v-if="permission.contract_contract_terminate && detailContract.contractStatus !== '4'"
+              v-if="permission.contract_contract_terminate && detailContract.contractStatus === '0'"
               type="danger"
               @click="handleTerminate(detailContract)"
             >
@@ -749,18 +757,28 @@
                   <span v-else class="muted">-</span>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="270" align="center">
+              <el-table-column label="操作" width="130" align="center">
                 <template #default="{ row }">
                   <div class="bill-table-actions">
-                    <template v-if="row.payStatus !== '1'">
-                      <el-button text type="primary" @click="handleConfirmPayment(row)"
-                        >确认缴费</el-button
+                    <template v-if="row.payStatus !== '1' && isReceivablePayment(row)">
+                      <el-button
+                        v-if="isOverdueReceivable(row)"
+                        text
+                        type="danger"
+                        @click="handleStartOverdueApproval(row)"
                       >
-                      <el-button text type="primary" @click="handleRemind(row)">催缴</el-button>
-                      <el-button text type="danger" @click="handleStartOverdueApproval(row)">
                         逾期处理
                       </el-button>
+                      <span v-else class="muted">待缴费</span>
                     </template>
+                    <el-button
+                      v-else-if="row.payStatus !== '1'"
+                      text
+                      type="primary"
+                      @click="handleStartPaymentApproval(row)"
+                    >
+                      付款申请
+                    </el-button>
                     <span v-else class="muted">已缴费</span>
                   </div>
                 </template>
@@ -1236,13 +1254,19 @@
               }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="170" fixed="right" align="center">
+          <el-table-column label="操作" width="130" fixed="right" align="center">
             <template #default="{ row }">
               <div class="bill-table-actions">
-                <template v-if="row.payStatus !== '1'">
-                  <el-button type="primary" text @click="handleConfirmPayment(row)">确认</el-button>
-                  <el-button type="primary" text @click="handleRemind(row)">催缴</el-button>
+                <template v-if="row.payStatus !== '1' && isReceivablePayment(row)">
+                  <span class="muted">待缴费</span>
                 </template>
+                <el-button
+                  v-else-if="row.payStatus !== '1'"
+                  text
+                  type="primary"
+                  @click="handleStartPaymentApproval(row)"
+                  >付款申请</el-button
+                >
                 <span v-else class="muted">已缴费</span>
               </div>
             </template>
@@ -1563,6 +1587,9 @@
         :loading="noticePreview.loading"
         :download-url="noticePreview.downloadUrl"
         :download-label="noticePreview.downloadLabel"
+        :preview-type="noticePreview.previewType"
+        :document-blob="noticePreview.documentBlob"
+        :preview-error="noticePreview.previewError"
         @download="downloadNoticePreviewFile"
       />
     </div>
@@ -1575,7 +1602,6 @@ import { Promotion } from '@element-plus/icons-vue';
 import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
 import {
   applyContractChange,
-  confirmPayment,
   getDetail,
   getExpiring,
   getList,
@@ -1583,7 +1609,6 @@ import {
   getPayment,
   getStats,
   getWorkflowRecords,
-  remindPayment,
   remove,
   terminate,
   uploadSignedContract,
@@ -2229,6 +2254,17 @@ export default {
       }
       this.handleStartWorkflow(CONTRACT_OVERDUE_LEGAL_BUSINESS_TYPE, this.detailContract, row);
     },
+    handleStartPaymentApproval(row) {
+      if (
+        !this.ensurePrerequisites(
+          '付款申请前置条件',
+          this.paymentApprovalPrerequisites(this.detailContract, row)
+        )
+      ) {
+        return;
+      }
+      this.handleStartWorkflow(CONTRACT_PAYMENT_BUSINESS_TYPE, this.detailContract, row);
+    },
     handleStartTermination(row) {
       if (
         !this.ensurePrerequisites('退租审批前置条件', this.terminationPrerequisites(row))
@@ -2444,6 +2480,52 @@ export default {
       return (this.workflowData || []).some(
         item => item.businessType === businessType && item.processStatus === 'running'
       );
+    },
+    paymentWorkflowRecord(payment) {
+      return (this.workflowData || []).find(
+        item =>
+          item.businessType === CONTRACT_PAYMENT_BUSINESS_TYPE &&
+          String(item.paymentId || '') === String(payment?.paymentId || '') &&
+          item.processStatus !== 'deleted'
+      );
+    },
+    paymentApprovalPrerequisites(contract, payment) {
+      const workflowRecord = this.paymentWorkflowRecord(payment);
+      const processStatus = String(workflowRecord?.processStatus || '');
+      return [
+        ...this.baseContractPrerequisites(contract),
+        {
+          label: '已选择付款账单',
+          done: Boolean(payment?.paymentId),
+          pendingText: '请先选择付款账单',
+        },
+        {
+          label: '账单方向为付款',
+          done: !this.isReceivablePayment(payment),
+          pendingText: '收款账单无需发起付款申请',
+        },
+        {
+          label: '账单尚未支付',
+          done: String(payment?.payStatus || '') !== '1',
+          pendingText: '当前账单已支付',
+        },
+        {
+          label: '付款申请未进行中且未通过',
+          done: !['running', 'approved'].includes(processStatus),
+          pendingText:
+            processStatus === 'running' ? '付款申请正在审批中' : '付款申请已审批通过',
+        },
+      ];
+    },
+    isReceivablePayment(row) {
+      return String(row?.direction || 'receivable') !== 'payable';
+    },
+    isOverdueReceivable(row) {
+      if (!this.isReceivablePayment(row) || String(row?.payStatus || '') === '1') {
+        return false;
+      }
+      const deadline = String(row?.payDeadline || '').slice(0, 10);
+      return Boolean(deadline) && deadline < this.formatDate(new Date());
     },
     ensurePrerequisites(title, items = []) {
       if ((items || []).every(item => item.done)) {
@@ -2797,6 +2879,10 @@ export default {
     },
     handleTerminate(row) {
       if (!row || !row.contractId) return;
+      if (String(row.contractStatus || '') !== '0') {
+        this.$message.warning('仅待审批合同可以作废，生效合同请走退租流程');
+        return;
+      }
       this.$confirm('确定作废该合同?', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
@@ -3458,46 +3544,6 @@ export default {
       if (increaseNode && increaseNode !== 'none') return 'contract-floating';
       if (remark.includes('浮动')) return 'contract-floating';
       return 'contract-fixed';
-    },
-    handleConfirmPayment(row) {
-      this.$prompt('请输入实收金额', '确认缴费', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        inputValue: row.amountDue,
-      })
-        .then(({ value }) =>
-          confirmPayment(row.paymentId, {
-            amountPaid: value,
-          })
-        )
-        .then(() => {
-          if (this.detailMode) {
-            this.loadPaymentsByContracts(this.contractRows);
-          } else {
-            this.loadPayment(this.currentPaymentContractId(row));
-          }
-          this.$message.success('操作成功!');
-        });
-    },
-    handleRemind(row) {
-      if (!row || !row.paymentId) {
-        this.$message.warning('请选择需要催缴的账单');
-        return;
-      }
-      this.$confirm('确定对该账单发起催缴吗？', '催缴确认', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      })
-        .then(() => remindPayment(row.paymentId))
-        .then(() => {
-          if (this.detailMode) {
-            this.loadPaymentsByContracts(this.contractRows);
-          } else {
-            this.loadPayment(this.currentPaymentContractId(row));
-          }
-          this.$message.success('催缴已发起');
-        });
     },
     handleArchive(row) {
       if (!row || !row.contractId) return;

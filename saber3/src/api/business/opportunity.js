@@ -128,6 +128,14 @@ export const getOpportunityBackgroundByName = enterpriseName => {
   });
 };
 
+export const saveOpportunityBackground = data => {
+  return request({
+    url: '/blade-park/opportunity/background/save',
+    method: 'post',
+    data,
+  });
+};
+
 export const submitOpportunityAudit = (opportunityId, flowId) => {
   return request({
     url: `/blade-park/opportunity/submitAudit/${opportunityId}`,

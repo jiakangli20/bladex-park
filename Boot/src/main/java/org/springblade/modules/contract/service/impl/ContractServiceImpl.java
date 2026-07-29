@@ -92,14 +92,15 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private static final String CHANGE_TYPE_RENT_AND_TERM = "租金及租期变更";
 	private static final String CHANGE_TYPE_OTHER = "其他";
 	private static final String CHANGE_STATUS_COMPLETED = "completed";
+	private static final String PROCESS_STATUS_RUNNING = "running";
 	private static final String PROCESS_STATUS_APPROVED = "approved";
+	private static final String BUSINESS_TYPE_CONTRACT_APPROVAL = "contract_approval";
 	private static final String BUSINESS_TYPE_CONTRACT_TERMINATION = "contract_termination";
 	private static final String BUSINESS_TYPE_CONTRACT_PAYMENT = "contract_payment";
 	private static final String BUSINESS_TYPE_CONTRACT_ROOM_REVIEW = "contract_room_review";
 	private static final String FEE_TYPE_DEPOSIT_REFUND = "deposit_refund";
 	private static final String PAY_STATUS_UNPAID = "0";
 	private static final String PAY_STATUS_PAID = "1";
-	private static final String REMIND_STATUS_REMINDED = "1";
 	private static final String ROOM_STATUS_VACANT = "0";
 
 	private final ContractPaymentMapper contractPaymentMapper;
@@ -143,17 +144,13 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	@Transactional(rollbackFor = Exception.class)
 	public boolean renewContract(Long contractId, Contract newContract) {
 		Contract oldContract = requireContract(contractId);
-		oldContract.setContractStatus(STATUS_RENEWED);
-		oldContract.setUpdateBy(currentUserName());
-		oldContract.setUpdateTime(DateUtil.now());
-		baseMapper.updateById(oldContract);
-		addLog(contractId, "renew", "发起续签");
 
 		newContract.setContractId(null);
 		newContract.setParkId(oldContract.getParkId());
 		newContract.setParentContractId(contractId);
 		newContract.setContractStatus(STATUS_PENDING);
 		boolean result = createContract(newContract);
+		addLog(contractId, "renew", "发起续签，旧合同状态保持不变，待新合同生效后回写");
 		addLog(newContract.getContractId(), "create", "续签新建合同，源合同ID：" + contractId);
 		return result;
 	}
@@ -245,12 +242,13 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	@Transactional(rollbackFor = Exception.class)
 	public boolean terminateContract(Long contractId) {
 		Contract contract = requireContract(contractId);
+		validateContractCanVoid(contract);
 		contract.setContractStatus(STATUS_TERMINATED);
 		contract.setUpdateBy(currentUserName());
 		contract.setUpdateTime(DateUtil.now());
 		boolean result = baseMapper.updateById(contract) > 0;
 		if (result) {
-			addLog(contractId, "terminate", "合同终止");
+			addLog(contractId, "void", "作废待审批合同");
 		}
 		return result;
 	}
@@ -276,6 +274,18 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 			if (contractPaymentMapper.selectByContractId(contractId).isEmpty()) {
 				existing.setContractStatus(STATUS_ACTIVE);
 				generatePaymentPlan(existing);
+			}
+			if (existing.getParentContractId() != null) {
+				Contract parent = requireContract(existing.getParentContractId());
+				Contract parentUpdate = new Contract();
+				parentUpdate.setContractId(parent.getContractId());
+				parentUpdate.setContractStatus(STATUS_RENEWED);
+				parentUpdate.setUpdateBy(currentUserName());
+				parentUpdate.setUpdateTime(DateUtil.now());
+				if (baseMapper.updateById(parentUpdate) <= 0) {
+					throw new ServiceException("续租合同已生效，但旧合同状态回写失败");
+				}
+				addLog(parent.getContractId(), "renewed", "续租合同已盖章生效，新合同ID：" + contractId);
 			}
 			addLog(contractId, "signed", "上传盖章合同，合同生效");
 		}
@@ -500,48 +510,6 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	}
 
 	@Override
-	@Transactional(rollbackFor = Exception.class)
-	public boolean confirmPayment(Long paymentId, ContractPayment payment) {
-		ContractPayment existing = contractPaymentMapper.selectById(paymentId);
-		if (existing == null) {
-			throw new ServiceException("缴费记录不存在");
-		}
-		ContractPayment update = new ContractPayment();
-		update.setPaymentId(paymentId);
-		update.setAmountPaid(payment.getAmountPaid());
-		update.setRemark(payment.getRemark());
-		update.setPayStatus(PAY_STATUS_PAID);
-		update.setPayTime(DateUtil.now());
-		update.setUpdateBy(currentUserName());
-		update.setUpdateTime(DateUtil.now());
-		boolean result = contractPaymentMapper.updateById(update) > 0;
-		if (result) {
-			addLog(existing.getContractId(), "payment", "确认缴费，费用：" + existing.getFeeName());
-		}
-		return result;
-	}
-
-	@Override
-	@Transactional(rollbackFor = Exception.class)
-	public boolean remindPayment(Long paymentId) {
-		ContractPayment existing = contractPaymentMapper.selectById(paymentId);
-		if (existing == null) {
-			throw new ServiceException("缴费记录不存在");
-		}
-		ContractPayment update = new ContractPayment();
-		update.setPaymentId(paymentId);
-		update.setRemindStatus(REMIND_STATUS_REMINDED);
-		update.setRemindTime(DateUtil.now());
-		update.setUpdateBy(currentUserName());
-		update.setUpdateTime(DateUtil.now());
-		boolean result = contractPaymentMapper.updateById(update) > 0;
-		if (result) {
-			addLog(existing.getContractId(), "remind", "发起催缴提醒");
-		}
-		return result;
-	}
-
-	@Override
 	public List<ContractLog> selectLogByContractId(Long contractId) {
 		return contractLogMapper.selectByContractId(contractId);
 	}
@@ -590,6 +558,22 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 			throw new ServiceException("合同不存在");
 		}
 		return contract;
+	}
+
+	private void validateContractCanVoid(Contract contract) {
+		if (!STATUS_PENDING.equals(contract.getContractStatus())) {
+			throw new ServiceException("仅待审批合同可以作废，生效合同请走退租流程");
+		}
+		ContractWorkflowRecord approvalRecord = contractWorkflowRecordMapper.selectLatest(
+			contract.getContractId(),
+			BUSINESS_TYPE_CONTRACT_APPROVAL
+		);
+		if (approvalRecord != null && (PROCESS_STATUS_RUNNING.equals(approvalRecord.getProcessStatus())
+			|| PROCESS_STATUS_APPROVED.equals(approvalRecord.getProcessStatus()))) {
+			throw new ServiceException(PROCESS_STATUS_RUNNING.equals(approvalRecord.getProcessStatus())
+				? "合同审批正在进行中，请先撤回或终止审批后再作废"
+				: "合同审批已通过，不能作废，请按业务状态继续盖章或退租");
+		}
 	}
 
 	private ContractPayment findDepositRefundPayment(Long contractId) {

@@ -6,6 +6,8 @@ export const getNoticePreview = params => {
     url: '/blade-contract/print/preview',
     method: 'get',
     params,
+    // 首次生成高保真 PDF 可能需要启动 LibreOffice，需覆盖全局 10 秒超时。
+    timeout: 70000,
   });
 };
 
@@ -28,6 +30,7 @@ export const noticePrintUrl = (noticeType, { paymentId, contractId } = {}) => {
     'termination-approval': contractId ? `${baseUrl}/blade-contract/print/termination-approval/${contractId}` : '',
     'termination-agreement': contractId ? `${baseUrl}/blade-contract/print/termination-agreement/${contractId}` : '',
     'room-review': contractId ? `${baseUrl}/blade-contract/print/room-review/${contractId}` : '',
+    'termination-handover': contractId ? `${baseUrl}/blade-contract/print/termination-handover/${contractId}` : '',
   };
   return routeMap[noticeType] || '';
 };

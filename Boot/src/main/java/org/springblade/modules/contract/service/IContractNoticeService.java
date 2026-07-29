@@ -29,6 +29,7 @@ public interface IContractNoticeService {
 	String NOTICE_TERMINATION = "termination-approval";
 	String NOTICE_TERMINATION_AGREEMENT = "termination-agreement";
 	String NOTICE_ROOM_REVIEW = "room-review";
+	String NOTICE_HANDOVER = "termination-handover";
 
 	/**
 	 * 构建通知文件.

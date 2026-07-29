@@ -81,6 +81,7 @@ public class PaymentServiceImpl implements IPaymentService {
 	private static final String NOTICE_STATUS_PENDING = "pending";
 	private static final String NOTICE_STATUS_SUCCESS = "success";
 	private static final String NOTICE_STATUS_FAILED = "failed";
+	private static final String NOTICE_STATUS_RESERVED = "reserved";
 	private static final String NOTICE_READ_UNREAD = "0";
 	private static final String DEFAULT_DEL_FLAG = "0";
 
@@ -203,6 +204,7 @@ public class PaymentServiceImpl implements IPaymentService {
 	public boolean confirm(Long paymentId, ContractPayment payment) {
 		ContractPayment existing = requirePayment(paymentId);
 		assertAccessible(existing);
+		validateReceivableConfirmation(existing);
 		BigDecimal amountPaid = payment == null ? existing.getAmountDue() : payment.getAmountPaid();
 		if (amountPaid == null) {
 			amountPaid = existing.getAmountDue();
@@ -519,8 +521,8 @@ public class PaymentServiceImpl implements IPaymentService {
 		Date now = DateUtil.now();
 		notice.setNoticeType(NOTICE_TYPE_RECEIPT);
 		notice.setInboxStatus(NOTICE_STATUS_SUCCESS);
-		notice.setMiniappStatus(NOTICE_STATUS_SUCCESS);
-		notice.setMiniappSendTime(now);
+		notice.setMiniappStatus(NOTICE_STATUS_RESERVED);
+		notice.setMiniappSendTime(null);
 		notice.setSendCount((notice.getSendCount() == null ? 0 : notice.getSendCount()) + 1);
 		notice.setLastSendTime(now);
 		notice.setFileName(file.getFileName());
@@ -559,12 +561,12 @@ public class PaymentServiceImpl implements IPaymentService {
 		PaymentNotice notice = getOrCreateNotice(paymentId);
 		contractNoticeService.buildMiniAppPayload(NOTICE_TYPE_RECEIPT, paymentId, null);
 		Date now = DateUtil.now();
-		notice.setMiniappStatus(NOTICE_STATUS_SUCCESS);
-		notice.setMiniappSendTime(now);
+		notice.setMiniappStatus(NOTICE_STATUS_RESERVED);
+		notice.setMiniappSendTime(null);
 		notice.setUpdateBy(currentUserName());
 		notice.setUpdateTime(now);
 		paymentNoticeMapper.updateById(notice);
-		addLog(payment.getContractId(), "payment_notice_miniapp", "发送收款通知到小程序");
+		addLog(payment.getContractId(), "payment_notice_miniapp", "登记小程序通知，发送通道待接入");
 		return paymentNoticeMapper.selectNoticeByPaymentId(paymentId);
 	}
 
@@ -777,6 +779,15 @@ public class PaymentServiceImpl implements IPaymentService {
 		}
 		if (!isOverdue(payment, now)) {
 			throw new ServiceException("当前账单尚未逾期");
+		}
+	}
+
+	private void validateReceivableConfirmation(ContractPayment payment) {
+		if (!DIRECTION_RECEIVABLE.equals(normalizeDirection(payment == null ? null : payment.getDirection()))) {
+			throw new ServiceException("付款账单需先完成付款申请审批，不能直接确认缴费");
+		}
+		if (PAY_STATUS_PAID.equals(payment.getPayStatus())) {
+			throw new ServiceException("当前账单已缴费，无需重复确认");
 		}
 	}
 

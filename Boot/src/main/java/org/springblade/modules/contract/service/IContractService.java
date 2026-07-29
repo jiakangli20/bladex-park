@@ -104,7 +104,7 @@ public interface IContractService extends IService<Contract> {
 	List<ContractChange> selectContractChanges(Long contractId);
 
 	/**
-	 * 终止合同
+	 * 作废待审批合同
 	 *
 	 * @param contractId 合同ID
 	 * @return 是否成功
@@ -195,23 +195,6 @@ public interface IContractService extends IService<Contract> {
 	 * @return 押金退还付款单
 	 */
 	ContractPayment offlineDepositRefund(Long contractId, Map<String, Object> formData);
-
-	/**
-	 * 确认缴费
-	 *
-	 * @param paymentId 缴费ID
-	 * @param payment   缴费数据
-	 * @return 是否成功
-	 */
-	boolean confirmPayment(Long paymentId, ContractPayment payment);
-
-	/**
-	 * 催缴
-	 *
-	 * @param paymentId 缴费ID
-	 * @return 是否成功
-	 */
-	boolean remindPayment(Long paymentId);
 
 	/**
 	 * 合同日志
