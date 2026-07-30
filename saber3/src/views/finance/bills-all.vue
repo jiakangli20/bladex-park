@@ -88,20 +88,40 @@
           @selection-change="selectionChange"
         >
           <el-table-column type="selection" width="44" align="center" />
-          <el-table-column prop="customerName" label="对方名称" min-width="150" align="center" show-overflow-tooltip>
+          <el-table-column
+            prop="customerName"
+            label="对方名称"
+            min-width="150"
+            align="center"
+            show-overflow-tooltip
+          >
             <template #default="{ row }">
               <el-button text type="primary" class="bill-link" @click="openBillDetail(row)">
                 {{ row.customerName || '-' }}
               </el-button>
             </template>
           </el-table-column>
-          <el-table-column prop="buildingName" label="楼宇名称" width="130" align="center" show-overflow-tooltip />
+          <el-table-column
+            prop="buildingName"
+            label="楼宇名称"
+            width="130"
+            align="center"
+            show-overflow-tooltip
+          />
           <el-table-column prop="payStatus" label="账单状态" width="110" align="center">
             <template #default="{ row }">
-              <el-tag :type="payStatusType(row.payStatus)" effect="plain">{{ payStatusText(row.payStatus) }}</el-tag>
+              <el-tag :type="payStatusType(row.payStatus)" effect="plain">{{
+                payStatusText(row.payStatus)
+              }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="feeName" label="费用类型" min-width="130" align="center" show-overflow-tooltip />
+          <el-table-column
+            prop="feeName"
+            label="费用类型"
+            min-width="130"
+            align="center"
+            show-overflow-tooltip
+          />
           <el-table-column :label="amountDueLabel" prop="amountDue" width="130" align="center">
             <template #default="{ row }">{{ formatMoney(row.amountDue) }}</template>
           </el-table-column>
@@ -155,9 +175,23 @@
               </el-tag>
             </div>
             <div class="bill-drawer-actions">
-              <el-button :disabled="!detailRow.contractId" @click="openContract(detailRow)">查看合同</el-button>
-              <el-button type="primary" plain :disabled="!detailRow.paymentId" @click="openApplicationWorkflow(detailRow)">
+              <el-button :disabled="!detailRow.contractId" @click="openContract(detailRow)"
+                >查看合同</el-button
+              >
+              <el-button
+                type="primary"
+                plain
+                :disabled="!detailRow.paymentId"
+                @click="openApplicationWorkflow(detailRow)"
+              >
                 {{ applicationActionLabel }}
+              </el-button>
+              <el-button
+                v-if="canConfirmPayment && String(detailRow.payStatus) !== '1'"
+                type="primary"
+                @click="openPaymentConfirm(detailRow)"
+              >
+                {{ detailIsPayable ? '确认付款' : '确认收款' }}
               </el-button>
             </div>
           </div>
@@ -169,7 +203,11 @@
               <div class="bill-status-strip">
                 <div v-for="item in detailMetricItems" :key="item.key" class="bill-status-cell">
                   <span>{{ item.label }}</span>
-                  <strong v-if="item.status" :class="['bill-status-value', `is-${item.type || 'info'}`]">{{ item.value }}</strong>
+                  <strong
+                    v-if="item.status"
+                    :class="['bill-status-value', `is-${item.type || 'info'}`]"
+                    >{{ item.value }}</strong
+                  >
                   <el-date-picker
                     v-else-if="item.editableDate"
                     v-model="detailDeadline"
@@ -198,8 +236,19 @@
               <section class="bill-detail-section">
                 <div class="bill-detail-section__title">房源信息</div>
                 <el-table :data="detailRoomRows" border class="bill-detail-table">
-                  <el-table-column prop="buildingName" label="所属楼宇" min-width="120" align="center" />
-                  <el-table-column prop="roomName" label="楼层/房号" min-width="120" align="center" show-overflow-tooltip />
+                  <el-table-column
+                    prop="buildingName"
+                    label="所属楼宇"
+                    min-width="120"
+                    align="center"
+                  />
+                  <el-table-column
+                    prop="roomName"
+                    label="楼层/房号"
+                    min-width="120"
+                    align="center"
+                    show-overflow-tooltip
+                  />
                   <el-table-column prop="area" label="面积" min-width="120" align="center" />
                 </el-table>
               </section>
@@ -209,17 +258,33 @@
               <div class="bill-detail-section__title">账单明细</div>
               <el-table :data="detailLineRows" border class="bill-detail-table">
                 <el-table-column prop="feeName" label="费用类型" min-width="140" align="center" />
-                <el-table-column prop="amountDue" :label="amountDueLabel" min-width="150" align="center" />
+                <el-table-column
+                  prop="amountDue"
+                  :label="amountDueLabel"
+                  min-width="150"
+                  align="center"
+                />
                 <el-table-column prop="taxRate" label="税率" width="110" align="center" />
                 <el-table-column prop="taxAmount" label="税额" width="110" align="center" />
-                <el-table-column prop="periodStart" label="开始日期" min-width="130" align="center" />
+                <el-table-column
+                  prop="periodStart"
+                  label="开始日期"
+                  min-width="130"
+                  align="center"
+                />
                 <el-table-column prop="periodEnd" label="结束日期" min-width="130" align="center" />
-                <el-table-column prop="remark" label="账单备注" min-width="160" align="center" show-overflow-tooltip />
+                <el-table-column
+                  prop="remark"
+                  label="账单备注"
+                  min-width="160"
+                  align="center"
+                  show-overflow-tooltip
+                />
               </el-table>
             </section>
 
             <section class="bill-detail-section bill-detail-lines bill-application-files">
-              <div class="bill-detail-section__title">审批生成文件</div>
+              <div class="bill-detail-section__title">审批与付款文件</div>
               <el-table :data="applicationFileRows" border class="bill-detail-table">
                 <el-table-column prop="name" label="文件类型" width="180" align="center" />
                 <el-table-column prop="status" label="审批状态" width="150" align="center">
@@ -229,12 +294,24 @@
                     </el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column prop="currentNode" label="当前节点" width="180" align="center" class-name="bill-current-node-column">
+                <el-table-column
+                  prop="currentNode"
+                  label="当前节点"
+                  width="180"
+                  align="center"
+                  class-name="bill-current-node-column"
+                >
                   <template #default="{ row }">
                     <span class="bill-current-node">{{ row.currentNode }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column prop="fileName" label="生成文件" min-width="360" align="center" class-name="bill-file-name-column">
+                <el-table-column
+                  prop="fileName"
+                  label="生成文件"
+                  min-width="360"
+                  align="center"
+                  class-name="bill-file-name-column"
+                >
                   <template #default="{ row }">
                     <span class="bill-file-name">{{ row.fileName }}</span>
                   </template>
@@ -242,8 +319,20 @@
                 <el-table-column label="操作" width="132" align="center">
                   <template #default="{ row }">
                     <div class="bill-file-actions">
-                      <el-button text type="primary" :disabled="!row.fileUrl" @click="previewApplicationFile(row)">预览</el-button>
-                      <el-button text type="primary" :disabled="!row.fileUrl" @click="downloadApplicationFile(row)">下载</el-button>
+                      <el-button
+                        text
+                        type="primary"
+                        :disabled="!row.fileUrl"
+                        @click="previewApplicationFile(row)"
+                        >预览</el-button
+                      >
+                      <el-button
+                        text
+                        type="primary"
+                        :disabled="!row.fileUrl"
+                        @click="downloadApplicationFile(row)"
+                        >下载</el-button
+                      >
                     </div>
                   </template>
                 </el-table-column>
@@ -253,6 +342,108 @@
           <el-empty v-else description="暂无账单详情" />
         </div>
       </el-drawer>
+
+      <el-dialog
+        v-model="paymentConfirmVisible"
+        :title="paymentConfirmIsPayable ? '确认付款' : '确认收款'"
+        width="620px"
+        append-to-body
+        destroy-on-close
+        @closed="resetPaymentConfirm"
+      >
+        <section class="bill-workflow-summary payment-confirm-summary">
+          <div>
+            <span>账单编号</span>
+            <strong>{{
+              paymentConfirmRow.paymentId ? `ZD${paymentConfirmRow.paymentId}` : '-'
+            }}</strong>
+          </div>
+          <div>
+            <span>{{ paymentConfirmIsPayable ? '收款企业' : '付款企业' }}</span>
+            <strong>{{ paymentConfirmRow.customerName || '-' }}</strong>
+          </div>
+          <div>
+            <span>费用类型</span>
+            <strong>{{ paymentConfirmRow.feeName || '-' }}</strong>
+          </div>
+          <div v-if="paymentConfirmIsPayable">
+            <span>付款审批</span>
+            <strong>{{ workflowStatusText(paymentConfirmRow.paymentApprovalStatus) }}</strong>
+          </div>
+          <div v-else>
+            <span>当前已收</span>
+            <strong>{{ formatMoney(paymentConfirmRow.amountPaid) }}</strong>
+          </div>
+        </section>
+        <el-form
+          ref="paymentConfirmFormRef"
+          class="payment-confirm-form"
+          :model="paymentConfirmForm"
+          :rules="paymentConfirmRules"
+          label-width="128px"
+        >
+          <el-form-item
+            :label="paymentConfirmIsPayable ? '本次付款金额' : '本次收款金额'"
+            prop="amountPaid"
+          >
+            <el-input-number
+              v-model="paymentConfirmForm.amountPaid"
+              :min="0.01"
+              :max="pendingAmount(paymentConfirmRow) || undefined"
+              :precision="2"
+              :step="100"
+              controls-position="right"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item :label="paymentConfirmIsPayable ? '付款时间' : '收款时间'" prop="payTime">
+            <el-date-picker
+              v-model="paymentConfirmForm.payTime"
+              type="datetime"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              :placeholder="paymentConfirmIsPayable ? '请选择付款时间' : '请选择收款时间'"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item
+            :label="paymentConfirmIsPayable ? '付款凭证' : '收款凭证'"
+            prop="paymentVoucherUrl"
+          >
+            <el-upload
+              ref="paymentVoucherUploadRef"
+              action="/api/blade-resource/oss/endpoint/put-file"
+              :headers="uploadHeaders"
+              :limit="1"
+              :file-list="paymentVoucherFileList"
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+              :before-upload="beforePaymentVoucherUpload"
+              :on-success="handlePaymentVoucherSuccess"
+              :on-error="handlePaymentVoucherError"
+              :on-remove="handlePaymentVoucherRemove"
+            >
+              <el-button icon="el-icon-upload">
+                {{ paymentConfirmIsPayable ? '上传付款凭证' : '上传收款凭证' }}
+              </el-button>
+            </el-upload>
+          </el-form-item>
+          <el-form-item :label="paymentConfirmIsPayable ? '付款备注' : '收款备注'">
+            <el-input
+              v-model="paymentConfirmForm.remark"
+              type="textarea"
+              :rows="3"
+              maxlength="500"
+              show-word-limit
+              :placeholder="paymentConfirmIsPayable ? '填写付款说明' : '填写收款说明'"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="paymentConfirmVisible = false">取消</el-button>
+          <el-button type="primary" :loading="paymentConfirmLoading" @click="submitPaymentConfirm">
+            {{ paymentConfirmIsPayable ? '确认付款' : '确认收款' }}
+          </el-button>
+        </template>
+      </el-dialog>
 
       <el-dialog
         v-model="workflowVisible"
@@ -309,6 +500,8 @@
         :download-url="noticePreview.downloadUrl"
         :preview-type="noticePreview.previewType"
         :document-blob="noticePreview.documentBlob"
+        :pdf-blob="noticePreview.pdfBlob"
+        :pdf-file-name="noticePreview.pdfFileName"
         :preview-error="noticePreview.previewError"
         @download="downloadNoticePreviewFile"
       />
@@ -319,14 +512,22 @@
 <script>
 import { Base64 } from 'js-base64';
 import { mapGetters } from 'vuex';
+import { getToken } from '@/utils/auth';
 import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
 import { getWorkflowRecords } from '@/api/contract/contract';
 import { noticePrintUrl } from '@/api/contract/print';
-import { getPaymentDetail, getPaymentPage, getPaymentSummary, updatePaymentDeadline } from '@/api/ics/payment';
+import {
+  confirmPayment,
+  getPaymentDetail,
+  getPaymentPage,
+  getPaymentSummary,
+  updatePaymentDeadline,
+} from '@/api/ics/payment';
 import { payStatusDic } from '@/option/finance/payment';
 import {
   createNoticePreviewState,
   downloadNoticeFile,
+  openAttachmentPreview,
   openNoticePreview,
 } from '@/utils/contract-notice';
 import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
@@ -367,6 +568,26 @@ export default {
       workflowForm: {
         processDefKey: '',
       },
+      paymentConfirmVisible: false,
+      paymentConfirmLoading: false,
+      paymentConfirmRow: {},
+      paymentConfirmForm: {
+        amountPaid: null,
+        payTime: '',
+        paymentVoucherName: '',
+        paymentVoucherUrl: '',
+        remark: '',
+      },
+      paymentVoucherFileList: [],
+      uploadHeaders: {
+        'Blade-Auth': `bearer ${getToken()}`,
+        'Blade-Requested-With': 'BladeHttpRequest',
+      },
+      paymentConfirmRules: {
+        amountPaid: [{ required: true, message: '请输入本次收付款金额', trigger: 'blur' }],
+        payTime: [{ required: true, message: '请选择收付款时间', trigger: 'change' }],
+        paymentVoucherUrl: [{ required: true, message: '请上传收付款凭证', trigger: 'change' }],
+      },
       noticePreview: createNoticePreviewState(),
       data: [],
       selectionList: [],
@@ -384,9 +605,18 @@ export default {
     };
   },
   computed: {
-    ...mapGetters(['userInfo']),
+    ...mapGetters(['userInfo', 'permission']),
+    canConfirmPayment() {
+      return this.validData(this.permission.finance_payment_confirm, false);
+    },
     isPayable() {
       return this.direction === 'payable';
+    },
+    detailIsPayable() {
+      return String((this.detailRow || {}).direction || this.direction) === 'payable';
+    },
+    paymentConfirmIsPayable() {
+      return String((this.paymentConfirmRow || {}).direction || this.direction) === 'payable';
     },
     applicationActionLabel() {
       return this.isPayable ? '付款申请' : '开票申请';
@@ -409,9 +639,15 @@ export default {
         { label: '对方名称', value: row.customerName || '-' },
         { label: '合同编号', value: row.contractNo || '-' },
         { label: '费用类型', value: row.feeName || '-' },
-        { label: this.workflowIsPayable ? '申请付款金额' : '申请开票金额', value: this.formatMoney(row.amountDue) },
+        {
+          label: this.workflowIsPayable ? '申请付款金额' : '申请开票金额',
+          value: this.formatMoney(row.amountDue),
+        },
         { label: '账单方向', value: this.workflowIsPayable ? '付款' : '收款' },
-        { label: '申请状态', value: this.workflowStatusText((this.workflowExistingRecord || {}).processStatus) },
+        {
+          label: '申请状态',
+          value: this.workflowStatusText((this.workflowExistingRecord || {}).processStatus),
+        },
       ];
     },
     amountDueLabel() {
@@ -492,8 +728,16 @@ export default {
           status: true,
           type: this.payStatusType(row.payStatus),
         },
-        { key: 'amountDue', label: `${this.amountDueLabel}（元）`, value: this.formatMoney(row.amountDue) },
-        { key: 'amountPending', label: `${this.amountPendingLabel}（元）`, value: this.formatMoney(this.pendingAmount(row)) },
+        {
+          key: 'amountDue',
+          label: `${this.amountDueLabel}（元）`,
+          value: this.formatMoney(row.amountDue),
+        },
+        {
+          key: 'amountPending',
+          label: `${this.amountPendingLabel}（元）`,
+          value: this.formatMoney(this.pendingAmount(row)),
+        },
         { key: 'deadline', label: this.deadlineLabel, editableDate: true },
       ];
     },
@@ -526,23 +770,54 @@ export default {
       const payable = String(row.direction || this.direction) === 'payable';
       const status = payable ? row.paymentApprovalStatus : row.invoiceApprovalStatus;
       const fileUrl = payable ? row.paymentFileUrl : row.invoiceFileUrl;
-      const fileLabel = payable ? '付款通知单' : '开票申请单';
-      const resolvedFileUrl = fileUrl || (status === 'approved'
-        ? noticePrintUrl(payable ? PAYMENT_APPLICATION_TEMPLATE : INVOICE_APPLICATION_TEMPLATE, {
-            paymentId: row.paymentId,
-            contractId: row.contractId,
-          })
-        : '');
-      return [
+      const fileLabel = payable ? '付款申请单' : '开票申请单';
+      const resolvedFileUrl =
+        fileUrl ||
+        (status === 'approved'
+          ? noticePrintUrl(payable ? PAYMENT_APPLICATION_TEMPLATE : INVOICE_APPLICATION_TEMPLATE, {
+              paymentId: row.paymentId,
+              contractId: row.contractId,
+            })
+          : '');
+      const rows = [
         {
           name: fileLabel,
           status: status || '',
           currentNode: (payable ? row.paymentCurrentNodeName : row.invoiceCurrentNodeName) || '-',
           fileUrl: resolvedFileUrl,
-          fileName: resolvedFileUrl ? `${row.contractNo || `ZD${row.paymentId}`}-${fileLabel}.docx` : '审批完成后自动生成',
+          fileName: resolvedFileUrl
+            ? `${row.contractNo || `ZD${row.paymentId}`}-${fileLabel}.docx`
+            : '审批完成后自动生成',
           templateKey: payable ? PAYMENT_APPLICATION_TEMPLATE : INVOICE_APPLICATION_TEMPLATE,
         },
       ];
+      const voucherLabel = payable ? '付款凭证' : '收款凭证';
+      const confirmText = payable ? '财务已确认付款' : '财务已确认收款';
+      const paymentRecords = Array.isArray(row.paymentRecords) ? row.paymentRecords : [];
+      paymentRecords.forEach((record, index) => {
+        rows.push({
+          name: `${voucherLabel}${index + 1}`,
+          status: 'approved',
+          currentNode: record.paymentTime || confirmText,
+          fileUrl: record.voucherUrl,
+          fileName:
+            record.voucherName ||
+            `${row.contractNo || `ZD${row.paymentId}`}-${voucherLabel}${index + 1}`,
+          attachment: true,
+        });
+      });
+      if (!paymentRecords.length && row.paymentVoucherUrl) {
+        rows.push({
+          name: voucherLabel,
+          status: row.payStatus === '1' ? 'approved' : '',
+          currentNode: confirmText,
+          fileUrl: row.paymentVoucherUrl,
+          fileName:
+            row.paymentVoucherName || `${row.contractNo || `ZD${row.paymentId}`}-${voucherLabel}`,
+          attachment: true,
+        });
+      }
+      return rows;
     },
   },
   mounted() {
@@ -572,7 +847,10 @@ export default {
       if (routeQuery.direction === 'payable' || routeQuery.direction === 'receivable') {
         this.direction = routeQuery.direction;
       }
-      if (this.hasRouteDate(routeQuery.deadlineStartDate) && this.hasRouteDate(routeQuery.deadlineEndDate)) {
+      if (
+        this.hasRouteDate(routeQuery.deadlineStartDate) &&
+        this.hasRouteDate(routeQuery.deadlineEndDate)
+      ) {
         nextQuery.deadlineRange = [
           this.normalizeRouteDate(routeQuery.deadlineStartDate),
           this.normalizeRouteDate(routeQuery.deadlineEndDate),
@@ -713,7 +991,9 @@ export default {
             ...this.detailRow,
             payDeadline: value,
           };
-          this.data = this.data.map(item => (item.paymentId === paymentId ? { ...item, payDeadline: value } : item));
+          this.data = this.data.map(item =>
+            item.paymentId === paymentId ? { ...item, payDeadline: value } : item
+          );
           this.loadSummary();
           this.$message.success(`${this.deadlineLabel}已更新`);
         })
@@ -744,28 +1024,140 @@ export default {
       this.workflowForm.processDefKey = '';
       this.workflowVisible = true;
       this.workflowLoading = true;
-      Promise.all([
-        getDeploymentList(1, -1, { status: 1 }),
-        getWorkflowRecords(row.contractId),
-      ])
+      Promise.all([getDeploymentList(1, -1, { status: 1 }), getWorkflowRecords(row.contractId)])
         .then(([deploymentRes, workflowRes]) => {
           const deployments = (deploymentRes.data.data || {}).records || [];
           this.workflowProcessOptions = deployments
             .filter(item => this.isApplicationWorkflowProcess(item))
             .sort((a, b) => Number(b.version || 0) - Number(a.version || 0));
-          this.workflowForm.processDefKey = this.resolveApplicationProcessKey(this.workflowProcessOptions);
+          this.workflowForm.processDefKey = this.resolveApplicationProcessKey(
+            this.workflowProcessOptions
+          );
 
           const records = workflowRes.data.data || [];
-          this.workflowExistingRecord = records
-            .filter(item => this.isCurrentPaymentWorkflow(item, row.paymentId))
-            .sort((a, b) => Number(b.recordId || 0) - Number(a.recordId || 0))[0] || {};
+          this.workflowExistingRecord =
+            records
+              .filter(item => this.isCurrentPaymentWorkflow(item, row.paymentId))
+              .sort((a, b) => Number(b.recordId || 0) - Number(a.recordId || 0))[0] || {};
           if (this.workflowProcessOptions.length === 0) {
-            this.$message.warning(`未找到可用的${this.workflowIsPayable ? '付款申请' : '开票申请'}流程，请先在部署管理激活流程`);
+            this.$message.warning(
+              `未找到可用的${
+                this.workflowIsPayable ? '付款申请' : '开票申请'
+              }流程，请先在部署管理激活流程`
+            );
           }
         })
         .finally(() => {
           this.workflowLoading = false;
         });
+    },
+    openPaymentConfirm(row) {
+      if (!row || !row.paymentId) return;
+      const payable = String(row.direction || this.direction) === 'payable';
+      if (payable && row.paymentApprovalStatus !== 'approved') {
+        this.$alert('请先发起付款申请并完成审批，审批通过后才能由财务确认付款。', '付款前置条件', {
+          confirmButtonText: '知道了',
+          type: 'warning',
+        });
+        return;
+      }
+      this.paymentConfirmRow = { ...row };
+      this.paymentConfirmForm = {
+        amountPaid: this.pendingAmount(row),
+        payTime: this.formatDateTime(new Date()),
+        paymentVoucherName: '',
+        paymentVoucherUrl: '',
+        remark: '',
+      };
+      this.paymentVoucherFileList = [];
+      this.paymentConfirmVisible = true;
+    },
+    beforePaymentVoucherUpload(file) {
+      const allowed =
+        /\.(pdf|doc|docx|png|jpg|jpeg)$/i.test(file.name || '') && file.size / 1024 / 1024 < 20;
+      if (!allowed) {
+        this.$message.error('仅支持 20MB 以内的 PDF、Word、PNG、JPG 收付款凭证');
+      }
+      return allowed;
+    },
+    extractUploadUrl(response) {
+      const data = response?.data || {};
+      return data.link || data.url || data.path || response?.link || response?.url || '';
+    },
+    handlePaymentVoucherSuccess(response, file) {
+      if (!response || response.success === false) {
+        this.$message.error(
+          (response && response.msg) ||
+            `${this.paymentConfirmIsPayable ? '付款' : '收款'}凭证上传失败`
+        );
+        return;
+      }
+      const fileUrl = this.extractUploadUrl(response);
+      if (!fileUrl) {
+        this.$message.error(
+          `${this.paymentConfirmIsPayable ? '付款' : '收款'}凭证上传后未返回文件地址`
+        );
+        return;
+      }
+      this.paymentConfirmForm.paymentVoucherName = file?.name || '';
+      this.paymentConfirmForm.paymentVoucherUrl = fileUrl;
+      this.paymentVoucherFileList = [
+        {
+          name: file?.name || `${this.paymentConfirmIsPayable ? '付款' : '收款'}凭证`,
+          url: fileUrl,
+        },
+      ];
+      this.$refs.paymentConfirmFormRef?.validateField('paymentVoucherUrl');
+    },
+    handlePaymentVoucherError(error) {
+      this.$message.error(
+        (error && error.message) || `${this.paymentConfirmIsPayable ? '付款' : '收款'}凭证上传失败`
+      );
+    },
+    handlePaymentVoucherRemove() {
+      this.paymentConfirmForm.paymentVoucherName = '';
+      this.paymentConfirmForm.paymentVoucherUrl = '';
+      this.paymentVoucherFileList = [];
+    },
+    submitPaymentConfirm() {
+      this.$refs.paymentConfirmFormRef.validate(valid => {
+        if (!valid) return;
+        this.paymentConfirmLoading = true;
+        const paymentId = this.paymentConfirmRow.paymentId;
+        const payload = { ...this.paymentConfirmForm };
+        if (!this.paymentConfirmIsPayable) {
+          payload.amountPaid =
+            Number(this.paymentConfirmRow.amountPaid || 0) + Number(payload.amountPaid || 0);
+        }
+        confirmPayment(paymentId, payload)
+          .then(() => {
+            this.$message.success(
+              this.paymentConfirmIsPayable ? '付款已确认，退租管理将同步显示付款结果' : '收款已确认'
+            );
+            this.paymentConfirmVisible = false;
+            this.reload();
+            return getPaymentDetail(paymentId)
+              .then(res => {
+                this.detailRow = res.data.data || this.detailRow;
+              })
+              .catch(() => null);
+          })
+          .finally(() => {
+            this.paymentConfirmLoading = false;
+          });
+      });
+    },
+    resetPaymentConfirm() {
+      this.paymentConfirmLoading = false;
+      this.paymentConfirmRow = {};
+      this.paymentConfirmForm = {
+        amountPaid: null,
+        payTime: '',
+        paymentVoucherName: '',
+        paymentVoucherUrl: '',
+        remark: '',
+      };
+      this.paymentVoucherFileList = [];
     },
     isApplicationWorkflowProcess(item = {}) {
       const name = String(item.name || '');
@@ -778,15 +1170,18 @@ export default {
     },
     resolveApplicationProcessKey(options = []) {
       const formKey = this.workflowIsPayable ? 'pay' : 'invoice';
-      const preferred = options.find(item => item.formKey === formKey)
-        || options.find(item => item.key === formKey)
-        || options[0];
+      const preferred =
+        options.find(item => item.formKey === formKey) ||
+        options.find(item => item.key === formKey) ||
+        options[0];
       return preferred ? preferred.key : '';
     },
     isCurrentPaymentWorkflow(record, paymentId) {
       if (!record || String(record.paymentId || '') !== String(paymentId || '')) return false;
       if (record.businessType !== PAYMENT_WORKFLOW_BUSINESS_TYPE) return false;
-      const marker = `${record.templateKey || ''}|${record.formKey || ''}|${record.processDefKey || ''}`.toLowerCase();
+      const marker = `${record.templateKey || ''}|${record.formKey || ''}|${
+        record.processDefKey || ''
+      }`.toLowerCase();
       return this.workflowIsPayable
         ? marker.includes('payment-notice') || marker.includes('|pay|') || marker.endsWith('|pay')
         : marker.includes('invoice');
@@ -813,6 +1208,10 @@ export default {
     },
     previewApplicationFile(file) {
       if (!file || !file.fileUrl || !this.detailRow.paymentId) return;
+      if (file.attachment) {
+        openAttachmentPreview(this.noticePreview, file, `${file.name}预览`);
+        return;
+      }
       openNoticePreview(
         this,
         this.noticePreview,
@@ -844,18 +1243,26 @@ export default {
       const row = this.workflowRow || {};
       const existingStatus = (this.workflowExistingRecord || {}).processStatus;
       if (existingStatus === 'running') {
-        this.$message.warning(`该账单${this.workflowIsPayable ? '付款申请' : '开票申请'}正在审批中`);
+        this.$message.warning(
+          `该账单${this.workflowIsPayable ? '付款申请' : '开票申请'}正在审批中`
+        );
         return;
       }
       if (existingStatus === 'approved') {
-        this.$message.warning(`该账单${this.workflowIsPayable ? '付款申请' : '开票申请'}已审批完成，可在当前账单详情的“审批生成文件”中预览和下载`);
+        this.$message.warning(
+          `该账单${
+            this.workflowIsPayable ? '付款申请' : '开票申请'
+          }已审批完成，可在当前账单详情的“审批与付款文件”中预览和下载`
+        );
         return;
       }
       if (!row.paymentId || !row.contractId || !this.workflowForm.processDefKey) {
         this.$message.warning('请选择审批流程');
         return;
       }
-      const selectedProcess = this.workflowProcessOptions.find(item => item.key === this.workflowForm.processDefKey) || {};
+      const selectedProcess =
+        this.workflowProcessOptions.find(item => item.key === this.workflowForm.processDefKey) ||
+        {};
       const payload = {
         processDefKey: this.workflowForm.processDefKey,
         params: {
@@ -929,7 +1336,9 @@ export default {
     formatDateTime(value) {
       const date = value instanceof Date ? value : new Date(value);
       const pad = number => String(number).padStart(2, '0');
-      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
+        date.getHours()
+      )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
     },
   },
 };
@@ -1415,6 +1824,37 @@ export default {
   font-size: 14px;
   font-weight: 500;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payment-confirm-summary {
+  grid-template-rows: repeat(2, 88px);
+  margin-bottom: 22px;
+}
+
+.payment-confirm-summary > div {
+  min-height: 0;
+  padding: 16px 18px;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.payment-confirm-summary span {
+  width: 100%;
+  line-height: 20px;
+}
+
+.payment-confirm-summary strong {
+  width: 100%;
+  line-height: 22px;
+}
+
+.payment-confirm-form :deep(.el-form-item__label) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 32px;
+  line-height: 32px;
   white-space: nowrap;
 }
 

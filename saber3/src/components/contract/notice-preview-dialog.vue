@@ -9,10 +9,7 @@
   >
     <div v-loading="loading" class="notice-preview-body">
       <el-empty v-if="displayPreviewError" :description="displayPreviewError" />
-      <div
-        v-else-if="previewType === 'docx' && documentBlob"
-        class="notice-preview-word"
-      >
+      <div v-else-if="previewType === 'docx' && documentBlob" class="notice-preview-word">
         <div ref="docxStyle"></div>
         <div ref="docxContainer" class="notice-preview-word-content"></div>
       </div>
@@ -26,18 +23,11 @@
     </div>
     <template #footer>
       <el-button @click="visible = false">关闭</el-button>
-      <el-button
-        v-if="showPrint"
-        :disabled="!html || loading"
-        @click="$emit('print')"
-      >
+      <el-button v-if="showPrint" :disabled="!html || loading" @click="$emit('print')">
         打印预览
       </el-button>
-      <el-button
-        type="primary"
-        :disabled="!downloadUrl"
-        @click="$emit('download')"
-      >
+      <el-button v-if="pdfBlob" :disabled="loading" @click="downloadPdf"> 下载PDF </el-button>
+      <el-button type="primary" :disabled="!downloadUrl" @click="$emit('download')">
         {{ downloadLabel }}
       </el-button>
     </template>
@@ -46,6 +36,7 @@
 
 <script>
 import { renderAsync } from 'docx-preview';
+import { downloadFile } from '@/utils/util';
 
 export default {
   name: 'NoticePreviewDialog',
@@ -85,6 +76,14 @@ export default {
     documentBlob: {
       type: Object,
       default: null,
+    },
+    pdfBlob: {
+      type: Object,
+      default: null,
+    },
+    pdfFileName: {
+      type: String,
+      default: '',
     },
     previewError: {
       type: String,
@@ -169,6 +168,10 @@ export default {
           this.localPreviewError = 'Word 内容解析失败，可以下载原文件后查看。';
         }
       }
+    },
+    downloadPdf() {
+      if (!this.pdfBlob) return;
+      downloadFile(this.pdfBlob, this.pdfFileName || '审批文件.pdf', 'application/pdf');
     },
     renderFrame() {
       const frame = this.$refs.previewFrame;

@@ -32,6 +32,7 @@ class ContractTemplateRenderServiceImplTest {
 	private static final String PAYMENT_NOTICE = "君联大厦招商管理办法2023/附件四：君联大厦付款通知单.docx";
 	private static final String INVOICE_APPLY = "君联大厦招商管理办法2023/开票申请.docx";
 	private static final String REMINDER = "君联大厦招商管理办法2023/附件五：催款通知书.docx";
+	private static final String PROJECT_APPROVAL = "君联大厦招商管理办法2023/附件七：项目审批表.docx";
 	private static final String TERMINATION_APPROVAL = "君联大厦招商管理办法2023/附件八：退租审批表.docx";
 	private static final String ROOM_REVIEW = "君联大厦招商管理办法2023/附件15：房屋退租交接验收单（思锐泰）.xlsx";
 	private static final String EXACT_PREFIX = "__exact__:";
@@ -121,6 +122,19 @@ class ContractTemplateRenderServiceImplTest {
 			assertEquals(0, trailing.getSpacingBefore());
 			assertEquals(0, trailing.getSpacingAfter());
 			assertEquals(1, trailing.getRuns().get(0).getFontSize());
+		}
+	}
+
+	@Test
+	void rendersProjectApprovalTitleBeforeInlineTable() throws Exception {
+		ContractNoticeFileVO file = render(PROJECT_APPROVAL, Map.of(), Map.of());
+
+		try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(file.getFileBytes()))) {
+			XWPFParagraph title = document.getParagraphs().get(0);
+			assertEquals("项目审批表", title.getText());
+			assertEquals(ParagraphAlignment.CENTER, title.getAlignment());
+			assertFalse(hasLocalName(title.getCTP().getPPr().getDomNode(), "ind"));
+			assertFalse(hasLocalName(document.getTables().get(0).getCTTbl().getTblPr().getDomNode(), "tblpPr"));
 		}
 	}
 
@@ -276,6 +290,21 @@ class ContractTemplateRenderServiceImplTest {
 		}
 		for (Node child = node.getFirstChild(); child != null; child = child.getNextSibling()) {
 			if (hasPageBreak(child)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean hasLocalName(Node node, String localName) {
+		if (node == null) {
+			return false;
+		}
+		if (localName.equals(node.getLocalName())) {
+			return true;
+		}
+		for (Node child = node.getFirstChild(); child != null; child = child.getNextSibling()) {
+			if (hasLocalName(child, localName)) {
 				return true;
 			}
 		}

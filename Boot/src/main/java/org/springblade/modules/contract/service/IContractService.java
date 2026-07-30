@@ -188,15 +188,6 @@ public interface IContractService extends IService<Contract> {
 	ContractWorkflowRecord offlineRoomReview(Long contractId, Map<String, Object> formData);
 
 	/**
-	 * 线下确认押金退还并上传支付凭证
-	 *
-	 * @param contractId 合同ID
-	 * @param formData   支付凭证
-	 * @return 押金退还付款单
-	 */
-	ContractPayment offlineDepositRefund(Long contractId, Map<String, Object> formData);
-
-	/**
 	 * 合同日志
 	 *
 	 * @param contractId 合同ID

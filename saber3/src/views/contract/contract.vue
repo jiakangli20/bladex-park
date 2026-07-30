@@ -22,7 +22,9 @@
                   />
                   <h2>{{ detailHeaderTitle }}</h2>
                   <el-tag :type="statusType(detailContract.contractStatus)" effect="plain">
-                    {{ detailContract.contractStatusName || statusText(detailContract.contractStatus) }}
+                    {{
+                      detailContract.contractStatusName || statusText(detailContract.contractStatus)
+                    }}
                   </el-tag>
                 </div>
                 <div class="contract-detail-actions">
@@ -50,7 +52,10 @@
                     续租
                   </el-button>
                   <el-button
-                    v-if="permission.contract_contract_terminate && detailContract.contractStatus === '0'"
+                    v-if="
+                      permission.contract_contract_terminate &&
+                      detailContract.contractStatus === '0'
+                    "
                     type="danger"
                     @click="handleTerminate(detailContract)"
                   >
@@ -244,7 +249,11 @@
                           <strong>{{ contractTextTypeText(detailContract) }}</strong>
                         </div>
                         <div class="contract-text-actions">
-                          <el-button type="primary" plain @click="handlePreviewContractText(detailContract)">
+                          <el-button
+                            type="primary"
+                            plain
+                            @click="handlePreviewContractText(detailContract)"
+                          >
                             预览
                           </el-button>
                           <el-button
@@ -265,7 +274,9 @@
                           <el-button
                             type="primary"
                             plain
-                            @click="openWorkflowFile(approvalFileRecord.printFileUrl, approvalFileRecord)"
+                            @click="
+                              openWorkflowFile(approvalFileRecord.printFileUrl, approvalFileRecord)
+                            "
                           >
                             预览
                           </el-button>
@@ -280,10 +291,15 @@
                           <el-button
                             type="primary"
                             plain
-                            @click="previewAttachment({
-                              fileUrl: detailContract.contractFileUrl,
-                              fileName: detailContract.contractNo || '已盖章合同'
-                            }, '盖章合同预览')"
+                            @click="
+                              previewAttachment(
+                                {
+                                  fileUrl: detailContract.contractFileUrl,
+                                  fileName: detailContract.contractNo || '已盖章合同',
+                                },
+                                '盖章合同预览'
+                              )
+                            "
                           >
                             预览
                           </el-button>
@@ -300,22 +316,49 @@
                       </el-button>
                     </div>
                     <el-table :data="supplements" border class="contract-detail-table">
-                      <el-table-column prop="fileName" label="文件名称" width="240" show-overflow-tooltip>
-                        <template #default="{ row }">{{ row.fileName || row.agreementName || '-' }}</template>
+                      <el-table-column
+                        prop="fileName"
+                        label="文件名称"
+                        width="240"
+                        show-overflow-tooltip
+                      >
+                        <template #default="{ row }">{{
+                          row.fileName || row.agreementName || '-'
+                        }}</template>
                       </el-table-column>
-                      <el-table-column prop="contractNo" label="合同编号" min-width="150" show-overflow-tooltip />
+                      <el-table-column
+                        prop="contractNo"
+                        label="合同编号"
+                        min-width="150"
+                        show-overflow-tooltip
+                      />
                       <el-table-column prop="createBy" label="上传人" width="140" align="center">
-                        <template #default="{ row }">{{ row.createBy || row.updateBy || '-' }}</template>
+                        <template #default="{ row }">{{
+                          row.createBy || row.updateBy || '-'
+                        }}</template>
                       </el-table-column>
-                      <el-table-column prop="createTime" label="上传时间" width="180" align="center">
-                        <template #default="{ row }">{{ row.createTime || row.updateTime || '-' }}</template>
+                      <el-table-column
+                        prop="createTime"
+                        label="上传时间"
+                        width="180"
+                        align="center"
+                      >
+                        <template #default="{ row }">{{
+                          row.createTime || row.updateTime || '-'
+                        }}</template>
                       </el-table-column>
                       <el-table-column label="操作" width="230" align="center" fixed="right">
                         <template #default="{ row }">
                           <div class="attachment-table-actions">
-                            <el-button text type="primary" @click="previewAttachment(row)">预览</el-button>
-                            <el-button text type="primary" @click="downloadSupplement(row)">下载</el-button>
-                            <el-button text type="danger" @click="removeSupplement(row)">删除</el-button>
+                            <el-button text type="primary" @click="previewAttachment(row)"
+                              >预览</el-button
+                            >
+                            <el-button text type="primary" @click="downloadSupplement(row)"
+                              >下载</el-button
+                            >
+                            <el-button text type="danger" @click="removeSupplement(row)"
+                              >删除</el-button
+                            >
                           </div>
                         </template>
                       </el-table-column>
@@ -332,7 +375,12 @@
                       border
                       class="contract-detail-table"
                     >
-                      <el-table-column prop="contractNo" label="合同编号" min-width="150" show-overflow-tooltip />
+                      <el-table-column
+                        prop="contractNo"
+                        label="合同编号"
+                        min-width="150"
+                        show-overflow-tooltip
+                      />
                       <el-table-column prop="feeName" label="账单名称" min-width="150" />
                       <el-table-column label="账期" min-width="200" align="center">
                         <template #default="{ row }">
@@ -340,12 +388,21 @@
                         </template>
                       </el-table-column>
                       <el-table-column prop="amountDue" label="应收金额" width="130" align="right">
-                        <template #default="{ row }">{{ formatMoneyWithUnit(row.amountDue) }}</template>
+                        <template #default="{ row }">{{
+                          formatMoneyWithUnit(row.amountDue)
+                        }}</template>
                       </el-table-column>
                       <el-table-column prop="amountPaid" label="实收金额" width="130" align="right">
-                        <template #default="{ row }">{{ formatMoneyWithUnit(row.amountPaid) }}</template>
+                        <template #default="{ row }">{{
+                          formatMoneyWithUnit(row.amountPaid)
+                        }}</template>
                       </el-table-column>
-                      <el-table-column prop="payDeadline" label="缴费期限" width="140" align="center">
+                      <el-table-column
+                        prop="payDeadline"
+                        label="缴费期限"
+                        width="140"
+                        align="center"
+                      >
                         <template #default="{ row }">{{ row.payDeadline || '-' }}</template>
                       </el-table-column>
                       <el-table-column label="账单状态" width="110" align="center">
@@ -392,192 +449,188 @@
       </template>
 
       <template v-else>
-      <el-alert
-        v-if="expiringData.length"
-        type="warning"
-        show-icon
-        :closable="false"
-        :description="expiringSummary"
-        class="contract-alert"
-      >
-        <template #title>
-          合同到期提醒：当前有 {{ expiringData.length }} 份合同进入续签提醒周期
-        </template>
-      </el-alert>
+        <el-alert
+          v-if="expiringData.length"
+          type="warning"
+          show-icon
+          :closable="false"
+          :description="expiringSummary"
+          class="contract-alert"
+        >
+          <template #title>
+            合同到期提醒：当前有 {{ expiringData.length }} 份合同进入续签提醒周期
+          </template>
+        </el-alert>
 
-      <section class="summary-grid">
-        <div v-for="item in summaryCards" :key="item.key" class="summary-card">
-          <span>{{ item.label }}</span>
-          <strong>{{ item.value }}</strong>
-        </div>
-      </section>
+        <section class="summary-grid">
+          <div v-for="item in summaryCards" :key="item.key" class="summary-card">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+          </div>
+        </section>
 
-      <section class="contract-search">
-        <el-form :inline="true" :model="query">
-          <el-form-item label="合同编号">
-            <el-input
-              v-model="query.contractNo"
-              clearable
-              placeholder="请输入合同编号"
-              @keyup.enter="searchChange"
-            />
-          </el-form-item>
-          <el-form-item label="客户名称">
-            <el-input
-              v-model="query.customerName"
-              clearable
-              placeholder="请输入客户名称"
-              @keyup.enter="searchChange"
-            />
-          </el-form-item>
-          <el-form-item label="合同状态">
-            <el-select v-model="query.contractStatus" clearable placeholder="请选择">
-              <el-option
-                v-for="item in statusOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
+        <section class="contract-search">
+          <el-form :inline="true" :model="query">
+            <el-form-item label="合同编号">
+              <el-input
+                v-model="query.contractNo"
+                clearable
+                placeholder="请输入合同编号"
+                @keyup.enter="searchChange"
               />
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" icon="el-icon-search" @click="searchChange">查询</el-button>
-            <el-button icon="el-icon-delete" @click="searchReset">重置</el-button>
-          </el-form-item>
-        </el-form>
-      </section>
+            </el-form-item>
+            <el-form-item label="客户名称">
+              <el-input
+                v-model="query.customerName"
+                clearable
+                placeholder="请输入客户名称"
+                @keyup.enter="searchChange"
+              />
+            </el-form-item>
+            <el-form-item label="合同状态">
+              <el-select v-model="query.contractStatus" clearable placeholder="请选择">
+                <el-option
+                  v-for="item in statusOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" icon="el-icon-search" @click="searchChange">查询</el-button>
+              <el-button icon="el-icon-delete" @click="searchReset">重置</el-button>
+            </el-form-item>
+          </el-form>
+        </section>
 
-      <section class="contract-toolbar">
-        <div class="toolbar-left">
-          <el-button type="primary" icon="el-icon-plus" @click="handleAdd">新建合同</el-button>
-          <el-button
-            type="success"
-            plain
-            @click="handleStartApprovalFromSelection"
-          >
-            <el-icon><Promotion /></el-icon>
-            发起合同审批
-          </el-button>
-          <el-button
-            v-if="permission.contract_contract_delete"
-            type="danger"
-            plain
-            icon="el-icon-delete"
-            :disabled="selectionList.length === 0"
-            @click="handleDelete"
-          >
-            批量删除
-          </el-button>
-        </div>
-        <el-tooltip content="刷新" placement="top">
-          <el-button icon="el-icon-refresh" circle @click="reload" />
-        </el-tooltip>
-      </section>
-
-      <el-table
-        v-loading="loading"
-        :data="data"
-        border
-        row-key="contractId"
-        class="contract-table"
-        @selection-change="selectionChange"
-      >
-        <el-table-column type="selection" width="44" align="center" />
-        <el-table-column
-          prop="customerName"
-          label="租客名称"
-          min-width="180"
-          align="center"
-          show-overflow-tooltip
-        >
-          <template #default="{ row }">
-            <el-button text type="primary" class="tenant-name-btn" @click="openDetail(row)">
-              {{ row.customerName || '-' }}
+        <section class="contract-toolbar">
+          <div class="toolbar-left">
+            <el-button type="primary" icon="el-icon-plus" @click="handleAdd">新建合同</el-button>
+            <el-button type="success" plain @click="handleStartApprovalFromSelection">
+              <el-icon><Promotion /></el-icon>
+              发起合同审批
             </el-button>
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="contractNo"
-          label="合同编号"
-          min-width="170"
-          align="center"
-          show-overflow-tooltip
-        />
-        <el-table-column prop="contractStatus" label="合同状态" width="150" align="center">
-          <template #default="{ row }">
-            <el-tag :type="statusType(row.contractStatus)" effect="plain">
-              {{ row.contractStatusName || statusText(row.contractStatus) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="approvalStatus"
-          label="审批状态"
-          width="120"
-          align="center"
-          show-overflow-tooltip
-        >
-          <template #default="{ row }">
-            <el-tag :type="approvalStatusType(row.approvalStatus)" effect="plain">
-              {{ approvalStatusText(row.approvalStatus) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="parkName"
-          label="园区名称"
-          width="130"
-          align="center"
-          show-overflow-tooltip
-        />
-        <el-table-column
-          prop="roomName"
-          label="房源信息"
-          width="130"
-          align="center"
-          show-overflow-tooltip
-        >
-          <template #default="{ row }">
-            <span>{{ row.roomName || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="startDate" label="开始日" width="115" align="center" />
-        <el-table-column prop="endDate" label="结束日" width="145" align="center">
-          <template #default="{ row }">
-            <span>{{ row.endDate || '-' }}</span>
-            <el-tag v-if="isExpiringSoon(row)" type="warning" effect="plain" class="inline-tag"
-              >即将到期</el-tag
+            <el-button
+              v-if="permission.contract_contract_delete"
+              type="danger"
+              plain
+              icon="el-icon-delete"
+              :disabled="selectionList.length === 0"
+              @click="handleDelete"
             >
-          </template>
-        </el-table-column>
-        <el-table-column prop="rentPrice" label="租赁单价" width="120" align="center">
-          <template #default="{ row }">{{ formatUnitPrice(row.rentPrice) }}</template>
-        </el-table-column>
-        <el-table-column prop="signDate" label="签订日期" width="120" align="center">
-          <template #default="{ row }">{{ row.signDate || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="156" align="center" fixed="right">
-          <template #default="{ row }">
-            <div class="table-actions">
-              <el-button text type="primary" @click="openDetail(row)">详情</el-button>
-              <el-button text type="primary" @click="handleArchive(row)">归档</el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
+              批量删除
+            </el-button>
+          </div>
+          <el-tooltip content="刷新" placement="top">
+            <el-button icon="el-icon-refresh" circle @click="reload" />
+          </el-tooltip>
+        </section>
 
-      <div class="contract-pagination">
-        <el-pagination
-          background
-          :current-page="page.currentPage"
-          :page-sizes="[10, 20, 30, 40, 50, 100]"
-          :page-size="page.pageSize"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="page.total"
-          @size-change="sizeChange"
-          @current-change="currentChange"
-        />
-      </div>
+        <el-table
+          v-loading="loading"
+          :data="data"
+          border
+          row-key="contractId"
+          class="contract-table"
+          @selection-change="selectionChange"
+        >
+          <el-table-column type="selection" width="44" align="center" />
+          <el-table-column
+            prop="customerName"
+            label="租客名称"
+            min-width="180"
+            align="center"
+            show-overflow-tooltip
+          >
+            <template #default="{ row }">
+              <el-button text type="primary" class="tenant-name-btn" @click="openDetail(row)">
+                {{ row.customerName || '-' }}
+              </el-button>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="contractNo"
+            label="合同编号"
+            min-width="170"
+            align="center"
+            show-overflow-tooltip
+          />
+          <el-table-column prop="contractStatus" label="合同状态" width="150" align="center">
+            <template #default="{ row }">
+              <el-tag :type="statusType(row.contractStatus)" effect="plain">
+                {{ row.contractStatusName || statusText(row.contractStatus) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="approvalStatus"
+            label="审批状态"
+            width="120"
+            align="center"
+            show-overflow-tooltip
+          >
+            <template #default="{ row }">
+              <el-tag :type="approvalStatusType(row.approvalStatus)" effect="plain">
+                {{ approvalStatusText(row.approvalStatus) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="parkName"
+            label="园区名称"
+            width="130"
+            align="center"
+            show-overflow-tooltip
+          />
+          <el-table-column
+            prop="roomName"
+            label="房源信息"
+            width="130"
+            align="center"
+            show-overflow-tooltip
+          >
+            <template #default="{ row }">
+              <span>{{ row.roomName || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="startDate" label="开始日" width="115" align="center" />
+          <el-table-column prop="endDate" label="结束日" width="145" align="center">
+            <template #default="{ row }">
+              <span>{{ row.endDate || '-' }}</span>
+              <el-tag v-if="isExpiringSoon(row)" type="warning" effect="plain" class="inline-tag"
+                >即将到期</el-tag
+              >
+            </template>
+          </el-table-column>
+          <el-table-column prop="rentPrice" label="租赁单价" width="120" align="center">
+            <template #default="{ row }">{{ formatUnitPrice(row.rentPrice) }}</template>
+          </el-table-column>
+          <el-table-column prop="signDate" label="签订日期" width="120" align="center">
+            <template #default="{ row }">{{ row.signDate || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="156" align="center" fixed="right">
+            <template #default="{ row }">
+              <div class="table-actions">
+                <el-button text type="primary" @click="openDetail(row)">详情</el-button>
+                <el-button text type="primary" @click="handleArchive(row)">归档</el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="contract-pagination">
+          <el-pagination
+            background
+            :current-page="page.currentPage"
+            :page-sizes="[10, 20, 30, 40, 50, 100]"
+            :page-size="page.pageSize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="page.total"
+            @size-change="sizeChange"
+            @current-change="currentChange"
+          />
+        </div>
       </template>
 
       <el-drawer
@@ -984,7 +1037,9 @@
                           :show-file-list="false"
                           accept=".png,.jpg,.jpeg"
                           :before-upload="beforeIdentityUpload"
-                          :on-success="(response, file) => handleIdentityUploadSuccess('front', response, file)"
+                          :on-success="
+                            (response, file) => handleIdentityUploadSuccess('front', response, file)
+                          "
                           :on-error="handleIdentityUploadError"
                           class="identity-upload"
                         >
@@ -1007,7 +1062,9 @@
                           :show-file-list="false"
                           accept=".png,.jpg,.jpeg"
                           :before-upload="beforeIdentityUpload"
-                          :on-success="(response, file) => handleIdentityUploadSuccess('back', response, file)"
+                          :on-success="
+                            (response, file) => handleIdentityUploadSuccess('back', response, file)
+                          "
                           :on-error="handleIdentityUploadError"
                           class="identity-upload"
                         >
@@ -1486,11 +1543,7 @@
         </el-form>
         <template #footer>
           <el-button @click="contractChangeVisible = false">取消</el-button>
-          <el-button
-            type="primary"
-            :loading="contractChangeSaving"
-            @click="submitContractChange"
-          >
+          <el-button type="primary" :loading="contractChangeSaving" @click="submitContractChange">
             确定
           </el-button>
         </template>
@@ -1589,6 +1642,8 @@
         :download-label="noticePreview.downloadLabel"
         :preview-type="noticePreview.previewType"
         :document-blob="noticePreview.documentBlob"
+        :pdf-blob="noticePreview.pdfBlob"
+        :pdf-file-name="noticePreview.pdfFileName"
         :preview-error="noticePreview.previewError"
         @download="downloadNoticePreviewFile"
       />
@@ -1619,11 +1674,7 @@ import {
   saveSupplementAgreement,
 } from '@/api/contract/archive';
 import { noticePrintUrl } from '@/api/contract/print';
-import {
-  getCustomerDetail,
-  removeCustomer,
-  updateCustomer,
-} from '@/api/business/customer';
+import { getCustomerDetail, removeCustomer, updateCustomer } from '@/api/business/customer';
 import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
 import { paymentCycleDic, paymentStatusDic, statusDic } from '@/option/contract/contract';
 import { mapGetters } from 'vuex';
@@ -1918,7 +1969,10 @@ export default {
         { label: '合同开始日', value: this.detailValue(contract.startDate) },
         { label: '合同结束日', value: this.detailValue(contract.endDate) },
         { label: '合同来源', value: this.contractSourceText(contract) },
-        { label: '续签提醒', value: contract.renewalRemindDays ? `${contract.renewalRemindDays}天` : '--' },
+        {
+          label: '续签提醒',
+          value: contract.renewalRemindDays ? `${contract.renewalRemindDays}天` : '--',
+        },
       ];
     },
     roomInfoItems() {
@@ -1934,9 +1988,18 @@ export default {
       const customer = this.customerDetail || {};
       const contract = this.detailContract || {};
       const baseItems = [
-        { label: '租客', value: this.detailValue(customer.enterpriseName || contract.customerName) },
-        { label: '签订人', value: this.detailValue(customer.contractSigner || contract.customerName) },
-        { label: '租客编码', value: this.detailValue(customer.customerId || this.currentCustomerId) },
+        {
+          label: '租客',
+          value: this.detailValue(customer.enterpriseName || contract.customerName),
+        },
+        {
+          label: '签订人',
+          value: this.detailValue(customer.contractSigner || contract.customerName),
+        },
+        {
+          label: '租客编码',
+          value: this.detailValue(customer.customerId || this.currentCustomerId),
+        },
       ];
       if (!customer.customerId) {
         return baseItems;
@@ -1951,7 +2014,10 @@ export default {
         { label: '联系人职务', value: this.detailValue(customer.contactPosition) },
         { label: '审批联系人', value: this.detailValue(customer.approvalContactName) },
         { label: '账单联系人', value: this.detailValue(customer.billContactName) },
-        { label: '租客标签', value: this.customerTags.length ? this.customerTags.join('、') : '--' },
+        {
+          label: '租客标签',
+          value: this.customerTags.length ? this.customerTags.join('、') : '--',
+        },
         { label: '统一社会信用代码', value: this.detailValue(customer.creditCode) },
         { label: '企业类型', value: this.detailValue(customer.enterpriseType) },
         { label: '成立日期', value: this.detailValue(customer.establishDate) },
@@ -1961,7 +2027,10 @@ export default {
         { label: '上年度营收', value: this.detailValue(customer.lastYearRevenue) },
         { label: '主要合作客户', value: this.detailValue(customer.majorClients) },
         { label: '招商渠道', value: this.detailValue(customer.channel) },
-        { label: '注册地址', value: this.detailValue(customer.registeredAddress || customer.address) },
+        {
+          label: '注册地址',
+          value: this.detailValue(customer.registeredAddress || customer.address),
+        },
         { label: '企业地址', value: this.detailValue(customer.address) },
         { label: '经营范围', value: this.detailValue(customer.businessScope) },
       ];
@@ -1984,9 +2053,7 @@ export default {
     },
     depositClauseItems() {
       const contract = this.detailContract || {};
-      return [
-        { label: '保证金金额', value: this.formatMoneyWithUnitOrDash(contract.deposit) },
-      ];
+      return [{ label: '保证金金额', value: this.formatMoneyWithUnitOrDash(contract.deposit) }];
     },
     rentPaymentClauseItems() {
       const contract = this.detailContract || {};
@@ -2146,9 +2213,9 @@ export default {
       const contract = this.detailContract || {};
       return `合同摘要：起租日 ${contract.startDate || '--'}，租赁面积 ${this.formatAreaOrDash(
         contract.rentArea
-      )}，租金单价 ${this.formatUnitPrice(contract.rentPrice)}，月租金 ${this.formatMoneyWithUnitOrDash(
-        contract.monthlyRent
-      )}。`;
+      )}，租金单价 ${this.formatUnitPrice(
+        contract.rentPrice
+      )}，月租金 ${this.formatMoneyWithUnitOrDash(contract.monthlyRent)}。`;
     },
     basicDetailItems() {
       const contract = this.detailContract || {};
@@ -2226,19 +2293,14 @@ export default {
     },
     handleStartApprovalFromSelection() {
       if (
-        !this.ensurePrerequisites(
-          '合同审批前置条件',
-          this.selectionContractApprovalPrerequisites()
-        )
+        !this.ensurePrerequisites('合同审批前置条件', this.selectionContractApprovalPrerequisites())
       ) {
         return;
       }
       this.handleStartApproval(this.singleSelectedContract);
     },
     handleStartApproval(row) {
-      if (
-        !this.ensurePrerequisites('合同审批前置条件', this.contractApprovalPrerequisites(row))
-      ) {
+      if (!this.ensurePrerequisites('合同审批前置条件', this.contractApprovalPrerequisites(row))) {
         return;
       }
       this.handleStartWorkflow(CONTRACT_APPROVAL_BUSINESS_TYPE, row);
@@ -2266,17 +2328,13 @@ export default {
       this.handleStartWorkflow(CONTRACT_PAYMENT_BUSINESS_TYPE, this.detailContract, row);
     },
     handleStartTermination(row) {
-      if (
-        !this.ensurePrerequisites('退租审批前置条件', this.terminationPrerequisites(row))
-      ) {
+      if (!this.ensurePrerequisites('退租审批前置条件', this.terminationPrerequisites(row))) {
         return;
       }
       this.handleStartWorkflow(CONTRACT_TERMINATION_BUSINESS_TYPE, row);
     },
     handleStartRoomReview(row) {
-      if (
-        !this.ensurePrerequisites('房屋验收前置条件', this.roomReviewPrerequisites(row))
-      ) {
+      if (!this.ensurePrerequisites('房屋验收前置条件', this.roomReviewPrerequisites(row))) {
         return;
       }
       this.handleStartWorkflow(CONTRACT_ROOM_REVIEW_BUSINESS_TYPE, row);
@@ -2512,8 +2570,7 @@ export default {
         {
           label: '付款申请未进行中且未通过',
           done: !['running', 'approved'].includes(processStatus),
-          pendingText:
-            processStatus === 'running' ? '付款申请正在审批中' : '付款申请已审批通过',
+          pendingText: processStatus === 'running' ? '付款申请正在审批中' : '付款申请已审批通过',
         },
       ];
     },
@@ -2897,9 +2954,7 @@ export default {
         });
     },
     handleSignedUpload(row) {
-      if (
-        !this.ensurePrerequisites('上传盖章合同前置条件', this.signedUploadPrerequisites(row))
-      ) {
+      if (!this.ensurePrerequisites('上传盖章合同前置条件', this.signedUploadPrerequisites(row))) {
         return;
       }
       this.signedUploadContract = { ...row };
@@ -3236,7 +3291,8 @@ export default {
     },
     beforeIdentityUpload(file) {
       const isImage =
-        ['image/jpeg', 'image/png'].includes(file.type) || /\.(jpg|jpeg|png)$/i.test(file.name || '');
+        ['image/jpeg', 'image/png'].includes(file.type) ||
+        /\.(jpg|jpeg|png)$/i.test(file.name || '');
       const isLt10M = file.size / 1024 / 1024 < 10;
       if (!isImage) {
         this.$message.error('仅支持上传 JPG、PNG 格式图片');

@@ -18,14 +18,31 @@
             </el-form-item>
             <el-form-item label="费用类型">
               <el-select v-model="query.feeType" clearable placeholder="请选择费用类型">
-                <el-option v-for="item in feeTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+                <el-option
+                  v-for="item in feeTypeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="开始时间">
-              <el-date-picker v-model="query.periodStartDate" type="date" value-format="YYYY-MM-DD" placeholder="选择开始时间" clearable />
+              <el-date-picker
+                v-model="query.periodStartDate"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="选择开始时间"
+                clearable
+              />
             </el-form-item>
             <el-form-item label="结束时间">
-              <el-date-picker v-model="query.periodEndDate" type="date" value-format="YYYY-MM-DD" placeholder="选择结束时间" clearable />
+              <el-date-picker
+                v-model="query.periodEndDate"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="选择结束时间"
+                clearable
+              />
             </el-form-item>
 
             <el-form-item label="结清状态">
@@ -46,12 +63,27 @@
               />
             </el-form-item>
             <el-form-item label="楼宇名称">
-              <el-select v-model="query.buildingNameQuery" clearable filterable placeholder="请选择楼宇名称">
-                <el-option v-for="item in buildingOptions" :key="item" :label="item" :value="item" />
+              <el-select
+                v-model="query.buildingNameQuery"
+                clearable
+                filterable
+                placeholder="请选择楼宇名称"
+              >
+                <el-option
+                  v-for="item in buildingOptions"
+                  :key="item"
+                  :label="item"
+                  :value="item"
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="租客名称">
-              <el-input v-model="query.customerName" clearable placeholder="请填写租客名称" @keyup.enter="searchChange" />
+              <el-input
+                v-model="query.customerName"
+                clearable
+                placeholder="请填写租客名称"
+                @keyup.enter="searchChange"
+              />
             </el-form-item>
             <div class="overdue-search-actions">
               <el-button icon="el-icon-refresh-left" @click="searchReset">重置</el-button>
@@ -66,7 +98,13 @@
           <span></span>
           <div class="overdue-toolbar__actions">
             <el-button icon="el-icon-download" @click="handleExport">导出</el-button>
-            <el-button type="primary" plain icon="el-icon-bell" :disabled="selectionList.length === 0" @click="openBatchRecipientDialog">
+            <el-button
+              type="primary"
+              plain
+              icon="el-icon-bell"
+              :disabled="selectionList.length === 0"
+              @click="openBatchRecipientDialog"
+            >
               批量催缴通知
             </el-button>
           </div>
@@ -93,13 +131,25 @@
               </el-button>
             </template>
           </el-table-column>
-          <el-table-column prop="buildingName" label="楼宇名称" width="140" align="center" show-overflow-tooltip />
+          <el-table-column
+            prop="buildingName"
+            label="楼宇名称"
+            width="140"
+            align="center"
+            show-overflow-tooltip
+          />
           <el-table-column prop="payStatus" label="结清状态" width="110" align="center">
             <template #default="{ row }">
               <span>{{ row.payStatus === '1' ? '已结清' : '逾期' }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="feeName" label="费用类型" width="120" align="center" show-overflow-tooltip />
+          <el-table-column
+            prop="feeName"
+            label="费用类型"
+            width="120"
+            align="center"
+            show-overflow-tooltip
+          />
           <el-table-column prop="amountDue" label="应收金额" width="130" align="center">
             <template #default="{ row }">{{ formatMoney(row.amountDue) }}</template>
           </el-table-column>
@@ -112,7 +162,13 @@
           <el-table-column prop="periodStart" label="开始日期" width="130" align="center" />
           <el-table-column prop="periodEnd" label="结束日期" width="130" align="center" />
           <el-table-column prop="payDeadline" label="应收日期" width="130" align="center" />
-          <el-table-column prop="contractNo" label="合同编号" min-width="170" align="center" show-overflow-tooltip>
+          <el-table-column
+            prop="contractNo"
+            label="合同编号"
+            min-width="170"
+            align="center"
+            show-overflow-tooltip
+          >
             <template #default="{ row }">
               <span class="link-like">{{ row.contractNo || '--' }}</span>
             </template>
@@ -161,8 +217,19 @@
               >
                 确认缴费
               </el-button>
-              <el-button type="warning" plain :disabled="!drawerRow.paymentId" @click="openRecipientDialog(drawerRow)">催缴通知</el-button>
-              <el-button type="primary" :disabled="!drawerRow.paymentId" @click="goOverdueReminder(drawerRow)">逾期提醒</el-button>
+              <el-button
+                type="warning"
+                plain
+                :disabled="!drawerRow.paymentId"
+                @click="openRecipientDialog(drawerRow)"
+                >催缴通知</el-button
+              >
+              <el-button
+                type="primary"
+                :disabled="!drawerRow.paymentId"
+                @click="goOverdueReminder(drawerRow)"
+                >逾期提醒</el-button
+              >
             </div>
           </section>
 
@@ -177,14 +244,25 @@
             <el-tabs v-model="drawerActiveTab" class="tenant-tabs">
               <el-tab-pane label="合同" name="contract">
                 <el-table :data="drawerContracts" class="tenant-table" border empty-text="暂无合同">
-                  <el-table-column prop="contractNo" label="合同编号" min-width="180" align="center" show-overflow-tooltip>
+                  <el-table-column
+                    prop="contractNo"
+                    label="合同编号"
+                    min-width="180"
+                    align="center"
+                    show-overflow-tooltip
+                  >
                     <template #default="{ row }">
                       <el-button text type="primary" class="tenant-link" @click="openContract(row)">
                         {{ row.contractNo || '-' }}
                       </el-button>
                     </template>
                   </el-table-column>
-                  <el-table-column prop="contractStatus" label="合同状态" width="120" align="center">
+                  <el-table-column
+                    prop="contractStatus"
+                    label="合同状态"
+                    width="120"
+                    align="center"
+                  >
                     <template #default="{ row }">
                       <el-tag :type="contractStatusType(row.contractStatus)" effect="light">
                         {{ contractStatusText(row.contractStatus) }}
@@ -201,23 +279,43 @@
                     <template #default="{ row }">{{ dateOnly(row.signDate) || '-' }}</template>
                   </el-table-column>
                   <el-table-column label="合同来源" width="130" align="center">
-                    <template #default="{ row }">{{ row.parentContractId ? '续签合同' : '新建合同' }}</template>
+                    <template #default="{ row }">{{
+                      row.parentContractId ? '续签合同' : '新建合同'
+                    }}</template>
                   </el-table-column>
                 </el-table>
               </el-tab-pane>
 
               <el-tab-pane label="账单" name="bill">
                 <div class="tenant-bill-summary">
-                  <div v-for="item in drawerBillSummary" :key="item.key" class="tenant-bill-summary__item">
+                  <div
+                    v-for="item in drawerBillSummary"
+                    :key="item.key"
+                    class="tenant-bill-summary__item"
+                  >
                     <span>{{ item.label }}</span>
                     <strong>{{ item.value }}</strong>
                   </div>
                 </div>
                 <el-table :data="drawerBills" class="tenant-table" border empty-text="暂无账单">
-                  <el-table-column prop="contractNo" label="合同编号" min-width="170" align="center" show-overflow-tooltip />
-                  <el-table-column prop="feeName" label="费用类型" width="120" align="center" show-overflow-tooltip />
+                  <el-table-column
+                    prop="contractNo"
+                    label="合同编号"
+                    min-width="170"
+                    align="center"
+                    show-overflow-tooltip
+                  />
+                  <el-table-column
+                    prop="feeName"
+                    label="费用类型"
+                    width="120"
+                    align="center"
+                    show-overflow-tooltip
+                  />
                   <el-table-column label="账期" min-width="190" align="center">
-                    <template #default="{ row }">{{ row.periodStart || '--' }} 至 {{ row.periodEnd || '--' }}</template>
+                    <template #default="{ row }"
+                      >{{ row.periodStart || '--' }} 至 {{ row.periodEnd || '--' }}</template
+                    >
                   </el-table-column>
                   <el-table-column prop="payDeadline" label="应收日期" width="130" align="center" />
                   <el-table-column label="应收金额" width="130" align="center">
@@ -228,12 +326,16 @@
                   </el-table-column>
                   <el-table-column label="逾期状态" width="110" align="center">
                     <template #default="{ row }">
-                      <el-tag :type="overdueStatusType(row)" effect="plain">{{ overdueStatusText(row) }}</el-tag>
+                      <el-tag :type="overdueStatusType(row)" effect="plain">{{
+                        overdueStatusText(row)
+                      }}</el-tag>
                     </template>
                   </el-table-column>
                   <el-table-column label="结清状态" width="110" align="center">
                     <template #default="{ row }">
-                      <el-tag :type="settleStatusType(row)" effect="plain">{{ settleStatusText(row) }}</el-tag>
+                      <el-tag :type="settleStatusType(row)" effect="plain">{{
+                        settleStatusText(row)
+                      }}</el-tag>
                     </template>
                   </el-table-column>
                 </el-table>
@@ -252,20 +354,44 @@
                     :on-success="handleAttachmentUploadSuccess"
                     :on-error="handleAttachmentUploadError"
                   >
-                    <el-button type="primary" icon="el-icon-upload" :loading="attachmentUploadLoading" :disabled="!attachmentUploadPayment">
+                    <el-button
+                      type="primary"
+                      icon="el-icon-upload"
+                      :loading="attachmentUploadLoading"
+                      :disabled="!attachmentUploadPayment"
+                    >
                       上传附件
                     </el-button>
                   </el-upload>
                 </div>
-                <el-table :data="drawerAttachmentRows" class="tenant-table" border empty-text="暂无附件">
-                  <el-table-column prop="fileName" label="文件名称" min-width="220" align="center" show-overflow-tooltip />
+                <el-table
+                  :data="drawerAttachmentRows"
+                  class="tenant-table"
+                  border
+                  empty-text="暂无附件"
+                >
+                  <el-table-column
+                    prop="fileName"
+                    label="文件名称"
+                    min-width="220"
+                    align="center"
+                    show-overflow-tooltip
+                  />
                   <el-table-column prop="source" label="来源" width="140" align="center" />
-                  <el-table-column prop="businessNo" label="关联编号" min-width="180" align="center" show-overflow-tooltip />
+                  <el-table-column
+                    prop="businessNo"
+                    label="关联编号"
+                    min-width="180"
+                    align="center"
+                    show-overflow-tooltip
+                  />
                   <el-table-column label="操作" width="156" align="center" fixed="right">
                     <template #default="{ row }">
                       <div class="tenant-table-actions">
                         <el-button text type="primary" @click="openAttachment(row)">查看</el-button>
-                        <el-button text type="primary" @click="downloadAttachment(row)">下载</el-button>
+                        <el-button text type="primary" @click="downloadAttachment(row)"
+                          >下载</el-button
+                        >
                       </div>
                     </template>
                   </el-table-column>
@@ -299,14 +425,22 @@
 
       <el-dialog
         v-model="confirmVisible"
-        title="确认逾期缴费"
-        width="520px"
+        title="确认逾期收款"
+        width="620px"
         append-to-body
         :before-close="closePaymentConfirm"
       >
-        <el-form ref="confirmFormRef" :model="confirmForm" :rules="confirmRules" label-width="132px">
+        <el-form
+          ref="confirmFormRef"
+          :model="confirmForm"
+          :rules="confirmRules"
+          label-width="132px"
+        >
           <el-form-item label="账单编号">
-            <el-input :model-value="confirmRow.paymentId ? `ZD${confirmRow.paymentId}` : '-'" disabled />
+            <el-input
+              :model-value="confirmRow.paymentId ? `ZD${confirmRow.paymentId}` : '-'"
+              disabled
+            />
           </el-form-item>
           <el-form-item label="合同编号">
             <el-input :model-value="confirmRow.contractNo || '-'" disabled />
@@ -321,23 +455,58 @@
               <template #append>元</template>
             </el-input>
           </el-form-item>
-          <el-form-item label="确认后累计实收" prop="amountPaid">
+          <el-form-item label="本次收款金额" prop="amountPaid">
             <el-input-number
               v-model="confirmForm.amountPaid"
               :min="0.01"
+              :max="unpaidAmount(confirmRow) || undefined"
               :precision="2"
               :step="100"
               controls-position="right"
               style="width: 100%"
             />
           </el-form-item>
-          <el-form-item label="备注">
-            <el-input v-model="confirmForm.remark" type="textarea" :rows="3" maxlength="500" show-word-limit />
+          <el-form-item label="收款时间" prop="payTime">
+            <el-date-picker
+              v-model="confirmForm.payTime"
+              type="datetime"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              placeholder="请选择收款时间"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="收款凭证" prop="paymentVoucherUrl">
+            <el-upload
+              ref="confirmVoucherUploadRef"
+              action="/api/blade-resource/oss/endpoint/put-file"
+              :headers="uploadHeaders"
+              :limit="1"
+              :file-list="confirmVoucherFileList"
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+              :before-upload="beforeConfirmVoucherUpload"
+              :on-success="handleConfirmVoucherSuccess"
+              :on-error="handleConfirmVoucherError"
+              :on-remove="handleConfirmVoucherRemove"
+            >
+              <el-button icon="el-icon-upload">上传收款凭证</el-button>
+            </el-upload>
+          </el-form-item>
+          <el-form-item label="收款备注">
+            <el-input
+              v-model="confirmForm.remark"
+              type="textarea"
+              :rows="3"
+              maxlength="500"
+              show-word-limit
+              placeholder="填写收款说明"
+            />
           </el-form-item>
         </el-form>
         <template #footer>
           <el-button @click="closePaymentConfirm">取消</el-button>
-          <el-button type="primary" :loading="confirmLoading" @click="submitPaymentConfirm">确认缴费</el-button>
+          <el-button type="primary" :loading="confirmLoading" @click="submitPaymentConfirm"
+            >确认收款</el-button
+          >
         </template>
       </el-dialog>
 
@@ -376,6 +545,8 @@
         :download-label="noticePreview.downloadLabel"
         :preview-type="noticePreview.previewType"
         :document-blob="noticePreview.documentBlob"
+        :pdf-blob="noticePreview.pdfBlob"
+        :pdf-file-name="noticePreview.pdfFileName"
         :preview-error="noticePreview.previewError"
         @download="downloadPreviewFile"
       />
@@ -399,7 +570,11 @@ import { getList as getContractList } from '@/api/contract/contract';
 import { feeTypeDic } from '@/option/finance/payment';
 import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
 import OverdueRecipientDialog from './components/overdue-recipient-dialog.vue';
-import { createNoticePreviewState, downloadNoticeFile, openAttachmentPreview } from '@/utils/contract-notice';
+import {
+  createNoticePreviewState,
+  downloadNoticeFile,
+  openAttachmentPreview,
+} from '@/utils/contract-notice';
 import { getToken } from '@/utils/auth';
 
 export default {
@@ -439,12 +614,16 @@ export default {
       confirmRow: {},
       confirmForm: {
         amountPaid: null,
+        payTime: '',
+        paymentVoucherName: '',
+        paymentVoucherUrl: '',
         remark: '',
       },
+      confirmVoucherFileList: [],
       confirmRules: {
-        amountPaid: [
-          { required: true, message: '请输入确认后的累计实收金额', trigger: 'blur' },
-        ],
+        amountPaid: [{ required: true, message: '请输入本次收款金额', trigger: 'blur' }],
+        payTime: [{ required: true, message: '请选择收款时间', trigger: 'change' }],
+        paymentVoucherUrl: [{ required: true, message: '请上传收款凭证', trigger: 'change' }],
       },
       uploadHeaders: {
         'Blade-Auth': `bearer ${getToken()}`,
@@ -467,6 +646,7 @@ export default {
     permissionList() {
       return {
         logBtn: this.validData(this.permission.finance_overdue_reminder_log, false),
+        confirmBtn: this.validData(this.permission.finance_payment_confirm, false),
       };
     },
     feeTypeOptions() {
@@ -485,7 +665,11 @@ export default {
     },
     summaryCards() {
       return [
-        { key: 'count', label: '总逾期收款单数', value: this.summary.overdueCount || this.page.total || 0 },
+        {
+          key: 'count',
+          label: '总逾期收款单数',
+          value: this.summary.overdueCount || this.page.total || 0,
+        },
         { key: 'amount', label: '总逾期收款金额', value: this.formatMoney(this.summary.amountDue) },
         { key: 'tenant', label: '逾期租客数', value: this.overdueTenantCount },
         { key: 'lateFee', label: '滞纳金金额', value: this.formatMoney(0) },
@@ -511,7 +695,9 @@ export default {
     },
     drawerBillSummary() {
       const bills = this.drawerBills || [];
-      const overdueBills = bills.filter(item => item.payStatus !== '1' && this.overdueDays(item) > 0);
+      const overdueBills = bills.filter(
+        item => item.payStatus !== '1' && this.overdueDays(item) > 0
+      );
       const amountDue = bills.reduce((total, item) => total + Number(item.amountDue || 0), 0);
       const pending = bills.reduce((total, item) => total + this.unpaidAmount(item), 0);
       return [
@@ -611,7 +797,10 @@ export default {
         buildingNameQuery: routeQuery.buildingNameQuery || '',
         customerName: routeQuery.customerName || '',
       };
-      if (this.hasRouteDate(routeQuery.deadlineStartDate) && this.hasRouteDate(routeQuery.deadlineEndDate)) {
+      if (
+        this.hasRouteDate(routeQuery.deadlineStartDate) &&
+        this.hasRouteDate(routeQuery.deadlineEndDate)
+      ) {
         this.query.deadlineRange = [
           this.normalizeRouteDate(routeQuery.deadlineStartDate),
           this.normalizeRouteDate(routeQuery.deadlineEndDate),
@@ -772,24 +961,30 @@ export default {
         this.drawerBills = row && row.paymentId ? [{ ...row }] : [];
         return Promise.resolve();
       }
-      return Promise.all(ids.map(contractId => getPaymentByContract(contractId).catch(() => ({ data: { data: [] } }))))
-        .then(results => {
-          const bills = [];
-          results.forEach(res => {
-            const list = (res.data && res.data.data) || [];
-            list.forEach(item => {
-              bills.push({
-                ...item,
-                contractNo: item.contractNo || this.contractNoMap[String(item.contractId)] || row.contractNo,
-                customerName: item.customerName || row.customerName,
-              });
+      return Promise.all(
+        ids.map(contractId =>
+          getPaymentByContract(contractId).catch(() => ({ data: { data: [] } }))
+        )
+      ).then(results => {
+        const bills = [];
+        results.forEach(res => {
+          const list = (res.data && res.data.data) || [];
+          list.forEach(item => {
+            bills.push({
+              ...item,
+              contractNo:
+                item.contractNo || this.contractNoMap[String(item.contractId)] || row.contractNo,
+              customerName: item.customerName || row.customerName,
             });
           });
-          if (!bills.length && row && row.paymentId) {
-            bills.push({ ...row });
-          }
-          this.drawerBills = bills.sort((left, right) => this.billSortValue(right) - this.billSortValue(left));
         });
+        if (!bills.length && row && row.paymentId) {
+          bills.push({ ...row });
+        }
+        this.drawerBills = bills.sort(
+          (left, right) => this.billSortValue(right) - this.billSortValue(left)
+        );
+      });
     },
     fallbackContractRows(row) {
       if (!row || !row.contractId) return [];
@@ -807,7 +1002,8 @@ export default {
       ];
     },
     billSortValue(row) {
-      const overdueWeight = row && row.payStatus !== '1' && this.overdueDays(row) > 0 ? 10000000000000 : 0;
+      const overdueWeight =
+        row && row.payStatus !== '1' && this.overdueDays(row) > 0 ? 10000000000000 : 0;
       const deadline = row && row.payDeadline ? new Date(row.payDeadline).getTime() : 0;
       return overdueWeight + (Number.isNaN(deadline) ? 0 : deadline);
     },
@@ -845,15 +1041,17 @@ export default {
     },
     handleRecipientSent({ payment, payments = [] }) {
       const sentPayments = payments.length ? payments : [payment];
-      Promise.all(sentPayments.map(item => remindOverduePayment(item.paymentId, 'overdue_bill'))).finally(() => {
+      Promise.all(
+        sentPayments.map(item => remindOverduePayment(item.paymentId, 'overdue_bill'))
+      ).finally(() => {
         const remindTime = this.formatDate(new Date());
         const sentIds = new Set(sentPayments.map(item => String(item.paymentId)));
         if (this.drawerRow && sentIds.has(String(this.drawerRow.paymentId))) {
           this.drawerRow = { ...this.drawerRow, remindStatus: '1', remindTime };
         }
-        this.drawerBills = this.drawerBills.map(item => (sentIds.has(String(item.paymentId))
-          ? { ...item, remindStatus: '1', remindTime }
-          : item));
+        this.drawerBills = this.drawerBills.map(item =>
+          sentIds.has(String(item.paymentId)) ? { ...item, remindStatus: '1', remindTime } : item
+        );
         if (this.permissionList.logBtn) {
           this.loadDrawerLogs(payment || sentPayments[0]);
         }
@@ -861,18 +1059,30 @@ export default {
       });
     },
     canConfirmPayment(row) {
-      return Boolean(row && row.paymentId && String(row.payStatus) !== '1' && this.unpaidAmount(row) > 0);
+      return Boolean(
+        this.permissionList.confirmBtn &&
+          row &&
+          row.paymentId &&
+          String(row.payStatus) !== '1' &&
+          this.unpaidAmount(row) > 0
+      );
     },
     openPaymentConfirm(row) {
       if (!this.canConfirmPayment(row)) {
-        this.$message.warning(String((row && row.payStatus) || '') === '1' ? '该账单已缴费' : '当前账单不能确认缴费');
+        this.$message.warning(
+          String((row && row.payStatus) || '') === '1' ? '该账单已缴费' : '当前账单不能确认缴费'
+        );
         return;
       }
       this.confirmRow = { ...row };
       this.confirmForm = {
-        amountPaid: Number(row.amountDue || 0),
+        amountPaid: this.unpaidAmount(row),
+        payTime: this.formatDateTime(new Date()),
+        paymentVoucherName: '',
+        paymentVoucherUrl: '',
         remark: row.remark || '',
       };
+      this.confirmVoucherFileList = [];
       this.confirmVisible = true;
     },
     closePaymentConfirm() {
@@ -881,8 +1091,12 @@ export default {
       this.confirmRow = {};
       this.confirmForm = {
         amountPaid: null,
+        payTime: '',
+        paymentVoucherName: '',
+        paymentVoucherUrl: '',
         remark: '',
       };
+      this.confirmVoucherFileList = [];
       if (this.$refs.confirmFormRef) {
         this.$refs.confirmFormRef.clearValidate();
       }
@@ -892,11 +1106,18 @@ export default {
         if (!valid) return;
         const paymentId = this.confirmRow.paymentId;
         const contractId = this.confirmRow.contractId;
-        const fullyPaid = Number(this.confirmForm.amountPaid || 0) >= Number(this.confirmRow.amountDue || 0);
+        const fullyPaid =
+          Number(this.confirmRow.amountPaid || 0) + Number(this.confirmForm.amountPaid || 0) >=
+          Number(this.confirmRow.amountDue || 0);
+        const payload = {
+          ...this.confirmForm,
+          amountPaid:
+            Number(this.confirmRow.amountPaid || 0) + Number(this.confirmForm.amountPaid || 0),
+        };
         this.confirmLoading = true;
-        confirmPayment(paymentId, this.confirmForm)
+        confirmPayment(paymentId, payload)
           .then(() => {
-            this.$message.success('缴费确认成功');
+            this.$message.success('收款确认成功');
             this.confirmLoading = false;
             this.closePaymentConfirm();
             if (fullyPaid) {
@@ -910,6 +1131,32 @@ export default {
             this.confirmLoading = false;
           });
       });
+    },
+    beforeConfirmVoucherUpload(file) {
+      const allowed = /\.(pdf|doc|docx|png|jpg|jpeg)$/i.test(file.name || '');
+      const underLimit = file.size / 1024 / 1024 < 20;
+      if (!allowed) this.$message.error('仅支持 PDF、Word、PNG、JPG 收款凭证');
+      if (!underLimit) this.$message.error('收款凭证大小不能超过 20MB');
+      return allowed && underLimit;
+    },
+    handleConfirmVoucherSuccess(response, file) {
+      const fileInfo = this.resolveUploadFile(response, file);
+      if (!fileInfo.url) {
+        this.$message.error('收款凭证上传后未返回文件地址');
+        return;
+      }
+      this.confirmForm.paymentVoucherName = fileInfo.name;
+      this.confirmForm.paymentVoucherUrl = fileInfo.url;
+      this.confirmVoucherFileList = [{ name: fileInfo.name, url: fileInfo.url }];
+      this.$refs.confirmFormRef?.validateField('paymentVoucherUrl');
+    },
+    handleConfirmVoucherError(error) {
+      this.$message.error((error && error.message) || '收款凭证上传失败');
+    },
+    handleConfirmVoucherRemove() {
+      this.confirmForm.paymentVoucherName = '';
+      this.confirmForm.paymentVoucherUrl = '';
+      this.confirmVoucherFileList = [];
     },
     openContract(row) {
       if (!row || !row.contractId) return;
@@ -930,11 +1177,15 @@ export default {
       });
     },
     contractStatusText(value) {
-      const item = this.contractStatusOptions.find(option => String(option.value) === String(value));
+      const item = this.contractStatusOptions.find(
+        option => String(option.value) === String(value)
+      );
       return item ? item.label : '未知';
     },
     contractStatusType(value) {
-      const item = this.contractStatusOptions.find(option => String(option.value) === String(value));
+      const item = this.contractStatusOptions.find(
+        option => String(option.value) === String(value)
+      );
       return item ? item.type : 'info';
     },
     overdueStatusText(row) {
@@ -1010,9 +1261,10 @@ export default {
         return {};
       }
       const data = response.data || {};
-      const url = typeof data === 'string'
-        ? data
-        : data.link || data.url || data.path || response.link || response.url || '';
+      const url =
+        typeof data === 'string'
+          ? data
+          : data.link || data.url || data.path || response.link || response.url || '';
       return {
         name: (file && file.name) || data.originalName || data.name || '账单附件',
         url,
@@ -1020,8 +1272,12 @@ export default {
     },
     applyUpdatedPaymentAttachment(updated) {
       const paymentId = updated.paymentId;
-      this.drawerBills = this.drawerBills.map(item => (item.paymentId === paymentId ? { ...item, ...updated } : item));
-      this.data = this.data.map(item => (item.paymentId === paymentId ? { ...item, ...updated } : item));
+      this.drawerBills = this.drawerBills.map(item =>
+        item.paymentId === paymentId ? { ...item, ...updated } : item
+      );
+      this.data = this.data.map(item =>
+        item.paymentId === paymentId ? { ...item, ...updated } : item
+      );
       if (this.drawerRow && this.drawerRow.paymentId === paymentId) {
         this.drawerRow = { ...this.drawerRow, ...updated };
       }
@@ -1054,7 +1310,10 @@ export default {
       });
     },
     downloadPreviewFile() {
-      downloadNoticeFile(this.noticePreview.downloadUrl, this.noticePreview.fallbackName || '附件').catch(() => {
+      downloadNoticeFile(
+        this.noticePreview.downloadUrl,
+        this.noticePreview.fallbackName || '附件'
+      ).catch(() => {
         this.$message.error('附件下载失败，请稍后重试');
       });
     },
@@ -1084,6 +1343,13 @@ export default {
       const m = String(date.getMonth() + 1).padStart(2, '0');
       const d = String(date.getDate()).padStart(2, '0');
       return `${y}-${m}-${d}`;
+    },
+    formatDateTime(value) {
+      const date = value instanceof Date ? value : new Date(value);
+      const pad = number => String(number).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
+        date.getHours()
+      )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
     },
     dateOnly(value) {
       return value ? String(value).slice(0, 10) : '';

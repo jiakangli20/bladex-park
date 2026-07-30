@@ -148,9 +148,9 @@ public class PaymentController extends BladeController {
 	}
 
 	@PostMapping("/confirm")
-	@PreAuth(menu = "finance")
+	@PreAuth(menu = "finance_payment_confirm")
 	@ApiOperationSupport(order = 8)
-	@Operation(summary = "确认缴费", description = "传入paymentId和实收金额")
+	@Operation(summary = "确认收付款", description = "收款传入累计实收金额、收款时间和收款凭证；付款传入本次实付金额、付款时间和付款凭证")
 	public R confirm(@Parameter(description = "账单ID") @RequestParam Long paymentId, @RequestBody ContractPayment payment) {
 		return R.status(paymentService.confirm(paymentId, payment));
 	}

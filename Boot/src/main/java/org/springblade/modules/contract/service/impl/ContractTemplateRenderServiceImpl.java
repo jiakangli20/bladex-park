@@ -694,12 +694,7 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 			normalizeTerminationApprovalLayout(document);
 		}
 		if ("附件七：项目审批表.docx".equals(templateFileName) && !document.getTables().isEmpty()) {
-			XWPFTable table = document.getTables().get(0);
-			if (table.getNumberOfRows() > 6) {
-				XWPFTableRow approvalContentRow = table.getRow(6);
-				approvalContentRow.setHeight(1600);
-				approvalContentRow.setHeightRule(TableRowHeightRule.AT_LEAST);
-			}
+			normalizeProjectApprovalLayout(document);
 		}
 		if ("附件四：君联大厦付款通知单.docx".equals(templateFileName)) {
 			for (XWPFParagraph paragraph : document.getParagraphs()) {
@@ -731,6 +726,43 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 				paragraph.setPageBreak(true);
 				break;
 			}
+		}
+	}
+
+	private void normalizeProjectApprovalLayout(XWPFDocument document) {
+		XWPFTable table = document.getTables().get(0);
+		Node tableProperties = table.getCTTbl().getTblPr().getDomNode();
+		for (Node child = tableProperties.getFirstChild(); child != null; ) {
+			Node next = child.getNextSibling();
+			if (hasLocalName(child, "tblpPr")) {
+				tableProperties.removeChild(child);
+			}
+			child = next;
+		}
+		if (!document.getParagraphs().isEmpty()) {
+			XWPFParagraph title = document.getParagraphs().get(0);
+			Node titleProperties = (title.getCTP().isSetPPr()
+				? title.getCTP().getPPr()
+				: title.getCTP().addNewPPr()).getDomNode();
+			for (Node child = titleProperties.getFirstChild(); child != null; ) {
+				Node next = child.getNextSibling();
+				if (hasLocalName(child, "ind")) {
+					titleProperties.removeChild(child);
+				}
+				child = next;
+			}
+			String titleText = editableParagraphText(title.getCTP().getDomNode());
+			String normalizedTitle = titleText.trim();
+			if (!Objects.equals(titleText, normalizedTitle)) {
+				replaceParagraphTextPreservingStyles(title.getCTP().getDomNode(), titleText, normalizedTitle);
+			}
+			title.setAlignment(ParagraphAlignment.CENTER);
+			title.setSpacingAfter(200);
+		}
+		if (table.getNumberOfRows() > 6) {
+			XWPFTableRow approvalContentRow = table.getRow(6);
+			approvalContentRow.setHeight(1600);
+			approvalContentRow.setHeightRule(TableRowHeightRule.AT_LEAST);
 		}
 	}
 

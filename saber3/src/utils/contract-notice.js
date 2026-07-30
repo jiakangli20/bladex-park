@@ -14,6 +14,8 @@ export const createNoticePreviewState = () => ({
   objectUrl: '',
   previewType: 'html',
   documentBlob: null,
+  pdfBlob: null,
+  pdfFileName: '',
   previewError: '',
 });
 
@@ -23,17 +25,46 @@ const releasePreviewObjectUrl = state => {
   }
   if (state) {
     state.objectUrl = '';
+    state.pdfBlob = null;
+    state.pdfFileName = '';
   }
 };
 
-export const resolveDownloadFilename = (disposition, fallbackName) => {
-  if (!disposition) return fallbackName;
+const decodeDownloadFilename = value => {
+  const normalized = String(value || '')
+    .trim()
+    .replace(/^['"]|['"]$/g, '');
+  if (!normalized) return '';
+  try {
+    return decodeURIComponent(normalized);
+  } catch {
+    return normalized;
+  }
+};
+
+const dispositionFilename = disposition => {
+  if (!disposition) return '';
   const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
   if (utf8Match && utf8Match[1]) {
-    return decodeURIComponent(utf8Match[1]);
+    return decodeDownloadFilename(utf8Match[1]);
   }
   const filenameMatch = disposition.match(/filename="?([^";]+)"?/i);
-  return filenameMatch && filenameMatch[1] ? decodeURIComponent(filenameMatch[1]) : fallbackName;
+  return filenameMatch && filenameMatch[1] ? decodeDownloadFilename(filenameMatch[1]) : '';
+};
+
+export const resolveDownloadFilename = (disposition, fallbackName) => {
+  const preferredName = decodeDownloadFilename(fallbackName);
+  const responseName = dispositionFilename(disposition);
+  if (!preferredName) return responseName || '下载文件';
+  if (/\.[a-z0-9]{1,10}$/i.test(preferredName)) return preferredName;
+  const extension = responseName.match(/(\.[a-z0-9]{1,10})$/i);
+  return extension ? `${preferredName}${extension[1]}` : preferredName;
+};
+
+export const resolvePdfDownloadFilename = fileName => {
+  const decodedName = decodeDownloadFilename(fileName);
+  const baseName = decodedName.replace(/\.[a-z0-9]{1,10}$/i, '') || '审批文件';
+  return `${baseName}.pdf`;
 };
 
 export const normalizeNoticeDownloadUrl = url => {
@@ -75,6 +106,8 @@ export const openNoticePreview = (vm, state, params, downloadUrl, fallbackName, 
   state.downloadLabel = '下载Word';
   state.previewType = 'html';
   state.documentBlob = null;
+  state.pdfBlob = null;
+  state.pdfFileName = '';
   state.previewError = '';
   return getNoticePreview(params)
     .then(res => {
@@ -88,12 +121,20 @@ export const openNoticePreview = (vm, state, params, downloadUrl, fallbackName, 
         return null;
       }
       return downloadBlob(data.pdfUrl).then(pdfResponse => {
-        const pdfBlob = pdfResponse.data instanceof Blob
-          ? pdfResponse.data
-          : new Blob([pdfResponse.data], { type: 'application/pdf' });
-        state.objectUrl = URL.createObjectURL(pdfBlob);
+        const rawPdfBlob =
+          pdfResponse.data instanceof Blob
+            ? pdfResponse.data
+            : new Blob([pdfResponse.data], { type: 'application/pdf' });
+        state.pdfFileName = resolvePdfDownloadFilename(data.fileName || state.fallbackName);
+        state.pdfBlob =
+          typeof File === 'undefined'
+            ? rawPdfBlob
+            : new File([rawPdfBlob], state.pdfFileName, { type: 'application/pdf' });
+        state.objectUrl = URL.createObjectURL(state.pdfBlob);
         const placeholder = data.pdfPlaceholder || '__BLADEX_OFFICE_PREVIEW_PDF__';
-        state.html = String(data.html || '').split(placeholder).join(state.objectUrl);
+        state.html = String(data.html || '')
+          .split(placeholder)
+          .join(`${state.objectUrl}#toolbar=0&navpanes=0`);
       });
     })
     .catch(error => {
@@ -126,7 +167,9 @@ export const buildAttachmentPreviewHtml = file => {
   const ext = fileExtension(file);
   const safeUrl = escapeHtml(url);
   const safeName = escapeHtml(fileName);
-  const sourceText = escapeHtml(file && (file.sourceName || file.remark || file.materialName || ''));
+  const sourceText = escapeHtml(
+    file && (file.sourceName || file.remark || file.materialName || '')
+  );
   const baseStyle = `
     <style>
       * { box-sizing: border-box; }
@@ -152,7 +195,9 @@ export const buildAttachmentPreviewHtml = file => {
     return `<!doctype html><html><head><meta charset="utf-8">${baseStyle}</head><body><div class="preview-wrap"><div class="preview-card"><div class="preview-head"><h1 class="preview-title">${safeName}</h1><div class="preview-meta">${sourceText}</div></div><div class="preview-body"><iframe src="${safeUrl}" title="${safeName}"></iframe></div></div></div></body></html>`;
   }
   const typeText = ext ? ext.toUpperCase() : 'FILE';
-  return `<!doctype html><html><head><meta charset="utf-8">${baseStyle}</head><body><div class="preview-wrap"><div class="file-panel"><div class="file-icon">${escapeHtml(typeText)}</div><p class="file-name">${safeName}</p><p class="file-desc">该文件格式不支持浏览器内嵌预览，可以点击下方“下载”查看原文件。</p></div></div></body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8">${baseStyle}</head><body><div class="preview-wrap"><div class="file-panel"><div class="file-icon">${escapeHtml(
+    typeText
+  )}</div><p class="file-name">${safeName}</p><p class="file-desc">该文件格式不支持浏览器内嵌预览，可以点击下方“下载”查看原文件。</p></div></div></body></html>`;
 };
 
 export const openAttachmentPreview = (state, file, title = '附件预览') => {
@@ -168,6 +213,8 @@ export const openAttachmentPreview = (state, file, title = '附件预览') => {
   state.downloadLabel = '下载';
   state.previewType = ext === 'docx' ? 'docx' : 'html';
   state.documentBlob = null;
+  state.pdfBlob = null;
+  state.pdfFileName = '';
   state.previewError = '';
   if (ext !== 'docx') {
     state.html = buildAttachmentPreviewHtml(file);
@@ -175,11 +222,12 @@ export const openAttachmentPreview = (state, file, title = '附件预览') => {
   }
   return downloadBlob(normalizeNoticeDownloadUrl(downloadUrl))
     .then(res => {
-      state.documentBlob = res.data instanceof Blob
-        ? res.data
-        : new Blob([res.data], {
-            type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          });
+      state.documentBlob =
+        res.data instanceof Blob
+          ? res.data
+          : new Blob([res.data], {
+              type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            });
     })
     .catch(() => {
       state.previewError = 'Word 文件读取失败，可以下载原文件后查看。';
@@ -200,5 +248,7 @@ export const closeNoticePreview = state => {
   state.downloadLabel = '下载Word';
   state.previewType = 'html';
   state.documentBlob = null;
+  state.pdfBlob = null;
+  state.pdfFileName = '';
   state.previewError = '';
 };

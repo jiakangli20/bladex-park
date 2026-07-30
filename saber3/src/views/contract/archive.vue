@@ -10,7 +10,12 @@
         <template #default>
           <header class="archive-detail-header">
             <div class="archive-title-row">
-              <el-button class="archive-back" text icon="el-icon-arrow-left" @click="closeArchiveDetail" />
+              <el-button
+                class="archive-back"
+                text
+                icon="el-icon-arrow-left"
+                @click="closeArchiveDetail"
+              />
               <h2>{{ customerTitle }}</h2>
             </div>
             <div class="archive-header-actions">
@@ -70,7 +75,11 @@
               <section class="archive-detail-section">
                 <div class="archive-section-title">企业信息</div>
                 <div class="archive-info-grid">
-                  <div v-for="item in enterpriseInfoItems" :key="item.label" class="archive-info-item">
+                  <div
+                    v-for="item in enterpriseInfoItems"
+                    :key="item.label"
+                    class="archive-info-item"
+                  >
                     <span>{{ item.label }}</span>
                     <strong>{{ item.value }}</strong>
                   </div>
@@ -79,7 +88,11 @@
               <section class="archive-detail-section">
                 <div class="archive-section-title">合同概要</div>
                 <div class="archive-info-grid">
-                  <div v-for="item in contractInfoItems" :key="item.label" class="archive-info-item">
+                  <div
+                    v-for="item in contractInfoItems"
+                    :key="item.label"
+                    class="archive-info-item"
+                  >
                     <span>{{ item.label }}</span>
                     <strong>{{ item.value }}</strong>
                   </div>
@@ -120,16 +133,31 @@
                       </el-tag>
                     </template>
                   </el-table-column>
-                  <el-table-column label="合同类型" min-width="145" align="center" show-overflow-tooltip>
+                  <el-table-column
+                    label="合同类型"
+                    min-width="145"
+                    align="center"
+                    show-overflow-tooltip
+                  >
                     <template #default="{ row }">{{ contractTypeText(row) }}</template>
                   </el-table-column>
-                  <el-table-column label="租赁单价" min-width="165" align="center" show-overflow-tooltip>
+                  <el-table-column
+                    label="租赁单价"
+                    min-width="165"
+                    align="center"
+                    show-overflow-tooltip
+                  >
                     <template #default="{ row }">{{ formatRentUnitPrice(row.rentPrice) }}</template>
                   </el-table-column>
                   <el-table-column prop="signDate" label="签订日期" min-width="145" align="center">
                     <template #default="{ row }">{{ row.signDate || '-' }}</template>
                   </el-table-column>
-                  <el-table-column label="合同来源" min-width="135" align="center" show-overflow-tooltip>
+                  <el-table-column
+                    label="合同来源"
+                    min-width="135"
+                    align="center"
+                    show-overflow-tooltip
+                  >
                     <template #default="{ row }">{{ contractSourceText(row) }}</template>
                   </el-table-column>
                   <el-table-column
@@ -142,7 +170,9 @@
                   >
                     <template #default="{ row }">
                       <div class="archive-contract-actions">
-                        <el-button type="primary" text @click="handlePrint(row)">预览正文</el-button>
+                        <el-button type="primary" text @click="handlePrint(row)"
+                          >预览正文</el-button
+                        >
                         <el-button
                           v-if="permission.contract_archive_export_approval"
                           type="primary"
@@ -161,7 +191,12 @@
             <el-tab-pane label="变更记录" name="change">
               <section class="archive-detail-section archive-table-section">
                 <el-table :data="changes" border class="archive-flat-table">
-                  <el-table-column prop="changeNo" label="变更单号" min-width="180" align="center" />
+                  <el-table-column
+                    prop="changeNo"
+                    label="变更单号"
+                    min-width="180"
+                    align="center"
+                  />
                   <el-table-column prop="changeType" label="变更类型" width="150" align="center" />
                   <el-table-column label="租金单价变更" min-width="220" align="center">
                     <template #default="{ row }">
@@ -210,7 +245,12 @@
             <el-tab-pane label="账单" name="bill">
               <section class="archive-detail-section archive-table-section">
                 <el-table :data="payments" border class="archive-flat-table">
-                  <el-table-column prop="contractNo" label="合同编号" min-width="150" show-overflow-tooltip />
+                  <el-table-column
+                    prop="contractNo"
+                    label="合同编号"
+                    min-width="150"
+                    show-overflow-tooltip
+                  />
                   <el-table-column prop="feeName" label="账单名称" min-width="150" />
                   <el-table-column label="账期" min-width="200" align="center">
                     <template #default="{ row }">
@@ -221,7 +261,9 @@
                     <template #default="{ row }">{{ formatMoneyWithUnit(row.amountDue) }}</template>
                   </el-table-column>
                   <el-table-column prop="amountPaid" label="实收金额" width="130" align="right">
-                    <template #default="{ row }">{{ formatMoneyWithUnit(row.amountPaid) }}</template>
+                    <template #default="{ row }">{{
+                      formatMoneyWithUnit(row.amountPaid)
+                    }}</template>
                   </el-table-column>
                   <el-table-column prop="payDeadline" label="缴费期限" width="150" align="center">
                     <template #default="{ row }">{{ row.payDeadline || '-' }}</template>
@@ -246,21 +288,38 @@
                   </el-button>
                 </div>
                 <el-table :data="attachmentRows" border class="archive-flat-table">
-                  <el-table-column prop="fileName" label="文件名称" width="240" show-overflow-tooltip>
-                    <template #default="{ row }">{{ row.fileName || row.agreementName || '-' }}</template>
+                  <el-table-column
+                    prop="fileName"
+                    label="文件名称"
+                    width="240"
+                    show-overflow-tooltip
+                  >
+                    <template #default="{ row }">{{
+                      row.fileName || row.agreementName || '-'
+                    }}</template>
                   </el-table-column>
                   <el-table-column prop="createBy" label="上传人" width="150" align="center">
-                    <template #default="{ row }">{{ row.createBy || row.updateBy || '-' }}</template>
+                    <template #default="{ row }">{{
+                      row.createBy || row.updateBy || '-'
+                    }}</template>
                   </el-table-column>
                   <el-table-column prop="createTime" label="上传时间" width="180" align="center">
-                    <template #default="{ row }">{{ row.createTime || row.updateTime || '-' }}</template>
+                    <template #default="{ row }">{{
+                      row.createTime || row.updateTime || '-'
+                    }}</template>
                   </el-table-column>
                   <el-table-column label="操作" width="230" align="center" fixed="right">
                     <template #default="{ row }">
                       <div class="attachment-table-actions">
-                        <el-button type="primary" text @click="previewAttachment(row)">预览</el-button>
-                        <el-button type="primary" text @click="downloadSupplement(row)">下载</el-button>
-                        <el-button type="danger" text @click="removeSupplement(row)">删除</el-button>
+                        <el-button type="primary" text @click="previewAttachment(row)"
+                          >预览</el-button
+                        >
+                        <el-button type="primary" text @click="downloadSupplement(row)"
+                          >下载</el-button
+                        >
+                        <el-button type="danger" text @click="removeSupplement(row)"
+                          >删除</el-button
+                        >
                       </div>
                     </template>
                   </el-table-column>
@@ -317,14 +376,26 @@
         table-layout="fixed"
         class="archive-list-table"
       >
-        <el-table-column prop="customerName" label="租客名称" min-width="180" align="center" show-overflow-tooltip>
+        <el-table-column
+          prop="customerName"
+          label="租客名称"
+          min-width="180"
+          align="center"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             <el-button text type="primary" class="archive-customer-link" @click="openArchive(row)">
               {{ row.customerName || '-' }}
             </el-button>
           </template>
         </el-table-column>
-        <el-table-column prop="contractNo" label="合同编号" min-width="170" align="center" show-overflow-tooltip />
+        <el-table-column
+          prop="contractNo"
+          label="合同编号"
+          min-width="170"
+          align="center"
+          show-overflow-tooltip
+        />
         <el-table-column prop="contractStatus" label="合同状态" width="150" align="center">
           <template #default="{ row }">
             <el-tag :type="statusType(row.contractStatus)" effect="plain">
@@ -332,15 +403,33 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="approvalStatus" label="审批状态" width="120" align="center" show-overflow-tooltip>
+        <el-table-column
+          prop="approvalStatus"
+          label="审批状态"
+          width="120"
+          align="center"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">
             <el-tag :type="approvalStatusType(row.approvalStatus)" effect="plain">
               {{ approvalStatusText(row.approvalStatus) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="parkName" label="园区名称" width="130" align="center" show-overflow-tooltip />
-        <el-table-column prop="roomName" label="房源信息" width="130" align="center" show-overflow-tooltip>
+        <el-table-column
+          prop="parkName"
+          label="园区名称"
+          width="130"
+          align="center"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="roomName"
+          label="房源信息"
+          width="130"
+          align="center"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">{{ row.roomName || '-' }}</template>
         </el-table-column>
         <el-table-column prop="startDate" label="开始日" width="115" align="center" />
@@ -467,9 +556,7 @@
                   @click="handleExportApproval(current)"
                   >导出合同审批表
                 </el-button>
-                <el-button
-                  v-if="permission.contract_archive_print"
-                  @click="handlePrint(current)"
+                <el-button v-if="permission.contract_archive_print" @click="handlePrint(current)"
                   >下载合同正文
                 </el-button>
               </div>
@@ -482,8 +569,18 @@
                     {{ workflowBusinessTypeText(row.businessType) }}
                   </template>
                 </el-table-column>
-                <el-table-column prop="processName" label="流程名称" min-width="160" show-overflow-tooltip />
-                <el-table-column prop="processInsId" label="实例ID" min-width="180" show-overflow-tooltip />
+                <el-table-column
+                  prop="processName"
+                  label="流程名称"
+                  min-width="160"
+                  show-overflow-tooltip
+                />
+                <el-table-column
+                  prop="processInsId"
+                  label="实例ID"
+                  min-width="180"
+                  show-overflow-tooltip
+                />
                 <el-table-column prop="processStatus" label="状态" width="110" align="center">
                   <template #default="{ row }">
                     <el-tag :type="workflowStatusType(row.processStatus)" effect="plain">
@@ -491,7 +588,12 @@
                     </el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column prop="currentNode" label="当前节点" min-width="140" show-overflow-tooltip />
+                <el-table-column
+                  prop="currentNode"
+                  label="当前节点"
+                  min-width="140"
+                  show-overflow-tooltip
+                />
                 <el-table-column prop="approvalTime" label="完成时间" width="170" align="center">
                   <template #default="{ row }">
                     {{ row.approvalTime || row.createTime || '-' }}
@@ -499,7 +601,12 @@
                 </el-table-column>
                 <el-table-column prop="printFileUrl" label="文件" width="110" align="center">
                   <template #default="{ row }">
-                    <el-button v-if="row.printFileUrl" type="primary" text @click="openWorkflowFile(row.printFileUrl, row)">
+                    <el-button
+                      v-if="row.printFileUrl"
+                      type="primary"
+                      text
+                      @click="openWorkflowFile(row.printFileUrl, row)"
+                    >
                       查看
                     </el-button>
                     <span v-else>-</span>
@@ -564,8 +671,12 @@
                 <el-table-column label="操作" width="230" align="center" fixed="right">
                   <template #default="{ row }">
                     <div class="attachment-table-actions">
-                      <el-button type="primary" text @click="previewAttachment(row)">预览</el-button>
-                      <el-button type="primary" text @click="downloadSupplement(row)">下载</el-button>
+                      <el-button type="primary" text @click="previewAttachment(row)"
+                        >预览</el-button
+                      >
+                      <el-button type="primary" text @click="downloadSupplement(row)"
+                        >下载</el-button
+                      >
                       <el-button type="danger" text @click="removeSupplement(row)">删除</el-button>
                     </div>
                   </template>
@@ -636,6 +747,8 @@
       :download-label="noticePreview.downloadLabel"
       :preview-type="noticePreview.previewType"
       :document-blob="noticePreview.documentBlob"
+      :pdf-blob="noticePreview.pdfBlob"
+      :pdf-file-name="noticePreview.pdfFileName"
       :preview-error="noticePreview.previewError"
       @download="downloadNoticePreviewFile"
     />
@@ -816,14 +929,23 @@ export default {
     enterpriseInfoItems() {
       const customer = this.customerDetail || {};
       return [
-        { label: '企业名称', value: this.detailValue(customer.enterpriseName || this.current.customerName) },
+        {
+          label: '企业名称',
+          value: this.detailValue(customer.enterpriseName || this.current.customerName),
+        },
         { label: '统一社会信用代码', value: this.detailValue(customer.creditCode) },
         { label: '企业类型', value: this.detailValue(customer.enterpriseType) },
         { label: '所属行业', value: this.detailValue(customer.industry) },
-        { label: '联系人', value: this.detailValue(customer.contactName || this.current.followUser) },
+        {
+          label: '联系人',
+          value: this.detailValue(customer.contactName || this.current.followUser),
+        },
         { label: '联系电话', value: this.detailValue(customer.contactPhone) },
         { label: '联系邮箱', value: this.detailValue(customer.contactEmail) },
-        { label: '企业地址', value: this.detailValue(customer.address || customer.registeredAddress) },
+        {
+          label: '企业地址',
+          value: this.detailValue(customer.address || customer.registeredAddress),
+        },
       ];
     },
     contractInfoItems() {
@@ -831,11 +953,20 @@ export default {
         { label: '合同编号', value: this.detailValue(this.current.contractNo) },
         { label: '合同名称', value: this.detailValue(this.current.contractName) },
         { label: '所属园区', value: this.detailValue(this.current.parkName) },
-        { label: '房源信息', value: this.detailValue(this.current.roomName || this.current.buildingName) },
+        {
+          label: '房源信息',
+          value: this.detailValue(this.current.roomName || this.current.buildingName),
+        },
         { label: '租赁面积', value: this.formatArea(this.current.rentArea) },
         { label: '月租金', value: this.formatMoneyWithUnit(this.current.monthlyRent) },
-        { label: '租期', value: `${this.current.startDate || '-'} 至 ${this.current.endDate || '-'}` },
-        { label: '合同状态', value: this.current.contractStatusName || this.statusText(this.current.contractStatus) },
+        {
+          label: '租期',
+          value: `${this.current.startDate || '-'} 至 ${this.current.endDate || '-'}`,
+        },
+        {
+          label: '合同状态',
+          value: this.current.contractStatusName || this.statusText(this.current.contractStatus),
+        },
       ];
     },
     contractRows() {

@@ -16,24 +16,49 @@
         <el-form :model="query" label-position="top">
           <div class="notice-search-grid">
             <el-form-item label="客商名称">
-              <el-input v-model="query.customerName" clearable placeholder="请输入名称" @keyup.enter="searchChange" />
+              <el-input
+                v-model="query.customerName"
+                clearable
+                placeholder="请输入名称"
+                @keyup.enter="searchChange"
+              />
             </el-form-item>
             <el-form-item label="账单编号">
-              <el-input v-model="query.paymentNo" clearable placeholder="请输入账单编号" @keyup.enter="searchChange" />
+              <el-input
+                v-model="query.paymentNo"
+                clearable
+                placeholder="请输入账单编号"
+                @keyup.enter="searchChange"
+              />
             </el-form-item>
             <el-form-item label="短信发送状态">
               <el-select v-model="query.smsStatus" clearable placeholder="请选择短信发送状态">
-                <el-option v-for="item in noticeStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
+                <el-option
+                  v-for="item in noticeStatusOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="邮箱发送状态">
               <el-select v-model="query.emailStatus" clearable placeholder="请选择邮箱发送状态">
-                <el-option v-for="item in noticeStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
+                <el-option
+                  v-for="item in noticeStatusOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="小程序发送状态">
               <el-select v-model="query.miniappStatus" clearable placeholder="请选择小程序发送状态">
-                <el-option v-for="item in noticeStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
+                <el-option
+                  v-for="item in noticeStatusOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="创建时间">
@@ -48,8 +73,18 @@
               />
             </el-form-item>
             <el-form-item label="楼宇名称">
-              <el-select v-model="query.buildingName" clearable filterable placeholder="请选择楼宇名称">
-                <el-option v-for="item in buildingOptions" :key="item" :label="item" :value="item" />
+              <el-select
+                v-model="query.buildingName"
+                clearable
+                filterable
+                placeholder="请选择楼宇名称"
+              >
+                <el-option
+                  v-for="item in buildingOptions"
+                  :key="item"
+                  :label="item"
+                  :value="item"
+                />
               </el-select>
             </el-form-item>
             <div class="notice-search-actions">
@@ -61,32 +96,50 @@
       </section>
 
       <section class="notice-table-wrap">
-        <el-table
-          v-loading="loading"
-          :data="data"
-          border
-          row-key="paymentId"
-          class="notice-table"
-        >
-          <el-table-column prop="customerName" label="客商名称" min-width="140" align="center" show-overflow-tooltip />
-          <el-table-column prop="buildingName" label="楼宇" width="120" align="center" show-overflow-tooltip />
+        <el-table v-loading="loading" :data="data" border row-key="paymentId" class="notice-table">
+          <el-table-column
+            prop="customerName"
+            label="客商名称"
+            min-width="140"
+            align="center"
+            show-overflow-tooltip
+          />
+          <el-table-column
+            prop="buildingName"
+            label="楼宇"
+            width="120"
+            align="center"
+            show-overflow-tooltip
+          />
           <el-table-column label="楼号/房号" min-width="160" align="center" show-overflow-tooltip>
             <template #default="{ row }">{{ row.roomName || '-' }}</template>
           </el-table-column>
-          <el-table-column prop="paymentNo" label="账单编号" min-width="160" align="center" show-overflow-tooltip />
+          <el-table-column
+            prop="paymentNo"
+            label="账单编号"
+            min-width="160"
+            align="center"
+            show-overflow-tooltip
+          />
           <el-table-column prop="smsStatus" label="短信发送状态" width="130" align="center">
             <template #default="{ row }">
-              <el-tag :type="noticeStatusType(row.smsStatus)" effect="plain">{{ noticeStatusText(row.smsStatus) }}</el-tag>
+              <el-tag :type="noticeStatusType(row.smsStatus)" effect="plain">{{
+                noticeStatusText(row.smsStatus)
+              }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="emailStatus" label="邮箱发送状态" width="130" align="center">
             <template #default="{ row }">
-              <el-tag :type="noticeStatusType(row.emailStatus)" effect="plain">{{ noticeStatusText(row.emailStatus) }}</el-tag>
+              <el-tag :type="noticeStatusType(row.emailStatus)" effect="plain">{{
+                noticeStatusText(row.emailStatus)
+              }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="miniappStatus" label="小程序发送状态" width="140" align="center">
             <template #default="{ row }">
-              <el-tag :type="noticeStatusType(row.miniappStatus)" effect="plain">{{ noticeStatusText(row.miniappStatus) }}</el-tag>
+              <el-tag :type="noticeStatusType(row.miniappStatus)" effect="plain">{{
+                noticeStatusText(row.miniappStatus)
+              }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="generatedDate" label="生成日期" width="120" align="center" />
@@ -131,6 +184,8 @@
         :download-url="noticePreview.downloadUrl"
         :preview-type="noticePreview.previewType"
         :document-blob="noticePreview.documentBlob"
+        :pdf-blob="noticePreview.pdfBlob"
+        :pdf-file-name="noticePreview.pdfFileName"
         :preview-error="noticePreview.previewError"
         :show-print="true"
         @download="downloadNoticePreviewFile"
@@ -323,15 +378,20 @@ export default {
     },
     downloadNoticePreviewFile() {
       if (!this.noticePreview.downloadUrl) return;
-      downloadNoticeFile(this.noticePreview.downloadUrl, this.noticePreview.fallbackName).then(() => {
-        const row = this.previewRow;
-        if (row && !row.fileUrl) {
-          generatePaymentNotice(row.paymentId).then(() => this.reload());
+      downloadNoticeFile(this.noticePreview.downloadUrl, this.noticePreview.fallbackName).then(
+        () => {
+          const row = this.previewRow;
+          if (row && !row.fileUrl) {
+            generatePaymentNotice(row.paymentId).then(() => this.reload());
+          }
         }
-      });
+      );
     },
     printNoticePreview() {
-      const printed = printHtml(this.noticePreview.html, this.noticePreview.title || '开票申请单预览');
+      const printed = printHtml(
+        this.noticePreview.html,
+        this.noticePreview.title || '开票申请单预览'
+      );
       if (!printed) {
         this.$message.warning('暂无可打印的预览内容');
       }

@@ -31,6 +31,8 @@
 		<result column="company_name" property="companyName"/>
 		<result column="attachment_name" property="attachmentName"/>
 		<result column="attachment_url" property="attachmentUrl"/>
+		<result column="payment_voucher_name" property="paymentVoucherName"/>
+		<result column="payment_voucher_url" property="paymentVoucherUrl"/>
 		<result column="selected_room_ids" property="selectedRoomIds"/>
 		<result column="selected_room_name" property="selectedRoomName"/>
 		<result column="selected_building_name" property="selectedBuildingName"/>
@@ -43,6 +45,7 @@
 		<result column="contract_status_name" property="contractStatusName"/>
 		<result column="payment_process_ins_id" property="paymentProcessInsId"/>
 		<result column="payment_approval_status" property="paymentApprovalStatus"/>
+		<result column="payment_approval_time" property="paymentApprovalTime"/>
 		<result column="payment_current_node_name" property="paymentCurrentNodeName"/>
 		<result column="payment_file_url" property="paymentFileUrl"/>
 		<result column="invoice_process_ins_id" property="invoiceProcessInsId"/>
@@ -106,6 +109,8 @@
 			p.company_name,
 			p.attachment_name,
 			p.attachment_url,
+			p.payment_voucher_name,
+			p.payment_voucher_url,
 			p.selected_room_ids,
 			p.selected_room_name,
 			p.selected_building_name,
@@ -129,6 +134,7 @@
 			END AS contract_status_name,
 			pay_cwr.process_ins_id AS payment_process_ins_id,
 			pay_cwr.process_status AS payment_approval_status,
+			pay_cwr.approval_time AS payment_approval_time,
 			pay_cwr.current_node AS payment_current_node_name,
 			pay_cwr.print_file_url AS payment_file_url,
 			invoice_cwr.process_ins_id AS invoice_process_ins_id,
@@ -150,6 +156,7 @@
 			FROM biz_contract_workflow_record
 			WHERE business_type = 'contract_payment'
 			  AND COALESCE(process_def_key, '') != 'invoice'
+			  AND COALESCE(process_def_key, '') != 'offline-deposit-refund'
 			  AND COALESCE(form_key, '') != 'invoice'
 			  AND COALESCE(template_key, '') != 'invoice-apply'
 			  AND del_flag = '0'

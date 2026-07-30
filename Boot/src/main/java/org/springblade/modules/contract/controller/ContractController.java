@@ -229,16 +229,6 @@ public class ContractController extends BladeController {
 	}
 
 	/**
-	 * 线下确认押金退还
-	 */
-	@PostMapping("/payment/deposit-refund/offline-confirm")
-	@ApiOperationSupport(order = 14)
-	@Operation(summary = "线下确认押金退还", description = "传入contractId和支付凭证")
-	public R<ContractPayment> offlineDepositRefund(@RequestParam Long contractId, @RequestBody Map<String, Object> formData) {
-		return R.data(contractService.offlineDepositRefund(contractId, formData));
-	}
-
-	/**
 	 * 缴费分页
 	 */
 	@GetMapping("/payment/list")
@@ -247,16 +237,6 @@ public class ContractController extends BladeController {
 	public R<IPage<ContractPayment>> paymentList(ContractPayment payment, Query query) {
 		IPage<ContractPayment> pages = contractService.selectPaymentPage(Condition.getPage(query), payment);
 		return R.data(pages);
-	}
-
-	/**
-	 * 确认缴费
-	 */
-	@PostMapping("/payment/confirm")
-	@ApiOperationSupport(order = 16)
-	@Operation(summary = "确认缴费", description = "传入paymentId")
-	public R confirmPayment(@RequestParam Long paymentId, @RequestBody ContractPayment payment) {
-		return R.status(paymentService.confirm(paymentId, payment));
 	}
 
 	/**

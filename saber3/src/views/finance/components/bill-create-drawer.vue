@@ -47,12 +47,20 @@
             </el-col>
             <el-col :xs="24" :md="12" :xl="8">
               <el-form-item :label="partyLabel">
-                <el-input v-model="form.partyName" disabled :placeholder="`选择合同后自动带出${partyLabel}`" />
+                <el-input
+                  v-model="form.partyName"
+                  disabled
+                  :placeholder="`选择合同后自动带出${partyLabel}`"
+                />
               </el-form-item>
             </el-col>
             <el-col :xs="24" :md="12" :xl="8">
               <el-form-item label="费用类型" prop="feeType">
-                <el-select v-model="form.feeType" placeholder="请选择费用类型" @change="handleFeeTypeChange">
+                <el-select
+                  v-model="form.feeType"
+                  placeholder="请选择费用类型"
+                  @change="handleFeeTypeChange"
+                >
                   <el-option
                     v-for="item in feeTypeOptions"
                     :key="item.value"
@@ -98,7 +106,13 @@
             <el-col :xs="24" :md="12" :xl="8">
               <el-form-item label="税率">
                 <div class="bill-number-unit bill-number-unit--percent">
-                  <el-input-number v-model="form.taxRate" :min="0" :max="100" :precision="2" :controls="false" />
+                  <el-input-number
+                    v-model="form.taxRate"
+                    :min="0"
+                    :max="100"
+                    :precision="2"
+                    :controls="false"
+                  />
                   <span class="bill-number-unit__suffix">%</span>
                 </div>
               </el-form-item>
@@ -126,7 +140,12 @@
             <el-col :xs="24" :md="12" :xl="8">
               <el-form-item label="滞纳金起算天数">
                 <div class="bill-number-unit bill-number-unit--day">
-                  <el-input-number v-model="form.lateFeeStartDays" :min="0" :controls="false" placeholder="请输入起算天数" />
+                  <el-input-number
+                    v-model="form.lateFeeStartDays"
+                    :min="0"
+                    :controls="false"
+                    placeholder="请输入起算天数"
+                  />
                   <span class="bill-number-unit__suffix">天</span>
                 </div>
               </el-form-item>
@@ -134,7 +153,13 @@
             <el-col :xs="24" :md="12" :xl="8">
               <el-form-item label="滞纳金比例">
                 <div class="bill-number-unit bill-number-unit--rate-day">
-                  <el-input-number v-model="form.lateFeeRatio" :min="0" :precision="4" :controls="false" placeholder="请输入滞纳金比例" />
+                  <el-input-number
+                    v-model="form.lateFeeRatio"
+                    :min="0"
+                    :precision="4"
+                    :controls="false"
+                    placeholder="请输入滞纳金比例"
+                  />
                   <span class="bill-number-unit__suffix">%/天</span>
                 </div>
               </el-form-item>
@@ -142,7 +167,13 @@
             <el-col :xs="24" :md="12" :xl="8">
               <el-form-item label="滞纳金上限">
                 <div class="bill-number-unit bill-number-unit--percent">
-                  <el-input-number v-model="form.lateFeeCap" :min="0" :precision="2" :controls="false" placeholder="请输入滞纳金上限" />
+                  <el-input-number
+                    v-model="form.lateFeeCap"
+                    :min="0"
+                    :precision="2"
+                    :controls="false"
+                    placeholder="请输入滞纳金上限"
+                  />
                   <span class="bill-number-unit__suffix">%</span>
                 </div>
               </el-form-item>
@@ -183,7 +214,9 @@
                 >
                   <el-button type="primary" plain icon="el-icon-upload">选择文件</el-button>
                   <template #tip>
-                    <div class="bill-upload-tip">单个文件不超过 5MB，支持 doc/xls/ppt/txt/pdf 格式</div>
+                    <div class="bill-upload-tip">
+                      单个文件不超过 5MB，支持 doc/xls/ppt/txt/pdf 格式
+                    </div>
                   </template>
                 </el-upload>
               </el-form-item>
@@ -226,7 +259,9 @@
       <div class="bill-create-footer">
         <el-button @click="visible = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="submit(false)">保存</el-button>
-        <el-button type="primary" :loading="saving" @click="submit(true)">保存并新建下一个</el-button>
+        <el-button type="primary" :loading="saving" @click="submit(true)"
+          >保存并新建下一个</el-button
+        >
       </div>
     </template>
   </el-drawer>
@@ -242,8 +277,8 @@ const COMPANY_NAME = '吴中金融招商服务有限公司';
 const createDefaultForm = direction => ({
   contractId: '',
   partyName: '',
-  feeType: direction === 'payable' ? 'deposit_refund' : 'rent',
-  feeName: direction === 'payable' ? '押金退还' : '租金',
+  feeType: direction === 'payable' ? 'maintenance' : 'rent',
+  feeName: direction === 'payable' ? '维修支出' : '租金',
   currency: 'CNY',
   periodRange: [],
   amountDue: undefined,
@@ -298,7 +333,9 @@ export default {
       rules: {
         contractId: [{ required: true, message: '请选择关联合同', trigger: 'change' }],
         feeType: [{ required: true, message: '请选择费用类型', trigger: 'change' }],
-        periodRange: [{ type: 'array', required: true, len: 2, message: '请选择计费周期', trigger: 'change' }],
+        periodRange: [
+          { type: 'array', required: true, len: 2, message: '请选择计费周期', trigger: 'change' },
+        ],
         amountDue: [{ required: true, message: '请输入账单金额', trigger: 'blur' }],
         payDeadline: [{ required: true, message: '请选择账单日期', trigger: 'change' }],
         specialBillType: [{ required: true, message: '请选择特殊账单类型', trigger: 'change' }],
@@ -335,7 +372,6 @@ export default {
     feeTypeOptions() {
       if (this.isPayable) {
         return [
-          { label: '押金退还', value: 'deposit_refund' },
           { label: '维修支出', value: 'maintenance' },
           { label: '服务采购', value: 'service_procurement' },
           { label: '其他支出', value: 'other' },
@@ -389,25 +425,31 @@ export default {
         });
     },
     isVacantRoom(room) {
-      const baseStatus = room && room.baseStatus !== undefined && room.baseStatus !== null && room.baseStatus !== ''
-        ? room.baseStatus
-        : room.status;
+      const baseStatus =
+        room && room.baseStatus !== undefined && room.baseStatus !== null && room.baseStatus !== ''
+          ? room.baseStatus
+          : room.status;
       return String(baseStatus) === '0';
     },
     handleContractChange(contractId) {
-      this.selectedContract = this.contractOptions.find(item => String(item.contractId) === String(contractId)) || {};
+      this.selectedContract =
+        this.contractOptions.find(item => String(item.contractId) === String(contractId)) || {};
       const contract = this.selectedContract;
       this.form.partyName = contract.customerName || '';
       this.form.periodRange = [];
       this.form.payDeadline = '';
       if (contract.startDate && contract.endDate) {
-        this.form.periodRange = [this.dateOnly(contract.startDate), this.dateOnly(contract.endDate)];
+        this.form.periodRange = [
+          this.dateOnly(contract.startDate),
+          this.dateOnly(contract.endDate),
+        ];
       }
       this.form.payDeadline = this.dateOnly(contract.startDate) || this.form.payDeadline;
       this.form.lateFeeRatio = Number(contract.lateFeeRatio || 0);
-      this.form.lateFeeCap = contract.lateFeeCap === null || contract.lateFeeCap === undefined
-        ? undefined
-        : Number(contract.lateFeeCap);
+      this.form.lateFeeCap =
+        contract.lateFeeCap === null || contract.lateFeeCap === undefined
+          ? undefined
+          : Number(contract.lateFeeCap);
     },
     buildRoomTreeFromRooms(rooms, contract = {}) {
       const parkMap = {};
@@ -416,7 +458,8 @@ export default {
         const parkName = room.parkName || contract.parkName || '未配置园区';
         const buildingId = room.buildingId || 'none';
         const buildingName = room.buildingName || contract.buildingName || '未配置楼宇';
-        const floorNo = room.floor === null || room.floor === undefined ? '未配置楼层' : `${room.floor}F`;
+        const floorNo =
+          room.floor === null || room.floor === undefined ? '未配置楼层' : `${room.floor}F`;
         const parkKey = `park-${parkId}`;
         const buildingKey = `${parkKey}-building-${buildingId}`;
         const floorKey = `${buildingKey}-floor-${floorNo}`;
@@ -470,7 +513,8 @@ export default {
       });
     },
     handleRoomTreeCheck(data, checked) {
-      const checkedNodes = checked && Array.isArray(checked.checkedNodes) ? checked.checkedNodes : [];
+      const checkedNodes =
+        checked && Array.isArray(checked.checkedNodes) ? checked.checkedNodes : [];
       const roomNodes = checkedNodes.filter(item => item && item.type === 'room' && !item.disabled);
       this.selectedRoomKeys = roomNodes.map(item => item.id);
       this.updateSelectedRooms(roomNodes);
@@ -481,7 +525,9 @@ export default {
         return;
       }
       const checkedNodes = tree.getCheckedNodes(false, true) || [];
-      this.updateSelectedRooms(checkedNodes.filter(item => item && item.type === 'room' && !item.disabled));
+      this.updateSelectedRooms(
+        checkedNodes.filter(item => item && item.type === 'room' && !item.disabled)
+      );
     },
     syncRoomTreeCheckedKeys(keys) {
       const tree = this.$refs.roomTreeRef;
@@ -550,9 +596,10 @@ export default {
         return;
       }
       const data = response.data || {};
-      const fileUrl = typeof data === 'string'
-        ? data
-        : data.link || data.url || data.path || response.link || response.url || '';
+      const fileUrl =
+        typeof data === 'string'
+          ? data
+          : data.link || data.url || data.path || response.link || response.url || '';
       if (!fileUrl) {
         this.$message.error('附件上传成功，但未返回文件地址');
         return;
@@ -616,7 +663,8 @@ export default {
       this.uploadFileList = [];
       this.$nextTick(() => {
         if (this.$refs.formRef) this.$refs.formRef.clearValidate();
-        if (this.$refs.uploadRef && this.$refs.uploadRef.clearFiles) this.$refs.uploadRef.clearFiles();
+        if (this.$refs.uploadRef && this.$refs.uploadRef.clearFiles)
+          this.$refs.uploadRef.clearFiles();
         this.syncRoomTreeCheckedKeys([]);
       });
     },

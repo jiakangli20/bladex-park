@@ -213,15 +213,34 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		List<Object> files = attachmentFiles(attachments.get("materials"));
 		int originalSize = files.size();
 		files.removeIf(file -> isSameAttachmentFile(file, fileUrl, materialName));
-		if (files.size() == originalSize) {
+		boolean materialRemoved = files.size() != originalSize;
+		List<Object> roomAcceptanceFiles = attachmentFiles(attachments.get("roomAcceptanceFiles"));
+		int originalRoomAcceptanceSize = roomAcceptanceFiles.size();
+		roomAcceptanceFiles.removeIf(file -> isSameAttachmentFile(file, fileUrl, materialName));
+		boolean roomAcceptanceRemoved = roomAcceptanceFiles.size() != originalRoomAcceptanceSize;
+		boolean directAcceptanceRemoved = StringUtil.equals(Func.toStr(attachments.get("acceptanceFileUrl"), null), fileUrl);
+		if (!materialRemoved && !roomAcceptanceRemoved && !directAcceptanceRemoved) {
 			throw new ServiceException("资料不存在或不可删除");
 		}
-		if (files.isEmpty()) {
-			attachments.remove("materials");
-			attachments.remove("latestMaterial");
-		} else {
-			attachments.put("materials", files);
-			attachments.put("latestMaterial", files.get(files.size() - 1));
+		if (materialRemoved) {
+			if (files.isEmpty()) {
+				attachments.remove("materials");
+				attachments.remove("latestMaterial");
+			} else {
+				attachments.put("materials", files);
+				attachments.put("latestMaterial", files.get(files.size() - 1));
+			}
+		}
+		if (roomAcceptanceRemoved) {
+			if (roomAcceptanceFiles.isEmpty()) {
+				attachments.remove("roomAcceptanceFiles");
+			} else {
+				attachments.put("roomAcceptanceFiles", roomAcceptanceFiles);
+			}
+		}
+		if (directAcceptanceRemoved) {
+			attachments.remove("acceptanceFileUrl");
+			attachments.remove("acceptanceFileName");
 		}
 		ContractWorkflowRecord update = new ContractWorkflowRecord();
 		update.setRecordId(recordId);

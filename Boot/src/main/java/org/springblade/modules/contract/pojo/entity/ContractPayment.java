@@ -41,6 +41,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 /**
  * 合同缴费计划实体类
@@ -166,6 +167,12 @@ public class ContractPayment implements Serializable {
 	@Schema(description = "付款审批状态")
 	private String paymentApprovalStatus;
 
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@TableField(exist = false)
+	@Schema(description = "付款审批完成时间")
+	private Date paymentApprovalTime;
+
 	@TableField(exist = false)
 	@Schema(description = "付款审批当前节点")
 	private String paymentCurrentNodeName;
@@ -248,6 +255,16 @@ public class ContractPayment implements Serializable {
 
 	@Schema(description = "附件地址")
 	private String attachmentUrl;
+
+	@Schema(description = "收付款凭证名称")
+	private String paymentVoucherName;
+
+	@Schema(description = "收付款凭证地址")
+	private String paymentVoucherUrl;
+
+	@TableField(exist = false)
+	@Schema(description = "逐笔收付款确认记录")
+	private List<ContractPaymentRecord> paymentRecords;
 
 	@Schema(description = "账单选择房源ID集合")
 	private String selectedRoomIds;

@@ -160,26 +160,14 @@
               <el-button type="primary" plain @click="handleStartDepositRefund(detailRecord)">
                 付款申请
               </el-button>
-              <el-button type="primary" plain @click="handleOfflineDepositRefund(detailRecord)">
-                上传支付凭证
-              </el-button>
             </div>
           </section>
 
           <section class="detail-section">
             <div class="detail-section-title-row">
-              <div class="detail-section-title">付款申请前置</div>
-              <el-tag
-                :type="isDepositRefundCompleted(detailRecord) || paymentReady ? 'success' : 'warning'"
-                effect="plain"
-              >
-                {{
-                  isDepositRefundCompleted(detailRecord)
-                    ? '已完成'
-                    : paymentReady
-                    ? '可发起'
-                    : '待补齐'
-                }}
+              <div class="detail-section-title">押金付款状态</div>
+              <el-tag :type="depositPaymentTagType" effect="plain">
+                {{ depositPaymentStatusText }}
               </el-tag>
             </div>
             <div class="payment-check-list">
@@ -189,7 +177,7 @@
                 :class="['payment-check-item', { 'is-done': item.done }]"
               >
                 <span>{{ item.label }}</span>
-                <strong>{{ item.done ? '已完成' : item.pendingText }}</strong>
+                <strong>{{ item.done ? item.doneText || '已完成' : item.pendingText }}</strong>
               </div>
             </div>
           </section>
@@ -217,7 +205,9 @@
                     </div>
                     <div class="material-file-actions">
                       <el-button text type="primary" @click="previewMaterial(file)">预览</el-button>
-                      <el-button text type="primary" @click="downloadMaterial(file)">下载</el-button>
+                      <el-button text type="primary" @click="downloadMaterial(file)"
+                        >下载</el-button
+                      >
                       <el-button
                         v-if="file.deletable"
                         text
@@ -260,7 +250,11 @@
         </div>
         <template #footer>
           <el-button @click="precheckVisible = false">关闭</el-button>
-          <el-button v-if="precheckCanUpload" type="primary" @click="openMaterialUploadFromPrecheck">
+          <el-button
+            v-if="precheckCanUpload"
+            type="primary"
+            @click="openMaterialUploadFromPrecheck"
+          >
             去上传资料
           </el-button>
         </template>
@@ -405,7 +399,9 @@
           </div>
           <div>
             <span>交接房源</span>
-            <strong>{{ offlineReviewRecord.roomName || offlineReviewRecord.buildingName || '-' }}</strong>
+            <strong>{{
+              offlineReviewRecord.roomName || offlineReviewRecord.buildingName || '-'
+            }}</strong>
           </div>
         </section>
         <el-form :model="offlineReviewForm" label-width="96px" class="offline-form">
@@ -459,86 +455,6 @@
         </template>
       </el-dialog>
 
-      <el-dialog
-        v-model="depositVoucherVisible"
-        title="上传支付凭证"
-        width="640px"
-        append-to-body
-        @close="resetDepositVoucher"
-      >
-        <section class="offline-summary">
-          <div>
-            <span>合同编号</span>
-            <strong>{{ depositVoucherRecord.contractNo || '-' }}</strong>
-          </div>
-          <div>
-            <span>企业名称</span>
-            <strong>{{ depositVoucherRecord.customerName || '-' }}</strong>
-          </div>
-          <div>
-            <span>退款金额</span>
-            <strong>{{ formatMoney(depositVoucherForm.amountPaid) }}</strong>
-          </div>
-        </section>
-        <el-form :model="depositVoucherForm" label-width="96px" class="offline-form">
-          <el-form-item label="支付日期" required>
-            <el-date-picker
-              v-model="depositVoucherForm.payDate"
-              type="date"
-              value-format="YYYY-MM-DD"
-              placeholder="请选择支付日期"
-              style="width: 100%"
-            />
-          </el-form-item>
-          <el-form-item label="支付金额" required>
-            <el-input-number
-              v-model="depositVoucherForm.amountPaid"
-              :min="0"
-              :precision="2"
-              :step="100"
-              controls-position="right"
-              style="width: 100%"
-            />
-          </el-form-item>
-          <el-form-item label="支付凭证" required>
-            <el-upload
-              ref="depositVoucherUploadRef"
-              action="/api/blade-resource/oss/endpoint/put-file"
-              :headers="uploadHeaders"
-              :limit="1"
-              :show-file-list="true"
-              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-              :before-upload="beforeOfflineFileUpload"
-              :on-success="handleDepositVoucherUploadSuccess"
-              :on-error="handleOfflineUploadError"
-              :on-remove="handleDepositVoucherUploadRemove"
-            >
-              <el-button icon="el-icon-upload">上传凭证</el-button>
-            </el-upload>
-          </el-form-item>
-          <el-form-item label="备注">
-            <el-input
-              v-model="depositVoucherForm.remark"
-              type="textarea"
-              :rows="3"
-              maxlength="300"
-              show-word-limit
-              placeholder="填写线下退款说明"
-            />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <el-button @click="depositVoucherVisible = false">取消</el-button>
-          <el-button
-            type="primary"
-            :loading="depositVoucherLoading"
-            @click="submitDepositVoucher"
-          >
-            确认上传
-          </el-button>
-        </template>
-      </el-dialog>
-
       <notice-preview-dialog
         v-model="noticePreview.visible"
         :title="noticePreview.title"
@@ -548,6 +464,8 @@
         :download-label="noticePreview.downloadLabel"
         :preview-type="noticePreview.previewType"
         :document-blob="noticePreview.documentBlob"
+        :pdf-blob="noticePreview.pdfBlob"
+        :pdf-file-name="noticePreview.pdfFileName"
         :preview-error="noticePreview.previewError"
         @download="downloadNoticePreviewFile"
       />
@@ -562,7 +480,6 @@ import {
   getDepositRefundPayment,
   getLatestWorkflowRecord,
   getWorkflowRecordPage,
-  offlineDepositRefund,
   offlineRoomReview,
   removeWorkflowRecordAttachment,
   uploadWorkflowRecordAttachment,
@@ -587,7 +504,6 @@ const PAYMENT_BUSINESS_TYPE = 'contract_payment';
 const MATERIAL_TYPE_OPTIONS = [
   { value: 'approval', label: '审批资料' },
   { value: 'room_acceptance', label: '房屋验收资料' },
-  { value: 'deposit_refund', label: '押金退还' },
   { value: 'termination_agreement', label: '租赁合同解除补充协议' },
   { value: 'signed_termination_agreement', label: '已盖章解除补充协议' },
   { value: 'handover_file', label: '退租交接资料' },
@@ -599,7 +515,12 @@ const PAYMENT_REQUIRED_MATERIALS = [
     label: '房屋验收资料',
     types: ['room_acceptance'],
     names: ['房屋验收', '房屋验收资料'],
-    attachmentKeys: ['acceptanceFileUrl', 'roomAcceptanceFiles', 'roomReviewFileUrl', 'room-review'],
+    attachmentKeys: [
+      'acceptanceFileUrl',
+      'roomAcceptanceFiles',
+      'roomReviewFileUrl',
+      'room-review',
+    ],
   },
   {
     value: 'termination_agreement',
@@ -626,10 +547,10 @@ const WORKFLOW_CONFIGS = {
     nameKeywords: ['房屋验收', '交接验收', '归还载体'],
   },
   [PAYMENT_BUSINESS_TYPE]: {
-    title: '发起押金退还',
-    summaryTitle: '押金退还信息',
+    title: '发起付款申请',
+    summaryTitle: '押金退还付款账单',
     placeholder: '请选择已部署的付款审批流程',
-    formKeys: ['pay', 'invoice'],
+    formKeys: ['pay'],
     defaultKeys: ['pay'],
     nameKeywords: ['付款', '缴费', '押金退还', '押金退款'],
   },
@@ -687,17 +608,6 @@ export default {
         acceptanceSituation: '',
         acceptanceFileUrl: '',
         acceptanceFileName: '',
-      },
-      depositVoucherVisible: false,
-      depositVoucherLoading: false,
-      depositVoucherRecord: {},
-      depositVoucherPayment: {},
-      depositVoucherForm: {
-        payDate: '',
-        amountPaid: 0,
-        paymentVoucherUrl: '',
-        paymentVoucherName: '',
-        remark: '',
       },
       precheckVisible: false,
       precheckTitle: '',
@@ -772,7 +682,15 @@ export default {
           }
         });
       };
-      const appendDirect = (attachment, key, fallbackName, sourceName = '', sourceType = 'generated', recordId = '') => {
+      const appendDirect = (
+        attachment,
+        key,
+        fallbackName,
+        sourceName = '',
+        sourceType = 'generated',
+        recordId = '',
+        deletable = false
+      ) => {
         if (!attachment || !attachment[key]) return;
         append(
           {
@@ -785,50 +703,130 @@ export default {
           sourceName,
           sourceType,
           recordId,
-          false
+          deletable
         );
       };
-      this.recordAttachmentList(this.detailRecord).forEach(({ attachment, sourceName, sourceType, recordId }) => {
-        const isTerminationSource = sourceType === 'termination';
-        append(attachment.materials, '退租资料', sourceName, sourceType, recordId, isTerminationSource);
-        append(attachment.approvalMaterials, '审批资料', sourceName, sourceType, recordId, false);
-        append(attachment.roomAcceptanceFiles, '房屋验收资料', sourceName, sourceType, recordId, false);
-        append(attachment.depositRefundFiles, '押金退还', sourceName, sourceType, recordId, false);
-        append(attachment.fileList, '退租交接资料', sourceName, sourceType, recordId, false);
-        appendDirect(attachment, 'acceptanceFileUrl', '房屋验收资料', sourceName, sourceType, recordId);
-        appendDirect(attachment, 'roomReviewFileUrl', '房屋验收流程文件', sourceName, sourceType, recordId);
-        appendDirect(attachment, 'paymentVoucherUrl', '押金退还支付凭证', sourceName, sourceType, recordId);
-        appendDirect(attachment, 'terminationAgreementUrl', '租赁合同解除补充协议', sourceName, sourceType, recordId);
-        if (isTerminationSource && this.detailRecord.contractId) {
-          const appendLiveNotice = (noticeType, fallbackName) => {
-            append(
-              {
-                fileUrl: noticePrintUrl(noticeType, {
+      this.recordAttachmentList(this.detailRecord).forEach(
+        ({ attachment, sourceName, sourceType, recordId }) => {
+          const isTerminationSource = sourceType === 'termination';
+          append(
+            attachment.materials,
+            '退租资料',
+            sourceName,
+            sourceType,
+            recordId,
+            isTerminationSource
+          );
+          append(attachment.approvalMaterials, '审批资料', sourceName, sourceType, recordId, false);
+          append(
+            attachment.roomAcceptanceFiles,
+            '房屋验收资料',
+            sourceName,
+            sourceType,
+            recordId,
+            Boolean(recordId) && sourceType !== 'roomReviewPrint'
+          );
+          append(
+            attachment.depositRefundFiles,
+            '押金退还',
+            sourceName,
+            sourceType,
+            recordId,
+            false
+          );
+          append(attachment.fileList, '退租交接资料', sourceName, sourceType, recordId, false);
+          appendDirect(
+            attachment,
+            'acceptanceFileUrl',
+            '房屋验收资料',
+            sourceName,
+            sourceType,
+            recordId,
+            Boolean(recordId) && sourceType !== 'roomReviewPrint'
+          );
+          appendDirect(
+            attachment,
+            'roomReviewFileUrl',
+            '房屋退租交接验收单',
+            sourceName,
+            sourceType,
+            recordId
+          );
+          appendDirect(
+            attachment,
+            'paymentVoucherUrl',
+            '押金退还支付凭证',
+            sourceName,
+            sourceType,
+            recordId
+          );
+          appendDirect(
+            attachment,
+            'terminationAgreementUrl',
+            '租赁合同解除补充协议',
+            sourceName,
+            sourceType,
+            recordId
+          );
+          if (isTerminationSource && this.detailRecord.contractId) {
+            const appendLiveNotice = (noticeType, fallbackName) => {
+              append(
+                {
+                  fileUrl: noticePrintUrl(noticeType, {
+                    contractId: this.detailRecord.contractId,
+                  }),
+                  fileName: `${fallbackName}.docx`,
+                  materialName: fallbackName,
+                  remark: sourceName,
+                  noticeType,
                   contractId: this.detailRecord.contractId,
-                }),
-                fileName: `${fallbackName}.docx`,
-                materialName: fallbackName,
-                remark: sourceName,
-                noticeType,
-                contractId: this.detailRecord.contractId,
-                formDataJson: this.detailRecord.formDataJson || '',
-              },
-              fallbackName,
+                  formDataJson: this.detailRecord.formDataJson || '',
+                },
+                fallbackName,
+                sourceName,
+                'generated',
+                recordId,
+                false
+              );
+            };
+            appendLiveNotice('termination-approval', '退租审批表');
+            appendLiveNotice('termination-agreement', '租赁合同解除补充协议');
+          } else {
+            appendDirect(
+              attachment,
+              'termination-approval',
+              '退租审批表',
               sourceName,
               'generated',
-              recordId,
-              false
+              recordId
             );
-          };
-          appendLiveNotice('termination-approval', '退租审批表');
-          appendLiveNotice('termination-agreement', '租赁合同解除补充协议');
-        } else {
-          appendDirect(attachment, 'termination-approval', '退租审批表', sourceName, 'generated', recordId);
-          appendDirect(attachment, 'termination-agreement', '租赁合同解除补充协议', sourceName, 'generated', recordId);
+            appendDirect(
+              attachment,
+              'termination-agreement',
+              '租赁合同解除补充协议',
+              sourceName,
+              'generated',
+              recordId
+            );
+          }
+          appendDirect(
+            attachment,
+            'room-review',
+            '房屋退租交接验收单',
+            sourceName,
+            'generated',
+            recordId
+          );
+          appendDirect(
+            attachment,
+            'termination-handover',
+            '退租交接单',
+            sourceName,
+            'generated',
+            recordId
+          );
         }
-        appendDirect(attachment, 'room-review', '房屋验收流程文件', sourceName, 'generated', recordId);
-        appendDirect(attachment, 'termination-handover', '退租交接单', sourceName, 'generated', recordId);
-      });
+      );
       const seen = new Set();
       return files.filter(file => {
         const key = `${file.materialName || ''}|${file.fileUrl || ''}`;
@@ -841,7 +839,22 @@ export default {
       return this.paymentApplicationBlockedReason(this.detailRecord) === '';
     },
     paymentPrerequisiteItems() {
-      return this.paymentApplicationPrerequisites(this.detailRecord);
+      return this.depositPaymentDisplayItems(this.detailRecord);
+    },
+    depositPaymentStatusText() {
+      if (this.isDepositRefundCompleted(this.detailRecord)) return '已付款';
+      if (String(this.detailRecord?.depositRefundPayStatus || '') === '3') return '部分付款';
+      const status = this.paymentApprovalStatus(this.detailRecord);
+      if (status === 'approved') return '待财务付款';
+      if (status === 'running') return '付款审批中';
+      return this.paymentReady ? '可发起付款申请' : '待补齐资料';
+    },
+    depositPaymentTagType() {
+      if (this.isDepositRefundCompleted(this.detailRecord)) return 'success';
+      const status = this.paymentApprovalStatus(this.detailRecord);
+      if (status === 'running') return 'primary';
+      if (status === 'approved') return 'warning';
+      return 'info';
     },
     precheckCanUpload() {
       return this.precheckItems.some(item => item.uploadable && !item.done);
@@ -965,7 +978,9 @@ export default {
     },
     enrichTerminationRecords(records = []) {
       const contractRecords = records.filter(item => item.contractId);
-      const paymentTargets = records.filter(item => String(item.contractStatus) === '4' && item.contractId);
+      const paymentTargets = records.filter(
+        item => String(item.contractStatus) === '4' && item.contractId
+      );
       if (!contractRecords.length && !paymentTargets.length) {
         return Promise.resolve(records);
       }
@@ -1011,21 +1026,23 @@ export default {
             }))
         )
       );
-      return Promise.all([paymentPromise, roomReviewPromise]).then(([paymentStates, roomReviewStates]) => {
-        const paymentStateMap = paymentStates.reduce((result, item) => {
-          result[item.contractId] = item;
-          return result;
-        }, {});
-        const roomReviewStateMap = roomReviewStates.reduce((result, item) => {
-          result[item.contractId] = item;
-          return result;
-        }, {});
-        return records.map(item => ({
-          ...item,
-          ...(paymentStateMap[item.contractId] || {}),
-          ...(roomReviewStateMap[item.contractId] || {}),
-        }));
-      });
+      return Promise.all([paymentPromise, roomReviewPromise]).then(
+        ([paymentStates, roomReviewStates]) => {
+          const paymentStateMap = paymentStates.reduce((result, item) => {
+            result[item.contractId] = item;
+            return result;
+          }, {});
+          const roomReviewStateMap = roomReviewStates.reduce((result, item) => {
+            result[item.contractId] = item;
+            return result;
+          }, {});
+          return records.map(item => ({
+            ...item,
+            ...(paymentStateMap[item.contractId] || {}),
+            ...(roomReviewStateMap[item.contractId] || {}),
+          }));
+        }
+      );
     },
     cleanParams(params) {
       return Object.keys(params || {}).reduce((result, key) => {
@@ -1046,7 +1063,9 @@ export default {
     parseAttachmentJson(attachmentJson) {
       if (!attachmentJson) return {};
       try {
-        return typeof attachmentJson === 'string' ? JSON.parse(attachmentJson) || {} : attachmentJson || {};
+        return typeof attachmentJson === 'string'
+          ? JSON.parse(attachmentJson) || {}
+          : attachmentJson || {};
       } catch (error) {
         return {};
       }
@@ -1208,7 +1227,6 @@ export default {
           {
             noticeType: file.noticeType,
             contractId: file.contractId,
-            formDataJson: file.formDataJson || '',
           },
           file.fileUrl,
           file.fileName || file.materialName || '退租资料',
@@ -1223,9 +1241,11 @@ export default {
         this.$message.warning('暂无资料文件');
         return;
       }
-      downloadNoticeFile(file.fileUrl, file.fileName || file.materialName || '退租资料').catch(() => {
-        this.$message.error('资料下载失败，请稍后重试');
-      });
+      downloadNoticeFile(file.fileUrl, file.fileName || file.materialName || '退租资料').catch(
+        () => {
+          this.$message.error('资料下载失败，请稍后重试');
+        }
+      );
     },
     removeMaterial(file) {
       if (!file || !file.deletable || !file.recordId) {
@@ -1244,13 +1264,16 @@ export default {
         .then(res => {
           const updated = res.data.data || {};
           const attachmentJson = updated.attachmentJson || '';
+          const attachmentField =
+            file.sourceType === 'roomReview' ? 'roomReviewAttachmentJson' : 'attachmentJson';
+          const detailRecordId = this.detailRecord.recordId;
           this.detailRecord = {
             ...this.detailRecord,
-            attachmentJson,
+            [attachmentField]: attachmentJson,
           };
           this.data = this.data.map(item =>
-            String(item.recordId) === String(file.recordId)
-              ? { ...item, attachmentJson }
+            String(item.recordId) === String(detailRecordId)
+              ? { ...item, [attachmentField]: attachmentJson }
               : item
           );
           this.$message.success('资料已删除');
@@ -1267,7 +1290,9 @@ export default {
       });
     },
     handleStartRoomReview(row) {
-      if (!this.ensurePrerequisites('发起房屋验收流程前置条件', this.roomReviewPrerequisites(row))) {
+      if (
+        !this.ensurePrerequisites('发起房屋验收流程前置条件', this.roomReviewPrerequisites(row))
+      ) {
         return;
       }
       this.workflowType = ROOM_REVIEW_BUSINESS_TYPE;
@@ -1278,7 +1303,9 @@ export default {
       this.loadWorkflowProcessOptions();
     },
     handleStartDepositRefund(row) {
-      if (!this.ensurePrerequisites('付款申请前置条件', this.paymentApplicationPrerequisites(row))) {
+      if (
+        !this.ensurePrerequisites('付款申请前置条件', this.paymentApplicationPrerequisites(row))
+      ) {
         return;
       }
       ensureDepositRefundPayment(row.contractId).then(res => {
@@ -1291,6 +1318,10 @@ export default {
           this.$message.warning('该押金退还已完成');
           return;
         }
+        if (payment.paymentApprovalStatus === 'approved') {
+          this.$message.warning('该付款申请已审批通过，请等待财务在所有账单中确认付款');
+          return;
+        }
         this.workflowType = PAYMENT_BUSINESS_TYPE;
         this.workflowRecord = { ...(row || {}) };
         this.workflowPayment = payment;
@@ -1300,7 +1331,9 @@ export default {
       });
     },
     handleOfflineRoomReview(row) {
-      if (!this.ensurePrerequisites('登记房屋验收前置条件', this.offlineRoomReviewPrerequisites(row))) {
+      if (
+        !this.ensurePrerequisites('登记房屋验收前置条件', this.offlineRoomReviewPrerequisites(row))
+      ) {
         return;
       }
       this.offlineReviewRecord = { ...(row || {}) };
@@ -1315,36 +1348,6 @@ export default {
       this.$nextTick(() => {
         const upload = this.$refs.offlineReviewUploadRef;
         if (upload && upload.clearFiles) upload.clearFiles();
-      });
-    },
-    handleOfflineDepositRefund(row) {
-      if (!this.ensurePrerequisites('上传支付凭证前置条件', this.depositVoucherPrerequisites(row))) {
-        return;
-      }
-      getDepositRefundPayment(row.contractId).then(res => {
-        const payment = res.data.data || {};
-        if (!payment.paymentId) {
-          this.$message.warning('请先发起付款申请');
-          return;
-        }
-        if (payment.paymentApprovalStatus !== 'approved') {
-          this.$message.warning('付款申请审批完成后才可以上传支付凭证');
-          return;
-        }
-        this.depositVoucherRecord = { ...(row || {}) };
-        this.depositVoucherPayment = { ...(payment || {}) };
-        this.depositVoucherForm = {
-          payDate: this.formatDate(new Date()),
-          amountPaid: Number(payment.amountDue || row.deposit || 0),
-          paymentVoucherUrl: '',
-          paymentVoucherName: '',
-          remark: '',
-        };
-        this.depositVoucherVisible = true;
-        this.$nextTick(() => {
-          const upload = this.$refs.depositVoucherUploadRef;
-          if (upload && upload.clearFiles) upload.clearFiles();
-        });
       });
     },
     beforeOfflineFileUpload(file) {
@@ -1383,19 +1386,6 @@ export default {
       this.offlineReviewForm.acceptanceFileUrl = '';
       this.offlineReviewForm.acceptanceFileName = '';
     },
-    handleDepositVoucherUploadSuccess(response, file) {
-      if (!response || response.success === false) {
-        this.$message.error((response && response.msg) || '上传失败');
-        return;
-      }
-      this.depositVoucherForm.paymentVoucherUrl = this.extractUploadUrl(response);
-      this.depositVoucherForm.paymentVoucherName = file?.name || '';
-      this.$message.success(file?.name ? `${file.name} 上传成功` : '上传成功');
-    },
-    handleDepositVoucherUploadRemove() {
-      this.depositVoucherForm.paymentVoucherUrl = '';
-      this.depositVoucherForm.paymentVoucherName = '';
-    },
     handleOfflineUploadError(error) {
       const message = (error && error.message) || '上传失败，请重试';
       this.$message.error(message);
@@ -1424,37 +1414,6 @@ export default {
           this.offlineReviewLoading = false;
         });
     },
-    submitDepositVoucher() {
-      if (!this.depositVoucherRecord.contractId) {
-        this.$message.warning('请选择退租记录');
-        return;
-      }
-      if (!this.depositVoucherForm.payDate) {
-        this.$message.warning('请选择支付日期');
-        return;
-      }
-      if (!this.depositVoucherForm.amountPaid || this.depositVoucherForm.amountPaid <= 0) {
-        this.$message.warning('请填写支付金额');
-        return;
-      }
-      if (!this.depositVoucherForm.paymentVoucherUrl) {
-        this.$message.warning('请上传支付凭证');
-        return;
-      }
-      this.depositVoucherLoading = true;
-      offlineDepositRefund(this.depositVoucherRecord.contractId, {
-        ...this.depositVoucherForm,
-        paymentId: this.depositVoucherPayment.paymentId,
-      })
-        .then(() => {
-          this.$message.success('支付凭证已上传');
-          this.depositVoucherVisible = false;
-          this.loadData();
-        })
-        .finally(() => {
-          this.depositVoucherLoading = false;
-        });
-    },
     resetOfflineReview() {
       this.offlineReviewRecord = {};
       this.offlineReviewForm = {
@@ -1463,17 +1422,6 @@ export default {
         acceptanceSituation: '',
         acceptanceFileUrl: '',
         acceptanceFileName: '',
-      };
-    },
-    resetDepositVoucher() {
-      this.depositVoucherRecord = {};
-      this.depositVoucherPayment = {};
-      this.depositVoucherForm = {
-        payDate: '',
-        amountPaid: 0,
-        paymentVoucherUrl: '',
-        paymentVoucherName: '',
-        remark: '',
       };
     },
     loadWorkflowProcessOptions() {
@@ -1605,9 +1553,10 @@ export default {
           pendingText: '当前付款审批正在进行中',
         },
         {
-          label: '押金退还未完成',
+          label: '押金退还状态',
           done: !this.isDepositRefundCompleted(row),
-          pendingText: '该押金退还已完成',
+          doneText: '未退还，可发起付款申请',
+          pendingText: '已退还，无需再次申请',
         },
         ...PAYMENT_REQUIRED_MATERIALS.map(item => ({
           label: item.label,
@@ -1617,13 +1566,28 @@ export default {
         })),
       ];
     },
-    depositVoucherPrerequisites(row) {
+    depositPaymentDisplayItems(row) {
+      const approvalStatus = this.paymentApprovalStatus(row);
       return [
-        ...this.paymentApplicationPrerequisites(row),
+        ...this.paymentApplicationPrerequisites(row).filter(
+          item => !['付款审批未进行中', '押金退还状态'].includes(item.label)
+        ),
         {
-          label: '付款申请审批已完成',
-          done: this.paymentApprovalStatus(row) === 'approved',
-          pendingText: '待付款申请审批完成',
+          label: '付款申请审批',
+          done: approvalStatus === 'approved',
+          doneText: '审批已通过',
+          pendingText: approvalStatus === 'running' ? '审批中' : '未发起',
+        },
+        {
+          label: '产业园付款',
+          done: this.isDepositRefundCompleted(row),
+          doneText: '财务已确认付款',
+          pendingText:
+            String(row?.depositRefundPayStatus || '') === '3'
+              ? '已部分付款，待财务付清'
+              : approvalStatus === 'approved'
+              ? '待财务在所有账单确认付款'
+              : '待付款审批通过',
         },
       ];
     },
@@ -1645,12 +1609,16 @@ export default {
     },
     hasPaymentMaterial(row, requirement) {
       return this.recordAttachmentList(row).some(({ attachment }) => {
-        if ((requirement.attachmentKeys || []).some(key => this.hasAttachmentValue(attachment[key]))) {
+        if (
+          (requirement.attachmentKeys || []).some(key => this.hasAttachmentValue(attachment[key]))
+        ) {
           return true;
         }
         return this.attachmentFiles(attachment.materials).some(file => {
           const materialType = String(file.materialType || file.category || '');
-          const materialName = String(file.materialName || file.categoryName || file.category || '');
+          const materialName = String(
+            file.materialName || file.categoryName || file.category || ''
+          );
           return (
             (requirement.types || []).includes(materialType) ||
             (requirement.names || []).some(name => materialName.includes(name))
@@ -1722,12 +1690,11 @@ export default {
     buildDepositRefundPayload() {
       const row = this.workflowRecord || {};
       const payment = this.workflowPayment || {};
-      const processKey = this.workflowForm.processDefKey || '';
-      const isInvoiceWorkflow = processKey.includes('invoice');
       return {
         processDefKey: this.workflowForm.processDefKey,
         params: {
           processDefKey: this.workflowForm.processDefKey,
+          formKey: 'pay',
           businessType: PAYMENT_BUSINESS_TYPE,
           businessTable: 'biz_contract_payment',
           businessKey: String(payment.paymentId || ''),
@@ -1743,12 +1710,13 @@ export default {
           parkId: row.parkId || payment.parkId,
           feeType: payment.feeType || 'deposit_refund',
           feeName: payment.feeName || '押金退还',
+          direction: 'payable',
           periodStart: payment.periodStart,
           periodEnd: payment.periodEnd,
           amountDue: payment.amountDue || row.deposit,
           amountPaid: payment.amountPaid,
           payDeadline: payment.payDeadline,
-          templateKey: isInvoiceWorkflow ? 'invoice-apply' : 'payment-notice',
+          templateKey: 'payment-notice',
           refundType: 'deposit_refund',
           applicant: this.userInfo.nick_name,
           applicantDept: this.userInfo.dept_name,
@@ -1774,7 +1742,10 @@ export default {
       if (row.processStatus === 'canceled') return '退租取消';
       if (String(row.contractStatus) === '8') return '房屋验收流程中';
       if (this.isDepositRefundCompleted(row)) return '退租已完成';
-      if (String(row.contractStatus) === '4') return '待押金退还';
+      if (String(row.depositRefundPayStatus || '') === '3') return '押金部分付款';
+      if (this.paymentApprovalStatus(row) === 'approved') return '待财务付款';
+      if (this.paymentApprovalStatus(row) === 'running') return '付款审批中';
+      if (String(row.contractStatus) === '4') return '待付款申请';
       if (String(row.contractStatus) === '7') return '待登记房屋验收';
       if (row.processStatus === 'approved') return '退租已通过';
       return this.approvalStatusText(row.processStatus);
@@ -1784,7 +1755,8 @@ export default {
       if (row.processStatus === 'rejected') return 'danger';
       if (row.processStatus === 'running' || String(row.contractStatus) === '8') return 'warning';
       if (this.isDepositRefundCompleted(row)) return 'success';
-      if (String(row.contractStatus) === '4') return 'success';
+      if (['running', 'approved'].includes(this.paymentApprovalStatus(row))) return 'warning';
+      if (String(row.contractStatus) === '4') return 'primary';
       if (String(row.contractStatus) === '7') return 'primary';
       return 'info';
     },

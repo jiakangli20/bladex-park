@@ -167,17 +167,6 @@ export const offlineRoomReview = (contractId, row) => {
   });
 };
 
-export const offlineDepositRefund = (contractId, row) => {
-  return request({
-    url: '/blade-contract/contract/payment/deposit-refund/offline-confirm',
-    method: 'post',
-    params: {
-      contractId,
-    },
-    data: row,
-  });
-};
-
 export const getPaymentList = (current, size, params) => {
   return request({
     url: '/blade-contract/contract/payment/list',
@@ -187,17 +176,6 @@ export const getPaymentList = (current, size, params) => {
       current,
       size,
     },
-  });
-};
-
-export const confirmPayment = (paymentId, row) => {
-  return request({
-    url: '/blade-contract/contract/payment/confirm',
-    method: 'post',
-    params: {
-      paymentId,
-    },
-    data: row,
   });
 };
 

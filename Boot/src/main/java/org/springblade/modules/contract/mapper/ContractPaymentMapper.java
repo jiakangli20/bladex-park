@@ -56,4 +56,12 @@ public interface ContractPaymentMapper extends BaseMapper<ContractPayment> {
 	 */
 	List<ContractPayment> selectByContractId(@Param("contractId") Long contractId);
 
+	/**
+	 * 锁定账单，避免并发确认覆盖累计付款金额.
+	 *
+	 * @param paymentId 账单ID
+	 * @return 账单基础数据
+	 */
+	ContractPayment selectByIdForUpdate(@Param("paymentId") Long paymentId);
+
 }

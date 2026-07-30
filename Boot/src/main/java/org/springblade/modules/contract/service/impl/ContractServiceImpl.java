@@ -96,11 +96,9 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private static final String PROCESS_STATUS_APPROVED = "approved";
 	private static final String BUSINESS_TYPE_CONTRACT_APPROVAL = "contract_approval";
 	private static final String BUSINESS_TYPE_CONTRACT_TERMINATION = "contract_termination";
-	private static final String BUSINESS_TYPE_CONTRACT_PAYMENT = "contract_payment";
 	private static final String BUSINESS_TYPE_CONTRACT_ROOM_REVIEW = "contract_room_review";
 	private static final String FEE_TYPE_DEPOSIT_REFUND = "deposit_refund";
 	private static final String PAY_STATUS_UNPAID = "0";
-	private static final String PAY_STATUS_PAID = "1";
 	private static final String ROOM_STATUS_VACANT = "0";
 
 	private final ContractPaymentMapper contractPaymentMapper;
@@ -444,72 +442,6 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	}
 
 	@Override
-	@Transactional(rollbackFor = Exception.class)
-	public ContractPayment offlineDepositRefund(Long contractId, Map<String, Object> formData) {
-		Contract contract = requireContract(contractId);
-		if (!STATUS_TERMINATED.equals(contract.getContractStatus())) {
-			throw new ServiceException("房屋验收完成后才可以上传支付凭证");
-		}
-		ContractPayment payment = findDepositRefundPayment(contractId);
-		if (payment == null) {
-			throw new ServiceException("请先发起付款申请");
-		}
-		if (PAY_STATUS_PAID.equals(payment.getPayStatus())) {
-			throw new ServiceException("该押金退还已完成");
-		}
-		if (!PROCESS_STATUS_APPROVED.equals(payment.getPaymentApprovalStatus())) {
-			throw new ServiceException("付款申请审批完成后才可以上传支付凭证");
-		}
-		validateDepositRefundMaterials(contractId);
-		Date now = DateUtil.now();
-		Map<String, Object> snapshot = normalizeOfflineForm(formData);
-		BigDecimal amountPaid = decimalValue(snapshot.get("amountPaid"), payment.getAmountDue());
-		if (amountPaid.compareTo(BigDecimal.ZERO) <= 0) {
-			throw new ServiceException("支付金额必须大于0");
-		}
-		snapshot.putIfAbsent("amountPaid", amountPaid);
-		snapshot.putIfAbsent("payTime", DateUtil.format(now, DateUtil.PATTERN_DATETIME));
-
-		ContractPayment update = new ContractPayment();
-		update.setPaymentId(payment.getPaymentId());
-		update.setAmountPaid(amountPaid);
-		update.setPayStatus(PAY_STATUS_PAID);
-		update.setPayTime(now);
-		update.setRemark(limitText(firstNotBlank(textValue(snapshot, "remark"), textValue(snapshot, "paymentRemark"), "线下押金退还"), 500));
-		update.setUpdateBy(currentUserName());
-		update.setUpdateTime(now);
-		contractPaymentMapper.updateById(update);
-
-		ContractWorkflowRecord record = new ContractWorkflowRecord();
-		record.setParkId(contract.getParkId());
-		record.setBusinessType(BUSINESS_TYPE_CONTRACT_PAYMENT);
-		record.setBusinessKey(String.valueOf(payment.getPaymentId()));
-		record.setProcessDefKey("offline-deposit-refund");
-		record.setProcessName("线下押金退还");
-		record.setProcessStatus(PROCESS_STATUS_APPROVED);
-		record.setCurrentNodeKey("offline_deposit_refund");
-		record.setCurrentNode("线下支付完成");
-		record.setContractId(contractId);
-		record.setPaymentId(payment.getPaymentId());
-		record.setCustomerId(contract.getCustomerId());
-		record.setRoomIds(resolveContractRoomIds(contract));
-		record.setTemplateKey("payment-notice");
-		record.setFormKey("pay");
-		record.setFormDataJson(JsonUtil.toJson(snapshot));
-		record.setAttachmentJson(JsonUtil.toJson(resolveAttachmentSnapshot(snapshot)));
-		record.setPrintFileUrl("/blade-contract/print/payment-notice/" + payment.getPaymentId());
-		record.setApprovalTime(now);
-		record.setRemark(limitText(firstNotBlank(textValue(snapshot, "remark"), textValue(snapshot, "paymentRemark"), "线下支付凭证登记"), 500));
-		record.setDelFlag(DEFAULT_DEL_FLAG);
-		record.setCreateBy(currentUserName());
-		record.setCreateTime(now);
-		contractWorkflowRecordMapper.insert(record);
-
-		addLog(contractId, "deposit_refund", "上传押金退还支付凭证");
-		return contractPaymentMapper.selectById(payment.getPaymentId());
-	}
-
-	@Override
 	public List<ContractLog> selectLogByContractId(Long contractId) {
 		return contractLogMapper.selectByContractId(contractId);
 	}
@@ -807,8 +739,6 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		Map<String, Object> attachments = new LinkedHashMap<>();
 		putIfPresent(attachments, "acceptanceFileUrl", snapshot.get("acceptanceFileUrl"));
 		putIfPresent(attachments, "acceptanceFileName", snapshot.get("acceptanceFileName"));
-		putIfPresent(attachments, "paymentVoucherUrl", snapshot.get("paymentVoucherUrl"));
-		putIfPresent(attachments, "paymentVoucherName", snapshot.get("paymentVoucherName"));
 		putIfPresent(attachments, "fileList", snapshot.get("fileList"));
 		return attachments;
 	}
@@ -816,17 +746,6 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private void putIfPresent(Map<String, Object> target, String key, Object value) {
 		if (value != null && Func.isNotBlank(Func.toStr(value, ""))) {
 			target.put(key, value);
-		}
-	}
-
-	private BigDecimal decimalValue(Object value, BigDecimal defaultValue) {
-		if (value == null || Func.isBlank(Func.toStr(value, ""))) {
-			return defaultValue == null ? BigDecimal.ZERO : defaultValue;
-		}
-		try {
-			return new BigDecimal(Func.toStr(value, "0"));
-		} catch (NumberFormatException exception) {
-			throw new ServiceException("支付金额格式不正确");
 		}
 	}
 

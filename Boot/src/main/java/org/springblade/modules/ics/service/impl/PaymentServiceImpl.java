@@ -15,10 +15,12 @@ import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.contract.mapper.ContractLogMapper;
 import org.springblade.modules.contract.mapper.ContractMapper;
 import org.springblade.modules.contract.mapper.ContractPaymentMapper;
+import org.springblade.modules.contract.mapper.ContractPaymentRecordMapper;
 import org.springblade.modules.contract.mapper.ContractWorkflowRecordMapper;
 import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
+import org.springblade.modules.contract.pojo.entity.ContractPaymentRecord;
 import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractNoticeService;
@@ -69,6 +71,7 @@ public class PaymentServiceImpl implements IPaymentService {
 	private static final String SCOPE_OVERDUE = "overdue";
 	private static final String SCOPE_OVERDUE_HISTORY = "overdue_history";
 	private static final String PAY_STATUS_PAID = "1";
+	private static final String FEE_TYPE_DEPOSIT_REFUND = "deposit_refund";
 	private static final String PAY_STATUS_PARTIAL = "3";
 	private static final String PAY_STATUS_UNPAID = "0";
 	private static final String REMIND_STATUS_NONE = "0";
@@ -90,6 +93,7 @@ public class PaymentServiceImpl implements IPaymentService {
 	private final OverdueInternalNoticeMapper overdueInternalNoticeMapper;
 	private final ContractMapper contractMapper;
 	private final ContractPaymentMapper contractPaymentMapper;
+	private final ContractPaymentRecordMapper contractPaymentRecordMapper;
 	private final ContractLogMapper contractLogMapper;
 	private final ContractWorkflowRecordMapper contractWorkflowRecordMapper;
 	private final IContractNoticeService contractNoticeService;
@@ -113,6 +117,13 @@ public class PaymentServiceImpl implements IPaymentService {
 	public ContractPayment selectPaymentById(Long paymentId) {
 		ContractPayment payment = requirePayment(paymentId);
 		assertAccessible(payment);
+		payment.setPaymentRecords(contractPaymentRecordMapper.selectList(
+			Wrappers.<ContractPaymentRecord>lambdaQuery()
+				.eq(ContractPaymentRecord::getPaymentId, paymentId)
+				.eq(ContractPaymentRecord::getDelFlag, DEFAULT_DEL_FLAG)
+				.orderByAsc(ContractPaymentRecord::getPaymentTime)
+				.orderByAsc(ContractPaymentRecord::getRecordId)
+		));
 		return payment;
 	}
 
@@ -153,6 +164,10 @@ public class PaymentServiceImpl implements IPaymentService {
 			throw new ServiceException("无权为该园区合同创建账单");
 		}
 		String direction = normalizeDirection(payment.getDirection());
+		if (DIRECTION_PAYABLE.equals(direction)
+			&& FEE_TYPE_DEPOSIT_REFUND.equals(Func.toStr(payment.getFeeType(), "").trim())) {
+			throw new ServiceException("押金退还付款账单由退租流程自动生成，请勿重复创建");
+		}
 		validateCreatePayment(payment);
 		PaymentRoomSelection roomSelection = resolvePaymentRoomSelection(contract, payment.getSelectedRoomIds());
 
@@ -202,30 +217,76 @@ public class PaymentServiceImpl implements IPaymentService {
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean confirm(Long paymentId, ContractPayment payment) {
-		ContractPayment existing = requirePayment(paymentId);
+		ContractPayment existing = requirePaymentForUpdate(paymentId);
 		assertAccessible(existing);
-		validateReceivableConfirmation(existing);
-		BigDecimal amountPaid = payment == null ? existing.getAmountDue() : payment.getAmountPaid();
-		if (amountPaid == null) {
-			amountPaid = existing.getAmountDue();
+		boolean payable = DIRECTION_PAYABLE.equals(normalizeDirection(existing.getDirection()));
+		if (payable) {
+			validatePayableConfirmation(existing, payment);
+		} else {
+			validateReceivableConfirmation(existing, payment);
 		}
-		if (amountPaid == null || amountPaid.compareTo(BigDecimal.ZERO) <= 0) {
-			throw new ServiceException("实收金额必须大于0");
+		BigDecimal submittedAmount = payment == null ? existing.getAmountDue() : payment.getAmountPaid();
+		if (submittedAmount == null) {
+			submittedAmount = existing.getAmountDue();
+		}
+		if (submittedAmount == null || submittedAmount.compareTo(BigDecimal.ZERO) <= 0) {
+			throw new ServiceException(payable ? "实付金额必须大于0" : "实收金额必须大于0");
+		}
+		BigDecimal existingPaid = nullToZero(existing.getAmountPaid());
+		BigDecimal paymentAmount;
+		BigDecimal amountPaid = submittedAmount;
+		if (payable) {
+			paymentAmount = submittedAmount;
+			BigDecimal remainingAmount = nullToZero(existing.getAmountDue()).subtract(existingPaid).max(BigDecimal.ZERO);
+			if (paymentAmount.compareTo(remainingAmount) > 0) {
+				throw new ServiceException("本次实付金额不能大于剩余应付金额");
+			}
+			amountPaid = existingPaid.add(paymentAmount);
+		} else {
+			if (amountPaid.compareTo(existingPaid) <= 0) {
+				throw new ServiceException("累计实收金额必须大于当前已收金额");
+			}
+			if (amountPaid.compareTo(nullToZero(existing.getAmountDue())) > 0) {
+				throw new ServiceException("累计实收金额不能大于应收金额");
+			}
+			paymentAmount = amountPaid.subtract(existingPaid);
 		}
 		String payStatus = amountPaid.compareTo(nullToZero(existing.getAmountDue())) < 0 ? PAY_STATUS_PARTIAL : PAY_STATUS_PAID;
 		Date now = DateUtil.now();
+		Date paymentTime = payment != null && payment.getPayTime() != null ? payment.getPayTime() : now;
 		ContractPayment update = new ContractPayment();
 		update.setPaymentId(paymentId);
 		update.setAmountPaid(amountPaid);
 		update.setPayStatus(payStatus);
-		update.setPayTime(now);
+		update.setPayTime(paymentTime);
 		update.setRemark(payment == null ? null : payment.getRemark());
+		update.setPaymentVoucherName(payment.getPaymentVoucherName());
+		update.setPaymentVoucherUrl(payment.getPaymentVoucherUrl());
 		update.setUpdateBy(currentUserName());
 		update.setUpdateTime(now);
 		boolean result = contractPaymentMapper.updateById(update) > 0;
 		if (result) {
 			String feeName = StringUtil.isBlank(existing.getFeeName()) ? "-" : existing.getFeeName();
-			addLog(existing.getContractId(), "payment", "确认缴费，费用：" + feeName);
+			ContractPaymentRecord record = new ContractPaymentRecord();
+			record.setPaymentId(paymentId);
+			record.setContractId(existing.getContractId());
+			record.setPaymentAmount(paymentAmount);
+			record.setCumulativeAmount(amountPaid);
+			record.setPaymentTime(paymentTime);
+			record.setVoucherName(payment.getPaymentVoucherName());
+			record.setVoucherUrl(payment.getPaymentVoucherUrl());
+			record.setRemark(payment.getRemark());
+			record.setOperatorUserId(AuthUtil.getUserId());
+			record.setOperatorAccount(AuthUtil.getUserName());
+			record.setOperatorName(currentOperatorName());
+			record.setParkId(existing.getParkId());
+			record.setDelFlag(DEFAULT_DEL_FLAG);
+			record.setCreateBy(currentUserName());
+			record.setCreateTime(now);
+			contractPaymentRecordMapper.insert(record);
+			String amountText = "，本次" + (payable ? "付款：" : "收款：")
+				+ paymentAmount.stripTrailingZeros().toPlainString() + "元";
+			addLog(existing.getContractId(), "payment", (payable ? "确认付款" : "确认收款") + "，费用：" + feeName + amountText);
 		}
 		return result;
 	}
@@ -782,12 +843,43 @@ public class PaymentServiceImpl implements IPaymentService {
 		}
 	}
 
-	private void validateReceivableConfirmation(ContractPayment payment) {
+	private void validateReceivableConfirmation(ContractPayment payment, ContractPayment confirmation) {
 		if (!DIRECTION_RECEIVABLE.equals(normalizeDirection(payment == null ? null : payment.getDirection()))) {
 			throw new ServiceException("付款账单需先完成付款申请审批，不能直接确认缴费");
 		}
 		if (PAY_STATUS_PAID.equals(payment.getPayStatus())) {
 			throw new ServiceException("当前账单已缴费，无需重复确认");
+		}
+		if (confirmation == null || confirmation.getPayTime() == null) {
+			throw new ServiceException("请选择收款时间");
+		}
+		if (StringUtil.isBlank(confirmation.getPaymentVoucherUrl())) {
+			throw new ServiceException("请上传收款凭证");
+		}
+	}
+
+	private void validatePayableConfirmation(ContractPayment payment, ContractPayment confirmation) {
+		if (!DIRECTION_PAYABLE.equals(normalizeDirection(payment == null ? null : payment.getDirection()))) {
+			throw new ServiceException("当前账单不是付款账单");
+		}
+		if (!"approved".equals(payment.getPaymentApprovalStatus())) {
+			throw new ServiceException("付款申请审批通过后才可以确认付款");
+		}
+		if (payment.getPaymentApprovalTime() == null) {
+			throw new ServiceException("付款申请缺少审批完成时间，请检查审批记录");
+		}
+		if (confirmation == null || confirmation.getPayTime() == null) {
+			throw new ServiceException("请选择付款时间");
+		}
+		if (confirmation != null && confirmation.getPayTime() != null
+			&& confirmation.getPayTime().before(payment.getPaymentApprovalTime())) {
+			throw new ServiceException("付款时间不能早于付款申请审批完成时间");
+		}
+		if (PAY_STATUS_PAID.equals(payment.getPayStatus())) {
+			throw new ServiceException("当前账单已完成付款，无需重复确认");
+		}
+		if (confirmation == null || StringUtil.isBlank(confirmation.getPaymentVoucherUrl())) {
+			throw new ServiceException("请上传付款凭证");
 		}
 	}
 
@@ -1023,6 +1115,16 @@ public class PaymentServiceImpl implements IPaymentService {
 			throw new ServiceException("账单不存在");
 		}
 		return payment;
+	}
+
+	private ContractPayment requirePaymentForUpdate(Long paymentId) {
+		if (Func.isEmpty(paymentId)) {
+			throw new ServiceException("账单ID不能为空");
+		}
+		if (contractPaymentMapper.selectByIdForUpdate(paymentId) == null) {
+			throw new ServiceException("账单不存在");
+		}
+		return requirePayment(paymentId);
 	}
 
 	private void assertAccessible(ContractPayment payment) {

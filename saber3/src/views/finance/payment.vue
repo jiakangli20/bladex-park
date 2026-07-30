@@ -55,11 +55,19 @@
             <span v-else class="muted">未催缴</span>
           </template>
           <template #menu="{ row }">
-            <el-button v-if="permissionList.viewBtn" text type="primary" icon="el-icon-view" @click="openDetail(row)">
+            <el-button
+              v-if="permissionList.viewBtn"
+              text
+              type="primary"
+              icon="el-icon-view"
+              @click="openDetail(row)"
+            >
               详情
             </el-button>
             <el-button
-              v-if="permissionList.confirmBtn && row.payStatus !== '1'"
+              v-if="
+                permissionList.confirmBtn && row.payStatus !== '1' && row.direction !== 'payable'
+              "
               text
               type="primary"
               icon="el-icon-circle-check"
@@ -80,23 +88,51 @@
         </avue-crud>
       </template>
 
-      <el-dialog v-model="confirmVisible" title="确认缴费" width="520px" append-to-body :before-close="closeConfirm">
+      <el-dialog
+        v-model="confirmVisible"
+        title="确认缴费"
+        width="520px"
+        append-to-body
+        :before-close="closeConfirm"
+      >
         <el-form ref="confirmFormRef" :model="confirmForm" :rules="confirmRules" label-width="96px">
           <el-form-item label="账单编号">
-            <el-input :model-value="currentPayment.paymentId ? `ZD${currentPayment.paymentId}` : '-'" disabled />
+            <el-input
+              :model-value="currentPayment.paymentId ? `ZD${currentPayment.paymentId}` : '-'"
+              disabled
+            />
           </el-form-item>
           <el-form-item label="合同编号">
             <el-input :model-value="currentPayment.contractNo || '-'" disabled />
           </el-form-item>
           <el-form-item label="实收金额" prop="amountPaid">
-            <el-input-number v-model="confirmForm.amountPaid" :min="0.01" :precision="2" :step="100" controls-position="right" style="width: 100%" />
+            <el-input-number
+              v-model="confirmForm.amountPaid"
+              :min="0.01"
+              :precision="2"
+              :step="100"
+              controls-position="right"
+              style="width: 100%"
+            />
           </el-form-item>
           <el-form-item label="备注">
-            <el-input v-model="confirmForm.remark" type="textarea" :rows="3" maxlength="500" show-word-limit />
+            <el-input
+              v-model="confirmForm.remark"
+              type="textarea"
+              :rows="3"
+              maxlength="500"
+              show-word-limit
+            />
           </el-form-item>
         </el-form>
         <template #footer>
-          <el-button type="primary" icon="el-icon-circle-check" :loading="confirmLoading" @click="submitConfirm">提交</el-button>
+          <el-button
+            type="primary"
+            icon="el-icon-circle-check"
+            :loading="confirmLoading"
+            @click="submitConfirm"
+            >提交</el-button
+          >
           <el-button icon="el-icon-circle-close" @click="closeConfirm">取消</el-button>
         </template>
       </el-dialog>
@@ -104,28 +140,57 @@
       <el-drawer v-model="detailVisible" title="账单详情" size="680px" append-to-body>
         <template v-if="currentPayment.paymentId">
           <el-descriptions :column="2" border>
-            <el-descriptions-item label="账单编号">ZD{{ currentPayment.paymentId }}</el-descriptions-item>
+            <el-descriptions-item label="账单编号"
+              >ZD{{ currentPayment.paymentId }}</el-descriptions-item
+            >
             <el-descriptions-item label="缴费状态">
-              <el-tag :type="payStatusType(currentPayment.payStatus)" effect="plain">{{ payStatusText(currentPayment.payStatus) }}</el-tag>
+              <el-tag :type="payStatusType(currentPayment.payStatus)" effect="plain">{{
+                payStatusText(currentPayment.payStatus)
+              }}</el-tag>
             </el-descriptions-item>
-            <el-descriptions-item label="合同编号">{{ currentPayment.contractNo || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="客户名称">{{ currentPayment.customerName || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="费用类型">{{ currentPayment.feeName || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="所属园区">{{ currentPayment.parkId || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="合同编号">{{
+              currentPayment.contractNo || '-'
+            }}</el-descriptions-item>
+            <el-descriptions-item label="客户名称">{{
+              currentPayment.customerName || '-'
+            }}</el-descriptions-item>
+            <el-descriptions-item label="费用类型">{{
+              currentPayment.feeName || '-'
+            }}</el-descriptions-item>
+            <el-descriptions-item label="所属园区">{{
+              currentPayment.parkId || '-'
+            }}</el-descriptions-item>
             <el-descriptions-item label="账期">
               {{ currentPayment.periodStart || '-' }} 至 {{ currentPayment.periodEnd || '-' }}
             </el-descriptions-item>
-            <el-descriptions-item label="应缴日期">{{ currentPayment.payDeadline || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="应收金额">{{ formatMoney(currentPayment.amountDue) }}</el-descriptions-item>
-            <el-descriptions-item label="实收金额">{{ formatMoney(currentPayment.amountPaid) }}</el-descriptions-item>
-            <el-descriptions-item label="实缴时间">{{ currentPayment.payTime || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="催缴时间">{{ currentPayment.remindTime || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="备注" :span="2">{{ currentPayment.remark || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="应缴日期">{{
+              currentPayment.payDeadline || '-'
+            }}</el-descriptions-item>
+            <el-descriptions-item label="应收金额">{{
+              formatMoney(currentPayment.amountDue)
+            }}</el-descriptions-item>
+            <el-descriptions-item label="实收金额">{{
+              formatMoney(currentPayment.amountPaid)
+            }}</el-descriptions-item>
+            <el-descriptions-item label="实缴时间">{{
+              currentPayment.payTime || '-'
+            }}</el-descriptions-item>
+            <el-descriptions-item label="催缴时间">{{
+              currentPayment.remindTime || '-'
+            }}</el-descriptions-item>
+            <el-descriptions-item label="备注" :span="2">{{
+              currentPayment.remark || '-'
+            }}</el-descriptions-item>
           </el-descriptions>
 
           <div class="log-title">合同联动日志</div>
           <el-timeline>
-            <el-timeline-item v-for="item in logs" :key="item.logId" :timestamp="item.operateTime" placement="top">
+            <el-timeline-item
+              v-for="item in logs"
+              :key="item.logId"
+              :timestamp="item.operateTime"
+              placement="top"
+            >
               <div class="payment-log">
                 <div class="payment-log__title">{{ item.actionDesc || item.action }}</div>
                 <div class="payment-log__operator">{{ item.operator || '-' }}</div>
@@ -194,7 +259,10 @@ export default {
     ...mapGetters(['permission']),
     permissionList() {
       return {
-        viewBtn: this.validData(this.permission.finance_bills_all_view || this.permission.finance_payment_view, false),
+        viewBtn: this.validData(
+          this.permission.finance_bills_all_view || this.permission.finance_payment_view,
+          false
+        ),
         confirmBtn: this.validData(this.permission.finance_payment_confirm, false),
         remindBtn: this.validData(this.permission.finance_payment_remind, false),
       };

@@ -11,14 +11,29 @@
       <section class="reminder-search">
         <el-form :inline="true" :model="query">
           <el-form-item label="合同编号">
-            <el-input v-model="query.contractNo" clearable placeholder="请输入合同编号" @keyup.enter="searchChange" />
+            <el-input
+              v-model="query.contractNo"
+              clearable
+              placeholder="请输入合同编号"
+              @keyup.enter="searchChange"
+            />
           </el-form-item>
           <el-form-item label="租客名称">
-            <el-input v-model="query.customerName" clearable placeholder="请输入租客名称" @keyup.enter="searchChange" />
+            <el-input
+              v-model="query.customerName"
+              clearable
+              placeholder="请输入租客名称"
+              @keyup.enter="searchChange"
+            />
           </el-form-item>
           <el-form-item label="费用类型">
             <el-select v-model="query.feeType" clearable placeholder="全部类型">
-              <el-option v-for="item in feeTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+              <el-option
+                v-for="item in feeTypeOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
             </el-select>
           </el-form-item>
           <el-form-item>
@@ -40,21 +55,34 @@
           <el-table-column label="账单编号" width="118" align="center">
             <template #default="{ row }">ZD{{ row.paymentId }}</template>
           </el-table-column>
-          <el-table-column prop="customerName" label="租客名称" :min-width="customerNameColumnWidth" align="center">
+          <el-table-column
+            prop="customerName"
+            label="租客名称"
+            :min-width="customerNameColumnWidth"
+            align="center"
+          >
             <template #default="{ row }">
               <el-button text type="primary" class="customer-link" @click="openReminderDrawer(row)">
                 {{ row.customerName || '-' }}
               </el-button>
             </template>
           </el-table-column>
-          <el-table-column prop="contractNo" label="合同编号" min-width="150" align="center" show-overflow-tooltip />
+          <el-table-column
+            prop="contractNo"
+            label="合同编号"
+            min-width="150"
+            align="center"
+            show-overflow-tooltip
+          />
           <el-table-column label="房源信息" min-width="150" align="center" show-overflow-tooltip>
             <template #default="{ row }">{{ row.roomName || row.buildingName || '-' }}</template>
           </el-table-column>
           <el-table-column prop="feeName" label="费用类型" width="100" align="center" />
           <el-table-column label="账期" width="210" align="center">
             <template #default="{ row }">
-              <span class="period-cell">{{ row.periodStart || '-' }} 至 {{ row.periodEnd || '-' }}</span>
+              <span class="period-cell"
+                >{{ row.periodStart || '-' }} 至 {{ row.periodEnd || '-' }}</span
+              >
             </template>
           </el-table-column>
           <el-table-column prop="amountDue" label="应收金额" width="116" align="center">
@@ -88,7 +116,12 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="overdueApprovalStatus" label="律师函审批" width="126" align="center">
+          <el-table-column
+            prop="overdueApprovalStatus"
+            label="律师函审批"
+            width="126"
+            align="center"
+          >
             <template #default="{ row }">
               <el-tag :type="approvalStatusType(row.overdueApprovalStatus)" effect="plain">
                 {{ approvalStatusText(row.overdueApprovalStatus) }}
@@ -163,7 +196,9 @@
               <el-button
                 type="warning"
                 plain
-                :disabled="isSettled(drawerRow) || workflowStatus('contract_overdue_legal') === 'running'"
+                :disabled="
+                  isSettled(drawerRow) || workflowStatus('contract_overdue_legal') === 'running'
+                "
                 @click="handleStartOverdueApproval(drawerRow)"
               >
                 律师函申请
@@ -171,7 +206,9 @@
               <el-button
                 type="danger"
                 plain
-                :disabled="isSettled(drawerRow) || workflowStatus('contract_termination') === 'running'"
+                :disabled="
+                  isSettled(drawerRow) || workflowStatus('contract_termination') === 'running'
+                "
                 @click="handleStartTermination(drawerRow)"
               >
                 退租申请
@@ -179,12 +216,17 @@
               <el-button
                 type="primary"
                 plain
-                :disabled="workflowStatus('contract_room_review') === 'running' || workflowStatus('contract_room_review') === 'approved'"
+                :disabled="
+                  workflowStatus('contract_room_review') === 'running' ||
+                  workflowStatus('contract_room_review') === 'approved'
+                "
                 @click="handleStartRoomReview(drawerRow)"
               >
                 房屋验收申请
               </el-button>
-              <el-button v-if="permissionList.logBtn" plain @click="openLogDialog(drawerRow)">联动日志</el-button>
+              <el-button v-if="permissionList.logBtn" plain @click="openLogDialog(drawerRow)"
+                >联动日志</el-button
+              >
             </div>
           </section>
 
@@ -213,15 +255,24 @@
               <div v-for="item in workflowGeneratedFiles" :key="item.fileKey" class="document-row">
                 <div class="document-row__name">
                   <strong>{{ item.fileName }}</strong>
-                  <span>{{ item.sourceLabel || workflowBusinessTypeText(item.businessType) }} / {{ item.approvalTime || item.updateTime || '-' }}</span>
+                  <span
+                    >{{ item.sourceLabel || workflowBusinessTypeText(item.businessType) }} /
+                    {{ item.approvalTime || item.updateTime || '-' }}</span
+                  >
                 </div>
                 <div class="document-row__actions">
                   <el-button text type="primary" @click="previewWorkflowFile(item)">预览</el-button>
-                  <el-button text type="primary" @click="downloadWorkflowFile(item)">下载</el-button>
+                  <el-button text type="primary" @click="downloadWorkflowFile(item)"
+                    >下载</el-button
+                  >
                 </div>
               </div>
             </div>
-            <el-empty v-else :image-size="54" description="审批完成后，律师函申请审批表、律师函、退租审批表和房屋验收文件将在此生成" />
+            <el-empty
+              v-else
+              :image-size="54"
+              description="审批完成后，律师函申请审批表、律师函、退租审批表和房屋验收文件将在此生成"
+            />
           </section>
 
           <section class="drawer-section">
@@ -233,7 +284,9 @@
                   <span>非审批 Word 文书</span>
                 </div>
                 <div class="document-row__actions">
-                  <el-button text type="primary" @click="previewNotice(drawerRow, item.value)">预览</el-button>
+                  <el-button text type="primary" @click="previewNotice(drawerRow, item.value)"
+                    >预览</el-button
+                  >
                   <el-button
                     text
                     type="primary"
@@ -263,30 +316,37 @@
             </div>
           </section>
 
-		  <section class="drawer-section">
-				<div class="drawer-section-title">首次逾期通知记录</div>
-			<div class="record-list">
-			  <div
-				v-for="item in disposalDetail.internalNotices"
-				:key="item.noticeId"
-				class="record-item"
-			  >
-				<div>
-				  <strong>{{ item.recipientName || item.recipientAccount || '-' }}</strong>
-				  <span>{{ item.recipientRoles || '-' }} / {{ item.createTime || '-' }}</span>
-				</div>
-				<el-tag :type="item.readStatus === '1' ? 'success' : 'warning'" effect="plain">
-				  {{ item.readStatus === '1' ? '已读' : '未读' }}
-				</el-tag>
-			  </div>
-			  <el-empty v-if="!disposalDetail.internalNotices.length" description="暂无内部通知记录" />
-			</div>
-		  </section>
+          <section class="drawer-section">
+            <div class="drawer-section-title">首次逾期通知记录</div>
+            <div class="record-list">
+              <div
+                v-for="item in disposalDetail.internalNotices"
+                :key="item.noticeId"
+                class="record-item"
+              >
+                <div>
+                  <strong>{{ item.recipientName || item.recipientAccount || '-' }}</strong>
+                  <span>{{ item.recipientRoles || '-' }} / {{ item.createTime || '-' }}</span>
+                </div>
+                <el-tag :type="item.readStatus === '1' ? 'success' : 'warning'" effect="plain">
+                  {{ item.readStatus === '1' ? '已读' : '未读' }}
+                </el-tag>
+              </div>
+              <el-empty
+                v-if="!disposalDetail.internalNotices.length"
+                description="暂无内部通知记录"
+              />
+            </div>
+          </section>
 
           <section class="drawer-section">
             <div class="drawer-section-title">文书生成记录</div>
             <div class="record-list">
-              <div v-for="item in disposalDetail.documentRecords" :key="item.logId" class="record-item">
+              <div
+                v-for="item in disposalDetail.documentRecords"
+                :key="item.logId"
+                class="record-item"
+              >
                 <div>
                   <strong>{{ item.actionDesc || item.action }}</strong>
                   <span>{{ item.operator || '-' }} / {{ item.operateTime || '-' }}</span>
@@ -300,17 +360,23 @@
           <section class="drawer-section">
             <div class="drawer-section-title">小程序发送记录</div>
             <div class="record-list">
-              <div v-for="item in disposalDetail.miniAppRecords" :key="item.logId" class="record-item">
+              <div
+                v-for="item in disposalDetail.miniAppRecords"
+                :key="item.logId"
+                class="record-item"
+              >
                 <div>
                   <strong>{{ item.actionDesc || item.action }}</strong>
                   <span>{{ item.operator || '-' }} / {{ item.operateTime || '-' }}</span>
                 </div>
                 <el-tag effect="plain" type="primary">已生成</el-tag>
               </div>
-              <el-empty v-if="!disposalDetail.miniAppRecords.length" description="暂无小程序发送记录" />
+              <el-empty
+                v-if="!disposalDetail.miniAppRecords.length"
+                description="暂无小程序发送记录"
+              />
             </div>
           </section>
-
         </div>
       </el-drawer>
 
@@ -339,7 +405,13 @@
         @sent="handleRecipientSent"
       />
 
-      <el-dialog v-model="workflowVisible" :title="workflowDialogTitle" width="760px" append-to-body @close="resetWorkflowDialog">
+      <el-dialog
+        v-model="workflowVisible"
+        :title="workflowDialogTitle"
+        width="760px"
+        append-to-body
+        @close="resetWorkflowDialog"
+      >
         <section class="workflow-section">
           <div class="workflow-section-title">{{ workflowSummaryTitle }}</div>
           <div class="workflow-field-grid">
@@ -368,7 +440,10 @@
                 >
                   <div class="workflow-option">
                     <span>{{ item.name || item.key }}</span>
-                    <em>{{ item.key }}<template v-if="item.version"> / v{{ item.version }}</template></em>
+                    <em
+                      >{{ item.key
+                      }}<template v-if="item.version"> / v{{ item.version }}</template></em
+                    >
                   </div>
                 </el-option>
               </el-select>
@@ -377,7 +452,11 @@
         </section>
         <template #footer>
           <el-button @click="workflowVisible = false">取消</el-button>
-          <el-button type="primary" :disabled="!workflowForm.processDefKey || workflowLoading" @click="goWorkflow">
+          <el-button
+            type="primary"
+            :disabled="!workflowForm.processDefKey || workflowLoading"
+            @click="goWorkflow"
+          >
             下一步
           </el-button>
         </template>
@@ -391,6 +470,8 @@
         :download-url="noticePreview.downloadUrl"
         :preview-type="noticePreview.previewType"
         :document-blob="noticePreview.documentBlob"
+        :pdf-blob="noticePreview.pdfBlob"
+        :pdf-file-name="noticePreview.pdfFileName"
         :preview-error="noticePreview.previewError"
         @download="downloadNoticePreviewFile"
       />
@@ -410,7 +491,7 @@ import {
   getOverduePaymentLogs,
   getOverdueReminderPage,
   getOverdueReminderSummary,
-	readOverdueInternalNotice,
+  readOverdueInternalNotice,
   remindOverduePayment,
   sendMiniAppNotice,
 } from '@/api/ics/payment';
@@ -485,7 +566,7 @@ export default {
         documentRecords: [],
         miniAppRecords: [],
         workflowRecords: [],
-		internalNotices: [],
+        internalNotices: [],
       },
       workflowVisible: false,
       workflowLoading: false,
@@ -527,7 +608,11 @@ export default {
       const running = this.data.filter(item => item.overdueApprovalStatus === 'running').length;
       const approved = this.data.filter(item => item.overdueApprovalStatus === 'approved').length;
       return [
-        { key: 'overdue', label: '逾期处置记录', value: this.summary.totalCount || this.page.total || 0 },
+        {
+          key: 'overdue',
+          label: '逾期处置记录',
+          value: this.summary.totalCount || this.page.total || 0,
+        },
         { key: 'pending', label: '未收金额', value: this.formatMoney(this.summary.amountPending) },
         { key: 'reminded', label: '已催缴', value: this.summary.remindedCount || 0 },
         { key: 'running', label: '律师函审批中', value: running },
@@ -595,7 +680,10 @@ export default {
         {
           key: 'reminder',
           label: '催缴通知',
-          value: row.remindStatus === '1' || this.disposalDetail.internalNotices.length ? '已完成' : '待发送',
+          value:
+            row.remindStatus === '1' || this.disposalDetail.internalNotices.length
+              ? '已完成'
+              : '待发送',
           done: row.remindStatus === '1' || this.disposalDetail.internalNotices.length > 0,
         },
         {
@@ -626,9 +714,11 @@ export default {
     },
     workflowGeneratedFiles() {
       return [OVERDUE_WORKFLOW, TERMINATION_WORKFLOW, ROOM_REVIEW_WORKFLOW]
-        .map(type => (this.disposalDetail.workflowRecords || []).find(
-          item => item.businessType === type && item.processStatus === 'approved'
-        ))
+        .map(type =>
+          (this.disposalDetail.workflowRecords || []).find(
+            item => item.businessType === type && item.processStatus === 'approved'
+          )
+        )
         .filter(Boolean)
         .flatMap(item => {
           const generatedFile = {
@@ -694,7 +784,11 @@ export default {
     },
     loadData() {
       this.loading = true;
-      getOverdueReminderPage(this.page.currentPage, this.page.pageSize, this.cleanParams(this.query))
+      getOverdueReminderPage(
+        this.page.currentPage,
+        this.page.pageSize,
+        this.cleanParams(this.query)
+      )
         .then(res => {
           const result = res.data.data || {};
           this.page.total = result.total || 0;
@@ -736,9 +830,9 @@ export default {
     openReminderDrawer(row) {
       this.drawerRow = { ...(row || {}) };
       this.drawerVisible = true;
-	  readOverdueInternalNotice(row.paymentId)
-		.catch(() => {})
-		.finally(() => this.loadDisposalDetail(row));
+      readOverdueInternalNotice(row.paymentId)
+        .catch(() => {})
+        .finally(() => this.loadDisposalDetail(row));
     },
     openRoutePaymentDrawer() {
       if (!this.routePaymentId || this.routeDrawerOpened) return;
@@ -761,7 +855,7 @@ export default {
             documentRecords: data.documentRecords || [],
             miniAppRecords: data.miniAppRecords || [],
             workflowRecords: data.workflowRecords || [],
-			internalNotices: data.internalNotices || [],
+            internalNotices: data.internalNotices || [],
           };
         })
         .finally(() => {
@@ -774,7 +868,7 @@ export default {
         documentRecords: [],
         miniAppRecords: [],
         workflowRecords: [],
-		internalNotices: [],
+        internalNotices: [],
       };
     },
     openLogDialog(row) {
@@ -871,14 +965,17 @@ export default {
         paymentId: row.paymentId,
         contractId: row.contractId,
       }).then(() => {
-        const refresh = noticeType === 'move-out-notice'
-          ? Promise.resolve()
-          : remindOverduePayment(row.paymentId, 'overdue_reminder');
+        const refresh =
+          noticeType === 'move-out-notice'
+            ? Promise.resolve()
+            : remindOverduePayment(row.paymentId, 'overdue_reminder');
         refresh.finally(() => {
           this.loadDisposalDetail(row);
           this.reload();
         });
-        this.$message.success(`${messageMap[noticeType] || '通知文件'}的小程序发送数据已生成，已预留给小程序接口`);
+        this.$message.success(
+          `${messageMap[noticeType] || '通知文件'}的小程序发送数据已生成，已预留给小程序接口`
+        );
       });
     },
     handleStartOverdueApproval(row) {
@@ -910,10 +1007,14 @@ export default {
       const terminationStatus = this.workflowStatus(TERMINATION_WORKFLOW);
       const roomReviewStatus = this.workflowStatus(ROOM_REVIEW_WORKFLOW);
       if (terminationStatus !== 'approved') {
-        this.$alert('房屋验收需在退租审批完成后发起。当前前置状态已在上方“处置前置”中展示。', '前置条件未完成', {
-          confirmButtonText: '知道了',
-          type: 'warning',
-        });
+        this.$alert(
+          '房屋验收需在退租审批完成后发起。当前前置状态已在上方“处置前置”中展示。',
+          '前置条件未完成',
+          {
+            confirmButtonText: '知道了',
+            type: 'warning',
+          }
+        );
         return;
       }
       if (roomReviewStatus === 'running') {
@@ -941,9 +1042,13 @@ export default {
           this.workflowProcessOptions = records
             .filter(item => this.isWorkflowProcess(item))
             .sort((a, b) => Number(b.version || 0) - Number(a.version || 0));
-          this.workflowForm.processDefKey = this.resolveWorkflowProcessKey(this.workflowProcessOptions);
+          this.workflowForm.processDefKey = this.resolveWorkflowProcessKey(
+            this.workflowProcessOptions
+          );
           if (this.workflowProcessOptions.length === 0) {
-            this.$message.warning(`未找到可用的${this.workflowDialogTitle.replace('发起', '')}，请先在部署管理激活流程`);
+            this.$message.warning(
+              `未找到可用的${this.workflowDialogTitle.replace('发起', '')}，请先在部署管理激活流程`
+            );
           }
         })
         .finally(() => {
@@ -955,17 +1060,21 @@ export default {
       const key = item.key || '';
       const formKey = item.formKey || '';
       const config = this.workflowConfig;
-      return (config.formKeys || []).includes(formKey)
-        || (config.defaultKeys || []).includes(key)
-        || (config.nameKeywords || []).some(keyword => name.includes(keyword) || key.includes(keyword));
+      return (
+        (config.formKeys || []).includes(formKey) ||
+        (config.defaultKeys || []).includes(key) ||
+        (config.nameKeywords || []).some(keyword => name.includes(keyword) || key.includes(keyword))
+      );
     },
     resolveWorkflowProcessKey(processOptions = []) {
       const config = this.workflowConfig;
       const preferred =
-        processOptions.find(item => (config.formKeys || []).includes(item.formKey))
-        || processOptions.find(item => (config.defaultKeys || []).includes(item.key))
-        || processOptions.find(item => (config.nameKeywords || []).some(keyword => (item.name || '').includes(keyword)))
-        || processOptions[0];
+        processOptions.find(item => (config.formKeys || []).includes(item.formKey)) ||
+        processOptions.find(item => (config.defaultKeys || []).includes(item.key)) ||
+        processOptions.find(item =>
+          (config.nameKeywords || []).some(keyword => (item.name || '').includes(keyword))
+        ) ||
+        processOptions[0];
       return preferred ? preferred.key : '';
     },
     workflowProcessLabel(item = {}) {
@@ -1063,7 +1172,11 @@ export default {
       });
     },
     latestWorkflowRecord(businessType) {
-      return (this.disposalDetail.workflowRecords || []).find(item => item.businessType === businessType) || null;
+      return (
+        (this.disposalDetail.workflowRecords || []).find(
+          item => item.businessType === businessType
+        ) || null
+      );
     },
     workflowStatus(businessType) {
       const record = this.latestWorkflowRecord(businessType);
@@ -1653,6 +1766,5 @@ export default {
   .precondition-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
 }
 </style>

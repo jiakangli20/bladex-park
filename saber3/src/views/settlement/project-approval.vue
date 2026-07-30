@@ -11,11 +11,26 @@
       <section class="tenant-entry-search">
         <el-form :inline="true" :model="query">
           <el-form-item label="企业名称">
-            <el-input v-model="query.enterpriseName" clearable placeholder="请输入企业名称" @keyup.enter="searchChange" />
+            <el-input
+              v-model="query.enterpriseName"
+              clearable
+              placeholder="请输入企业名称"
+              @keyup.enter="searchChange"
+            />
           </el-form-item>
           <el-form-item label="流程状态">
-            <el-select v-model="query.processIsFinished" clearable placeholder="全部状态" @change="searchChange">
-              <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
+            <el-select
+              v-model="query.processIsFinished"
+              clearable
+              placeholder="全部状态"
+              @change="searchChange"
+            >
+              <el-option
+                v-for="item in statusOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
             </el-select>
           </el-form-item>
           <el-form-item>
@@ -39,7 +54,13 @@
           </div>
         </div>
 
-        <el-table v-loading="loading" :data="data" border row-key="rowKey" class="tenant-entry-table">
+        <el-table
+          v-loading="loading"
+          :data="data"
+          border
+          row-key="rowKey"
+          class="tenant-entry-table"
+        >
           <el-table-column
             prop="enterpriseName"
             label="企业名称"
@@ -48,21 +69,47 @@
             show-overflow-tooltip
             class-name="enterprise-name-column"
           />
-          <el-table-column prop="processDefinitionName" label="审批类型" min-width="180" align="center" show-overflow-tooltip />
-          <el-table-column prop="taskName" label="当前节点" min-width="170" align="center" show-overflow-tooltip />
+          <el-table-column
+            prop="processDefinitionName"
+            label="审批类型"
+            min-width="180"
+            align="center"
+            show-overflow-tooltip
+          />
+          <el-table-column
+            prop="taskName"
+            label="当前节点"
+            min-width="170"
+            align="center"
+            show-overflow-tooltip
+          />
           <el-table-column prop="statusLabel" label="状态" width="110" align="center">
             <template #default="{ row }">
               <el-tag :type="statusTag(row)" effect="plain">{{ row.statusLabel }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="startUsername" label="发起人" width="120" align="center" show-overflow-tooltip />
+          <el-table-column
+            prop="startUsername"
+            label="发起人"
+            width="120"
+            align="center"
+            show-overflow-tooltip
+          />
           <el-table-column prop="createTime" label="发起/到达时间" min-width="190" align="center" />
           <el-table-column label="操作" width="156" fixed="right" align="center">
             <template #default="{ row }">
               <div class="table-row-actions">
-                <el-button v-if="row.scope === 'todo'" text type="primary" @click="openDetail(row)">处理</el-button>
+                <el-button v-if="row.scope === 'todo'" text type="primary" @click="openDetail(row)"
+                  >处理</el-button
+                >
                 <el-button v-else text type="primary" @click="openDetail(row)">详情</el-button>
-                <el-button v-if="canExportApprovalForm(row)" text type="primary" @click="openApprovalForm(row)">导出审核表</el-button>
+                <el-button
+                  v-if="canExportApprovalForm(row)"
+                  text
+                  type="primary"
+                  @click="openApprovalForm(row)"
+                  >导出审核表</el-button
+                >
               </div>
             </template>
           </el-table-column>
@@ -127,12 +174,16 @@
                 <span class="option-extra">{{ item.contactName || item.contactPhone || '' }}</span>
               </el-option>
             </el-select>
-            <div class="start-form-tip">不选择商机时，将进入空白入驻审批表，由发起人在下一页填写企业信息。</div>
+            <div class="start-form-tip">
+              不选择商机时，将进入空白入驻审批表，由发起人在下一页填写企业信息。
+            </div>
           </el-form-item>
         </el-form>
         <template #footer>
           <el-button @click="startVisible = false">取消</el-button>
-          <el-button type="primary" :disabled="!startForm.processDefKey" @click="goStart">下一步</el-button>
+          <el-button type="primary" :disabled="!startForm.processDefKey" @click="goStart"
+            >下一步</el-button
+          >
         </template>
       </el-dialog>
 
@@ -145,10 +196,11 @@
         :download-label="approvalPreview.downloadLabel"
         :preview-type="approvalPreview.previewType"
         :document-blob="approvalPreview.documentBlob"
+        :pdf-blob="approvalPreview.pdfBlob"
+        :pdf-file-name="approvalPreview.pdfFileName"
         :preview-error="approvalPreview.previewError"
         @download="downloadApprovalForm"
       />
-
     </div>
   </basic-container>
 </template>
@@ -252,10 +304,13 @@ export default {
         this.query.processIsFinished = '';
       }
     },
-    requestByScope(scope, current = this.page.currentPage, size = this.page.pageSize, extraParams = {}) {
-      const params = scope === 'copy'
-        ? { title: '入驻' }
-        : { processDefinitionName: '入驻' };
+    requestByScope(
+      scope,
+      current = this.page.currentPage,
+      size = this.page.pageSize,
+      extraParams = {}
+    ) {
+      const params = scope === 'copy' ? { title: '入驻' } : { processDefinitionName: '入驻' };
       const apiMap = {
         todo: todoList,
         send: sendList,
@@ -275,14 +330,23 @@ export default {
     },
     onLoad() {
       this.loading = true;
-      this.requestByScope(this.query.scope, this.page.currentPage, this.page.pageSize, this.processStatusParams())
+      this.requestByScope(
+        this.query.scope,
+        this.page.currentPage,
+        this.page.pageSize,
+        this.processStatusParams()
+      )
         .then(res => {
           const result = res.data.data || {};
           const records = this.filterTenantEntryRecords(result.records || [], this.query.scope);
           this.data = records
             .map(item => this.normalizeRow(item))
             .filter(item => this.matchesStatus(item))
-            .filter(item => !this.query.enterpriseName || item.enterpriseName.includes(this.query.enterpriseName));
+            .filter(
+              item =>
+                !this.query.enterpriseName ||
+                item.enterpriseName.includes(this.query.enterpriseName)
+            );
           this.page.total = Number(result.total) || this.data.length;
         })
         .finally(() => {
@@ -301,7 +365,12 @@ export default {
         rowKey: row.taskId || row.id || processInstanceId,
         scope: this.query.scope,
         processInstanceId,
-        enterpriseName: vars.enterpriseName || row.enterpriseName || this.titleEnterpriseName(row.title) || row.processDefinitionName || '-',
+        enterpriseName:
+          vars.enterpriseName ||
+          row.enterpriseName ||
+          this.titleEnterpriseName(row.title) ||
+          row.processDefinitionName ||
+          '-',
         opportunityId: vars.opportunityId || row.businessId || row.businessKey,
         taskName: this.realCurrentNode(row),
         statusLabel: this.realStatusText(row),
@@ -314,9 +383,11 @@ export default {
           const vars = item.variables || {};
           const title = item.title || item.processDefinitionName || '';
           const processKey = item.processDefinitionKey || '';
-          return vars.businessType === TENANT_ENTRY_BUSINESS_TYPE
-            || processKey.includes('tenant_entry')
-            || title.includes('入驻');
+          return (
+            vars.businessType === TENANT_ENTRY_BUSINESS_TYPE ||
+            processKey.includes('tenant_entry') ||
+            title.includes('入驻')
+          );
         });
       }
       return records.filter(item => {
@@ -369,7 +440,9 @@ export default {
     },
     realCurrentNode(row = {}) {
       const status = this.realStatusValue(row);
-      if (['99', 'finished', 'finish', 'completed', 'complete', 'approved', 'done'].includes(status)) {
+      if (
+        ['99', 'finished', 'finish', 'completed', 'complete', 'approved', 'done'].includes(status)
+      ) {
         return '流程结束';
       }
       return row.taskName || row.currentNodeName || row.title || row.processDefinitionName || '-';
@@ -377,9 +450,23 @@ export default {
     statusTag(row) {
       const value = this.realStatusValue(row);
       if (['1', 'unfinished', 'running', 'active'].includes(value)) return 'warning';
-      if (['99', 'finished', 'finish', 'completed', 'complete', 'approved', 'done'].includes(value)) return 'success';
+      if (['99', 'finished', 'finish', 'completed', 'complete', 'approved', 'done'].includes(value))
+        return 'success';
       if (['2', 'reject', 'rejected'].includes(value)) return 'danger';
-      if (['3', 'recall', 'withdraw', '97', '98', 'terminate', 'terminated', '96', 'deleted'].includes(value)) return 'info';
+      if (
+        [
+          '3',
+          'recall',
+          'withdraw',
+          '97',
+          '98',
+          'terminate',
+          'terminated',
+          '96',
+          'deleted',
+        ].includes(value)
+      )
+        return 'info';
       if (row.scope === 'copy') return 'info';
       return 'primary';
     },
@@ -424,24 +511,32 @@ export default {
       this.processLoading = true;
       getDeploymentList(1, -1, {
         status: 1,
-      }).then(res => {
-        const records = (res.data.data || {}).records || [];
-        this.processOptions = records.filter(item => this.isTenantEntryProcess(item));
-        if (!this.startForm.processDefKey || !this.processOptions.some(item => item.key === this.startForm.processDefKey)) {
-          const preferred = this.processOptions.find(item => item.key === DEFAULT_PROCESS_KEY)
-            || this.processOptions.find(item => item.name && item.name.includes('入驻'))
-            || this.processOptions[0];
-          this.startForm.processDefKey = preferred ? preferred.key : DEFAULT_PROCESS_KEY;
-        }
-      }).finally(() => {
-        this.processLoading = false;
-      });
+      })
+        .then(res => {
+          const records = (res.data.data || {}).records || [];
+          this.processOptions = records.filter(item => this.isTenantEntryProcess(item));
+          if (
+            !this.startForm.processDefKey ||
+            !this.processOptions.some(item => item.key === this.startForm.processDefKey)
+          ) {
+            const preferred =
+              this.processOptions.find(item => item.key === DEFAULT_PROCESS_KEY) ||
+              this.processOptions.find(item => item.name && item.name.includes('入驻')) ||
+              this.processOptions[0];
+            this.startForm.processDefKey = preferred ? preferred.key : DEFAULT_PROCESS_KEY;
+          }
+        })
+        .finally(() => {
+          this.processLoading = false;
+        });
     },
     isTenantEntryProcess(item = {}) {
       const name = item.name || '';
       const key = item.key || '';
       const formKey = item.formKey || '';
-      return name.includes('入驻') || key.includes('tenant_entry') || COPY_FORM_KEYS.includes(formKey);
+      return (
+        name.includes('入驻') || key.includes('tenant_entry') || COPY_FORM_KEYS.includes(formKey)
+      );
     },
     processOptionLabel(item = {}) {
       return `${item.name || item.key}${item.version ? ` v${item.version}` : ''}`;
@@ -451,11 +546,13 @@ export default {
       getOpportunityList(1, 20, {
         keyword,
         tenantEntryCandidate: true,
-      }).then(res => {
-        this.opportunityOptions = (res.data.data || {}).records || [];
-      }).finally(() => {
-        this.opportunityLoading = false;
-      });
+      })
+        .then(res => {
+          this.opportunityOptions = (res.data.data || {}).records || [];
+        })
+        .finally(() => {
+          this.opportunityLoading = false;
+        });
     },
     goStart() {
       const formParams = {
@@ -489,12 +586,15 @@ export default {
             {
               path: `TenantEntry/${type}`,
               name: routeName,
-              component: () => import(`@/views/plugin/workflow/pages/external/TenantEntry/${type}.vue`),
+              component: () =>
+                import(`@/views/plugin/workflow/pages/external/TenantEntry/${type}.vue`),
             },
           ],
         });
       }
-      this.$router.push(`/plugin/workflow/pages/process/external/TenantEntry/${type}?p=${encodedParam}`);
+      this.$router.push(
+        `/plugin/workflow/pages/process/external/TenantEntry/${type}?p=${encodedParam}`
+      );
     },
     canExportApprovalForm(row) {
       return row.opportunityId && ['done', 'send', 'myDone'].includes(row.scope);
@@ -513,8 +613,8 @@ export default {
           const data = res.data.data || {};
           this.approvalPreview.title = data.noticeName || '企业入驻审批表预览';
           this.approvalPreview.html = data.html || '';
-          this.approvalPreview.fallbackName = data.fileName
-            || `企业入驻审批表-${row.enterpriseName || row.opportunityId}.docx`;
+          this.approvalPreview.fallbackName =
+            data.fileName || `企业入驻审批表-${row.enterpriseName || row.opportunityId}.docx`;
         })
         .catch(error => {
           this.approvalPreview.visible = false;
@@ -527,16 +627,20 @@ export default {
     downloadApprovalForm() {
       const row = this.approvalPreviewRow;
       if (!row) return;
-      exportTenantEntryApprovalForm(row.opportunityId, row.processInstanceId || row.processId).then(res => {
-        const disposition = res.headers && res.headers['content-disposition'];
-        const filename = resolveDownloadFilename(
-          disposition,
-          this.approvalPreview.fallbackName || `企业入驻审批表-${row.enterpriseName || row.opportunityId}.docx`
-        );
-        const contentType = (res.headers && res.headers['content-type']) || 'application/octet-stream';
-        downloadFile(res.data, filename, contentType);
-        this.$message.success('导出成功');
-      });
+      exportTenantEntryApprovalForm(row.opportunityId, row.processInstanceId || row.processId).then(
+        res => {
+          const disposition = res.headers && res.headers['content-disposition'];
+          const filename = resolveDownloadFilename(
+            disposition,
+            this.approvalPreview.fallbackName ||
+              `企业入驻审批表-${row.enterpriseName || row.opportunityId}.docx`
+          );
+          const contentType =
+            (res.headers && res.headers['content-type']) || 'application/octet-stream';
+          downloadFile(res.data, filename, contentType);
+          this.$message.success('导出成功');
+        }
+      );
     },
   },
 };
