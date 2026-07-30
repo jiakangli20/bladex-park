@@ -284,7 +284,7 @@
             </section>
 
             <section class="bill-detail-section bill-detail-lines bill-application-files">
-              <div class="bill-detail-section__title">审批与付款文件</div>
+              <div class="bill-detail-section__title">{{ applicationFilesTitle }}</div>
               <el-table :data="applicationFileRows" border class="bill-detail-table">
                 <el-table-column prop="name" label="文件类型" width="180" align="center" />
                 <el-table-column prop="status" label="审批状态" width="150" align="center">
@@ -307,7 +307,7 @@
                 </el-table-column>
                 <el-table-column
                   prop="fileName"
-                  label="生成文件"
+                  label="文件名称"
                   min-width="360"
                   align="center"
                   class-name="bill-file-name-column"
@@ -316,7 +316,7 @@
                     <span class="bill-file-name">{{ row.fileName }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column label="操作" width="132" align="center">
+                <el-table-column label="操作" width="210" align="center">
                   <template #default="{ row }">
                     <div class="bill-file-actions">
                       <el-button
@@ -332,6 +332,15 @@
                         :disabled="!row.fileUrl"
                         @click="downloadApplicationFile(row)"
                         >下载</el-button
+                      >
+                      <el-button
+                        v-if="row.paymentRecord && canConfirmPayment"
+                        text
+                        type="danger"
+                        :loading="String(voucherDeletingId) === String(row.recordId)"
+                        :disabled="Boolean(voucherDeletingId)"
+                        @click="deletePaymentRecord(row)"
+                        >删除</el-button
                       >
                     </div>
                   </template>
@@ -518,6 +527,7 @@ import { getWorkflowRecords } from '@/api/contract/contract';
 import { noticePrintUrl } from '@/api/contract/print';
 import {
   confirmPayment,
+  deletePaymentVoucher,
   getPaymentDetail,
   getPaymentPage,
   getPaymentSummary,
@@ -579,6 +589,7 @@ export default {
         remark: '',
       },
       paymentVoucherFileList: [],
+      voucherDeletingId: '',
       uploadHeaders: {
         'Blade-Auth': `bearer ${getToken()}`,
         'Blade-Requested-With': 'BladeHttpRequest',
@@ -614,6 +625,9 @@ export default {
     },
     detailIsPayable() {
       return String((this.detailRow || {}).direction || this.direction) === 'payable';
+    },
+    applicationFilesTitle() {
+      return this.detailIsPayable ? '审批与付款文件' : '审批与收款文件';
     },
     paymentConfirmIsPayable() {
       return String((this.paymentConfirmRow || {}).direction || this.direction) === 'payable';
@@ -802,8 +816,13 @@ export default {
           fileUrl: record.voucherUrl,
           fileName:
             record.voucherName ||
-            `${row.contractNo || `ZD${row.paymentId}`}-${voucherLabel}${index + 1}`,
+            (record.voucherUrl
+              ? `${row.contractNo || `ZD${row.paymentId}`}-${voucherLabel}${index + 1}`
+              : `未关联${voucherLabel}`),
           attachment: true,
+          recordId: record.recordId,
+          paymentRecord: true,
+          payable,
         });
       });
       if (!paymentRecords.length && row.paymentVoucherUrl) {
@@ -1229,6 +1248,40 @@ export default {
       if (!file || !file.fileUrl) return;
       downloadNoticeFile(file.fileUrl, file.fileName);
     },
+    deletePaymentRecord(file) {
+      if (!file || !file.recordId || !this.detailRow.paymentId) return;
+      const payable = Boolean(file.payable);
+      const actionName = payable ? '付款' : '收款';
+      this.$confirm(
+        `删除后将撤回这一笔${actionName}，累计已${
+          payable ? '付' : '收'
+        }金额和缴费状态会同步回退。是否继续？`,
+        `删除${actionName}记录`,
+        {
+          confirmButtonText: '确认删除',
+          cancelButtonText: '取消',
+          type: 'warning',
+        }
+      )
+        .then(() => {
+          this.voucherDeletingId = file.recordId;
+          return deletePaymentVoucher(this.detailRow.paymentId, file.recordId);
+        })
+        .then(() => {
+          this.$message.success(`该笔${actionName}已撤回`);
+          this.reload();
+          return getPaymentDetail(this.detailRow.paymentId);
+        })
+        .then(res => {
+          this.detailRow = res.data.data || this.detailRow;
+        })
+        .catch(error => {
+          if (error === 'cancel' || error === 'close') return;
+        })
+        .finally(() => {
+          this.voucherDeletingId = '';
+        });
+    },
     downloadNoticePreviewFile() {
       if (!this.noticePreview.downloadUrl) return;
       downloadNoticeFile(this.noticePreview.downloadUrl, this.noticePreview.fallbackName);
@@ -1252,7 +1305,9 @@ export default {
         this.$message.warning(
           `该账单${
             this.workflowIsPayable ? '付款申请' : '开票申请'
-          }已审批完成，可在当前账单详情的“审批与付款文件”中预览和下载`
+          }已审批完成，可在当前账单详情的“${
+            this.workflowIsPayable ? '审批与付款文件' : '审批与收款文件'
+          }”中预览和下载`
         );
         return;
       }

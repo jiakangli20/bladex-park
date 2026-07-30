@@ -293,6 +293,77 @@ public class PaymentServiceImpl implements IPaymentService {
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
+	public boolean deletePaymentVoucher(Long paymentId, Long recordId) {
+		ContractPayment payment = requirePaymentForUpdate(paymentId);
+		assertAccessible(payment);
+		boolean payable = DIRECTION_PAYABLE.equals(normalizeDirection(payment.getDirection()));
+		String actionName = payable ? "付款" : "收款";
+		String paidLabel = payable ? "已付" : "已收";
+		if (recordId == null) {
+			throw new ServiceException("历史" + actionName + "缺少逐笔记录，无法安全撤回金额");
+		}
+		ContractPaymentRecord record = contractPaymentRecordMapper.selectOne(
+			Wrappers.<ContractPaymentRecord>lambdaQuery()
+				.eq(ContractPaymentRecord::getRecordId, recordId)
+				.eq(ContractPaymentRecord::getDelFlag, DEFAULT_DEL_FLAG)
+		);
+		if (record == null || !Objects.equals(record.getPaymentId(), paymentId)) {
+			throw new ServiceException(actionName + "记录不存在或不属于当前账单");
+		}
+		if (record.getPaymentAmount() == null || record.getPaymentAmount().compareTo(BigDecimal.ZERO) <= 0) {
+			throw new ServiceException(actionName + "记录金额异常，无法撤回");
+		}
+		contractPaymentRecordMapper.rollbackFollowingCumulativeAmount(
+			paymentId, recordId, record.getPaymentTime(), record.getPaymentAmount());
+		int deleted = contractPaymentRecordMapper.update(null,
+			Wrappers.<ContractPaymentRecord>lambdaUpdate()
+				.eq(ContractPaymentRecord::getRecordId, recordId)
+				.eq(ContractPaymentRecord::getPaymentId, paymentId)
+				.eq(ContractPaymentRecord::getDelFlag, DEFAULT_DEL_FLAG)
+				.set(ContractPaymentRecord::getDelFlag, "1")
+		);
+		if (deleted <= 0) {
+			throw new ServiceException(actionName + "记录撤回失败，请刷新后重试");
+		}
+		ContractPaymentRecord latestRecord = contractPaymentRecordMapper.selectOne(
+			Wrappers.<ContractPaymentRecord>lambdaQuery()
+				.eq(ContractPaymentRecord::getPaymentId, paymentId)
+				.eq(ContractPaymentRecord::getDelFlag, DEFAULT_DEL_FLAG)
+				.orderByDesc(ContractPaymentRecord::getPaymentTime)
+				.orderByDesc(ContractPaymentRecord::getRecordId)
+				.last("LIMIT 1")
+		);
+		BigDecimal amountPaid = nullToZero(payment.getAmountPaid())
+			.subtract(record.getPaymentAmount()).max(BigDecimal.ZERO);
+		BigDecimal amountDue = nullToZero(payment.getAmountDue());
+		String payStatus = amountPaid.compareTo(BigDecimal.ZERO) == 0
+			? PAY_STATUS_UNPAID
+			: (amountPaid.compareTo(amountDue) < 0 ? PAY_STATUS_PARTIAL : PAY_STATUS_PAID);
+		Date now = DateUtil.now();
+		int updated = contractPaymentMapper.update(null,
+			Wrappers.<ContractPayment>lambdaUpdate()
+				.eq(ContractPayment::getPaymentId, paymentId)
+				.set(ContractPayment::getAmountPaid, amountPaid)
+				.set(ContractPayment::getPayStatus, payStatus)
+				.set(ContractPayment::getPayTime,
+					latestRecord == null ? null : latestRecord.getPaymentTime())
+				.set(ContractPayment::getPaymentVoucherName,
+					latestRecord == null ? null : latestRecord.getVoucherName())
+				.set(ContractPayment::getPaymentVoucherUrl,
+					latestRecord == null ? null : latestRecord.getVoucherUrl())
+				.set(ContractPayment::getUpdateBy, currentUserName())
+				.set(ContractPayment::getUpdateTime, now)
+		);
+		if (updated > 0) {
+			addLog(payment.getContractId(), "payment", "撤回" + actionName + "："
+				+ record.getPaymentAmount().stripTrailingZeros().toPlainString()
+				+ "元，累计" + paidLabel + "调整为" + amountPaid.stripTrailingZeros().toPlainString() + "元");
+		}
+		return updated > 0;
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
 	public boolean remind(Long paymentId, String source) {
 		ContractPayment existing = requirePayment(paymentId);
 		assertAccessible(existing);

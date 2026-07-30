@@ -151,6 +151,17 @@ export const confirmPayment = (paymentId, row) => {
   });
 };
 
+export const deletePaymentVoucher = (paymentId, recordId) => {
+  return request({
+    url: '/blade-ics/payment/voucher',
+    method: 'delete',
+    params: {
+      paymentId,
+      recordId,
+    },
+  });
+};
+
 export const updatePaymentDeadline = (paymentId, payDeadline) => {
   return request({
     url: '/blade-ics/payment/deadline',

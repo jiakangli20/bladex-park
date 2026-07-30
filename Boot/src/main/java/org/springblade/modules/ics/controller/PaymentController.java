@@ -155,6 +155,15 @@ public class PaymentController extends BladeController {
 		return R.status(paymentService.confirm(paymentId, payment));
 	}
 
+	@DeleteMapping("/voucher")
+	@PreAuth(menu = "finance_payment_confirm")
+	@ApiOperationSupport(order = 81)
+	@Operation(summary = "撤回逐笔收付款", description = "逻辑删除收付款记录与凭证，并回退账单累计已收或已付金额和缴费状态")
+	public R deleteVoucher(@Parameter(description = "账单ID") @RequestParam Long paymentId,
+						   @Parameter(description = "逐笔确认记录ID") @RequestParam(required = false) Long recordId) {
+		return R.status(paymentService.deletePaymentVoucher(paymentId, recordId));
+	}
+
 	@PostMapping("/deadline")
 	@PreAuth(menu = "finance")
 	@ApiOperationSupport(order = 9)

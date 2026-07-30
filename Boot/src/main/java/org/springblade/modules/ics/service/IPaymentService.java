@@ -97,6 +97,15 @@ public interface IPaymentService {
 	boolean confirm(Long paymentId, ContractPayment payment);
 
 	/**
+	 * 撤回逐笔收付款，删除凭证并回退累计已收或已付金额.
+	 *
+	 * @param paymentId 账单ID
+	 * @param recordId  逐笔收付款记录ID
+	 * @return 是否成功
+	 */
+	boolean deletePaymentVoucher(Long paymentId, Long recordId);
+
+	/**
 	 * 调整账单日期.
 	 *
 	 * @param paymentId   账单ID

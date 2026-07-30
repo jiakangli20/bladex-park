@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.contract.mapper.ContractPaymentRecordMapper">
+
+    <update id="rollbackFollowingCumulativeAmount">
+        UPDATE biz_contract_payment_record
+        SET cumulative_amount = GREATEST(cumulative_amount - #{paymentAmount}, 0)
+        WHERE payment_id = #{paymentId}
+          AND del_flag = '0'
+          AND (
+            payment_time <![CDATA[ > ]]> #{paymentTime}
+            OR (payment_time = #{paymentTime} AND record_id <![CDATA[ > ]]> #{recordId})
+          )
+    </update>
+
+</mapper>
