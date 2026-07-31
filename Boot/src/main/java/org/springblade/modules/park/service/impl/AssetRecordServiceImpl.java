@@ -18,6 +18,7 @@ import org.springblade.modules.park.pojo.entity.Room;
 import org.springblade.modules.park.service.IAssetRecordService;
 import org.springblade.modules.park.service.IBuildingService;
 import org.springblade.modules.park.service.IRoomService;
+import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,14 +40,20 @@ public class AssetRecordServiceImpl extends ServiceImpl<AssetRecordMapper, Asset
 
 	private final IBuildingService buildingService;
 	private final IRoomService roomService;
+	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public AssetRecord selectAssetById(Long assetId) {
-		return baseMapper.selectAssetById(assetId);
+		AssetRecord asset = baseMapper.selectAssetById(assetId);
+		if (asset != null) {
+			parkDataAccessService.assertAccessible(asset.getParkId());
+		}
+		return asset;
 	}
 
 	@Override
 	public IPage<AssetRecord> selectAssetPage(IPage<AssetRecord> page, AssetRecord asset) {
+		asset.setParkId(parkDataAccessService.scopedParkId(asset.getParkId()));
 		return page.setRecords(baseMapper.selectAssetPage(page, asset));
 	}
 
@@ -80,6 +87,11 @@ public class AssetRecordServiceImpl extends ServiceImpl<AssetRecordMapper, Asset
 		List<Long> assetIds = Func.toLongList(ids);
 		if (assetIds.isEmpty()) {
 			throw new ServiceException("请选择需要删除的资产");
+		}
+		for (Long assetId : assetIds) {
+			if (selectAssetById(assetId) == null) {
+				throw new ServiceException("资产记录不存在");
+			}
 		}
 		return baseMapper.deleteAssetByIds(assetIds, currentUserName()) > 0;
 	}
@@ -121,7 +133,7 @@ public class AssetRecordServiceImpl extends ServiceImpl<AssetRecordMapper, Asset
 			return;
 		}
 		if (asset.getBuildingId() == null) throw new ServiceException("请选择安装位置");
-		Building building = buildingService.getById(asset.getBuildingId());
+		Building building = buildingService.selectBuildingById(asset.getBuildingId());
 		if (building == null) throw new ServiceException("关联楼宇不存在");
 		asset.setParkId(building.getParkId());
 	}

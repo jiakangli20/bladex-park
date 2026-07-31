@@ -115,19 +115,19 @@
         />
       </el-tab-pane>
 
-      <el-tab-pane label="资产记录" name="assets" lazy>
+      <el-tab-pane v-if="permission.rent_control_asset_list" label="资产记录" name="assets" lazy>
         <AssetLedger :park-id="parkId" :building-id="buildingId" :floor-no="floorNo" :room-id="roomId" />
       </el-tab-pane>
 
-      <el-tab-pane label="智能硬件" name="devices" lazy>
+      <el-tab-pane v-if="permission.rent_control_device_list" label="智能硬件" name="devices" lazy>
         <SmartDeviceLedger :park-id="parkId" :building-id="buildingId" :floor-no="floorNo" :room-id="roomId" />
       </el-tab-pane>
 
-      <el-tab-pane label="水电记录" name="utilities" lazy>
+      <el-tab-pane v-if="permission.rent_control_utility_list" label="水电记录" name="utilities" lazy>
         <section class="room-data-panel">
           <div class="room-panel-toolbar">
             <strong>水电记录（{{ utilityPage.total }}）</strong>
-            <el-button type="primary" :icon="Plus" @click="openUtilityDialog">新增</el-button>
+            <el-button v-if="permission.rent_control_utility_add" type="primary" :icon="Plus" @click="openUtilityDialog">新增</el-button>
           </div>
           <el-table v-loading="utilityLoading" :data="utilityRecords" border row-key="recordId" empty-text="暂无水电抄表记录">
             <el-table-column prop="readingTime" label="抄表时间" width="170" align="center" />
@@ -142,7 +142,7 @@
               <template #default="{ row }">{{ formatMoney(row.amount) }}</template>
             </el-table-column>
             <el-table-column prop="operatorName" label="抄表人" width="110" align="center" />
-            <el-table-column label="操作" width="90" align="center">
+            <el-table-column v-if="permission.rent_control_utility_delete" label="操作" width="96" align="center">
               <template #default="{ row }">
                 <el-button text type="danger" @click="deleteUtility(row)">删除</el-button>
               </template>
@@ -161,11 +161,11 @@
         </section>
       </el-tab-pane>
 
-      <el-tab-pane label="绑定车辆" name="vehicles" lazy>
+      <el-tab-pane v-if="permission.rent_control_vehicle_list" label="绑定车辆" name="vehicles" lazy>
         <section class="room-data-panel">
           <div class="room-panel-toolbar">
             <strong>绑定车辆（{{ vehiclePage.total }}）</strong>
-            <el-button type="primary" :icon="Plus" @click="openVehicleDialog">新增</el-button>
+            <el-button v-if="permission.rent_control_vehicle_add" type="primary" :icon="Plus" @click="openVehicleDialog">新增</el-button>
           </div>
           <el-table v-loading="vehicleLoading" :data="vehicles" border row-key="vehicleId" empty-text="暂无绑定车辆">
             <el-table-column prop="plateNo" label="车牌号" min-width="130" align="center" />
@@ -183,7 +183,7 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="90" align="center">
+            <el-table-column v-if="permission.rent_control_vehicle_delete" label="操作" width="96" align="center">
               <template #default="{ row }">
                 <el-button text type="danger" @click="deleteVehicle(row)">删除</el-button>
               </template>
@@ -202,9 +202,6 @@
         </section>
       </el-tab-pane>
 
-      <el-tab-pane label="备忘提醒" name="reminders" lazy>
-        <section class="room-empty-panel"><el-empty description="暂无备忘提醒" /></section>
-      </el-tab-pane>
     </el-tabs>
 
     <el-dialog v-model="utilityDialogVisible" title="新增水电记录" width="620px" append-to-body destroy-on-close class="room-extension-dialog">
@@ -223,7 +220,7 @@
           <el-date-picker v-model="utilityForm.readingTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择抄表时间" />
         </el-form-item>
         <el-form-item label="上次读数" prop="previousReading">
-          <el-input-number v-model="utilityForm.previousReading" :min="0" :precision="2" controls-position="right" />
+          <el-input-number v-model="utilityForm.previousReading" :min="0" :precision="2" controls-position="right" disabled />
         </el-form-item>
         <el-form-item label="本次读数" prop="currentReading">
           <el-input-number v-model="utilityForm.currentReading" :min="0" :precision="2" controls-position="right" />
@@ -437,9 +434,15 @@ export default {
       this.loadRoom();
       this.loadContracts();
       this.loadBills();
-      this.loadUtilityRecords();
-      this.loadVehicles();
-      this.loadMeterOptions();
+      if (this.permission.rent_control_utility_list) {
+        this.loadUtilityRecords();
+      }
+      if (this.permission.rent_control_utility_add) {
+        this.loadMeterOptions();
+      }
+      if (this.permission.rent_control_vehicle_list) {
+        this.loadVehicles();
+      }
     },
     loadRoom() {
       if (!this.roomId) return;

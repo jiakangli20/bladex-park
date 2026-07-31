@@ -91,6 +91,7 @@ public class BuildingController extends BladeController {
 	 * 详情
 	 */
 	@GetMapping("/detail")
+	@PreAuth(menu = "building_view")
 	@ApiOperationSupport(order = 3)
 	@Operation(summary = "详情", description = "传入id")
 	public R<BuildingVO> detail(@RequestParam Long id) {
@@ -101,6 +102,7 @@ public class BuildingController extends BladeController {
 	 * 新增或修改
 	 */
 	@PostMapping("/submit")
+	@PreAuth("(#building.id == null && hasMenu('building_add')) || (#building.id != null && hasMenu('building_edit'))")
 	@ApiOperationSupport(order = 4)
 	@Operation(summary = "新增或修改", description = "传入building")
 	public R submit(@RequestBody BuildingDTO building) {
@@ -111,6 +113,7 @@ public class BuildingController extends BladeController {
 	 * 删除
 	 */
 	@PostMapping("/remove")
+	@PreAuth(menu = "building_delete")
 	@ApiOperationSupport(order = 5)
 	@Operation(summary = "删除", description = "传入ids")
 	public R remove(@Parameter(description = "主键集合", required = true) @RequestParam String ids) {
@@ -121,6 +124,7 @@ public class BuildingController extends BladeController {
 	 * 导出
 	 */
 	@GetMapping("/export")
+	@PreAuth(menu = "building_export")
 	@ApiOperationSupport(order = 6)
 	@Operation(summary = "导出", description = "传入building")
 	public void export(Building building, HttpServletResponse response) {
@@ -143,6 +147,7 @@ public class BuildingController extends BladeController {
 	 * 导入
 	 */
 	@PostMapping("/import")
+	@PreAuth(menu = "building_import")
 	@ApiOperationSupport(order = 8)
 	@Operation(summary = "导入", description = "传入excel")
 	public R importBuilding(MultipartFile file) {

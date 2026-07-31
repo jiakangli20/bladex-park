@@ -88,6 +88,7 @@ public class FloorController extends BladeController {
 	 * 详情
 	 */
 	@GetMapping("/detail")
+	@PreAuth(menu = "floor_view")
 	@ApiOperationSupport(order = 3)
 	@Operation(summary = "详情", description = "传入id")
 	public R<Floor> detail(@RequestParam Long id, @RequestParam(required = false) String roomStatus) {
@@ -108,6 +109,7 @@ public class FloorController extends BladeController {
 	 * 新增或修改
 	 */
 	@PostMapping("/submit")
+	@PreAuth("(#floor.id == null && hasMenu('floor_add')) || (#floor.id != null && hasMenu('floor_edit'))")
 	@ApiOperationSupport(order = 5)
 	@Operation(summary = "新增或修改", description = "传入floor")
 	public R submit(@RequestBody Floor floor) {
@@ -118,6 +120,7 @@ public class FloorController extends BladeController {
 	 * 删除
 	 */
 	@PostMapping("/remove")
+	@PreAuth(menu = "floor_delete")
 	@ApiOperationSupport(order = 6)
 	@Operation(summary = "删除", description = "传入ids")
 	public R remove(@Parameter(description = "主键集合", required = true) @RequestParam String ids) {
@@ -128,6 +131,8 @@ public class FloorController extends BladeController {
 	 * 新增或修改房源
 	 */
 	@PostMapping("/room/submit")
+	@PreAuth("(#room.id == null && hasMenu('rent_control_room_add')) || " +
+		"(#room.id != null && (hasMenu('rent_control_room_edit') || hasMenu('floor_edit')))")
 	@ApiOperationSupport(order = 7)
 	@Operation(summary = "新增或修改房源", description = "传入room")
 	public R submitRoom(@RequestBody Room room) {
@@ -138,6 +143,7 @@ public class FloorController extends BladeController {
 	 * 删除房源
 	 */
 	@PostMapping("/room/remove")
+	@PreAuth("hasMenu('rent_control_room_delete') || hasMenu('floor_edit')")
 	@ApiOperationSupport(order = 8)
 	@Operation(summary = "删除房源", description = "传入ids")
 	public R removeRoom(@Parameter(description = "主键集合", required = true) @RequestParam String ids) {
@@ -148,6 +154,7 @@ public class FloorController extends BladeController {
 	 * 同步单建筑楼层
 	 */
 	@PostMapping("/sync/{buildingId}")
+	@PreAuth(menu = "floor_sync")
 	@ApiOperationSupport(order = 9)
 	@Operation(summary = "同步单建筑楼层", description = "传入buildingId")
 	public R sync(@PathVariable Long buildingId) {
@@ -159,6 +166,7 @@ public class FloorController extends BladeController {
 	 * 同步全部建筑楼层
 	 */
 	@PostMapping("/sync-all")
+	@PreAuth(menu = "floor_sync")
 	@ApiOperationSupport(order = 10)
 	@Operation(summary = "同步全部建筑楼层")
 	public R syncAll() {

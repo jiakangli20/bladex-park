@@ -27,15 +27,20 @@ package org.springblade.modules.park.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import lombok.RequiredArgsConstructor;
+import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.utils.Func;
+import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.park.mapper.ParkMapper;
 import org.springblade.modules.park.pojo.entity.Park;
 import org.springblade.modules.park.pojo.vo.ParkVO;
 import org.springblade.modules.park.service.IParkService;
+import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -44,20 +49,56 @@ import java.util.Map;
  * @author Chill
  */
 @Service
+@RequiredArgsConstructor
 public class ParkServiceImpl extends ServiceImpl<ParkMapper, Park> implements IParkService {
+
+	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public IPage<ParkVO> selectParkPage(IPage<ParkVO> page, ParkVO park) {
+		park.setId(parkDataAccessService.scopedParkId(park.getId()));
 		return page.setRecords(baseMapper.selectParkPage(page, park));
 	}
 
 	@Override
 	public Map<String, Object> selectParkStatistics(Long parkId) {
-		return baseMapper.selectParkStatistics(parkId);
+		return baseMapper.selectParkStatistics(parkDataAccessService.scopedParkId(parkId));
 	}
 
 	@Override
 	public boolean submit(Park park) {
+		if (park == null) {
+			throw new ServiceException("园区数据不能为空");
+		}
+		if (StringUtil.isBlank(park.getName()) || StringUtil.isBlank(park.getCode())) {
+			throw new ServiceException("园区名称和园区编码不能为空");
+		}
+		park.setName(park.getName().trim());
+		park.setCode(park.getCode().trim());
+		if (park.getArea() != null && park.getArea().signum() < 0) {
+			throw new ServiceException("园区面积不能小于0");
+		}
+		if (park.getRentMin() != null && park.getRentMax() != null
+			&& park.getRentMin().compareTo(park.getRentMax()) > 0) {
+			throw new ServiceException("最低租金不能高于最高租金");
+		}
+		if (StringUtil.isNotBlank(park.getStatus()) && !List.of("0", "1").contains(park.getStatus())) {
+			throw new ServiceException("园区状态不正确");
+		}
+		if (park.getId() == null) {
+			if (parkDataAccessService.requiresDataScope()) {
+				throw new ServiceException("仅平台管理员可以新增园区");
+			}
+		} else {
+			Park existing = getById(park.getId());
+			if (existing == null) {
+				throw new ServiceException("园区不存在");
+			}
+			parkDataAccessService.assertAccessible(existing.getId());
+		}
+		if (baseMapper.countDuplicate(park.getName(), park.getCode(), park.getId()) > 0) {
+			throw new ServiceException("园区名称或园区编码已存在");
+		}
 		Date now = new Date();
 		String userName = AuthUtil.getUserName();
 		if (park.getId() == null) {
@@ -72,7 +113,21 @@ public class ParkServiceImpl extends ServiceImpl<ParkMapper, Park> implements IP
 
 	@Override
 	public boolean removePark(String ids) {
-		return this.removeByIds(Func.toLongList(ids));
+		List<Long> idList = Func.toLongList(ids);
+		if (idList.isEmpty()) {
+			throw new ServiceException("请选择需要删除的园区");
+		}
+		for (Long id : idList) {
+			Park park = getById(id);
+			if (park == null) {
+				throw new ServiceException("园区不存在");
+			}
+			parkDataAccessService.assertAccessible(park.getId());
+			if (baseMapper.countParkReferences(park.getId()) > 0) {
+				throw new ServiceException("园区已存在建筑、楼层、房源或合同，不能删除");
+			}
+		}
+		return this.removeByIds(idList);
 	}
 
 }

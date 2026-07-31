@@ -17,6 +17,7 @@
         <result column="update_by" property="updateBy"/>
         <result column="update_time" property="updateTime"/>
         <result column="used_area" property="usedArea"/>
+        <result column="rented_area" property="rentedArea"/>
         <result column="total_count" property="totalCount"/>
         <result column="rented_count" property="rentedCount"/>
         <result column="vacant_count" property="vacantCount"/>
@@ -65,6 +66,7 @@
 
     <sql id="floorStatisticColumns">
         COALESCE(rs.used_area, 0) AS used_area,
+        COALESCE(rs.rented_area, 0) AS rented_area,
         COALESCE(rs.total_count, 0) AS total_count,
         COALESCE(rs.rented_count, 0) AS rented_count,
         COALESCE(rs.vacant_count, 0) AS vacant_count,
@@ -81,6 +83,7 @@
             SELECT building_id, floor,
                    COUNT(1) AS total_count,
                    SUM(COALESCE(area, 0)) AS used_area,
+                   SUM(CASE WHEN display_status &lt;&gt; '0' THEN COALESCE(area, 0) ELSE 0 END) AS rented_area,
                    SUM(CASE WHEN display_status = '1' THEN 1 ELSE 0 END) AS rented_count,
                    SUM(CASE WHEN display_status = '0' THEN 1 ELSE 0 END) AS vacant_count,
                    SUM(CASE WHEN display_status = '2' THEN 1 ELSE 0 END) AS reserved_count,

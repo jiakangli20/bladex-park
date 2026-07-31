@@ -29,6 +29,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
+import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.tool.utils.Func;
 import org.springblade.modules.business.pojo.entity.Customer;
 import org.springblade.modules.business.service.ICustomerService;
@@ -46,6 +47,7 @@ import org.springblade.modules.park.service.IBuildingService;
 import org.springblade.modules.park.service.IFloorService;
 import org.springblade.modules.park.service.IRentControlService;
 import org.springblade.modules.park.service.IRoomService;
+import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springblade.modules.park.pojo.entity.Park;
 import org.springblade.modules.park.service.IParkService;
 import org.springframework.stereotype.Service;
@@ -80,9 +82,11 @@ public class RentControlServiceImpl implements IRentControlService {
 	private final ICustomerService customerService;
 	private final IContractService contractService;
 	private final IPaymentService paymentService;
+	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public Map<String, Object> getBoard(Long parkId, Long buildingId, Integer floorNo, String keyword, String searchType, String status, String orientation, boolean includeTree) {
+		parkId = parkDataAccessService.scopedParkId(parkId);
 		Building buildingQuery = new Building();
 		buildingQuery.setParkId(parkId);
 		if ("building".equals(searchType) && hasText(keyword)) {
@@ -140,7 +144,9 @@ public class RentControlServiceImpl implements IRentControlService {
 			allRoomQuery.setParkId(parkId);
 			List<Floor> allFloorList = floorService.selectFloorStructureList(allFloorQuery);
 			List<RoomVO> allRoomList = roomService.selectRoomList(allRoomQuery);
-			List<Park> treeParkList = parkService.list(Wrappers.<Park>lambdaQuery().orderByAsc(Park::getId));
+			List<Park> treeParkList = parkService.list(Wrappers.<Park>lambdaQuery()
+				.eq(parkId != null, Park::getId, parkId)
+				.orderByAsc(Park::getId));
 			List<Building> treeBuildingList = buildingService.selectBuildingList(new Building());
 			List<Floor> treeFloorList = floorService.selectFloorStructureList(new Floor());
 			List<RoomVO> treeRoomList = roomService.selectRoomList(new Room());
@@ -235,6 +241,7 @@ public class RentControlServiceImpl implements IRentControlService {
 
 	@Override
 	public IPage<Contract> roomContracts(IPage<Contract> page, Long roomId) {
+		requireAccessibleRoom(roomId);
 		Contract query = new Contract();
 		query.setRoomId(roomId);
 		return contractService.selectContractPage(page, query);
@@ -242,6 +249,7 @@ public class RentControlServiceImpl implements IRentControlService {
 
 	@Override
 	public IPage<ContractPayment> roomPayments(IPage<ContractPayment> page, Long roomId) {
+		requireAccessibleRoom(roomId);
 		ContractPayment query = new ContractPayment();
 		query.setSelectedRoomIds(String.valueOf(roomId));
 		return paymentService.selectPaymentPage(page, query, null);
@@ -436,11 +444,12 @@ public class RentControlServiceImpl implements IRentControlService {
 			.map(Room::getArea)
 			.filter(Objects::nonNull)
 			.reduce(BigDecimal.ZERO, BigDecimal::add);
-		BigDecimal vacantArea = roomList.stream()
-			.filter(room -> "0".equals(room.getStatus()))
+		BigDecimal roomArea = roomList.stream()
 			.map(Room::getArea)
 			.filter(Objects::nonNull)
 			.reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal managementArea = floorArea.compareTo(BigDecimal.ZERO) > 0 ? floorArea : roomArea;
+		BigDecimal vacantArea = managementArea.subtract(rentedArea).max(BigDecimal.ZERO);
 		BigDecimal rentTotal = roomList.stream()
 			.map(Room::getRentPrice)
 			.filter(Objects::nonNull)
@@ -451,14 +460,14 @@ public class RentControlServiceImpl implements IRentControlService {
 		Map<String, Object> overview = new LinkedHashMap<>();
 		overview.put("rentedRoomCount", rentedCount);
 		overview.put("totalRoomCount", roomList.size());
-		overview.put("managementArea", floorArea);
-		overview.put("buildingArea", floorArea);
-		overview.put("floorArea", floorArea);
+		overview.put("managementArea", managementArea);
+		overview.put("buildingArea", managementArea);
+		overview.put("floorArea", managementArea);
 		overview.put("avgRentPrice", avgRentPrice);
 		overview.put("rentedArea", rentedArea);
 		overview.put("vacantArea", vacantArea);
 		overview.put("vacantRoomCount", roomList.stream().filter(room -> "0".equals(room.getStatus())).count());
-		overview.put("rentRate", roomList.isEmpty() ? BigDecimal.ZERO : BigDecimal.valueOf(rentedCount * 100).divide(BigDecimal.valueOf(roomList.size()), 0, RoundingMode.HALF_UP));
+		overview.put("rentRate", calculateAreaRate(rentedArea, managementArea));
 		return overview;
 	}
 
@@ -511,7 +520,22 @@ public class RentControlServiceImpl implements IRentControlService {
 	}
 
 	private boolean isOccupiedStatus(Room room) {
-		return room != null && List.of("1", "3", "4", "5", "6", "7").contains(room.getStatus());
+		return room != null && hasText(room.getStatus()) && !"0".equals(room.getStatus());
+	}
+
+	private void requireAccessibleRoom(Long roomId) {
+		if (roomId == null || roomService.selectRoomById(roomId) == null) {
+			throw new ServiceException("房源不存在");
+		}
+	}
+
+	private BigDecimal calculateAreaRate(BigDecimal rentedArea, BigDecimal managementArea) {
+		if (managementArea == null || managementArea.compareTo(BigDecimal.ZERO) <= 0) {
+			return BigDecimal.ZERO;
+		}
+		return rentedArea.multiply(BigDecimal.valueOf(100))
+			.divide(managementArea, 2, RoundingMode.HALF_UP)
+			.min(BigDecimal.valueOf(100));
 	}
 
 	private String buildFloorKey(Long selectedBuildingId, Long buildingId, Integer floorNo) {

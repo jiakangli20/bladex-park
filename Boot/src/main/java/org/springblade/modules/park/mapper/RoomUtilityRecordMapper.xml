@@ -17,6 +17,24 @@
 		ORDER BY ur.reading_time DESC, ur.record_id DESC
 	</select>
 
+	<select id="selectLatestRecordForUpdate" resultType="org.springblade.modules.park.pojo.entity.RoomUtilityRecord">
+		SELECT record_id AS recordId, room_id AS roomId, device_id AS deviceId,
+		       reading_time AS readingTime, current_reading AS currentReading
+		FROM biz_room_utility_record
+		WHERE del_flag = '0' AND room_id = #{roomId} AND device_id = #{deviceId}
+		ORDER BY reading_time DESC, record_id DESC
+		LIMIT 1
+		FOR UPDATE
+	</select>
+
+	<select id="selectDeviceReadingForUpdate" resultType="java.math.BigDecimal">
+		SELECT COALESCE(current_reading, 0)
+		FROM biz_smart_device
+		WHERE device_id = #{deviceId}
+		  AND del_flag = '0'
+		FOR UPDATE
+	</select>
+
 	<update id="deleteRecord">
 		UPDATE biz_room_utility_record
 		SET del_flag = '1', update_by = #{updateBy}, update_time = NOW()

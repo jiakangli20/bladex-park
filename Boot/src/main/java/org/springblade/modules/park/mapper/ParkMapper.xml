@@ -48,11 +48,38 @@
         p.update_by, p.update_time
     </sql>
 
+    <sql id="roomContractStatusJoin">
+        LEFT JOIN (
+            SELECT room_id,
+                   MAX(CASE WHEN contract_status IN ('6', '7', '8') THEN 1 ELSE 0 END) AS has_exiting,
+                   MAX(CASE WHEN contract_status = '2' OR (contract_status = '1' AND end_date &lt; CURDATE()) THEN 1 ELSE 0 END) AS has_expired,
+                   MAX(CASE WHEN contract_status = '1' AND end_date &gt;= CURDATE() AND end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) AS has_expiring30,
+                   MAX(CASE WHEN contract_status = '1' AND end_date &gt; DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 90 DAY) THEN 1 ELSE 0 END) AS has_expiring90,
+                   MAX(CASE WHEN contract_status = '1' THEN 1 ELSE 0 END) AS has_active
+            FROM (
+                SELECT c.room_id, c.contract_status, c.end_date
+                FROM biz_contract c
+                WHERE c.del_flag = '0' AND c.room_id IS NOT NULL
+                UNION ALL
+                SELECT CAST(REPLACE(TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(c.room_ids, ',', numbers.n), ',', -1)), 'room_', '') AS UNSIGNED),
+                       c.contract_status, c.end_date
+                FROM biz_contract c
+                INNER JOIN (
+                    SELECT 1 AS n UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
+                    UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
+                ) numbers ON numbers.n &lt;= 1 + LENGTH(COALESCE(c.room_ids, '')) - LENGTH(REPLACE(COALESCE(c.room_ids, ''), ',', ''))
+                WHERE c.del_flag = '0' AND c.room_ids IS NOT NULL AND c.room_ids != ''
+            ) contract_room
+            WHERE room_id IS NOT NULL AND room_id &gt; 0
+            GROUP BY room_id
+        ) contract_room_status ON contract_room_status.room_id = r.id
+    </sql>
+
     <select id="selectParkPage" resultMap="parkVOResultMap">
         SELECT
         <include refid="parkColumns"/>,
         COALESCE(fs.management_area, 0) AS management_area,
-        COALESCE(rs.rentable_area, 0) AS rentable_area,
+        GREATEST(COALESCE(fs.management_area, 0) - COALESCE(rs.rented_area, 0), 0) AS rentable_area,
         COALESCE(rs.total_room_count, 0) AS total_room_count,
         COALESCE(rs.rentable_room_count, 0) AS rentable_room_count
         FROM ics_park p
@@ -64,9 +91,21 @@
         LEFT JOIN (
             SELECT park_id,
                    COUNT(1) AS total_room_count,
-                   SUM(CASE WHEN status = '0' THEN 1 ELSE 0 END) AS rentable_room_count,
-                   SUM(CASE WHEN status = '0' THEN COALESCE(area, 0) ELSE 0 END) AS rentable_area
-            FROM ics_room
+                   SUM(CASE WHEN display_status = '0' THEN 1 ELSE 0 END) AS rentable_room_count,
+                   SUM(CASE WHEN display_status &lt;&gt; '0' THEN COALESCE(area, 0) ELSE 0 END) AS rented_area
+            FROM (
+                SELECT r.park_id, r.area,
+                       CASE
+                           WHEN IFNULL(contract_room_status.has_exiting, 0) = 1 THEN '3'
+                           WHEN IFNULL(contract_room_status.has_expiring30, 0) = 1 THEN '5'
+                           WHEN IFNULL(contract_room_status.has_expiring90, 0) = 1 THEN '4'
+                           WHEN IFNULL(contract_room_status.has_active, 0) = 1 THEN '7'
+                           WHEN IFNULL(contract_room_status.has_expired, 0) = 1 THEN '6'
+                           ELSE r.status
+                       END AS display_status
+                FROM ics_room r
+                <include refid="roomContractStatusJoin"/>
+            ) room_status
             GROUP BY park_id
         ) rs ON rs.park_id = p.id
         <where>
@@ -80,9 +119,48 @@
 
     <select id="selectParkStatistics" resultType="java.util.Map">
         SELECT
-            COALESCE((SELECT SUM(area) FROM ics_floor <where><if test="parkId != null">park_id = #{parkId}</if></where>), 0) AS managementArea,
-            COALESCE((SELECT SUM(area) FROM ics_room <where><if test="parkId != null">park_id = #{parkId} AND</if> status = '0'</where>), 0) AS rentableArea,
-            COALESCE((SELECT COUNT(1) FROM ics_room <where><if test="parkId != null">park_id = #{parkId}</if></where>), 0) AS totalRoomCount,
-            COALESCE((SELECT COUNT(1) FROM ics_room <where><if test="parkId != null">park_id = #{parkId} AND</if> status = '0'</where>), 0) AS rentableRoomCount
+            COALESCE(fs.management_area, 0) AS managementArea,
+            GREATEST(COALESCE(fs.management_area, 0) - COALESCE(rs.rented_area, 0), 0) AS rentableArea,
+            COALESCE(rs.total_room_count, 0) AS totalRoomCount,
+            COALESCE(rs.rentable_room_count, 0) AS rentableRoomCount
+        FROM (
+            SELECT SUM(area) AS management_area
+            FROM ics_floor
+            <where><if test="parkId != null">park_id = #{parkId}</if></where>
+        ) fs
+        CROSS JOIN (
+            SELECT COUNT(1) AS total_room_count,
+                   SUM(CASE WHEN display_status = '0' THEN 1 ELSE 0 END) AS rentable_room_count,
+                   SUM(CASE WHEN display_status &lt;&gt; '0' THEN COALESCE(area, 0) ELSE 0 END) AS rented_area
+            FROM (
+                SELECT r.area,
+                       CASE
+                           WHEN IFNULL(contract_room_status.has_exiting, 0) = 1 THEN '3'
+                           WHEN IFNULL(contract_room_status.has_expiring30, 0) = 1 THEN '5'
+                           WHEN IFNULL(contract_room_status.has_expiring90, 0) = 1 THEN '4'
+                           WHEN IFNULL(contract_room_status.has_active, 0) = 1 THEN '7'
+                           WHEN IFNULL(contract_room_status.has_expired, 0) = 1 THEN '6'
+                           ELSE r.status
+                       END AS display_status
+                FROM ics_room r
+                <include refid="roomContractStatusJoin"/>
+                <where><if test="parkId != null">r.park_id = #{parkId}</if></where>
+            ) room_status
+        ) rs
+    </select>
+
+    <select id="countDuplicate" resultType="int">
+        SELECT COUNT(1)
+        FROM ics_park
+        WHERE (name = #{name} OR code = #{code})
+        <if test="excludeId != null">AND id != #{excludeId}</if>
+    </select>
+
+    <select id="countParkReferences" resultType="int">
+        SELECT
+            (SELECT COUNT(1) FROM ics_building WHERE park_id = #{parkId})
+          + (SELECT COUNT(1) FROM ics_floor WHERE park_id = #{parkId})
+          + (SELECT COUNT(1) FROM ics_room WHERE park_id = #{parkId})
+          + (SELECT COUNT(1) FROM biz_contract WHERE park_id = #{parkId} AND del_flag = '0')
     </select>
 </mapper>

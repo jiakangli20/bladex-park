@@ -26,6 +26,7 @@
 package org.springblade.modules.park.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springblade.core.log.exception.ServiceException;
@@ -44,6 +45,7 @@ import org.springblade.modules.park.service.IBuildingService;
 import org.springblade.modules.park.service.IFloorService;
 import org.springblade.modules.park.pojo.entity.Park;
 import org.springblade.modules.park.service.IParkService;
+import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,14 +70,17 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 	private final IParkService parkService;
 	private final IFloorService floorService;
 	private final FloorMapper floorMapper;
+	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public List<Building> selectBuildingList(Building building) {
+		building.setParkId(parkDataAccessService.scopedParkId(building.getParkId()));
 		return baseMapper.selectBuildingList(building);
 	}
 
 	@Override
 	public IPage<BuildingVO> selectBuildingPage(IPage<BuildingVO> page, Building building) {
+		building.setParkId(parkDataAccessService.scopedParkId(building.getParkId()));
 		page.setRecords(baseMapper.selectBuildingPage(page, building));
 		return page;
 	}
@@ -84,6 +89,7 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 	public BuildingVO selectBuildingById(Long id) {
 		BuildingVO building = baseMapper.selectBuildingById(id);
 		if (building != null) {
+			parkDataAccessService.assertAccessible(building.getParkId());
 			building.setFloorAreas(floorMapper.selectFloorAreaListByBuildingId(id));
 		}
 		return building;
@@ -92,6 +98,18 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean submit(BuildingDTO buildingDTO) {
+		BuildingVO oldBuilding = null;
+		if (buildingDTO.getId() == null) {
+			buildingDTO.setParkId(parkDataAccessService.scopedParkId(buildingDTO.getParkId()));
+		} else {
+			oldBuilding = selectBuildingById(buildingDTO.getId());
+			if (oldBuilding == null) {
+				throw new ServiceException("建筑不存在");
+			}
+			if (parkDataAccessService.requiresDataScope()) {
+				buildingDTO.setParkId(oldBuilding.getParkId());
+			}
+		}
 		validateBuilding(buildingDTO);
 		Date now = new Date();
 		String userName = AuthUtil.getUserName();
@@ -103,10 +121,6 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 			building.setCreateBy(userName);
 			building.setCreateTime(now);
 		} else {
-			BuildingVO oldBuilding = selectBuildingById(building.getId());
-			if (oldBuilding == null) {
-				throw new ServiceException("建筑不存在");
-			}
 			building.setUpdateBy(userName);
 			building.setUpdateTime(now);
 		}
@@ -138,7 +152,7 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 
 	@Override
 	public List<BuildingExcel> exportBuilding(Building building) {
-		return baseMapper.selectBuildingList(building).stream().map(item -> {
+		return selectBuildingList(building).stream().map(item -> {
 			BuildingExcel excel = Objects.requireNonNull(BeanUtil.copyProperties(item, BuildingExcel.class));
 			excel.setParkName(item.getParkName());
 			return excel;
@@ -151,7 +165,9 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 		if (Func.isEmpty(data)) {
 			return;
 		}
-		Map<String, Long> parkMap = parkService.list().stream()
+		Map<String, Long> parkMap = parkService.list(Wrappers.<Park>lambdaQuery()
+			.eq(parkDataAccessService.requiresDataScope(), Park::getId, parkDataAccessService.requiresDataScope() ? parkDataAccessService.currentParkId() : null))
+			.stream()
 			.collect(Collectors.toMap(Park::getName, Park::getId, (left, right) -> left, LinkedHashMap::new));
 		List<BuildingDTO> buildingList = new ArrayList<>();
 		for (BuildingExcel excel : data) {
@@ -172,6 +188,7 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 		if (building.getParkId() == null) {
 			throw new ServiceException("请选择所属园区");
 		}
+		parkDataAccessService.assertAccessible(building.getParkId());
 		Park park = parkService.getById(building.getParkId());
 		if (park == null) {
 			throw new ServiceException("所属园区不存在");
@@ -181,6 +198,11 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 		}
 		if (StringUtil.isBlank(building.getName())) {
 			throw new ServiceException("请输入建筑名称");
+		}
+		building.setCode(building.getCode().trim());
+		building.setName(building.getName().trim());
+		if (StringUtil.isNotBlank(building.getStatus()) && !List.of("0", "1").contains(building.getStatus())) {
+			throw new ServiceException("建筑状态不正确");
 		}
 		if (StringUtil.isBlank(building.getRegion())) {
 			throw new ServiceException("请输入所属地区");
@@ -203,6 +225,13 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 		Building sameName = baseMapper.selectBuildingByParkAndName(building.getParkId(), building.getName());
 		if (sameName != null && !Objects.equals(sameName.getId(), building.getId())) {
 			throw new ServiceException("同一园区下建筑名称已存在");
+		}
+		long sameCodeCount = count(Wrappers.<Building>lambdaQuery()
+			.eq(Building::getParkId, building.getParkId())
+			.eq(Building::getCode, building.getCode())
+			.ne(building.getId() != null, Building::getId, building.getId()));
+		if (sameCodeCount > 0) {
+			throw new ServiceException("同一园区下建筑编码已存在");
 		}
 		if (building.getId() != null) {
 			Integer maxRoomFloor = baseMapper.selectMaxRoomFloor(building.getId());

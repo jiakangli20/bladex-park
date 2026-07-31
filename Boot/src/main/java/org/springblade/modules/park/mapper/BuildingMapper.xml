@@ -44,7 +44,7 @@
     <sql id="buildingColumns">
         b.id, b.park_id, p.name AS park_name, b.name, b.code, b.address, b.region,
         b.real_estate_no, b.property_no, b.land_no, b.sort_num, b.floors, b.area,
-        b.property_area, b.rentable_area, b.self_use_area, b.supporting_area, b.parking_area,
+        b.property_area, b.self_use_area, b.supporting_area, b.parking_area,
         b.standard_floor_height, b.scene_images, b.building_type, b.status, b.memo, b.create_by, b.create_time,
         b.update_by, b.update_time
     </sql>
@@ -125,15 +125,20 @@
         ORDER BY p.name ASC, b.park_id ASC, COALESCE(b.sort_num, 999999) ASC, b.name ASC, b.id ASC
     </sql>
 
+    <sql id="buildingRentRate">
+        CASE
+            WHEN COALESCE(fs.management_area, 0) = 0 THEN 0
+            ELSE LEAST(ROUND(COALESCE(rs.rented_area, 0) * 100 / fs.management_area, 2), 100)
+        END AS rent_rate
+    </sql>
+
     <select id="selectBuildingList" resultMap="buildingResultMap">
         SELECT
         <include refid="buildingColumns"/>,
         COALESCE(fs.management_area, 0) AS management_area,
+        GREATEST(COALESCE(fs.management_area, 0) - COALESCE(rs.rented_area, 0), 0) AS rentable_area,
         COALESCE(rs.room_count, 0) AS room_count,
-        CASE
-            WHEN COALESCE(rs.room_area, 0) = 0 THEN 0
-            ELSE ROUND(COALESCE(rs.rented_area, 0) * 100 / rs.room_area, 2)
-        END AS rent_rate,
+        <include refid="buildingRentRate"/>,
         COALESCE(rs.rented_area, 0) AS rented_area,
         0 AS active_contract_count
         FROM ics_building b
@@ -147,11 +152,9 @@
         SELECT
         <include refid="buildingColumns"/>,
         COALESCE(fs.management_area, 0) AS management_area,
+        GREATEST(COALESCE(fs.management_area, 0) - COALESCE(rs.rented_area, 0), 0) AS rentable_area,
         COALESCE(rs.room_count, 0) AS room_count,
-        CASE
-            WHEN COALESCE(rs.room_area, 0) = 0 THEN 0
-            ELSE ROUND(COALESCE(rs.rented_area, 0) * 100 / rs.room_area, 2)
-        END AS rent_rate,
+        <include refid="buildingRentRate"/>,
         COALESCE(rs.rented_area, 0) AS rented_area,
         0 AS active_contract_count
         FROM ics_building b
@@ -165,11 +168,9 @@
         SELECT
         <include refid="buildingColumns"/>,
         COALESCE(fs.management_area, 0) AS management_area,
+        GREATEST(COALESCE(fs.management_area, 0) - COALESCE(rs.rented_area, 0), 0) AS rentable_area,
         COALESCE(rs.room_count, 0) AS room_count,
-        CASE
-            WHEN COALESCE(rs.room_area, 0) = 0 THEN 0
-            ELSE ROUND(COALESCE(rs.rented_area, 0) * 100 / rs.room_area, 2)
-        END AS rent_rate,
+        <include refid="buildingRentRate"/>,
         COALESCE(rs.rented_area, 0) AS rented_area,
         0 AS active_contract_count
         FROM ics_building b
@@ -182,11 +183,9 @@
         SELECT
         <include refid="buildingColumns"/>,
         COALESCE(fs.management_area, 0) AS management_area,
+        GREATEST(COALESCE(fs.management_area, 0) - COALESCE(rs.rented_area, 0), 0) AS rentable_area,
         COALESCE(rs.room_count, 0) AS room_count,
-        CASE
-            WHEN COALESCE(rs.room_area, 0) = 0 THEN 0
-            ELSE ROUND(COALESCE(rs.rented_area, 0) * 100 / rs.room_area, 2)
-        END AS rent_rate,
+        <include refid="buildingRentRate"/>,
         COALESCE(rs.rented_area, 0) AS rented_area,
         0 AS active_contract_count
         FROM ics_building b

@@ -58,4 +58,8 @@ public interface ParkMapper extends BaseMapper<Park> {
 	 */
 	Map<String, Object> selectParkStatistics(@Param("parkId") Long parkId);
 
+	int countDuplicate(@Param("name") String name, @Param("code") String code, @Param("excludeId") Long excludeId);
+
+	int countParkReferences(@Param("parkId") Long parkId);
+
 }

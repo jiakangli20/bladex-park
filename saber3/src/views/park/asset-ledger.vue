@@ -26,6 +26,7 @@
       <el-table
         v-loading="loading"
         :data="data"
+        border
         row-key="assetId"
         class="asset-table"
         scrollbar-always-on
@@ -59,7 +60,7 @@
         <el-table-column prop="purchaseDate" label="购置日期" width="120" align="center">
           <template #default="{ row }">{{ row.purchaseDate || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="110" fixed="right" align="center">
+        <el-table-column label="操作" width="96" fixed="right" align="center">
           <template #default="{ row }">
             <el-dropdown
               v-if="permission.rent_control_asset_edit || permission.rent_control_asset_delete"
@@ -86,7 +87,7 @@
           background
           :current-page="page.currentPage"
           :page-size="page.pageSize"
-          :page-sizes="[10, 20, 30, 50]"
+          :page-sizes="[10, 20, 30, 40, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper"
           :total="page.total"
           @size-change="sizeChange"

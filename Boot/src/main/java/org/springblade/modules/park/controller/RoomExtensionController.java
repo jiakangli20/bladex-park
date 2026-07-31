@@ -32,36 +32,42 @@ public class RoomExtensionController extends BladeController {
 	private final IRoomExtensionService roomExtensionService;
 
 	@GetMapping("/utility/page")
+	@PreAuth(menu = "rent_control_utility_list")
 	@Operation(summary = "水电记录分页")
 	public R<IPage<RoomUtilityRecord>> utilityPage(@RequestParam Long roomId, Query query) {
 		return R.data(roomExtensionService.utilityPage(Condition.getPage(query), roomId));
 	}
 
 	@PostMapping("/utility/submit")
+	@PreAuth(menu = "rent_control_utility_add")
 	@Operation(summary = "新增水电记录")
 	public R submitUtility(@RequestBody RoomUtilityRecord record) {
 		return R.status(roomExtensionService.submitUtility(record));
 	}
 
 	@PostMapping("/utility/remove")
+	@PreAuth(menu = "rent_control_utility_delete")
 	@Operation(summary = "删除水电记录")
 	public R removeUtility(@RequestParam Long recordId) {
 		return R.status(roomExtensionService.removeUtility(recordId));
 	}
 
 	@GetMapping("/vehicle/page")
+	@PreAuth(menu = "rent_control_vehicle_list")
 	@Operation(summary = "绑定车辆分页")
 	public R<IPage<RoomVehicle>> vehiclePage(@RequestParam Long roomId, Query query) {
 		return R.data(roomExtensionService.vehiclePage(Condition.getPage(query), roomId));
 	}
 
 	@PostMapping("/vehicle/submit")
+	@PreAuth(menu = "rent_control_vehicle_add")
 	@Operation(summary = "新增绑定车辆")
 	public R submitVehicle(@RequestBody RoomVehicle vehicle) {
 		return R.status(roomExtensionService.submitVehicle(vehicle));
 	}
 
 	@PostMapping("/vehicle/remove")
+	@PreAuth(menu = "rent_control_vehicle_delete")
 	@Operation(summary = "删除绑定车辆")
 	public R removeVehicle(@RequestParam Long vehicleId) {
 		return R.status(roomExtensionService.removeVehicle(vehicleId));

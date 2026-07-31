@@ -281,14 +281,14 @@
             />
             </el-tab-pane>
 
-            <el-tab-pane v-if="!isFloorSelection" label="资产记录" name="assets" lazy>
+            <el-tab-pane v-if="!isFloorSelection && permission.rent_control_asset_list" label="资产记录" name="assets" lazy>
             <AssetLedger
               :park-id="query.parkId"
               :building-id="query.buildingId"
               :floor-no="query.floorNo"
             />
             </el-tab-pane>
-            <el-tab-pane v-if="!isFloorSelection" label="智能水电表" name="meters" lazy>
+            <el-tab-pane v-if="!isFloorSelection && permission.rent_control_device_list" label="智能水电表" name="meters" lazy>
             <SmartDeviceLedger
               :park-id="query.parkId"
               :building-id="query.buildingId"

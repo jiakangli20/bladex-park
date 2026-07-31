@@ -321,7 +321,8 @@
                     :precision="2"
                     :controls="false"
                     controls-position="right"
-                    placeholder="请输入..."
+                    disabled
+                    placeholder="保存后由系统计算"
                   />
                   <span class="unit-input-suffix">㎡</span>
                 </div>

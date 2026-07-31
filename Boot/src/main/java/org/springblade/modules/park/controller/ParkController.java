@@ -45,6 +45,7 @@ import org.springblade.modules.park.constant.ParkConstant;
 import org.springblade.modules.park.pojo.entity.Park;
 import org.springblade.modules.park.pojo.vo.ParkVO;
 import org.springblade.modules.park.service.IParkService;
+import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springblade.modules.park.wrapper.ParkWrapper;
 import org.springframework.web.bind.annotation.*;
 
@@ -64,15 +65,20 @@ import java.util.Map;
 public class ParkController extends BladeController {
 
 	private final IParkService parkService;
+	private final ParkDataAccessService parkDataAccessService;
 
 	/**
 	 * 详情
 	 */
 	@GetMapping("/detail")
+	@PreAuth(menu = "park_view")
 	@ApiOperationSupport(order = 1)
 	@Operation(summary = "详情", description = "传入id")
 	public R<ParkVO> detail(@RequestParam Long id) {
 		Park detail = parkService.getById(id);
+		if (detail != null) {
+			parkDataAccessService.assertAccessible(detail.getId());
+		}
 		return R.data(detail == null ? null : ParkWrapper.build().entityVO(detail));
 	}
 
@@ -106,6 +112,7 @@ public class ParkController extends BladeController {
 	 * 新增
 	 */
 	@PostMapping("/save")
+	@PreAuth(menu = "park_add")
 	@ApiOperationSupport(order = 4)
 	@Operation(summary = "新增", description = "传入park")
 	public R save(@Valid @RequestBody Park park) {
@@ -116,6 +123,7 @@ public class ParkController extends BladeController {
 	 * 修改
 	 */
 	@PostMapping("/update")
+	@PreAuth(menu = "park_edit")
 	@ApiOperationSupport(order = 5)
 	@Operation(summary = "修改", description = "传入park")
 	public R update(@Valid @RequestBody Park park) {
@@ -126,6 +134,7 @@ public class ParkController extends BladeController {
 	 * 新增或修改
 	 */
 	@PostMapping("/submit")
+	@PreAuth("(#park.id == null && hasMenu('park_add')) || (#park.id != null && hasMenu('park_edit'))")
 	@ApiOperationSupport(order = 6)
 	@Operation(summary = "新增或修改", description = "传入park")
 	public R submit(@Valid @RequestBody Park park) {
@@ -136,6 +145,7 @@ public class ParkController extends BladeController {
 	 * 删除
 	 */
 	@PostMapping("/remove")
+	@PreAuth(menu = "park_delete")
 	@ApiOperationSupport(order = 7)
 	@Operation(summary = "删除", description = "传入ids")
 	public R remove(@Parameter(description = "主键集合", required = true) @RequestParam String ids) {

@@ -110,6 +110,10 @@ public class Floor implements Serializable {
 	private BigDecimal usedArea;
 
 	@TableField(exist = false)
+	@Schema(description = "已出租面积（除空置外的房源面积）")
+	private BigDecimal rentedArea;
+
+	@TableField(exist = false)
 	@Schema(description = "房源总数")
 	private Integer totalCount;
 

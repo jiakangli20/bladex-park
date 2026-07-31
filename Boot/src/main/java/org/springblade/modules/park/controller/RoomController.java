@@ -94,6 +94,8 @@ public class RoomController extends BladeController {
 	 * 新增或修改
 	 */
 	@PostMapping("/submit")
+	@PreAuth("(#room.id == null && hasMenu('rent_control_room_add')) || " +
+		"(#room.id != null && hasMenu('rent_control_room_edit'))")
 	@ApiOperationSupport(order = 4)
 	@Operation(summary = "新增或修改", description = "传入room")
 	public R submit(@RequestBody Room room) {
@@ -104,6 +106,7 @@ public class RoomController extends BladeController {
 	 * 删除
 	 */
 	@PostMapping("/remove")
+	@PreAuth(menu = "rent_control_room_delete")
 	@ApiOperationSupport(order = 5)
 	@Operation(summary = "删除", description = "传入ids")
 	public R remove(@Parameter(description = "主键集合", required = true) @RequestParam String ids) {
@@ -114,6 +117,7 @@ public class RoomController extends BladeController {
 	 * 状态流转
 	 */
 	@PostMapping("/change-status")
+	@PreAuth(menu = "rent_control_room_status")
 	@ApiOperationSupport(order = 6)
 	@Operation(summary = "状态流转", description = "传入id,status")
 	public R changeStatus(@RequestParam Long id, @RequestParam String status) {
@@ -124,6 +128,7 @@ public class RoomController extends BladeController {
 	 * 标记小程序同步
 	 */
 	@PostMapping("/sync-mini")
+	@PreAuth(menu = "rent_control_room_sync")
 	@ApiOperationSupport(order = 7)
 	@Operation(summary = "标记小程序同步", description = "传入id")
 	public R syncMini(@RequestParam Long id) {

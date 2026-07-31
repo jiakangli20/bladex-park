@@ -25,7 +25,7 @@ public interface SmartDeviceMapper extends BaseMapper<SmartDevice> {
 
 	Map<String, Object> selectDeviceStatistics(@Param("device") SmartDevice device);
 
-	List<Map<String, Object>> selectDeviceTypeStatistics();
+	List<Map<String, Object>> selectDeviceTypeStatistics(@Param("parkId") Long parkId);
 
 	int countDeviceCode(@Param("deviceCode") String deviceCode, @Param("excludeId") Long excludeId);
 

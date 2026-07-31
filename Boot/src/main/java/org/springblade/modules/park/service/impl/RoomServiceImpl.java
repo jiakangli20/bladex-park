@@ -26,11 +26,13 @@
 package org.springblade.modules.park.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.tool.utils.Func;
+import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.park.mapper.RoomMapper;
 import org.springblade.modules.park.pojo.entity.Building;
 import org.springblade.modules.park.pojo.entity.Floor;
@@ -39,6 +41,7 @@ import org.springblade.modules.park.pojo.vo.RoomVO;
 import org.springblade.modules.park.service.IBuildingService;
 import org.springblade.modules.park.service.IFloorService;
 import org.springblade.modules.park.service.IRoomService;
+import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,25 +65,43 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements IR
 
 	private final IBuildingService buildingService;
 	private final IFloorService floorService;
+	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public RoomVO selectRoomById(Long id) {
-		return baseMapper.selectRoomById(id);
+		RoomVO room = baseMapper.selectRoomById(id);
+		if (room != null) {
+			parkDataAccessService.assertAccessible(room.getParkId());
+		}
+		return room;
 	}
 
 	@Override
 	public List<RoomVO> selectRoomList(Room room) {
+		room.setParkId(parkDataAccessService.scopedParkId(room.getParkId()));
 		return baseMapper.selectRoomList(room);
 	}
 
 	@Override
 	public IPage<RoomVO> selectRoomPage(IPage<RoomVO> page, Room room) {
+		room.setParkId(parkDataAccessService.scopedParkId(room.getParkId()));
 		return page.setRecords(baseMapper.selectRoomPage(page, room));
 	}
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean submit(Room room) {
+		RoomVO oldRoom = null;
+		if (room != null && room.getId() != null) {
+			oldRoom = selectRoomById(room.getId());
+			if (oldRoom == null) {
+				throw new ServiceException("房源不存在");
+			}
+			// 房源主键可能已被合同、账单和工单引用，编辑时保持原物理位置不变。
+			room.setParkId(oldRoom.getParkId());
+			room.setBuildingId(oldRoom.getBuildingId());
+			room.setFloor(oldRoom.getFloor());
+		}
 		validateRoom(room);
 		Date now = new Date();
 		String userName = AuthUtil.getUserName();
@@ -93,10 +114,6 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements IR
 			room.setCreateBy(userName);
 			room.setCreateTime(now);
 		} else {
-			RoomVO oldRoom = selectRoomById(room.getId());
-			if (oldRoom == null) {
-				throw new ServiceException("房源不存在");
-			}
 			if (STATUS_VACANT.equals(room.getStatus())) {
 				room.setVacantSince(STATUS_VACANT.equals(oldRoom.getBaseStatus()) ? oldRoom.getVacantSince() : now);
 			} else {
@@ -134,7 +151,7 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements IR
 		if (!List.of("0", "1", "2", "3", "4", "5", "6", "7").contains(status)) {
 			throw new ServiceException("房源状态不正确");
 		}
-		boolean resetVacantSince = STATUS_VACANT.equals(status) && !STATUS_VACANT.equals(room.getStatus());
+		boolean resetVacantSince = STATUS_VACANT.equals(status) && !STATUS_VACANT.equals(room.getBaseStatus());
 		return baseMapper.updateRoomStatus(id, status, AuthUtil.getUserName(), resetVacantSince) > 0;
 	}
 
@@ -151,14 +168,15 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements IR
 		if (room.getBuildingId() == null) {
 			throw new ServiceException("请选择所属建筑");
 		}
-		Building building = buildingService.getById(room.getBuildingId());
+		Building building = buildingService.selectBuildingById(room.getBuildingId());
 		if (building == null || building.getParkId() == null) {
 			throw new ServiceException("所属建筑不存在");
 		}
 		room.setParkId(building.getParkId());
-		if (Func.isEmpty(room.getName())) {
+		if (StringUtil.isBlank(room.getName())) {
 			throw new ServiceException("请输入房间名称");
 		}
+		room.setName(room.getName().trim());
 		if (room.getFloor() == null) {
 			throw new ServiceException("请输入楼层");
 		}
@@ -169,16 +187,30 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements IR
 		if (room.getFloor() < 1 || room.getFloor() > maxFloors) {
 			throw new ServiceException("房间楼层必须在1到" + maxFloors + "层之间");
 		}
+		if (room.getArea() == null || room.getArea().compareTo(BigDecimal.ZERO) <= 0) {
+			throw new ServiceException("房源面积必须大于0");
+		}
+		if (StringUtil.isNotBlank(room.getStatus())
+			&& !List.of("0", "1", "2", "3", "4", "5", "6", "7").contains(room.getStatus())) {
+			throw new ServiceException("房源状态不正确");
+		}
+		long duplicateCount = count(Wrappers.<Room>lambdaQuery()
+			.eq(Room::getBuildingId, room.getBuildingId())
+			.eq(Room::getName, room.getName())
+			.ne(room.getId() != null, Room::getId, room.getId()));
+		if (duplicateCount > 0) {
+			throw new ServiceException("同一建筑下房间名称已存在");
+		}
 		validateRoomArea(room);
 	}
 
 	private void validateRoomArea(Room room) {
-		if (room.getArea() == null) {
-			return;
-		}
 		Floor floor = floorService.selectFloorByBuildingAndNo(room.getBuildingId(), room.getFloor());
-		if (floor == null || floor.getArea() == null) {
-			return;
+		if (floor == null) {
+			throw new ServiceException("所属楼层不存在，请先同步建筑楼层");
+		}
+		if (floor.getArea() == null || floor.getArea().compareTo(BigDecimal.ZERO) <= 0) {
+			throw new ServiceException("所属楼层未配置有效面积");
 		}
 		BigDecimal usedArea = baseMapper.sumRoomAreaByFloor(room.getBuildingId(), room.getFloor(), room.getId());
 		BigDecimal remainingArea = floor.getArea().subtract(usedArea == null ? BigDecimal.ZERO : usedArea);
