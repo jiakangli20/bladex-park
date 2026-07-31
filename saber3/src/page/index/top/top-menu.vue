@@ -99,9 +99,7 @@ export default {
         return;
       }
       const activeMenu = this.items.find(item => this.matchPath(item, path));
-      if (activeMenu) {
-        this.setActive(activeMenu.id);
-      }
+      this.setActive(activeMenu ? activeMenu.id : 0);
     },
     getMenu() {
       this.$store.dispatch('GetTopMenu').then(res => {

@@ -16,12 +16,6 @@
             class="setting-checkbox-item setting-checkbox-item--side"
           ></div>
         </el-tooltip>
-        <el-tooltip class="item" effect="dark" content="顶部菜单布局" placement="top">
-          <div
-            @click="setting.sidebar = 'horizontal'"
-            class="setting-checkbox-item setting-checkbox-item--top"
-          ></div>
-        </el-tooltip>
       </div>
       <h5>页面布局</h5>
       <div class="setting-checkbox">
@@ -87,7 +81,7 @@ export default {
     };
   },
   computed: {
-    ...mapGetters(['isHorizontal', 'setting']),
+    ...mapGetters(['setting']),
   },
 };
 </script>

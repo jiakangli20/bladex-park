@@ -117,7 +117,7 @@ export default [
     children: [
       {
         path: '',
-        name: '我的逾期通知',
+        name: '逾期通知',
         meta: {
           activeMenu: '/finance/overdue-notice',
         },

@@ -45,7 +45,7 @@
         <span class="top-user__avatar"></span>
         <el-dropdown :hide-on-click="false">
           <span class="el-dropdown-link">
-            {{ userInfo.real_name }}
+            {{ displayName }}
             <el-icon class="el-icon--right">
               <arrow-down />
             </el-icon>
@@ -226,6 +226,10 @@ export default {
     this.init();
   },
   computed: {
+    displayName() {
+      const info = this.userInfo || {};
+      return info.real_name || info.realName || info.userName || info.user_name || '-';
+    },
     func() {
       return func;
     },

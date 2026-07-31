@@ -297,14 +297,14 @@ export default {
           icon: 'Tools',
           tone: 'blue',
         },
-		{
-		  title: '我的逾期通知',
-		  count: 0,
-		  desc: '暂无未读逾期通知',
-		  path: '/finance/overdue-notice',
-		  icon: 'Bell',
-		  tone: 'red',
-		},
+        {
+          title: '逾期通知',
+          count: 0,
+          desc: '暂无未读逾期通知',
+          path: '/finance/overdue-notice',
+          icon: 'Bell',
+          tone: 'red',
+        },
       ],
       policies: [],
       calendarWeeks: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
@@ -410,7 +410,7 @@ export default {
         审批待处理提醒: 'approvalTodoCount',
         合同到期提醒: 'expiringContractCount',
         物业工单提醒: 'workorderTodoCount',
-		我的逾期通知: 'overdueNoticeCount',
+        逾期通知: 'overdueNoticeCount',
       };
       return Number(todos[map[title]]) || 0;
     },
@@ -420,7 +420,7 @@ export default {
           审批待处理提醒: '暂无待处理审批',
           合同到期提醒: '暂无合同即将到期',
           物业工单提醒: '暂无物业工单待处理',
-			  我的逾期通知: '暂无未读逾期通知',
+          逾期通知: '暂无未读逾期通知',
         };
         return emptyMap[title] || '暂无待办任务';
       }
@@ -428,7 +428,7 @@ export default {
         审批待处理提醒: `${count} 个审批待处理`,
         合同到期提醒: `${count} 个合同即将到期`,
         物业工单提醒: `${count} 条物业工单待处理`,
-			我的逾期通知: `${count} 条逾期通知未读`,
+        逾期通知: `${count} 条逾期通知未读`,
       };
       return unitMap[title] || `${count} 条待办任务`;
     },
@@ -470,14 +470,10 @@ export default {
         ElMessage.info('该入口将在后续模块接入后开放');
         return;
       }
-      const [routePath, queryString] = path.split('?');
-      const query = {};
-      if (queryString) {
-        queryString.split('&').forEach(pair => {
-          const [key, value] = pair.split('=');
-          if (key) query[key] = value || '';
-        });
-      }
+      const queryIndex = path.indexOf('?');
+      const routePath = queryIndex === -1 ? path : path.slice(0, queryIndex);
+      const queryString = queryIndex === -1 ? '' : path.slice(queryIndex + 1);
+      const query = Object.fromEntries(new URLSearchParams(queryString));
       this.syncSideMenu(routePath).finally(() => {
         this.$router.push({ path: routePath, query });
       });
