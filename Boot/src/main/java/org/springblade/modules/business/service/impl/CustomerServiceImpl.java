@@ -23,7 +23,9 @@ import org.springblade.modules.business.pojo.entity.Tag;
 import org.springblade.modules.business.service.ICustomerService;
 import org.springblade.modules.business.service.ITagService;
 import org.springblade.modules.park.pojo.entity.Park;
+import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -56,10 +58,14 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 
 	private final ITagService tagService;
 	private final BusinessOpportunityMapper businessOpportunityMapper;
+	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public Customer selectCustomerById(Long customerId) {
 		Customer customer = baseMapper.selectCustomerById(customerId);
+		if (Func.isNotEmpty(customer)) {
+			parkDataAccessService.assertAccessible(customer.getParkId());
+		}
 		fillTags(customer);
 		return customer;
 	}
@@ -131,6 +137,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		if (Func.isEmpty(customer)) {
 			throw new ServiceException("客户信息不能为空");
 		}
+		customer.setParkId(parkDataAccessService.scopedParkId(customer.getParkId()));
 		normalizeCustomer(customer);
 		validateCustomer(customer, null);
 		customer.setCreateBy(currentUserName());
@@ -147,7 +154,11 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 			customer.setSettlementStatus(0);
 		}
 		applyLocalCheck(customer);
-		baseMapper.insertCustomer(customer);
+		try {
+			baseMapper.insertCustomer(customer);
+		} catch (DuplicateKeyException exception) {
+			throw new ServiceException("同一园区下企业名称不可重复");
+		}
 		if (customer.getTagIds() != null) {
 			tagService.setCustomerTags(customer.getCustomerId(), customer.getTagIds());
 		}
@@ -164,14 +175,22 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		if (Func.isEmpty(old)) {
 			throw new ServiceException("客户不存在");
 		}
+		parkDataAccessService.assertAccessible(old.getParkId());
+		// 园区归属不允许通过普通编辑迁移，避免已关联商机、审批、合同产生跨园区关系。
+		customer.setParkId(old.getParkId());
+		parkDataAccessService.assertAccessible(customer.getParkId());
 		normalizeCustomer(customer);
 		validateCustomer(mergeForValidate(old, customer), customer.getCustomerId());
 		customer.setUpdateBy(currentUserName());
 		customer.setUpdateTime(DateUtil.now());
-		applyLocalCheck(customer);
-		int rows = baseMapper.updateCustomer(customer);
-		if (rows > 0) {
-			syncRelatedEnterpriseName(old, customer);
+		int rows;
+		try {
+			rows = baseMapper.updateCustomer(customer);
+			if (rows > 0) {
+				syncRelatedEnterpriseName(old, customer);
+			}
+		} catch (DuplicateKeyException exception) {
+			throw new ServiceException("企业名称已存在，请勿重复录入");
 		}
 		if (customer.getTagIds() != null) {
 			tagService.setCustomerTags(customer.getCustomerId(), customer.getTagIds());
@@ -212,16 +231,14 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		if (!List.of("0", "1", "2").contains(Func.toStr(status))) {
 			throw new ServiceException("客户状态不正确");
 		}
+		requireAccessibleCustomer(customerId);
 		return baseMapper.updateCustomerStatus(customerId, status, currentUserName()) > 0;
 	}
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public Customer checkCustomer(Long customerId) {
-		Customer customer = baseMapper.selectCustomerById(customerId);
-		if (Func.isEmpty(customer)) {
-			throw new ServiceException("客户不存在");
-		}
+		Customer customer = requireAccessibleCustomer(customerId);
 		applyLocalCheck(customer);
 		customer.setUpdateBy(currentUserName());
 		baseMapper.updateCustomerCheckResult(customer);
@@ -231,9 +248,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean setCustomerTags(Long customerId, List<Long> tagIds) {
-		if (Func.isEmpty(baseMapper.selectCustomerById(customerId))) {
-			throw new ServiceException("客户不存在");
-		}
+		requireAccessibleCustomer(customerId);
 		return tagService.setCustomerTags(customerId, tagIds);
 	}
 
@@ -257,15 +272,21 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		customer.setDelFlag(DEL_FLAG_NORMAL);
 		customer.setUpdateBy(currentUserName());
 		customer.setUpdateTime(DateUtil.now());
-		applyLocalCheck(customer);
 		if (isCreate) {
-			normalizeCustomer(customer);
-			validateCustomer(customer, null);
-			customer.setCreateBy(currentUserName());
-			customer.setCreateTime(DateUtil.now());
-			baseMapper.insertCustomer(customer);
-		} else {
-			baseMapper.updateCustomer(customer);
+			applyLocalCheck(customer);
+		}
+		try {
+			if (isCreate) {
+				normalizeCustomer(customer);
+				validateCustomer(customer, null);
+				customer.setCreateBy(currentUserName());
+				customer.setCreateTime(DateUtil.now());
+				baseMapper.insertCustomer(customer);
+			} else {
+				baseMapper.updateCustomer(customer);
+			}
+		} catch (DuplicateKeyException exception) {
+			throw new ServiceException("审批回流企业名称已存在，请核对客户档案后重试");
 		}
 		baseMapper.updateApprovalProjectCustomerId(project.getProjectId(), customer.getCustomerId(), currentUserName());
 		if (Func.isNotEmpty(project.getBusinessId())) {
@@ -307,15 +328,21 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		customer.setTenantEntryApprovalTime(DateUtil.now());
 		customer.setUpdateBy(currentUserName());
 		customer.setUpdateTime(DateUtil.now());
-		applyLocalCheck(customer);
 		if (isCreate) {
-			normalizeCustomer(customer);
-			validateCustomer(customer, null);
-			customer.setCreateBy(currentUserName());
-			customer.setCreateTime(DateUtil.now());
-			baseMapper.insertCustomer(customer);
-		} else {
-			baseMapper.updateCustomer(customer);
+			applyLocalCheck(customer);
+		}
+		try {
+			if (isCreate) {
+				normalizeCustomer(customer);
+				validateCustomer(customer, null);
+				customer.setCreateBy(currentUserName());
+				customer.setCreateTime(DateUtil.now());
+				baseMapper.insertCustomer(customer);
+			} else {
+				baseMapper.updateCustomer(customer);
+			}
+		} catch (DuplicateKeyException exception) {
+			throw new ServiceException("审批回流企业名称已存在，请核对客户档案后重试");
 		}
 		BusinessOpportunity patch = new BusinessOpportunity();
 		patch.setOpportunityId(opportunity.getOpportunityId());
@@ -346,7 +373,9 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 	}
 
 	private Customer normalizeQuery(Customer customer) {
-		return Func.isEmpty(customer) ? new Customer() : customer;
+		Customer query = Func.isEmpty(customer) ? new Customer() : customer;
+		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
+		return query;
 	}
 
 	private CustomerExcel toCustomerExcel(Customer customer, Map<Long, String> parkNameMap) {
@@ -425,7 +454,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 
 	private Long resolveImportCustomerId(Customer customer) {
 		if (StringUtil.isNotBlank(customer.getCreditCode())) {
-			Long customerId = baseMapper.selectCustomerIdByCreditCode(customer.getCreditCode());
+			Long customerId = baseMapper.selectCustomerIdByCreditCode(customer.getCreditCode(), customer.getParkId());
 			if (Func.isNotEmpty(customerId)) {
 				return customerId;
 			}
@@ -488,7 +517,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 	}
 
 	private List<Park> listPark() {
-		return baseMapper.selectListPark();
+		return baseMapper.selectListPark(parkDataAccessService.scopedParkId(null));
 	}
 
 	private void validateCustomer(Customer customer, Long excludeCustomerId) {
@@ -498,6 +527,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		if (Func.isEmpty(customer.getParkId())) {
 			throw new ServiceException("所属园区不能为空");
 		}
+		parkDataAccessService.assertAccessible(customer.getParkId());
 		if (StringUtil.isBlank(customer.getContactName())) {
 			throw new ServiceException("联系人不能为空");
 		}
@@ -521,9 +551,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 	}
 
 	private void assertCustomerCanDelete(Long customerId) {
-		if (Func.isEmpty(baseMapper.selectCustomerById(customerId))) {
-			throw new ServiceException("客户不存在");
-		}
+		requireAccessibleCustomer(customerId);
 		if (Func.toInt(baseMapper.countOpportunityByCustomerId(customerId), 0) > 0) {
 			throw new ServiceException("客户已关联商机，不能删除");
 		}
@@ -536,27 +564,39 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 	}
 
 	private Long resolveCustomerId(ApprovalProject project, BusinessOpportunity opportunity) {
-		if (Func.isNotEmpty(project.getCustomerId()) && Func.isNotEmpty(baseMapper.selectCustomerById(project.getCustomerId()))) {
-			return project.getCustomerId();
+		Long parkId = Func.isNotEmpty(project.getParkId()) ? project.getParkId() : opportunity == null ? null : opportunity.getParkId();
+		if (Func.isNotEmpty(project.getCustomerId())) {
+			Customer customer = baseMapper.selectCustomerById(project.getCustomerId());
+			if (Func.isNotEmpty(customer)) {
+				if (!Objects.equals(parkId, customer.getParkId())) {
+					throw new ServiceException("审批项目与客户不属于同一园区");
+				}
+				return project.getCustomerId();
+			}
 		}
 		String creditCode = firstNotBlank(project.getCreditCode(), opportunity == null ? null : opportunity.getCreditCode());
 		if (StringUtil.isNotBlank(creditCode)) {
-			Long customerId = baseMapper.selectCustomerIdByCreditCode(creditCode);
+			Long customerId = baseMapper.selectCustomerIdByCreditCode(creditCode, parkId);
 			if (Func.isNotEmpty(customerId)) {
 				return customerId;
 			}
 		}
 		String enterpriseName = firstNotBlank(project.getEnterpriseName(), opportunity == null ? null : opportunity.getEnterpriseName());
-		Long parkId = Func.isNotEmpty(project.getParkId()) ? project.getParkId() : opportunity == null ? null : opportunity.getParkId();
 		return StringUtil.isBlank(enterpriseName) ? null : baseMapper.selectCustomerIdByEnterpriseAndPark(enterpriseName, parkId, null);
 	}
 
 	private Long resolveCustomerId(BusinessOpportunity opportunity) {
-		if (Func.isNotEmpty(opportunity.getCustomerId()) && Func.isNotEmpty(baseMapper.selectCustomerById(opportunity.getCustomerId()))) {
-			return opportunity.getCustomerId();
+		if (Func.isNotEmpty(opportunity.getCustomerId())) {
+			Customer customer = baseMapper.selectCustomerById(opportunity.getCustomerId());
+			if (Func.isNotEmpty(customer)) {
+				if (!Objects.equals(opportunity.getParkId(), customer.getParkId())) {
+					throw new ServiceException("商机与客户不属于同一园区");
+				}
+				return opportunity.getCustomerId();
+			}
 		}
 		if (StringUtil.isNotBlank(opportunity.getCreditCode())) {
-			Long customerId = baseMapper.selectCustomerIdByCreditCode(opportunity.getCreditCode());
+			Long customerId = baseMapper.selectCustomerIdByCreditCode(opportunity.getCreditCode(), opportunity.getParkId());
 			if (Func.isNotEmpty(customerId)) {
 				return customerId;
 			}
@@ -667,6 +707,15 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		}
 		customer.setExecutiveRiskFlag(firstNotBlank(customer.getExecutiveRiskFlag(), "0"));
 		customer.setShareholderRiskFlag(firstNotBlank(customer.getShareholderRiskFlag(), "0"));
+	}
+
+	private Customer requireAccessibleCustomer(Long customerId) {
+		Customer customer = baseMapper.selectCustomerById(customerId);
+		if (Func.isEmpty(customer)) {
+			throw new ServiceException("客户不存在");
+		}
+		parkDataAccessService.assertAccessible(customer.getParkId());
+		return customer;
 	}
 
 	private boolean isTenantEntryProject(ApprovalProject project) {

@@ -33,6 +33,9 @@ public class BackgroundInvestigation implements Serializable {
 	@JsonSerialize(using = ToStringSerializer.class)
 	private Long customerId;
 
+	@JsonSerialize(using = ToStringSerializer.class)
+	private Long parkId;
+
 	private String enterpriseName;
 	private String verifyStatus;
 	private String riskLevel;

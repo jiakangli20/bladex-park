@@ -44,6 +44,7 @@ public class CustomerController extends BladeController {
 	private final ICustomerService customerService;
 
 	@GetMapping("/detail")
+	@PreAuth(menu = "settlement_customer_view")
 	@ApiOperationSupport(order = 1)
 	@Operation(summary = "详情", description = "传入customerId")
 	public R<Customer> detail(@Parameter(description = "客户ID") @RequestParam Long customerId) {
@@ -51,6 +52,7 @@ public class CustomerController extends BladeController {
 	}
 
 	@GetMapping("/get/{customerId}")
+	@PreAuth(menu = "settlement_customer_view")
 	@ApiOperationSupport(order = 2)
 	@Operation(summary = "详情", description = "兼容源接口")
 	public R<Customer> get(@PathVariable Long customerId) {
@@ -79,6 +81,7 @@ public class CustomerController extends BladeController {
 	}
 
 	@PostMapping("/save")
+	@PreAuth(menu = "settlement_customer_add")
 	@ApiOperationSupport(order = 6)
 	@Operation(summary = "新增", description = "新增客户")
 	public R<Customer> save(@RequestBody Customer customer) {
@@ -86,6 +89,7 @@ public class CustomerController extends BladeController {
 	}
 
 	@PostMapping("/update")
+	@PreAuth(menu = "settlement_customer_edit")
 	@ApiOperationSupport(order = 7)
 	@Operation(summary = "修改", description = "修改客户")
 	public R update(@RequestBody Customer customer) {
@@ -93,6 +97,8 @@ public class CustomerController extends BladeController {
 	}
 
 	@PostMapping("/submit")
+	@PreAuth("(#customer.customerId == null && hasMenu('settlement_customer_add')) || " +
+		"(#customer.customerId != null && hasMenu('settlement_customer_edit'))")
 	@ApiOperationSupport(order = 8)
 	@Operation(summary = "新增或修改", description = "新增或修改客户")
 	public R submit(@RequestBody Customer customer) {
@@ -100,6 +106,7 @@ public class CustomerController extends BladeController {
 	}
 
 	@PostMapping("/remove")
+	@PreAuth(menu = "settlement_customer_delete")
 	@ApiOperationSupport(order = 9)
 	@Operation(summary = "删除", description = "逻辑删除客户")
 	public R remove(@Parameter(description = "主键集合") @RequestParam String ids) {
@@ -107,6 +114,7 @@ public class CustomerController extends BladeController {
 	}
 
 	@PostMapping("/changeStatus/{customerId}")
+	@PreAuth(menu = "settlement_customer_status")
 	@ApiOperationSupport(order = 10)
 	@Operation(summary = "状态变更", description = "启用、停用、归档客户")
 	public R changeStatus(@PathVariable Long customerId, @RequestParam String status) {
@@ -114,6 +122,7 @@ public class CustomerController extends BladeController {
 	}
 
 	@PostMapping("/check/{customerId}")
+	@PreAuth(menu = "settlement_customer_check")
 	@ApiOperationSupport(order = 11)
 	@Operation(summary = "客户核验", description = "执行本地客户核验")
 	public R<Customer> check(@PathVariable Long customerId) {
@@ -121,6 +130,7 @@ public class CustomerController extends BladeController {
 	}
 
 	@GetMapping("/tag/list/{customerId}")
+	@PreAuth(menu = "settlement_customer_view")
 	@ApiOperationSupport(order = 12)
 	@Operation(summary = "客户标签", description = "查询客户标签")
 	public R<List<Long>> tagList(@PathVariable Long customerId) {
@@ -129,6 +139,7 @@ public class CustomerController extends BladeController {
 	}
 
 	@PostMapping("/tag/set/{customerId}")
+	@PreAuth(menu = "settlement_customer_tag")
 	@ApiOperationSupport(order = 13)
 	@Operation(summary = "设置标签", description = "设置客户标签")
 	public R setTags(@PathVariable Long customerId, @RequestBody(required = false) List<Long> tagIds) {
@@ -136,6 +147,7 @@ public class CustomerController extends BladeController {
 	}
 
 	@GetMapping("/export")
+	@PreAuth(menu = "settlement_customer_export")
 	@ApiOperationSupport(order = 14)
 	@Operation(summary = "导出", description = "导出客户数据")
 	public void export(Customer customer, HttpServletResponse response) {
@@ -144,6 +156,7 @@ public class CustomerController extends BladeController {
 	}
 
 	@GetMapping("/export-template")
+	@PreAuth(menu = "settlement_customer_import")
 	@ApiOperationSupport(order = 15)
 	@Operation(summary = "导出模板", description = "导出客户导入模板")
 	public void exportTemplate(HttpServletResponse response) {
@@ -151,6 +164,7 @@ public class CustomerController extends BladeController {
 	}
 
 	@PostMapping("/import")
+	@PreAuth(menu = "settlement_customer_import")
 	@ApiOperationSupport(order = 16)
 	@Operation(summary = "导入", description = "导入客户数据")
 	public R importCustomer(MultipartFile file) {

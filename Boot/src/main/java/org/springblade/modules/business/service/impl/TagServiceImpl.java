@@ -6,20 +6,27 @@ package org.springblade.modules.business.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import lombok.RequiredArgsConstructor;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.Func;
 import org.springblade.core.tool.utils.StringUtil;
+import org.springblade.modules.business.mapper.BusinessOpportunityMapper;
+import org.springblade.modules.business.mapper.CustomerMapper;
 import org.springblade.modules.business.mapper.TagMapper;
+import org.springblade.modules.business.pojo.entity.BusinessOpportunity;
+import org.springblade.modules.business.pojo.entity.Customer;
 import org.springblade.modules.business.pojo.entity.Tag;
 import org.springblade.modules.business.pojo.entity.TagType;
 import org.springblade.modules.business.service.ITagService;
+import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -28,6 +35,7 @@ import java.util.stream.Collectors;
  * @author BladeX
  */
 @Service
+@RequiredArgsConstructor
 public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagService {
 
 	private static final String STATUS_NORMAL = "0";
@@ -36,24 +44,32 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 	private static final String CUSTOMER_TAG_TABLE = "biz_customer_tag";
 	private static final String OPPORTUNITY_TAG_TABLE = "biz_business_opportunity_tag";
 
+	private final CustomerMapper customerMapper;
+	private final BusinessOpportunityMapper businessOpportunityMapper;
+	private final ParkDataAccessService parkDataAccessService;
+
 	@Override
 	public Tag selectTagById(Long tagId) {
-		return baseMapper.selectTagById(tagId);
+		return requireAccessibleTag(tagId);
 	}
 
 	@Override
 	public List<Tag> selectTagList(Tag tag) {
-		return baseMapper.selectTagList(tag);
+		return baseMapper.selectTagList(normalizeQuery(tag));
 	}
 
 	@Override
 	public IPage<Tag> selectTagPage(IPage<Tag> page, Tag tag) {
-		return baseMapper.selectTagPage(page, tag);
+		return baseMapper.selectTagPage(page, normalizeQuery(tag));
 	}
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean insertTag(Tag tag) {
+		tag.setParkId(parkDataAccessService.scopedParkId(tag.getParkId()));
+		if (Func.isEmpty(tag.getParkId())) {
+			throw new ServiceException("所属园区不能为空");
+		}
 		validateTag(tag, null);
 		tag.setCreateBy(currentUserName());
 		tag.setCreateTime(DateUtil.now());
@@ -75,6 +91,10 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 		if (Func.isEmpty(tag.getTagId())) {
 			throw new ServiceException("标签不存在");
 		}
+		Tag old = requireAccessibleTag(tag.getTagId());
+		// 已绑定客户或商机的标签不得通过普通编辑迁移园区，避免产生跨园区关系。
+		tag.setParkId(old.getParkId());
+		parkDataAccessService.assertAccessible(tag.getParkId());
 		validateTag(tag, tag.getTagId());
 		tag.setUpdateTime(DateUtil.now());
 		return baseMapper.updateTag(tag) > 0;
@@ -94,6 +114,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 			throw new ServiceException("请选择需要删除的标签");
 		}
 		for (Long tagId : tagIds) {
+			requireAccessibleTag(tagId);
 			Integer relationCount = countRelationByTagId(tagId);
 			if (!force && Func.isNotEmpty(relationCount) && relationCount > 0) {
 				throw new ServiceException("该标签已有客户关联，确定删除该标签？");
@@ -104,7 +125,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 
 	@Override
 	public List<Tag> selectTagByType(Integer tagType, Long parkId) {
-		return baseMapper.selectTagByType(tagType, parkId);
+		return baseMapper.selectTagByType(tagType, parkDataAccessService.scopedParkId(parkId));
 	}
 
 	@Override
@@ -112,6 +133,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 		if (Func.isEmpty(customerId)) {
 			return Collections.emptyList();
 		}
+		requireAccessibleCustomer(customerId);
 		return baseMapper.selectTagsByCustomerId(customerId);
 	}
 
@@ -120,17 +142,16 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 		if (Func.isEmpty(opportunityId)) {
 			return Collections.emptyList();
 		}
+		requireAccessibleOpportunity(opportunityId);
 		return baseMapper.selectTagsByOpportunityId(opportunityId);
 	}
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean setCustomerTags(Long customerId, List<Long> tagIds) {
-		if (Func.isEmpty(customerId)) {
-			throw new ServiceException("客户不存在");
-		}
+		Customer customer = requireAccessibleCustomer(customerId);
+		List<Long> validTagIds = normalizeAndValidateTagIds(tagIds, customer.getParkId());
 		baseMapper.deleteCustomerTags(customerId);
-		List<Long> validTagIds = normalizeTagIds(tagIds);
 		if (validTagIds.isEmpty()) {
 			return true;
 		}
@@ -140,11 +161,9 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean setOpportunityTags(Long opportunityId, List<Long> tagIds) {
-		if (Func.isEmpty(opportunityId)) {
-			throw new ServiceException("商机不存在");
-		}
+		BusinessOpportunity opportunity = requireAccessibleOpportunity(opportunityId);
+		List<Long> validTagIds = normalizeAndValidateTagIds(tagIds, opportunity.getParkId());
 		baseMapper.deleteOpportunityTags(opportunityId);
-		List<Long> validTagIds = normalizeTagIds(tagIds);
 		if (validTagIds.isEmpty()) {
 			return true;
 		}
@@ -178,6 +197,51 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 			return Collections.emptyList();
 		}
 		return tagIds.stream().filter(Func::isNotEmpty).distinct().collect(Collectors.toList());
+	}
+
+	private List<Long> normalizeAndValidateTagIds(List<Long> tagIds, Long businessParkId) {
+		List<Long> validTagIds = normalizeTagIds(tagIds);
+		for (Long tagId : validTagIds) {
+			Tag tag = requireAccessibleTag(tagId);
+			if (!Objects.equals(businessParkId, tag.getParkId())) {
+				throw new ServiceException("只能绑定当前园区的客户标签");
+			}
+		}
+		return validTagIds;
+	}
+
+	private Tag normalizeQuery(Tag tag) {
+		Tag query = Func.isEmpty(tag) ? new Tag() : tag;
+		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
+		return query;
+	}
+
+	private Tag requireAccessibleTag(Long tagId) {
+		Tag tag = Func.isEmpty(tagId) ? null : baseMapper.selectTagById(tagId);
+		if (tag == null || !DEL_FLAG_NORMAL.equals(tag.getDelFlag())) {
+			throw new ServiceException("标签不存在");
+		}
+		parkDataAccessService.assertAccessible(tag.getParkId());
+		return tag;
+	}
+
+	private Customer requireAccessibleCustomer(Long customerId) {
+		Customer customer = Func.isEmpty(customerId) ? null : customerMapper.selectCustomerById(customerId);
+		if (customer == null || !DEL_FLAG_NORMAL.equals(customer.getDelFlag())) {
+			throw new ServiceException("客户不存在");
+		}
+		parkDataAccessService.assertAccessible(customer.getParkId());
+		return customer;
+	}
+
+	private BusinessOpportunity requireAccessibleOpportunity(Long opportunityId) {
+		BusinessOpportunity opportunity = Func.isEmpty(opportunityId) ? null
+			: businessOpportunityMapper.selectBusinessOpportunityById(opportunityId);
+		if (opportunity == null || !DEL_FLAG_NORMAL.equals(opportunity.getDelFlag())) {
+			throw new ServiceException("商机不存在");
+		}
+		parkDataAccessService.assertAccessible(opportunity.getParkId());
+		return opportunity;
 	}
 
 	private int countRelationByTagId(Long tagId) {

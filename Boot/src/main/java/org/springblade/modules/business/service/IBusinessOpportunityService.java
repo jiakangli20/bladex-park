@@ -31,6 +31,8 @@ public interface IBusinessOpportunityService extends IService<BusinessOpportunit
 
 	IPage<BusinessOpportunity> selectBusinessOpportunityPage(IPage<BusinessOpportunity> page, BusinessOpportunity opportunity);
 
+	IPage<BusinessOpportunity> selectBackgroundInvestigationPage(IPage<BusinessOpportunity> page, BusinessOpportunity opportunity);
+
 	boolean insertBusinessOpportunity(BusinessOpportunity opportunity);
 
 	boolean updateBusinessOpportunity(BusinessOpportunity opportunity);
@@ -53,7 +55,7 @@ public interface IBusinessOpportunityService extends IService<BusinessOpportunit
 
 	Map<String, Object> queryBackgroundInvestigation(Long opportunityId);
 
-	Map<String, Object> queryBackgroundInvestigationByName(String enterpriseName);
+	Map<String, Object> queryBackgroundInvestigationByName(String enterpriseName, Long parkId);
 
 	Map<String, Object> saveBackgroundInvestigation(BackgroundInvestigation investigation);
 

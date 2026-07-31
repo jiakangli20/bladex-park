@@ -50,6 +50,7 @@ public class BusinessOpportunityController extends BladeController {
 	private final IBusinessOpportunityService businessOpportunityService;
 
 	@GetMapping("/detail")
+	@PreAuth(menu = "business_opportunity_view")
 	@ApiOperationSupport(order = 1)
 	@Operation(summary = "详情", description = "传入opportunityId")
 	public R<BusinessOpportunity> detail(@Parameter(description = "商机ID") @RequestParam Long opportunityId) {
@@ -57,6 +58,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@GetMapping("/get/{opportunityId}")
+	@PreAuth(menu = "business_opportunity_view")
 	@ApiOperationSupport(order = 2)
 	@Operation(summary = "详情", description = "兼容源接口")
 	public R<BusinessOpportunity> get(@PathVariable Long opportunityId) {
@@ -85,6 +87,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@PostMapping("/save")
+	@PreAuth(menu = "business_opportunity_add")
 	@ApiOperationSupport(order = 6)
 	@Operation(summary = "新增", description = "新增商机")
 	public R<BusinessOpportunity> save(@Valid @RequestBody BusinessOpportunity opportunity) {
@@ -93,6 +96,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@PostMapping("/update")
+	@PreAuth(menu = "business_opportunity_edit")
 	@ApiOperationSupport(order = 7)
 	@Operation(summary = "修改", description = "修改商机")
 	public R update(@Valid @RequestBody BusinessOpportunity opportunity) {
@@ -100,6 +104,8 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@PostMapping("/submit")
+	@PreAuth("(#opportunity.opportunityId == null && hasMenu('business_opportunity_add')) || " +
+		"(#opportunity.opportunityId != null && hasMenu('business_opportunity_edit'))")
 	@ApiOperationSupport(order = 8)
 	@Operation(summary = "新增或修改", description = "新增或修改商机")
 	public R submit(@Valid @RequestBody BusinessOpportunity opportunity) {
@@ -107,6 +113,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@PostMapping("/remove")
+	@PreAuth(menu = "business_opportunity_delete")
 	@ApiOperationSupport(order = 9)
 	@Operation(summary = "删除", description = "逻辑删除商机")
 	public R remove(@Parameter(description = "主键集合") @RequestParam String ids) {
@@ -114,6 +121,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@GetMapping("/follow/list/{opportunityId}")
+	@PreAuth(menu = "business_opportunity_view")
 	@ApiOperationSupport(order = 10)
 	@Operation(summary = "跟进列表", description = "查询商机跟进记录")
 	public R<List<BusinessOpportunityFollow>> followList(@PathVariable Long opportunityId) {
@@ -121,6 +129,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@PostMapping("/follow/add/{opportunityId}")
+	@PreAuth(menu = "business_opportunity_follow")
 	@ApiOperationSupport(order = 11)
 	@Operation(summary = "新增跟进", description = "新增商机跟进记录")
 	public R addFollow(@PathVariable Long opportunityId, @RequestBody BusinessOpportunityFollow follow) {
@@ -128,6 +137,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@GetMapping("/file/list/{opportunityId}")
+	@PreAuth(menu = "business_opportunity_view")
 	@ApiOperationSupport(order = 12)
 	@Operation(summary = "附件列表", description = "查询商机附件")
 	public R<List<BusinessOpportunityFile>> fileList(@PathVariable Long opportunityId) {
@@ -135,6 +145,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@PostMapping("/file/upload")
+	@PreAuth(menu = "business_opportunity_file_upload")
 	@ApiOperationSupport(order = 13)
 	@Operation(summary = "上传附件", description = "上传商机附件")
 	public R<BusinessOpportunityFile> uploadFile(@RequestParam("file") MultipartFile file,
@@ -143,6 +154,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@GetMapping("/tag/list/{opportunityId}")
+	@PreAuth(menu = "business_opportunity_view")
 	@ApiOperationSupport(order = 14)
 	@Operation(summary = "标签列表", description = "查询商机标签")
 	public R<List<Tag>> tagList(@PathVariable Long opportunityId) {
@@ -150,6 +162,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@PostMapping("/tag/set/{opportunityId}")
+	@PreAuth(menu = "business_opportunity_edit")
 	@ApiOperationSupport(order = 15)
 	@Operation(summary = "设置标签", description = "设置商机标签")
 	public R setTags(@PathVariable Long opportunityId, @RequestBody(required = false) List<Long> tagIds) {
@@ -157,6 +170,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@GetMapping("/background/{opportunityId}")
+	@PreAuth(menu = "business_opportunity_industry_rule")
 	@ApiOperationSupport(order = 16)
 	@Operation(summary = "背景调查", description = "按商机查询背景调查")
 	public R<Map<String, Object>> background(@PathVariable Long opportunityId) {
@@ -164,13 +178,16 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@GetMapping("/background/byName")
+	@PreAuth(menu = "business_opportunity_industry_rule")
 	@ApiOperationSupport(order = 17)
 	@Operation(summary = "背景调查", description = "按企业名称查询背景调查")
-	public R<Map<String, Object>> backgroundByName(@RequestParam("enterpriseName") String enterpriseName) {
-		return R.data(businessOpportunityService.queryBackgroundInvestigationByName(enterpriseName));
+	public R<Map<String, Object>> backgroundByName(@RequestParam("enterpriseName") String enterpriseName,
+												  @RequestParam(value = "parkId", required = false) Long parkId) {
+		return R.data(businessOpportunityService.queryBackgroundInvestigationByName(enterpriseName, parkId));
 	}
 
 	@PostMapping("/background/save")
+	@PreAuth(menu = "business_opportunity_industry_rule")
 	@ApiOperationSupport(order = 18)
 	@Operation(summary = "保存背景调查", description = "保存人工核验结果并保留修改留痕")
 	public R<Map<String, Object>> saveBackground(@RequestBody BackgroundInvestigation investigation) {
@@ -178,6 +195,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@GetMapping("/tenant-entry/approval-form/{opportunityId}")
+	@PreAuth(menu = "business_opportunity_audit")
 	@ApiOperationSupport(order = 19)
 	@Operation(summary = "企业入驻审批表", description = "按原始模板导出入驻审批表文件")
 	public void tenantEntryApprovalForm(@PathVariable Long opportunityId,
@@ -187,6 +205,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@GetMapping("/tenant-entry/approval-form-preview/{opportunityId}")
+	@PreAuth(menu = "business_opportunity_audit")
 	@ApiOperationSupport(order = 20)
 	@Operation(summary = "企业入驻审批表预览", description = "按原始 Word 模板生成并预览入驻审批表")
 	public R<Kv> tenantEntryApprovalFormPreview(@PathVariable Long opportunityId,
@@ -195,6 +214,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@PostMapping("/submitAudit/{opportunityId}")
+	@PreAuth(menu = "business_opportunity_audit")
 	@ApiOperationSupport(order = 21)
 	@Operation(summary = "提交审核", description = "提交入驻审核")
 	public R<BusinessOpportunity> submitAudit(@PathVariable Long opportunityId,

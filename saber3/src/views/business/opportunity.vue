@@ -300,7 +300,7 @@
               <el-col :span="12">
                 <el-form-item label="企业名称" prop="enterpriseName">
                   <el-input v-model="form.enterpriseName" placeholder="请输入企业名称">
-                    <template #append>
+					<template v-if="permissionList.industryRuleBtn" #append>
                       <el-button :loading="backgroundLoading" @click.stop="handleBackgroundCheck">
                         背景调查
                       </el-button>
@@ -340,7 +340,7 @@
               <el-col :span="12">
                 <el-form-item label="行业类型">
                   <el-input v-model="form.industryType" placeholder="请输入行业类型">
-                    <template #append>
+					<template v-if="permissionList.industryRuleBtn" #append>
                       <el-button :loading="industryChecking" @click.stop="handleIndustryCheck">
                         行业检测
                       </el-button>
@@ -365,7 +365,7 @@
               <el-input v-model="form.registeredAddress" />
             </el-form-item>
             <el-form-item label="客户标签">
-              <customer-tag-selector v-model="form.tagIds" />
+              <customer-tag-selector v-model="form.tagIds" :park-id="form.parkId" />
             </el-form-item>
           </section>
 
@@ -584,7 +584,7 @@
               <el-col :span="12">
                 <el-form-item label="企业名称" prop="enterpriseName">
                   <el-input v-model="form.enterpriseName" placeholder="请输入企业名称">
-                    <template #append>
+                    <template v-if="permissionList.industryRuleBtn" #append>
                       <el-button :loading="backgroundLoading" @click.stop="handleBackgroundCheck">
                         背景调查
                       </el-button>
@@ -649,7 +649,7 @@
               <el-input v-model="form.registeredAddress" />
             </el-form-item>
             <el-form-item label="客户标签">
-              <customer-tag-selector v-model="form.tagIds" :disabled="view" />
+              <customer-tag-selector v-model="form.tagIds" :park-id="form.parkId" :disabled="view" />
             </el-form-item>
           </section>
 
@@ -1005,7 +1005,8 @@ export default {
         delBtn: this.validData(this.permission.business_opportunity_delete, false),
         viewBtn: this.validData(this.permission.business_opportunity_view, false),
         followBtn: this.validData(this.permission.business_opportunity_follow, false),
-        fileUploadBtn: this.validData(this.permission.business_opportunity_file_upload, false),
+		fileUploadBtn: this.validData(this.permission.business_opportunity_file_upload, false),
+		industryRuleBtn: this.validData(this.permission.business_opportunity_industry_rule, false),
       };
     },
     ids() {

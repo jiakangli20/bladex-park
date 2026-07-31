@@ -38,6 +38,7 @@ public class TagController extends BladeController {
 	private final ITagService tagService;
 
 	@GetMapping("/detail")
+	@PreAuth(menu = "customer_tag_view")
 	@ApiOperationSupport(order = 1)
 	@Operation(summary = "详情", description = "传入tagId")
 	public R<Tag> detail(@Parameter(description = "标签ID") @RequestParam Long tagId) {
@@ -45,6 +46,7 @@ public class TagController extends BladeController {
 	}
 
 	@GetMapping("/get/{tagId}")
+	@PreAuth(menu = "customer_tag_view")
 	@ApiOperationSupport(order = 2)
 	@Operation(summary = "详情", description = "兼容源接口")
 	public R<Tag> get(@Parameter(description = "标签ID") @PathVariable Long tagId) {
@@ -52,6 +54,7 @@ public class TagController extends BladeController {
 	}
 
 	@GetMapping("/list")
+	@PreAuth(menu = "customer_tag_view")
 	@ApiOperationSupport(order = 3)
 	@Operation(summary = "分页", description = "客户标签分页")
 	public R<IPage<Tag>> list(Tag tag, Query query) {
@@ -60,6 +63,7 @@ public class TagController extends BladeController {
 	}
 
 	@GetMapping("/all")
+	@PreAuth(menu = "customer_tag_view")
 	@ApiOperationSupport(order = 4)
 	@Operation(summary = "列表", description = "客户标签列表")
 	public R<List<Tag>> all(Tag tag) {
@@ -67,6 +71,7 @@ public class TagController extends BladeController {
 	}
 
 	@GetMapping("/list-by-type/{tagType}")
+	@PreAuth(menu = "customer_tag_view")
 	@ApiOperationSupport(order = 5)
 	@Operation(summary = "按类型查询", description = "按标签类型查询启用标签")
 	public R<List<Tag>> listByType(@PathVariable Integer tagType, @RequestParam(required = false) Long parkId) {
@@ -74,6 +79,7 @@ public class TagController extends BladeController {
 	}
 
 	@GetMapping("/listByType/{tagType}")
+	@PreAuth(menu = "customer_tag_view")
 	@ApiOperationSupport(order = 6)
 	@Operation(summary = "按类型查询", description = "兼容源接口")
 	public R<List<Tag>> listByTypeCompat(@PathVariable Integer tagType, @RequestParam(required = false) Long parkId) {
@@ -81,6 +87,7 @@ public class TagController extends BladeController {
 	}
 
 	@GetMapping("/list-by-customer/{customerId}")
+	@PreAuth(menu = "customer_tag_view")
 	@ApiOperationSupport(order = 7)
 	@Operation(summary = "客户标签", description = "查询客户已绑定标签")
 	public R<List<Tag>> listByCustomer(@PathVariable Long customerId) {
@@ -88,6 +95,7 @@ public class TagController extends BladeController {
 	}
 
 	@GetMapping("/listByCustomer/{customerId}")
+	@PreAuth(menu = "customer_tag_view")
 	@ApiOperationSupport(order = 8)
 	@Operation(summary = "客户标签", description = "兼容源接口")
 	public R<List<Tag>> listByCustomerCompat(@PathVariable Long customerId) {
@@ -95,6 +103,7 @@ public class TagController extends BladeController {
 	}
 
 	@GetMapping("/list-by-opportunity/{opportunityId}")
+	@PreAuth(menu = "customer_tag_view")
 	@ApiOperationSupport(order = 9)
 	@Operation(summary = "商机标签", description = "查询商机已绑定标签")
 	public R<List<Tag>> listByOpportunity(@PathVariable Long opportunityId) {
@@ -102,6 +111,7 @@ public class TagController extends BladeController {
 	}
 
 	@PostMapping("/save")
+	@PreAuth(menu = "customer_tag_add")
 	@ApiOperationSupport(order = 10)
 	@Operation(summary = "新增", description = "新增客户标签")
 	public R save(@Valid @RequestBody Tag tag) {
@@ -109,6 +119,7 @@ public class TagController extends BladeController {
 	}
 
 	@PostMapping("/update")
+	@PreAuth(menu = "customer_tag_edit")
 	@ApiOperationSupport(order = 11)
 	@Operation(summary = "修改", description = "修改客户标签")
 	public R update(@Valid @RequestBody Tag tag) {
@@ -116,6 +127,8 @@ public class TagController extends BladeController {
 	}
 
 	@PostMapping("/submit")
+	@PreAuth("(#tag.tagId == null && hasMenu('customer_tag_add')) || " +
+		"(#tag.tagId != null && hasMenu('customer_tag_edit'))")
 	@ApiOperationSupport(order = 12)
 	@Operation(summary = "新增或修改", description = "新增或修改客户标签")
 	public R submit(@Valid @RequestBody Tag tag) {
@@ -123,6 +136,7 @@ public class TagController extends BladeController {
 	}
 
 	@PostMapping("/remove")
+	@PreAuth(menu = "customer_tag_delete")
 	@ApiOperationSupport(order = 13)
 	@Operation(summary = "删除", description = "逻辑删除客户标签")
 	public R remove(@Parameter(description = "主键集合") @RequestParam String ids,
@@ -131,6 +145,7 @@ public class TagController extends BladeController {
 	}
 
 	@PostMapping("/set-customer-tags/{customerId}")
+	@PreAuth(menu = "customer_tag_edit")
 	@ApiOperationSupport(order = 14)
 	@Operation(summary = "设置客户标签", description = "设置客户标签关系")
 	public R setCustomerTags(@PathVariable Long customerId, @RequestBody(required = false) List<Long> tagIds) {
@@ -138,6 +153,7 @@ public class TagController extends BladeController {
 	}
 
 	@PostMapping("/set-opportunity-tags/{opportunityId}")
+	@PreAuth(menu = "customer_tag_edit")
 	@ApiOperationSupport(order = 15)
 	@Operation(summary = "设置商机标签", description = "设置商机标签关系")
 	public R setOpportunityTags(@PathVariable Long opportunityId, @RequestBody(required = false) List<Long> tagIds) {

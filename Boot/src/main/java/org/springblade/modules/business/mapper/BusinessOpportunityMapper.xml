@@ -58,6 +58,9 @@
 		<result property="createTime" column="create_time"/>
 		<result property="updateBy" column="update_by"/>
 		<result property="updateTime" column="update_time"/>
+		<result property="verifyStatus" column="verify_status"/>
+		<result property="riskLevel" column="risk_level"/>
+		<result property="verifyTime" column="verify_time"/>
 	</resultMap>
 
 	<resultMap id="BusinessOpportunityFollowResult" type="org.springblade.modules.business.pojo.entity.BusinessOpportunityFollow">
@@ -185,6 +188,12 @@
 		where opportunity_id = #{opportunityId} and del_flag = '0'
 	</select>
 
+	<select id="selectBusinessOpportunityByIdForUpdate" resultMap="BusinessOpportunityResult">
+		<include refid="selectOpportunityColumns"/>
+		where opportunity_id = #{opportunityId} and del_flag = '0'
+		for update
+	</select>
+
 	<select id="selectBusinessOpportunityList" resultMap="BusinessOpportunityResult">
 		<include refid="selectOpportunityColumns"/>
 		<include refid="opportunityWhere"/>
@@ -197,6 +206,36 @@
 		order by create_time desc, opportunity_id desc
 	</select>
 
+	<select id="selectBackgroundInvestigationPage" resultMap="BusinessOpportunityResult">
+		select o.*,
+			   bi.verify_status,
+			   bi.risk_level,
+			   bi.create_time as verify_time
+		from biz_business_opportunity o
+		left join biz_background_investigation bi on bi.investigation_id = (
+			select max(bi_latest.investigation_id)
+			from biz_background_investigation bi_latest
+			where bi_latest.opportunity_id = o.opportunity_id
+		)
+		<where>
+			o.del_flag = '0'
+			<if test="opportunity != null">
+				<if test="opportunity.parkId != null">and o.park_id = #{opportunity.parkId}</if>
+				<if test="opportunity.keyword != null and opportunity.keyword != ''">
+					and (
+						o.enterprise_name like concat('%', #{opportunity.keyword}, '%')
+						or o.credit_code like concat('%', #{opportunity.keyword}, '%')
+						or o.contact_name like concat('%', #{opportunity.keyword}, '%')
+					)
+				</if>
+				<if test="opportunity.riskLevel != null and opportunity.riskLevel != ''">
+					and coalesce(bi.risk_level, '0') = #{opportunity.riskLevel}
+				</if>
+			</if>
+		</where>
+		order by coalesce(bi.create_time, o.create_time) desc, o.opportunity_id desc
+	</select>
+
 	<select id="selectOpportunityStatistics" resultType="java.util.HashMap">
 		select count(1) as totalCount,
 			   sum(case when opportunity_status in ('DRAFT', 'AUDIT', 'LEAD', 'INITIAL', 'DEEP') then 1 else 0 end) as followCount,
@@ -204,6 +243,7 @@
 			   sum(case when opportunity_status = 'LOST' then 1 else 0 end) as lostCount
 		from biz_business_opportunity
 		where del_flag = '0'
+		<if test="parkId != null">and park_id = #{parkId}</if>
 	</select>
 
 	<insert id="insertBusinessOpportunity" parameterType="org.springblade.modules.business.pojo.entity.BusinessOpportunity" useGeneratedKeys="true" keyProperty="opportunityId">
@@ -295,7 +335,7 @@
 		select opportunity_no
 		from biz_business_opportunity
 		where opportunity_no like concat('SJ-', #{datePrefix}, '-%')
-		order by opportunity_no desc limit 1
+		order by opportunity_no desc limit 1 for update
 	</select>
 
 	<select id="countByEnterpriseName" resultType="int">
@@ -367,6 +407,7 @@
 		from biz_customer
 		where credit_code = #{creditCode}
 		  and del_flag = '0'
+		<if test="parkId != null">and park_id = #{parkId}</if>
 		order by customer_id asc limit 1
 	</select>
 

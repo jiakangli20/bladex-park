@@ -18,8 +18,7 @@
 <script>
 import { mapGetters } from 'vuex';
 import exForm from '../../../mixins/ex-form';
-import { getOpportunityDetail } from '@/api/business/opportunity';
-import { getCustomerDetail } from '@/api/business/customer';
+import { getTenantEntryCandidateDetail } from '@/api/business/opportunity';
 
 const DEFAULT_PROCESS_KEY = 'tenant_entry-1';
 const BUSINESS_TYPE = 'tenant_entry';
@@ -116,14 +115,10 @@ export default {
         ...params,
       };
       if (params.opportunityId) {
-        getOpportunityDetail(params.opportunityId).then(res => {
+		getTenantEntryCandidateDetail(params.opportunityId).then(res => {
           this.mergeBusinessData(res.data.data || {});
         });
-      } else if (params.customerId) {
-        getCustomerDetail(params.customerId).then(res => {
-          this.mergeBusinessData(res.data.data || {});
-        });
-      }
+	  }
     },
     mergeBusinessData(data) {
       const enterpriseName = data.enterpriseName || this.form.enterpriseName;
@@ -160,16 +155,20 @@ export default {
       const d = date.getDate();
       return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     },
-    handleSubmit() {
-      if (this.form.opportunityId && !this.form.parkId) {
-        this.$message.warning('该商机尚未选择所属园区，请先到商机管理补充后再发起');
-        return;
-      }
+	handleSubmit() {
+	  if (!this.form.opportunityId) {
+		this.$message.warning('入驻审批必须关联商机，请返回入驻审核页面选择企业');
+		return;
+	  }
+	  if (!this.form.parkId) {
+		this.$message.warning('该商机尚未选择所属园区，请先到商机管理补充后再发起');
+		return;
+	  }
       this.form.processDefKey = this.form.processDefKey || DEFAULT_PROCESS_KEY;
       this.form.businessType = BUSINESS_TYPE;
       this.form.applicant = this.form.applicant || this.userInfo.nick_name;
       this.form.applicantDept = this.form.applicantDept || this.userInfo.dept_name;
-      this.form.businessKey = this.form.opportunityId || this.form.customerId || this.form.businessKey;
+	  this.form.businessKey = this.form.opportunityId;
       this.handleStartProcessByKey(true).then((res, done) => {
         this.$message.success('发起成功');
         this.handleCloseTag('/settlement/project-approval?scope=send');

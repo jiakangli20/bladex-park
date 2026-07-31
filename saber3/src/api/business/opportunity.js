@@ -19,6 +19,21 @@ export const getOpportunityStatistics = () => {
   });
 };
 
+export const getTenantEntryCandidateList = (current, size, params = {}) => {
+  return request({
+    url: '/blade-park/tenant-entry/candidate-page',
+    method: 'get',
+    params: { ...params, current, size },
+  });
+};
+
+export const getTenantEntryCandidateDetail = opportunityId => {
+  return request({
+    url: `/blade-park/tenant-entry/candidate-detail/${opportunityId}`,
+    method: 'get',
+  });
+};
+
 export const getOpportunityDetail = opportunityId => {
   return request({
     url: '/blade-park/opportunity/detail',
@@ -136,6 +151,30 @@ export const saveOpportunityBackground = data => {
   });
 };
 
+export const getBackgroundInvestigationPage = (current, size, params = {}) => {
+  return request({
+    url: '/blade-park/background-investigation/page',
+    method: 'get',
+    params: { ...params, current, size },
+  });
+};
+
+export const getBackgroundInvestigationDetail = opportunityId => {
+  return request({
+    url: '/blade-park/background-investigation/detail',
+    method: 'get',
+    params: { opportunityId },
+  });
+};
+
+export const saveBackgroundInvestigation = data => {
+  return request({
+    url: '/blade-park/background-investigation/save',
+    method: 'post',
+    data,
+  });
+};
+
 export const submitOpportunityAudit = (opportunityId, flowId) => {
   return request({
     url: `/blade-park/opportunity/submitAudit/${opportunityId}`,
@@ -146,7 +185,7 @@ export const submitOpportunityAudit = (opportunityId, flowId) => {
 
 export const exportTenantEntryApprovalForm = (opportunityId, processInsId) => {
   return request({
-    url: `/blade-park/opportunity/tenant-entry/approval-form/${opportunityId}`,
+	url: `/blade-park/tenant-entry/approval-form/${opportunityId}`,
     method: 'get',
     params: processInsId ? { processInsId } : {},
     responseType: 'blob',
@@ -155,7 +194,7 @@ export const exportTenantEntryApprovalForm = (opportunityId, processInsId) => {
 
 export const previewTenantEntryApprovalForm = (opportunityId, processInsId) => {
   return request({
-    url: `/blade-park/opportunity/tenant-entry/approval-form-preview/${opportunityId}`,
+	url: `/blade-park/tenant-entry/approval-form-preview/${opportunityId}`,
     method: 'get',
     params: processInsId ? { processInsId } : {},
   });

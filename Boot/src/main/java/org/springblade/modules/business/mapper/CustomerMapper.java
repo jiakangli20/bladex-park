@@ -28,9 +28,9 @@ public interface CustomerMapper extends BaseMapper<Customer> {
 
 	Map<String, Object> selectCustomerStatistics(@Param("customer") Customer customer);
 
-	List<Park> selectListPark();
+	List<Park> selectListPark(@Param("parkId") Long parkId);
 
-	Long selectCustomerIdByCreditCode(@Param("creditCode") String creditCode);
+	Long selectCustomerIdByCreditCode(@Param("creditCode") String creditCode, @Param("parkId") Long parkId);
 
 	Long selectCustomerIdByEnterpriseAndPark(@Param("enterpriseName") String enterpriseName,
 											 @Param("parkId") Long parkId,

@@ -268,4 +268,18 @@ public class BusinessOpportunity implements Serializable {
 	@Schema(description = "是否只查询可发起入驻审批的商机")
 	private Boolean tenantEntryCandidate;
 
+	@TableField(exist = false)
+	@Schema(description = "最近背景核验状态")
+	private String verifyStatus;
+
+	@TableField(exist = false)
+	@Schema(description = "最近背景风险等级")
+	private String riskLevel;
+
+	@TableField(exist = false)
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@Schema(description = "最近背景核验时间")
+	private Date verifyTime;
+
 }

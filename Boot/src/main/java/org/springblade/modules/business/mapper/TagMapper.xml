@@ -126,7 +126,9 @@
 			   t.update_time
 		from biz_tag t
 		inner join biz_customer_tag ct on t.tag_id = ct.tag_id
+		inner join biz_customer c on c.customer_id = ct.customer_id and c.del_flag = '0'
 		where ct.customer_id = #{customerId}
+		  and t.park_id = c.park_id
 		  and t.status = '0'
 		  and t.del_flag = '0'
 		order by t.tag_type asc, t.sort_order asc, t.tag_id asc
@@ -146,7 +148,9 @@
 			   t.update_time
 		from biz_tag t
 		inner join biz_business_opportunity_tag ot on t.tag_id = ot.tag_id
+		inner join biz_business_opportunity o on o.opportunity_id = ot.opportunity_id and o.del_flag = '0'
 		where ot.opportunity_id = #{opportunityId}
+		  and t.park_id = o.park_id
 		  and t.status = '0'
 		  and t.del_flag = '0'
 		order by t.tag_type asc, t.sort_order asc, t.tag_id asc

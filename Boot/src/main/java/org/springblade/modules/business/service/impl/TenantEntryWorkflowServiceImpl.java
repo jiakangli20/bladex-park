@@ -7,6 +7,8 @@ package org.springblade.modules.business.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
+import org.springblade.core.log.exception.ServiceException;
+import org.springblade.core.secure.handler.IPermissionHandler;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.Func;
@@ -33,6 +35,7 @@ import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.springblade.plugin.workflow.process.entity.WfNotice.Type.*;
@@ -62,6 +65,7 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 	private final WfUserService wfUserService;
 	private final WorkflowApprovalTraceService workflowApprovalTraceService;
 	private final ObjectProvider<IWfCopyService> wfCopyServiceProvider;
+	private final IPermissionHandler permissionHandler;
 
 	@Override
 	public boolean supports(WfNoticeDTO notice) {
@@ -87,7 +91,7 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 		}
 		BusinessOpportunity opportunity = resolveOpportunity(processInstance, variables);
 		if (opportunity == null || opportunity.getOpportunityId() == null) {
-			return;
+			throw new ServiceException("入驻流程关联商机不存在");
 		}
 		WfNotice.Type type = notice.getType();
 		Task task = notice.getTask();
@@ -95,6 +99,8 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 		String currentNode = task == null ? "流程结束" : task.getName();
 
 		if (START == type) {
+			opportunity = lockOpportunity(opportunity.getOpportunityId());
+			validateWorkflowStart(notice, opportunity, processInsId);
 			updateOpportunity(opportunity, processInsId, "running", currentNode, null, null, AUDIT_FLAG_YES, OPPORTUNITY_STATUS_AUDIT);
 		} else if (TASK_CREATE == type) {
 			updateOpportunity(opportunity, processInsId, "running", currentNode, null, null, AUDIT_FLAG_YES, OPPORTUNITY_STATUS_AUDIT);
@@ -119,8 +125,8 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 
 	private boolean isTenantEntryProcess(String processDefinitionKey, Map<String, Object> variables) {
 		String businessType = getString(variables, "businessType", null);
-		if (BUSINESS_TYPE.equalsIgnoreCase(businessType) || getLong(variables, "opportunityId") != null) {
-			return true;
+		if (StringUtil.isNotBlank(businessType) && !BUSINESS_TYPE.equalsIgnoreCase(businessType)) {
+			return false;
 		}
 		return StringUtil.isNotBlank(processDefinitionKey)
 			&& (processDefinitionKey.equalsIgnoreCase(PROCESS_KEY)
@@ -129,26 +135,83 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 	}
 
 	private BusinessOpportunity resolveOpportunity(ProcessInstance processInstance, Map<String, Object> variables) {
-		String businessKey = processInstance.getBusinessKey();
-		if (StringUtil.isNotBlank(businessKey)) {
-			BusinessOpportunity opportunity = businessOpportunityMapper.selectBusinessOpportunityById(Func.toLong(businessKey));
-			if (opportunity != null) {
-				return opportunity;
-			}
+		BusinessOpportunity persisted = businessOpportunityMapper.selectBusinessOpportunityByProcessInsId(processInstance.getId());
+		Long persistedId = persisted == null ? null : persisted.getOpportunityId();
+		Long businessKeyId = parseBusinessId(processInstance.getBusinessKey());
+		Long variableId = getLong(variables, "opportunityId");
+		assertSameOpportunityId(persistedId, businessKeyId);
+		assertSameOpportunityId(persistedId, variableId);
+		assertSameOpportunityId(businessKeyId, variableId);
+		Long opportunityId = firstNotNull(persistedId, businessKeyId, variableId);
+		if (opportunityId == null) {
+			throw new ServiceException("入驻流程缺少商机ID");
 		}
-		Long opportunityId = getLong(variables, "opportunityId");
-		if (opportunityId != null) {
-			BusinessOpportunity opportunity = businessOpportunityMapper.selectBusinessOpportunityById(opportunityId);
-			if (opportunity != null) {
-				return opportunity;
-			}
+		BusinessOpportunity opportunity = persisted == null
+			? businessOpportunityMapper.selectBusinessOpportunityById(opportunityId) : persisted;
+		if (opportunity == null) {
+			throw new ServiceException("入驻流程关联商机不存在");
 		}
-		return businessOpportunityMapper.selectBusinessOpportunityByProcessInsId(processInstance.getId());
+		return opportunity;
+	}
+
+	private BusinessOpportunity lockOpportunity(Long opportunityId) {
+		BusinessOpportunity opportunity = businessOpportunityMapper.selectBusinessOpportunityByIdForUpdate(opportunityId);
+		if (opportunity == null) {
+			throw new ServiceException("入驻流程关联商机不存在");
+		}
+		return opportunity;
+	}
+
+	private void validateWorkflowStart(WfNoticeDTO notice, BusinessOpportunity opportunity, String processInsId) {
+		if (!permissionHandler.hasMenu("settlement_project_approval_add")) {
+			throw new ServiceException("当前账号无权发起入驻审批");
+		}
+		if ("approved".equalsIgnoreCase(Func.toStr(opportunity.getTenantEntryStatus()))
+			|| OPPORTUNITY_STATUS_DEAL.equalsIgnoreCase(Func.toStr(opportunity.getOpportunityStatus()))) {
+			throw new ServiceException("该商机已完成入驻审批，不能重复发起");
+		}
+		String existingProcessInsId = opportunity.getTenantEntryProcessInsId();
+		boolean anotherProcess = StringUtil.isNotBlank(existingProcessInsId) && !existingProcessInsId.equals(processInsId);
+		if (anotherProcess && ("running".equalsIgnoreCase(Func.toStr(opportunity.getTenantEntryStatus()))
+			|| AUDIT_FLAG_YES.equals(opportunity.getSubmittedAuditFlag()))) {
+			throw new ServiceException("该商机已有进行中的入驻审批");
+		}
+		WfUser startUser = notice.getStartUser();
+		if (startUser == null) {
+			throw new ServiceException("无法识别入驻流程发起人");
+		}
+		if ("admin".equalsIgnoreCase(Func.toStr(startUser.getAccount(), ""))) {
+			return;
+		}
+		Long starterParkId = Func.firstLong(startUser.getDeptId());
+		if (starterParkId == null) {
+			throw new ServiceException("流程发起账号未绑定所属园区");
+		}
+		if (!Objects.equals(starterParkId, opportunity.getParkId())) {
+			throw new ServiceException("无权发起其他园区的入驻审批");
+		}
+	}
+
+	private void assertSameOpportunityId(Long first, Long second) {
+		if (first != null && second != null && !first.equals(second)) {
+			throw new ServiceException("入驻流程商机ID与业务主键不一致");
+		}
+	}
+
+	private Long parseBusinessId(String value) {
+		if (StringUtil.isBlank(value)) {
+			return null;
+		}
+		try {
+			return Long.valueOf(value.trim());
+		} catch (NumberFormatException exception) {
+			throw new ServiceException("入驻流程业务主键格式不正确");
+		}
 	}
 
 	private void updateOpportunity(BusinessOpportunity opportunity, String processInsId, String status, String currentNode,
 								   String approvalPdfUrl, Date approvalTime, String submittedAuditFlag, String opportunityStatus) {
-		businessOpportunityMapper.updateTenantEntryFlowState(
+		int rows = businessOpportunityMapper.updateTenantEntryFlowState(
 			opportunity.getOpportunityId(),
 			processInsId,
 			status,
@@ -159,6 +222,9 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 			opportunityStatus,
 			currentUserName()
 		);
+		if (rows <= 0) {
+			throw new ServiceException("入驻流程状态回写失败");
+		}
 	}
 
 	private void copyHr(Task task, ProcessInstance processInstance) {
@@ -277,7 +343,28 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 		if (variables == null || variables.get(key) == null) {
 			return null;
 		}
-		return Func.toLong(String.valueOf(variables.get(key)));
+		Object value = variables.get(key);
+		if (value instanceof Number number) {
+			return number.longValue();
+		}
+		try {
+			return Long.valueOf(String.valueOf(value).trim());
+		} catch (NumberFormatException exception) {
+			throw new ServiceException("入驻流程商机ID格式不正确");
+		}
+	}
+
+	@SafeVarargs
+	private final <T> T firstNotNull(T... values) {
+		if (values == null) {
+			return null;
+		}
+		for (T value : values) {
+			if (value != null) {
+				return value;
+			}
+		}
+		return null;
 	}
 
 	private String getString(Map<String, Object> variables, String key, String defaultValue) {

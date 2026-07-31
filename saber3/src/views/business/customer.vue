@@ -258,7 +258,7 @@
                 <el-input v-model="form.organizationStructure" type="textarea" :rows="3" maxlength="1000" />
               </el-form-item>
               <el-form-item label="客户标签">
-                <customer-tag-selector v-model="form.tagIds" />
+                <customer-tag-selector v-model="form.tagIds" :park-id="form.parkId" />
               </el-form-item>
             </div>
           </section>
@@ -492,6 +492,7 @@
               <customer-tag-selector
                 class="detail-tag-selector"
                 :model-value="current.tagIds || []"
+                :park-id="current.parkId"
                 disabled
                 empty-text="未设置客户标签"
               />
@@ -742,7 +743,7 @@
       </el-drawer>
 
       <el-dialog v-model="tagVisible" title="设置客户标签" width="720px" append-to-body>
-        <customer-tag-selector v-model="tagForm.tagIds" />
+        <customer-tag-selector v-model="tagForm.tagIds" :park-id="tagForm.parkId" />
         <template #footer>
           <el-button @click="tagVisible = false">取消</el-button>
           <el-button type="primary" :loading="tagLoading" @click="submitTags">保存</el-button>
@@ -933,6 +934,7 @@ export default {
       form: createDefaultForm(),
       tagForm: {
         customerId: null,
+        parkId: null,
         tagIds: [],
       },
       rules: {
@@ -1187,6 +1189,7 @@ export default {
         const detail = res.data.data || {};
         this.tagForm = {
           customerId: detail.customerId,
+          parkId: detail.parkId,
           tagIds: this.resolveTagIds(detail),
         };
         this.tagVisible = true;

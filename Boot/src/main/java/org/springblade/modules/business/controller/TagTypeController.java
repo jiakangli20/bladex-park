@@ -35,6 +35,7 @@ public class TagTypeController extends BladeController {
 	private final ITagTypeService tagTypeService;
 
 	@GetMapping("/detail")
+	@PreAuth(menu = "customer_tag_view")
 	@ApiOperationSupport(order = 1)
 	@Operation(summary = "详情", description = "传入typeId")
 	public R<TagType> detail(@Parameter(description = "类型ID") @RequestParam Integer typeId) {
@@ -42,6 +43,7 @@ public class TagTypeController extends BladeController {
 	}
 
 	@GetMapping("/list")
+	@PreAuth(menu = "customer_tag_view")
 	@ApiOperationSupport(order = 2)
 	@Operation(summary = "列表", description = "标签类型列表")
 	public R<List<TagType>> list(TagType tagType) {
@@ -49,6 +51,7 @@ public class TagTypeController extends BladeController {
 	}
 
 	@PostMapping("/save")
+	@PreAuth(menu = "customer_tag_type_add")
 	@ApiOperationSupport(order = 3)
 	@Operation(summary = "新增", description = "新增标签类型")
 	public R save(@Valid @RequestBody TagType tagType) {
@@ -56,6 +59,7 @@ public class TagTypeController extends BladeController {
 	}
 
 	@PostMapping("/update")
+	@PreAuth(menu = "customer_tag_type_edit")
 	@ApiOperationSupport(order = 4)
 	@Operation(summary = "修改", description = "修改标签类型")
 	public R update(@Valid @RequestBody TagType tagType) {
@@ -63,6 +67,8 @@ public class TagTypeController extends BladeController {
 	}
 
 	@PostMapping("/submit")
+	@PreAuth("(#tagType.typeId == null && hasMenu('customer_tag_type_add')) || " +
+		"(#tagType.typeId != null && hasMenu('customer_tag_type_edit'))")
 	@ApiOperationSupport(order = 5)
 	@Operation(summary = "新增或修改", description = "新增或修改标签类型")
 	public R submit(@Valid @RequestBody TagType tagType) {
@@ -70,6 +76,7 @@ public class TagTypeController extends BladeController {
 	}
 
 	@PostMapping("/remove/{typeId}")
+	@PreAuth(menu = "customer_tag_type_delete")
 	@ApiOperationSupport(order = 6)
 	@Operation(summary = "删除", description = "删除标签类型")
 	public R remove(@PathVariable Integer typeId) {

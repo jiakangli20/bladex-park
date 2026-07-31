@@ -1,5 +1,5 @@
 -- 入驻管理 - 新增背景调查独立菜单
--- 说明：页面复用客户列表与按企业名称查询背景调查接口，可重复执行。
+-- 说明：页面展示入驻前商机企业；人工核验保存权限及园区字段由 50 号脚本补充，可重复执行。
 
 INSERT INTO `blade_menu`
   (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `component`, `sort`, `category`, `action`, `is_open`, `remark`, `is_deleted`)

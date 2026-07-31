@@ -68,7 +68,7 @@
         <div class="manual-investigation-meta">
           <span>最近核验人：{{ valueText(latest.createBy) }}</span>
           <span>最近核验时间：{{ valueText(latest.createTime) }}</span>
-          <el-button type="primary" :loading="saving" @click="saveInvestigation"
+		  <el-button v-if="editable" type="primary" :loading="saving" @click="saveInvestigation"
             >保存核验结果</el-button
           >
         </div>
@@ -263,8 +263,8 @@
 
 <script>
 import {
-  getOpportunityBackgroundByName,
-  saveOpportunityBackground,
+  getBackgroundInvestigationDetail,
+  saveBackgroundInvestigation,
 } from '@/api/business/opportunity';
 
 const emptyData = () => ({
@@ -292,6 +292,18 @@ export default {
       type: String,
       default: '',
     },
+	opportunityId: {
+	  type: [String, Number],
+	  default: '',
+	},
+	parkId: {
+	  type: [String, Number],
+	  default: '',
+	},
+	editable: {
+	  type: Boolean,
+	  default: false,
+	},
   },
   emits: ['update:modelValue', 'saved'],
   data() {
@@ -377,7 +389,13 @@ export default {
 
       const sequence = ++this.requestSequence;
       this.loading = true;
-      getOpportunityBackgroundByName(name)
+	  if (!this.opportunityId) {
+		this.$message.warning('缺少商机信息，无法查询背景调查');
+		this.loading = false;
+		return;
+	  }
+
+	  getBackgroundInvestigationDetail(this.opportunityId)
         .then(res => {
           if (sequence !== this.requestSequence) return;
           const payload = res && res.data ? res.data.data || res.data : {};
@@ -400,8 +418,10 @@ export default {
       const enterpriseName = (this.enterpriseName || '').trim();
       if (!enterpriseName) return;
       this.saving = true;
-      saveOpportunityBackground({
-        enterpriseName,
+	  saveBackgroundInvestigation({
+		enterpriseName,
+		opportunityId: this.opportunityId,
+		parkId: this.parkId,
         ...this.form,
         legalRiskFlag: this.riskFlags.legal ? '1' : '0',
         executiveRiskFlag: this.riskFlags.executive ? '1' : '0',

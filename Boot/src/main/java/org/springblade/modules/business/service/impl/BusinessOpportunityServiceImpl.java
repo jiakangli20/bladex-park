@@ -11,6 +11,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.flowable.engine.HistoryService;
+import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.variable.api.history.HistoricVariableInstance;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.oss.model.BladeFile;
@@ -36,8 +37,10 @@ import org.springblade.modules.approval.service.impl.WorkflowApprovalTraceServic
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractTemplateRenderService;
 import org.springblade.modules.contract.service.impl.ContractDocumentPreviewService;
+import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springblade.modules.resource.builder.OssBuilder;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -74,6 +77,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	private static final String STATUS_INITIAL = "INITIAL";
 	private static final String STATUS_DEAL = "DEAL";
 	private static final String BUSINESS_TYPE_TENANT_ENTRY = "tenant_entry";
+	private static final String PROCESS_KEY_TENANT_ENTRY_CUSTOM = "tenant_entry-1";
 	private static final String TEMPLATE_TENANT_ENTRY_APPROVAL = "君联大厦招商管理办法2023/附件一：企业入驻审批表.docx";
 	private static final Set<String> OPPORTUNITY_FILE_SUFFIXES = Set.of("doc", "docx", "xls", "xlsx", "pdf", "jpg", "jpeg", "png");
 	private static final Set<String> DANGEROUS_SUFFIXES = Set.of("exe", "com", "dll", "msi", "bat", "cmd", "sh", "js", "jar", "php", "jsp", "html", "htm", "svg", "scr");
@@ -90,10 +94,11 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	private final ContractDocumentPreviewService contractDocumentPreviewService;
 	private final BackgroundInvestigationMapper backgroundInvestigationMapper;
 	private final CustomerMapper customerMapper;
+	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public BusinessOpportunity selectBusinessOpportunityById(Long opportunityId) {
-		BusinessOpportunity opportunity = baseMapper.selectBusinessOpportunityById(opportunityId);
+		BusinessOpportunity opportunity = requireAccessibleOpportunity(opportunityId);
 		if (Func.isNotEmpty(opportunity)) {
 			opportunity.setFollowList(selectFollowList(opportunityId));
 			opportunity.setFileList(selectFileList(opportunityId));
@@ -107,21 +112,27 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 
 	@Override
 	public List<BusinessOpportunity> selectBusinessOpportunityList(BusinessOpportunity opportunity) {
-		List<BusinessOpportunity> list = baseMapper.selectBusinessOpportunityList(opportunity);
+		List<BusinessOpportunity> list = baseMapper.selectBusinessOpportunityList(normalizeQuery(opportunity));
 		list.forEach(item -> item.setTags(selectTagsByOpportunityId(item.getOpportunityId())));
 		return list;
 	}
 
 	@Override
 	public IPage<BusinessOpportunity> selectBusinessOpportunityPage(IPage<BusinessOpportunity> page, BusinessOpportunity opportunity) {
-		IPage<BusinessOpportunity> result = baseMapper.selectBusinessOpportunityPage(page, opportunity);
+		IPage<BusinessOpportunity> result = baseMapper.selectBusinessOpportunityPage(page, normalizeQuery(opportunity));
 		result.getRecords().forEach(item -> item.setTags(selectTagsByOpportunityId(item.getOpportunityId())));
 		return result;
 	}
 
 	@Override
+	public IPage<BusinessOpportunity> selectBackgroundInvestigationPage(IPage<BusinessOpportunity> page, BusinessOpportunity opportunity) {
+		return baseMapper.selectBackgroundInvestigationPage(page, normalizeQuery(opportunity));
+	}
+
+	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean insertBusinessOpportunity(BusinessOpportunity opportunity) {
+		opportunity.setParkId(parkDataAccessService.scopedParkId(opportunity.getParkId()));
 		validateUniqueEnterpriseName(opportunity);
 		opportunity.setCreateBy(currentUserName());
 		opportunity.setCreateTime(DateUtil.now());
@@ -131,7 +142,12 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		opportunity.setOpportunityNo(generateOpportunityNo());
 		normalizeOpportunity(opportunity);
 		linkExistingCustomer(opportunity);
-		int rows = baseMapper.insertBusinessOpportunity(opportunity);
+		int rows;
+		try {
+			rows = baseMapper.insertBusinessOpportunity(opportunity);
+		} catch (DuplicateKeyException exception) {
+			throw new ServiceException("企业名称已存在或商机编号冲突，请刷新后重试");
+		}
 		if (Func.isNotEmpty(opportunity.getTagIds())) {
 			setOpportunityTags(opportunity.getOpportunityId(), opportunity.getTagIds());
 		}
@@ -152,13 +168,13 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (Func.isEmpty(opportunity.getOpportunityId())) {
 			throw new ServiceException("商机不存在");
 		}
-		BusinessOpportunity old = baseMapper.selectBusinessOpportunityById(opportunity.getOpportunityId());
-		if (Func.isEmpty(old)) {
-			throw new ServiceException("商机不存在");
-		}
+		BusinessOpportunity old = requireAccessibleOpportunity(opportunity.getOpportunityId());
 		if (AUDIT_FLAG_YES.equals(old.getSubmittedAuditFlag())) {
 			throw new ServiceException("已提交审核的商机不可编辑");
 		}
+		// 园区归属不允许通过普通编辑迁移，避免背景调查、标签和后续审批形成跨园区关系。
+		opportunity.setParkId(old.getParkId());
+		parkDataAccessService.assertAccessible(opportunity.getParkId());
 		validateUniqueEnterpriseName(opportunity);
 		opportunity.setUpdateBy(currentUserName());
 		opportunity.setUpdateTime(DateUtil.now());
@@ -166,7 +182,12 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 			? old.getOpportunityStatus() : opportunity.getOpportunityStatus()));
 		normalizeOpportunity(opportunity);
 		linkExistingCustomer(opportunity);
-		int rows = baseMapper.updateBusinessOpportunity(opportunity);
+		int rows;
+		try {
+			rows = baseMapper.updateBusinessOpportunity(opportunity);
+		} catch (DuplicateKeyException exception) {
+			throw new ServiceException("企业名称已存在，请勿重复录入");
+		}
 		if (opportunity.getTagIds() != null) {
 			setOpportunityTags(opportunity.getOpportunityId(), opportunity.getTagIds());
 		}
@@ -187,6 +208,11 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 			throw new ServiceException("请选择需要删除的商机");
 		}
 		for (Long opportunityId : opportunityIds) {
+			BusinessOpportunity opportunity = requireAccessibleOpportunity(opportunityId);
+			if (AUDIT_FLAG_YES.equals(opportunity.getSubmittedAuditFlag())
+				|| "running".equalsIgnoreCase(Func.toStr(opportunity.getTenantEntryStatus()))) {
+				throw new ServiceException("商机已进入审批流程，不能删除");
+			}
 			tagService.setOpportunityTags(opportunityId, Collections.emptyList());
 		}
 		return baseMapper.deleteBusinessOpportunityByIds(opportunityIds) > 0;
@@ -195,10 +221,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean addFollowRecord(Long opportunityId, BusinessOpportunityFollow follow) {
-		BusinessOpportunity opportunity = baseMapper.selectBusinessOpportunityById(opportunityId);
-		if (Func.isEmpty(opportunity)) {
-			throw new ServiceException("商机不存在");
-		}
+		BusinessOpportunity opportunity = requireAccessibleOpportunity(opportunityId);
 		follow.setOpportunityId(opportunityId);
 		follow.setFollowTime(follow.getFollowTime() == null ? new Date() : follow.getFollowTime());
 		follow.setCreateBy(currentUserName());
@@ -232,6 +255,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (Func.isEmpty(opportunityId)) {
 			return Collections.emptyList();
 		}
+		requireAccessibleOpportunity(opportunityId);
 		return baseMapper.selectFollowList(opportunityId);
 	}
 
@@ -242,10 +266,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (Func.isEmpty(opportunityId)) {
 			throw new ServiceException("商机不存在");
 		}
-		BusinessOpportunity opportunity = baseMapper.selectBusinessOpportunityById(opportunityId);
-		if (Func.isEmpty(opportunity)) {
-			throw new ServiceException("商机不存在");
-		}
+		BusinessOpportunity opportunity = requireAccessibleOpportunity(opportunityId);
 		validateOpportunityFile(file);
 		String originalFilename = file.getOriginalFilename().trim();
 		BladeFile bladeFile = ossBuilder.template().putFile(originalFilename, file.getInputStream());
@@ -360,6 +381,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (Func.isEmpty(opportunityId)) {
 			return Collections.emptyList();
 		}
+		requireAccessibleOpportunity(opportunityId);
 		return baseMapper.selectFileList(opportunityId);
 	}
 
@@ -368,6 +390,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (Func.isEmpty(opportunityId)) {
 			return Collections.emptyList();
 		}
+		requireAccessibleOpportunity(opportunityId);
 		List<Tag> tags = tagService.selectTagsByOpportunityId(opportunityId);
 		if (Func.isEmpty(tags)) {
 			BusinessOpportunity opportunity = baseMapper.selectBusinessOpportunityById(opportunityId);
@@ -381,10 +404,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean setOpportunityTags(Long opportunityId, List<Long> tagIds) {
-		BusinessOpportunity opportunity = baseMapper.selectBusinessOpportunityById(opportunityId);
-		if (Func.isEmpty(opportunity)) {
-			throw new ServiceException("商机不存在");
-		}
+		BusinessOpportunity opportunity = requireAccessibleOpportunity(opportunityId);
 		boolean result = tagService.setOpportunityTags(opportunityId, tagIds);
 		if (Func.isNotEmpty(opportunity.getCustomerId())) {
 			tagService.setCustomerTags(opportunity.getCustomerId(), tagIds);
@@ -394,24 +414,26 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 
 	@Override
 	public Map<String, Object> queryBackgroundInvestigation(Long opportunityId) {
-		BusinessOpportunity opportunity = baseMapper.selectBusinessOpportunityById(opportunityId);
-		if (Func.isEmpty(opportunity)) {
-			throw new ServiceException("商机不存在");
-		}
-		return buildBackgroundInvestigationResult(opportunity.getEnterpriseName(), opportunity);
+		BusinessOpportunity opportunity = requireAccessibleOpportunity(opportunityId);
+		return buildBackgroundInvestigationResult(opportunity.getEnterpriseName(), opportunity.getParkId(), opportunity);
 	}
 
 	@Override
-	public Map<String, Object> queryBackgroundInvestigationByName(String enterpriseName) {
+	public Map<String, Object> queryBackgroundInvestigationByName(String enterpriseName, Long parkId) {
 		if (StringUtil.isBlank(enterpriseName)) {
 			throw new ServiceException("请先填写企业名称");
 		}
+		Long scopedParkId = parkDataAccessService.scopedParkId(parkId);
 		BusinessOpportunity opportunity = baseMapper.selectOne(Wrappers.<BusinessOpportunity>lambdaQuery()
 			.eq(BusinessOpportunity::getEnterpriseName, enterpriseName.trim())
+			.eq(Func.isNotEmpty(scopedParkId), BusinessOpportunity::getParkId, scopedParkId)
 			.eq(BusinessOpportunity::getDelFlag, DEL_FLAG_NORMAL)
 			.orderByDesc(BusinessOpportunity::getCreateTime)
 			.last("limit 1"));
-		return buildBackgroundInvestigationResult(enterpriseName.trim(), opportunity);
+		if (opportunity != null) {
+			scopedParkId = opportunity.getParkId();
+		}
+		return buildBackgroundInvestigationResult(enterpriseName.trim(), scopedParkId, opportunity);
 	}
 
 	@Override
@@ -421,30 +443,51 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 			throw new ServiceException("企业名称不能为空");
 		}
 		String enterpriseName = investigation.getEnterpriseName().trim();
+		Long scopedParkId = parkDataAccessService.scopedParkId(investigation.getParkId());
 		BusinessOpportunity opportunity = investigation.getOpportunityId() == null ? null
-			: baseMapper.selectBusinessOpportunityById(investigation.getOpportunityId());
+			: requireAccessibleOpportunity(investigation.getOpportunityId());
 		if (opportunity == null) {
 			opportunity = baseMapper.selectOne(Wrappers.<BusinessOpportunity>lambdaQuery()
 				.eq(BusinessOpportunity::getEnterpriseName, enterpriseName)
+				.eq(Func.isNotEmpty(scopedParkId), BusinessOpportunity::getParkId, scopedParkId)
 				.eq(BusinessOpportunity::getDelFlag, DEL_FLAG_NORMAL)
 				.orderByDesc(BusinessOpportunity::getCreateTime)
 				.last("limit 1"));
 		}
 		if (opportunity != null) {
+			scopedParkId = opportunity.getParkId();
 			investigation.setOpportunityId(opportunity.getOpportunityId());
 			investigation.setCustomerId(opportunity.getCustomerId());
+		}
+		if (investigation.getCustomerId() != null) {
+			Customer customer = customerMapper.selectById(investigation.getCustomerId());
+			if (customer == null || !DEL_FLAG_NORMAL.equals(customer.getDelFlag())) {
+				throw new ServiceException("关联客户不存在");
+			}
+			parkDataAccessService.assertAccessible(customer.getParkId());
+			if (opportunity != null && !java.util.Objects.equals(opportunity.getParkId(), customer.getParkId())) {
+				throw new ServiceException("商机与关联客户必须属于同一园区");
+			}
+			scopedParkId = customer.getParkId();
 		}
 		if (investigation.getCustomerId() == null) {
 			Customer customer = customerMapper.selectOne(Wrappers.<Customer>lambdaQuery()
 				.eq(Customer::getEnterpriseName, enterpriseName)
+				.eq(Func.isNotEmpty(scopedParkId), Customer::getParkId, scopedParkId)
 				.eq(Customer::getDelFlag, DEL_FLAG_NORMAL)
 				.orderByDesc(Customer::getCreateTime)
 				.last("limit 1"));
 			if (customer != null) {
+				scopedParkId = customer.getParkId();
 				investigation.setCustomerId(customer.getCustomerId());
 			}
 		}
+		if (Func.isEmpty(scopedParkId)) {
+			throw new ServiceException("未找到该企业所属园区，无法保存核验记录");
+		}
+		parkDataAccessService.assertAccessible(scopedParkId);
 		investigation.setInvestigationId(null);
+		investigation.setParkId(scopedParkId);
 		investigation.setEnterpriseName(enterpriseName);
 		investigation.setVerifyStatus(firstNotBlank(investigation.getVerifyStatus(), "1"));
 		investigation.setRiskLevel(firstNotBlank(investigation.getRiskLevel(), "0"));
@@ -471,18 +514,20 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 			customer.setUpdateBy(currentUserName());
 			customerMapper.updateCustomerCheckResult(customer);
 		}
-		return buildBackgroundInvestigationResult(enterpriseName, opportunity);
+		return buildBackgroundInvestigationResult(enterpriseName, scopedParkId, opportunity);
 	}
 
-	private Map<String, Object> buildBackgroundInvestigationResult(String enterpriseName, BusinessOpportunity opportunity) {
+	private Map<String, Object> buildBackgroundInvestigationResult(String enterpriseName, Long parkId, BusinessOpportunity opportunity) {
 		List<BackgroundInvestigation> history = backgroundInvestigationMapper.selectList(
 			Wrappers.<BackgroundInvestigation>lambdaQuery()
 				.eq(BackgroundInvestigation::getEnterpriseName, enterpriseName)
+				.eq(Func.isNotEmpty(parkId), BackgroundInvestigation::getParkId, parkId)
 				.orderByDesc(BackgroundInvestigation::getCreateTime, BackgroundInvestigation::getInvestigationId));
 		BackgroundInvestigation latest = history.isEmpty() ? null : history.get(0);
 		Map<String, Object> result = new LinkedHashMap<>();
 		result.put("found", latest != null);
 		result.put("enterpriseName", enterpriseName);
+		result.put("parkId", parkId);
 		result.put("opportunityId", opportunity == null ? null : opportunity.getOpportunityId());
 		result.put("customerId", opportunity == null ? (latest == null ? null : latest.getCustomerId()) : opportunity.getCustomerId());
 		result.put("latest", latest);
@@ -503,10 +548,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public BusinessOpportunity createApprovalProjectFromOpportunity(Long opportunityId, Long flowId) {
-		BusinessOpportunity opportunity = baseMapper.selectBusinessOpportunityById(opportunityId);
-		if (Func.isEmpty(opportunity)) {
-			throw new ServiceException("商机不存在");
-		}
+		BusinessOpportunity opportunity = requireAccessibleOpportunity(opportunityId);
 		if (Func.isEmpty(opportunity.getParkId())) {
 			throw new ServiceException("请先在商机管理中选择所属园区");
 		}
@@ -570,6 +612,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		}
 		String resolvedProcessInsId = firstNotBlank(processInsId, opportunity.getTenantEntryProcessInsId());
 		Map<String, Object> variables = loadProcessVariables(resolvedProcessInsId);
+		validateTenantEntryProcessBinding(opportunity, resolvedProcessInsId, variables);
 		variables.put("applyUserName", firstNotBlank(opportunity.getCreateBy(), currentUserName()));
 		Map<String, String> fields = createTenantEntryApprovalFields(opportunity, variables);
 		fields.putAll(workflowApprovalTraceService.approvalFields(resolvedProcessInsId));
@@ -638,9 +681,61 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		return variables;
 	}
 
+	private void validateTenantEntryProcessBinding(BusinessOpportunity opportunity, String processInsId,
+											   Map<String, Object> variables) {
+		if (StringUtil.isBlank(processInsId)) {
+			return;
+		}
+		HistoricProcessInstance processInstance = historyService.createHistoricProcessInstanceQuery()
+			.processInstanceId(processInsId)
+			.singleResult();
+		if (processInstance == null) {
+			throw new ServiceException("入驻审批流程不存在");
+		}
+		String processDefinitionKey = processInstance.getProcessDefinitionKey();
+		String businessType = variableText(variables, "businessType");
+		boolean tenantEntryProcess = BUSINESS_TYPE_TENANT_ENTRY.equalsIgnoreCase(processDefinitionKey)
+			|| PROCESS_KEY_TENANT_ENTRY_CUSTOM.equalsIgnoreCase(processDefinitionKey)
+			|| (StringUtil.isNotBlank(processDefinitionKey)
+			&& processDefinitionKey.toLowerCase(Locale.ROOT).startsWith(BUSINESS_TYPE_TENANT_ENTRY + "-"));
+		if (!tenantEntryProcess) {
+			throw new ServiceException("流程实例不是企业入驻审批流程");
+		}
+		if (StringUtil.isNotBlank(businessType) && !BUSINESS_TYPE_TENANT_ENTRY.equalsIgnoreCase(businessType)) {
+			throw new ServiceException("流程实例业务类型与企业入驻审批不一致");
+		}
+		Long businessKeyOpportunityId = parseLong(processInstance.getBusinessKey());
+		Long variableOpportunityId = parseLong(variables.get("opportunityId"));
+		if (businessKeyOpportunityId != null && variableOpportunityId != null
+			&& !businessKeyOpportunityId.equals(variableOpportunityId)) {
+			throw new ServiceException("入驻流程商机ID与业务主键不一致");
+		}
+		Long boundOpportunityId = businessKeyOpportunityId == null ? variableOpportunityId : businessKeyOpportunityId;
+		if (boundOpportunityId != null && !boundOpportunityId.equals(opportunity.getOpportunityId())) {
+			throw new ServiceException("流程实例不属于当前商机");
+		}
+		if (boundOpportunityId == null && !processInsId.equals(opportunity.getTenantEntryProcessInsId())) {
+			throw new ServiceException("流程实例未绑定当前商机");
+		}
+	}
+
+	private Long parseLong(Object value) {
+		if (value == null || StringUtil.isBlank(String.valueOf(value))) {
+			return null;
+		}
+		if (value instanceof Number number) {
+			return number.longValue();
+		}
+		try {
+			return Long.valueOf(String.valueOf(value).trim());
+		} catch (NumberFormatException exception) {
+			throw new ServiceException("入驻流程商机ID格式不正确");
+		}
+	}
+
 	@Override
 	public Map<String, Object> selectOpportunityStatistics() {
-		Map<String, Object> statistics = baseMapper.selectOpportunityStatistics();
+		Map<String, Object> statistics = baseMapper.selectOpportunityStatistics(parkDataAccessService.scopedParkId(null));
 		return Func.isEmpty(statistics) ? Collections.emptyMap() : statistics;
 	}
 
@@ -691,11 +786,19 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	}
 
 	private void linkExistingCustomer(BusinessOpportunity opportunity) {
-		if (Func.isNotEmpty(opportunity.getCustomerId()) && Func.isNotEmpty(baseMapper.selectCustomerIdById(opportunity.getCustomerId()))) {
+		if (Func.isNotEmpty(opportunity.getCustomerId())) {
+			Customer customer = customerMapper.selectById(opportunity.getCustomerId());
+			if (Func.isEmpty(customer) || !DEL_FLAG_NORMAL.equals(customer.getDelFlag())) {
+				throw new ServiceException("关联客户不存在");
+			}
+			parkDataAccessService.assertAccessible(customer.getParkId());
+			if (!java.util.Objects.equals(opportunity.getParkId(), customer.getParkId())) {
+				throw new ServiceException("商机与关联客户必须属于同一园区");
+			}
 			return;
 		}
 		if (StringUtil.isNotBlank(opportunity.getCreditCode())) {
-			Long customerId = baseMapper.selectCustomerIdByCreditCode(opportunity.getCreditCode());
+			Long customerId = baseMapper.selectCustomerIdByCreditCode(opportunity.getCreditCode(), opportunity.getParkId());
 			if (Func.isNotEmpty(customerId)) {
 				opportunity.setCustomerId(customerId);
 			}
@@ -714,6 +817,21 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 			next = Integer.parseInt(lastNo.substring(lastNo.length() - 4)) + 1;
 		}
 		return "SJ-" + datePrefix + "-" + String.format("%04d", next);
+	}
+
+	private BusinessOpportunity normalizeQuery(BusinessOpportunity opportunity) {
+		BusinessOpportunity query = Func.isEmpty(opportunity) ? new BusinessOpportunity() : opportunity;
+		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
+		return query;
+	}
+
+	private BusinessOpportunity requireAccessibleOpportunity(Long opportunityId) {
+		BusinessOpportunity opportunity = baseMapper.selectBusinessOpportunityById(opportunityId);
+		if (Func.isEmpty(opportunity)) {
+			throw new ServiceException("商机不存在");
+		}
+		parkDataAccessService.assertAccessible(opportunity.getParkId());
+		return opportunity;
 	}
 
 	private void assertApprovalTablesReady() {

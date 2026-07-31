@@ -55,6 +55,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    parkId: {
+      type: [String, Number],
+      default: '',
+    },
   },
   emits: ['update:modelValue', 'change'],
   data() {
@@ -71,10 +75,18 @@ export default {
   created() {
     this.loadTags();
   },
+  watch: {
+    parkId(newValue, oldValue) {
+      if (String(newValue || '') !== String(oldValue || '')) this.loadTags();
+    },
+  },
   methods: {
     loadTags() {
       this.loading = true;
-      Promise.all([getTagTypeList({ status: '0' }), getAllTags({ status: '0' })])
+      Promise.all([
+        getTagTypeList({ status: '0' }),
+        getAllTags({ status: '0', parkId: this.parkId || undefined }),
+      ])
         .then(([typeRes, tagRes]) => {
           const types = typeRes.data.data || [];
           const tags = tagRes.data.data || [];

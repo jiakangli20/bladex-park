@@ -53,7 +53,7 @@
           v-loading="loading"
           :data="data"
           border
-          row-key="customerId"
+		  row-key="opportunityId"
           class="background-table"
         >
           <el-table-column type="index" label="序号" width="70" align="center">
@@ -130,6 +130,9 @@
       <background-investigation-dialog
         v-model="dialogVisible"
         :enterprise-name="currentEnterpriseName"
+		:opportunity-id="currentOpportunityId"
+		:park-id="currentParkId"
+		:editable="canSaveInvestigation"
         @saved="reload"
       />
     </div>
@@ -137,7 +140,8 @@
 </template>
 
 <script>
-import { getCustomerList } from '@/api/business/customer';
+import { mapGetters } from 'vuex';
+import { getBackgroundInvestigationPage } from '@/api/business/opportunity';
 import { getList as getParkList } from '@/api/park/park';
 import BackgroundInvestigationDialog from '@/views/business/modules/background-investigation-dialog.vue';
 
@@ -166,9 +170,17 @@ export default {
       },
       dialogVisible: false,
       currentEnterpriseName: '',
+	  currentOpportunityId: '',
+	  currentParkId: '',
       riskOptions,
     };
   },
+	computed: {
+	  ...mapGetters(['permission']),
+	  canSaveInvestigation() {
+		return Boolean(this.permission.settlement_background_investigation_save);
+	  },
+	},
   created() {
     this.loadParkList();
     this.onLoad();
@@ -176,7 +188,7 @@ export default {
   methods: {
     onLoad() {
       this.loading = true;
-      getCustomerList(this.page.currentPage, this.page.pageSize, this.query)
+		getBackgroundInvestigationPage(this.page.currentPage, this.page.pageSize, this.query)
         .then(res => {
           const result = res && res.data ? res.data.data || {} : {};
           this.data = Array.isArray(result.records) ? result.records : [];
@@ -218,6 +230,8 @@ export default {
     },
     openInvestigation(row) {
       this.currentEnterpriseName = row.enterpriseName || '';
+	  this.currentOpportunityId = row.opportunityId || '';
+	  this.currentParkId = row.parkId || '';
       this.dialogVisible = true;
     },
     parkName(parkId) {

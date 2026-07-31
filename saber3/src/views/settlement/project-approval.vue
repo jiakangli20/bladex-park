@@ -2,7 +2,16 @@
   <basic-container>
     <div class="tenant-entry-page">
       <section class="summary-grid">
-        <div v-for="item in summaryCards" :key="item.key" class="summary-card">
+		<div
+		  v-for="item in summaryCards"
+		  :key="item.key"
+		  class="summary-card"
+		  :class="{ 'is-active': query.scope === item.key }"
+		  role="button"
+		  tabindex="0"
+		  @click="switchScope(item.key)"
+		  @keyup.enter="switchScope(item.key)"
+		>
           <span>{{ item.label }}</span>
           <strong>{{ item.value }}</strong>
         </div>
@@ -47,7 +56,7 @@
             <span>共 {{ page.total }} 条</span>
           </div>
           <div class="toolbar-actions">
-            <el-button type="primary" icon="el-icon-plus" @click="openStart">发起审核</el-button>
+			<el-button v-if="permissionList.addBtn" type="primary" icon="el-icon-plus" @click="openStart">发起审核</el-button>
             <el-tooltip content="刷新" placement="top">
               <el-button icon="el-icon-refresh" circle @click="reload" />
             </el-tooltip>
@@ -99,12 +108,12 @@
           <el-table-column label="操作" width="156" fixed="right" align="center">
             <template #default="{ row }">
               <div class="table-row-actions">
-                <el-button v-if="row.scope === 'todo'" text type="primary" @click="openDetail(row)"
+				<el-button v-if="permissionList.viewBtn && row.scope === 'todo'" text type="primary" @click="openDetail(row)"
                   >处理</el-button
                 >
-                <el-button v-else text type="primary" @click="openDetail(row)">详情</el-button>
+				<el-button v-else-if="permissionList.viewBtn" text type="primary" @click="openDetail(row)">详情</el-button>
                 <el-button
-                  v-if="canExportApprovalForm(row)"
+				  v-if="permissionList.formBtn && canExportApprovalForm(row)"
                   text
                   type="primary"
                   @click="openApprovalForm(row)"
@@ -161,7 +170,7 @@
               clearable
               :remote-method="searchOpportunity"
               :loading="opportunityLoading"
-              placeholder="可选择商机企业带入数据，也可不选直接发起"
+				placeholder="请选择需要发起审批的商机企业"
               style="width: 100%"
             >
               <el-option
@@ -174,14 +183,12 @@
                 <span class="option-extra">{{ item.contactName || item.contactPhone || '' }}</span>
               </el-option>
             </el-select>
-            <div class="start-form-tip">
-              不选择商机时，将进入空白入驻审批表，由发起人在下一页填写企业信息。
-            </div>
+			<div class="start-form-tip">审批必须关联商机，驳回后可从这里重新发起。</div>
           </el-form-item>
         </el-form>
         <template #footer>
           <el-button @click="startVisible = false">取消</el-button>
-          <el-button type="primary" :disabled="!startForm.processDefKey" @click="goStart"
+		  <el-button type="primary" :disabled="!startForm.processDefKey || !startForm.opportunityId" @click="goStart"
             >下一步</el-button
           >
         </template>
@@ -206,6 +213,7 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex';
 import Layout from '@/page/index/index.vue';
 import {
   copyList,
@@ -217,7 +225,7 @@ import {
 import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
 import {
   exportTenantEntryApprovalForm,
-  getOpportunityList,
+	getTenantEntryCandidateList,
   previewTenantEntryApprovalForm,
 } from '@/api/business/opportunity';
 import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
@@ -237,7 +245,7 @@ export default {
       data: [],
       query: {
         enterpriseName: '',
-        scope: 'send',
+			scope: 'todo',
         processIsFinished: '',
       },
       page: {
@@ -277,6 +285,16 @@ export default {
       approvalPreviewRow: null,
     };
   },
+	computed: {
+	  ...mapGetters(['permission']),
+	  permissionList() {
+		return {
+		  addBtn: Boolean(this.permission.settlement_project_approval_add),
+		  viewBtn: Boolean(this.permission.settlement_project_approval_view),
+		  formBtn: Boolean(this.permission.settlement_project_approval_form),
+		};
+	  },
+	},
   created() {
     this.applyRouteQuery();
     this.loadSummary();
@@ -310,7 +328,15 @@ export default {
       size = this.page.pageSize,
       extraParams = {}
     ) {
-      const params = scope === 'copy' ? { title: '入驻' } : { processDefinitionName: '入驻' };
+	  const formSearch = ['businessType:equal:tenant_entry'];
+	  if (this.query.enterpriseName) {
+		const keyword = this.query.enterpriseName.replace(/[:,]/g, ' ').trim();
+		if (keyword) formSearch.push(`enterpriseName:like:${keyword}`);
+	  }
+	  const params =
+		scope === 'copy'
+		  ? { title: this.query.enterpriseName || '入驻' }
+		  : { processDefinitionName: '入驻', formSearch: formSearch.join(',') };
       const apiMap = {
         todo: todoList,
         send: sendList,
@@ -339,15 +365,8 @@ export default {
         .then(res => {
           const result = res.data.data || {};
           const records = this.filterTenantEntryRecords(result.records || [], this.query.scope);
-          this.data = records
-            .map(item => this.normalizeRow(item))
-            .filter(item => this.matchesStatus(item))
-            .filter(
-              item =>
-                !this.query.enterpriseName ||
-                item.enterpriseName.includes(this.query.enterpriseName)
-            );
-          this.page.total = Number(result.total) || this.data.length;
+		  this.data = records.map(item => this.normalizeRow(item));
+		  this.page.total = Number(result.total) || this.data.length;
         })
         .finally(() => {
           this.loading = false;
@@ -379,16 +398,7 @@ export default {
     },
     filterTenantEntryRecords(records, scope) {
       if (scope !== 'copy') {
-        return records.filter(item => {
-          const vars = item.variables || {};
-          const title = item.title || item.processDefinitionName || '';
-          const processKey = item.processDefinitionKey || '';
-          return (
-            vars.businessType === TENANT_ENTRY_BUSINESS_TYPE ||
-            processKey.includes('tenant_entry') ||
-            title.includes('入驻')
-          );
-        });
+		return records;
       }
       return records.filter(item => {
         const title = item.title || '';
@@ -489,11 +499,18 @@ export default {
       this.page.currentPage = 1;
       this.onLoad();
     },
-    searchReset() {
-      this.query = { enterpriseName: '', scope: 'send', processIsFinished: '' };
-      this.page.currentPage = 1;
-      this.onLoad();
-    },
+		searchReset() {
+		  this.query = { enterpriseName: '', scope: 'todo', processIsFinished: 'unfinished' };
+		  this.page.currentPage = 1;
+		  this.onLoad();
+		},
+		switchScope(scope) {
+		  if (!this.summaryCards.some(item => item.key === scope)) return;
+		  this.query.scope = scope;
+		  this.query.processIsFinished = scope === 'todo' ? 'unfinished' : scope === 'done' ? 'finished' : '';
+		  this.page.currentPage = 1;
+		  this.onLoad();
+		},
     currentChange(currentPage) {
       this.page.currentPage = currentPage;
       this.onLoad();
@@ -530,20 +547,16 @@ export default {
           this.processLoading = false;
         });
     },
-    isTenantEntryProcess(item = {}) {
-      const name = item.name || '';
-      const key = item.key || '';
-      const formKey = item.formKey || '';
-      return (
-        name.includes('入驻') || key.includes('tenant_entry') || COPY_FORM_KEYS.includes(formKey)
-      );
-    },
+		isTenantEntryProcess(item = {}) {
+		  const key = `${item.key || ''}`.toLowerCase();
+		  return key === TENANT_ENTRY_BUSINESS_TYPE || key.startsWith(`${TENANT_ENTRY_BUSINESS_TYPE}-`);
+		},
     processOptionLabel(item = {}) {
       return `${item.name || item.key}${item.version ? ` v${item.version}` : ''}`;
     },
     searchOpportunity(keyword) {
       this.opportunityLoading = true;
-      getOpportunityList(1, 20, {
+	  getTenantEntryCandidateList(1, 20, {
         keyword,
         tenantEntryCandidate: true,
       })
@@ -554,7 +567,11 @@ export default {
           this.opportunityLoading = false;
         });
     },
-    goStart() {
+		goStart() {
+		  if (!this.startForm.opportunityId) {
+			this.$message.warning('请选择需要发起审批的商机企业');
+			return;
+		  }
       const formParams = {
         processDefKey: this.startForm.processDefKey,
         businessType: TENANT_ENTRY_BUSINESS_TYPE,
@@ -606,7 +623,7 @@ export default {
       this.approvalPreview.loading = true;
       this.approvalPreview.title = '企业入驻审批表预览';
       this.approvalPreview.html = '';
-      this.approvalPreview.downloadUrl = `/blade-park/opportunity/tenant-entry/approval-form/${row.opportunityId}`;
+	  this.approvalPreview.downloadUrl = `/blade-park/tenant-entry/approval-form/${row.opportunityId}`;
       this.approvalPreview.downloadLabel = '下载Word';
       previewTenantEntryApprovalForm(row.opportunityId, processInsId)
         .then(res => {
@@ -651,6 +668,49 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.summary-card {
+  display: flex;
+  min-height: 88px;
+  cursor: pointer;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.summary-card:hover,
+.summary-card:focus-visible,
+.summary-card.is-active {
+  border-color: #1059c6;
+  box-shadow: 0 4px 14px rgba(16, 89, 198, 0.12);
+  outline: none;
+}
+
+.summary-card span {
+  color: #606266;
+  font-size: 14px;
+}
+
+.summary-card strong {
+  color: #1f2937;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.summary-card.is-active strong {
+  color: #1059c6;
 }
 
 .tenant-entry-search,

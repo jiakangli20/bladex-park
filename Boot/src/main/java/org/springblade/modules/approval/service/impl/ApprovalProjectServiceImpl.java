@@ -31,6 +31,7 @@ import org.springblade.modules.business.pojo.entity.BusinessOpportunity;
 import org.springblade.modules.business.service.ICustomerService;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractTemplateRenderService;
+import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -74,10 +75,11 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 	private final ICustomerService customerService;
 	private final BusinessOpportunityMapper businessOpportunityMapper;
 	private final IContractTemplateRenderService contractTemplateRenderService;
+	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public ApprovalProject selectApprovalProjectById(Long projectId) {
-		return baseMapper.selectApprovalProjectById(projectId);
+		return requireAccessibleProject(projectId);
 	}
 
 	@Override
@@ -155,7 +157,7 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 		if (idList.isEmpty()) {
 			throw new ServiceException("请选择需要删除的审批项目");
 		}
-		Long parkId = AuthUtil.isAdministrator() ? null : currentParkId();
+		Long parkId = parkDataAccessService.scopedParkId(null);
 		return baseMapper.deleteApprovalProjectByIds(idList, parkId, currentUserName()) > 0;
 	}
 
@@ -304,18 +306,14 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 	@Override
 	public List<ApprovalMaterial> selectApprovalMaterialList(ApprovalMaterial material) {
 		ApprovalMaterial query = Func.isEmpty(material) ? new ApprovalMaterial() : material;
-		if (!AuthUtil.isAdministrator()) {
-			query.setParkId(currentParkId());
-		}
+		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		return approvalMaterialMapper.selectApprovalMaterialList(query);
 	}
 
 	@Override
 	public List<ApprovalLog> selectApprovalLogList(ApprovalLog log) {
 		ApprovalLog query = Func.isEmpty(log) ? new ApprovalLog() : log;
-		if (!AuthUtil.isAdministrator()) {
-			query.setParkId(currentParkId());
-		}
+		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		return approvalLogMapper.selectApprovalLogList(query);
 	}
 
@@ -323,7 +321,11 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 		if (project == null || project.getBusinessId() == null) {
 			return null;
 		}
-		return businessOpportunityMapper.selectBusinessOpportunityById(project.getBusinessId());
+		BusinessOpportunity opportunity = businessOpportunityMapper.selectBusinessOpportunityById(project.getBusinessId());
+		if (opportunity != null && !Objects.equals(project.getParkId(), opportunity.getParkId())) {
+			throw new ServiceException("审批项目与关联商机不属于同一园区");
+		}
+		return opportunity;
 	}
 
 	private Map<String, String> createTenantEntryApprovalFields(ApprovalProject project, BusinessOpportunity opportunity) {
@@ -449,9 +451,7 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 
 	private ApprovalProject normalizeQuery(ApprovalProject project) {
 		ApprovalProject query = Func.isEmpty(project) ? new ApprovalProject() : project;
-		if (!AuthUtil.isAdministrator()) {
-			query.setParkId(currentParkId());
-		}
+		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		query.setCurrentUser(currentUserName());
 		query.setAdmin(AuthUtil.isAdministrator());
 		if (StringUtil.isBlank(query.getScope())) {
@@ -465,9 +465,7 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 		if (Func.isEmpty(project) || STATUS_DELETED.equals(project.getProcessStatus()) || "1".equals(project.getDelFlag())) {
 			throw new ServiceException("审批项目不存在");
 		}
-		if (!AuthUtil.isAdministrator() && !Objects.equals(currentParkId(), project.getParkId())) {
-			throw new ServiceException("无权访问该审批项目");
-		}
+		parkDataAccessService.assertAccessible(project.getParkId());
 		return project;
 	}
 
@@ -605,15 +603,15 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 	}
 
 	private Long resolveWriteParkId(Long parkId) {
-		if (AuthUtil.isAdministrator() && Func.isNotEmpty(parkId) && parkId > 0) {
-			return parkId;
+		Long scopedParkId = parkDataAccessService.scopedParkId(parkId);
+		if (Func.isEmpty(scopedParkId)) {
+			throw new ServiceException("所属园区不能为空");
 		}
-		return currentParkId();
+		return scopedParkId;
 	}
 
 	private Long currentParkId() {
-		Long deptId = Func.firstLong(AuthUtil.getDeptId());
-		return Func.isEmpty(deptId) ? 1L : deptId;
+		return parkDataAccessService.currentParkId();
 	}
 
 	private String currentUserName() {

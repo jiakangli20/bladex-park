@@ -23,9 +23,14 @@ public interface BusinessOpportunityMapper extends BaseMapper<BusinessOpportunit
 
 	BusinessOpportunity selectBusinessOpportunityById(@Param("opportunityId") Long opportunityId);
 
+	BusinessOpportunity selectBusinessOpportunityByIdForUpdate(@Param("opportunityId") Long opportunityId);
+
 	List<BusinessOpportunity> selectBusinessOpportunityList(@Param("opportunity") BusinessOpportunity opportunity);
 
 	IPage<BusinessOpportunity> selectBusinessOpportunityPage(IPage<BusinessOpportunity> page,
+														 @Param("opportunity") BusinessOpportunity opportunity);
+
+	IPage<BusinessOpportunity> selectBackgroundInvestigationPage(IPage<BusinessOpportunity> page,
 															 @Param("opportunity") BusinessOpportunity opportunity);
 
 	int insertBusinessOpportunity(BusinessOpportunity opportunity);
@@ -47,11 +52,11 @@ public interface BusinessOpportunityMapper extends BaseMapper<BusinessOpportunit
 
 	int insertFile(BusinessOpportunityFile file);
 
-	Map<String, Object> selectOpportunityStatistics();
+	Map<String, Object> selectOpportunityStatistics(@Param("parkId") Long parkId);
 
 	Long selectCustomerIdById(@Param("customerId") Long customerId);
 
-	Long selectCustomerIdByCreditCode(@Param("creditCode") String creditCode);
+	Long selectCustomerIdByCreditCode(@Param("creditCode") String creditCode, @Param("parkId") Long parkId);
 
 	Integer countTableRows(@Param("tableName") String tableName);
 

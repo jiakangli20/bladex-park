@@ -206,6 +206,7 @@
 			   name
 		from ics_park
 		where coalesce(status, '0') = '0'
+		<if test="parkId != null">and id = #{parkId}</if>
 		order by id asc
 	</select>
 
@@ -214,6 +215,7 @@
 		from biz_customer
 		where credit_code = #{creditCode}
 		  and del_flag = '0'
+		<if test="parkId != null">and park_id = #{parkId}</if>
 		order by customer_id asc
 		limit 1
 	</select>
@@ -330,28 +332,10 @@
 			<if test="identityFrontUrl != null">identity_front_url = #{identityFrontUrl},</if>
 			<if test="identityBackUrl != null">identity_back_url = #{identityBackUrl},</if>
 			<if test="address != null">address = #{address},</if>
-			<if test="cooperationLevel != null">cooperation_level = #{cooperationLevel},</if>
-			<if test="settlementStatus != null">settlement_status = #{settlementStatus},</if>
-			<if test="tenantEntryProcessInsId != null">tenant_entry_process_ins_id = #{tenantEntryProcessInsId},</if>
-			<if test="tenantEntryStatus != null">tenant_entry_status = #{tenantEntryStatus},</if>
-			<if test="tenantEntryCurrentNode != null">tenant_entry_current_node = #{tenantEntryCurrentNode},</if>
-			<if test="tenantEntryApprovalPdfUrl != null">tenant_entry_approval_pdf_url = #{tenantEntryApprovalPdfUrl},</if>
-			<if test="tenantEntryApprovalTime != null">tenant_entry_approval_time = #{tenantEntryApprovalTime},</if>
-			<if test="status != null">status = #{status},</if>
-			<if test="wxOpenid != null">wx_openid = #{wxOpenid},</if>
-			<if test="wxUnionid != null">wx_unionid = #{wxUnionid},</if>
-			<if test="remark != null">remark = #{remark},</if>
-			<if test="verifyStatus != null">verify_status = #{verifyStatus},</if>
-			<if test="verifyMessage != null">verify_message = #{verifyMessage},</if>
-			<if test="verifyTime != null">verify_time = #{verifyTime},</if>
-			<if test="industryAccessResult != null">industry_access_result = #{industryAccessResult},</if>
-			<if test="industryAccessReason != null">industry_access_reason = #{industryAccessReason},</if>
-			<if test="riskLevel != null">risk_level = #{riskLevel},</if>
-			<if test="riskSummary != null">risk_summary = #{riskSummary},</if>
-			<if test="legalRiskFlag != null">legal_risk_flag = #{legalRiskFlag},</if>
-			<if test="executiveRiskFlag != null">executive_risk_flag = #{executiveRiskFlag},</if>
-			<if test="shareholderRiskFlag != null">shareholder_risk_flag = #{shareholderRiskFlag},</if>
-			<if test="parkId != null">park_id = #{parkId},</if>
+				<if test="cooperationLevel != null">cooperation_level = #{cooperationLevel},</if>
+				<if test="settlementStatus != null">settlement_status = #{settlementStatus},</if>
+				<if test="remark != null">remark = #{remark},</if>
+				<if test="parkId != null">park_id = #{parkId},</if>
 			<if test="updateBy != null">update_by = #{updateBy},</if>
 			update_time = now()
 		</set>

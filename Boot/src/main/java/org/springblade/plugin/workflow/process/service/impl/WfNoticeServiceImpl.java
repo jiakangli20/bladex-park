@@ -1,6 +1,7 @@
 package org.springblade.plugin.workflow.process.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.flowable.engine.RuntimeService;
@@ -39,6 +40,7 @@ import static org.springblade.plugin.workflow.process.entity.WfNotice.Type.*;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class WfNoticeServiceImpl implements IWfNoticeService {
 
     private final RuntimeService runtimeService;
@@ -83,21 +85,11 @@ public class WfNoticeServiceImpl implements IWfNoticeService {
             Task task = notice.getTask();
             Map<String, Object> variables = notice.getVariables();
 
-            System.err.println("⬇⬇⬇⬇⬇⬇⬇⬇消息预留口⬇⬇⬇⬇⬇⬇⬇⬇");
-            if (fromUser != null) {
-                System.err.println("发送人：" + fromUser.getName());
-            }
-            System.err.println("接收人：" + Func.join(toUser.stream().map(WfUser::getName).toList()));
-            System.err.println("消息类型：" + type.getName());
-            System.err.println("流程标题：" + (StringUtils.isBlank(processInstance.getName()) ? processInstance.getProcessDefinitionName() : processInstance.getName()));
-            System.err.println("流程发起人：" + notice.getStartUser().getName());
-            if (variables != null && !variables.isEmpty()) {
-                System.err.println("流程变量：" + variables);
-            }
-            if (task != null) {
-                System.err.println("当前节点：" + task.getName());
-            }
-            System.err.println("⬆⬆⬆⬆⬆⬆⬆⬆消息预留口⬆⬆⬆⬆⬆⬆⬆⬆");
+			if (log.isDebugEnabled()) {
+				log.debug("workflow notice type={}, processInsId={}, taskId={}, recipientCount={}",
+					type, processInstance.getId(), task == null ? null : task.getId(),
+					toUser == null ? 0 : toUser.size());
+			}
         }
         // 业务
         if (DEAL_WITH_BUSINESS.contains(type)) {
@@ -150,7 +142,11 @@ public class WfNoticeServiceImpl implements IWfNoticeService {
                 variables = processInstance.getProcessVariables();
             }
         }
-        assert processInstance != null;
+		if (processInstance == null) {
+			log.warn("workflow notice ignored because process instance is unavailable, type={}, processInsId={}",
+				notice.getType(), notice.getProcessInsId());
+			return;
+		}
 
         // 流程发起人
         String startUserId = processInstance.getStartUserId();
