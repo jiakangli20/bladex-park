@@ -303,9 +303,16 @@
 					'contract_termination',
 					'contract_room_review'
 				  )
-				  AND workflow_record.payment_id = p.payment_id
+				  AND workflow_record.contract_id = p.contract_id
+				  AND (
+					workflow_record.payment_id = p.payment_id
+					OR (
+						workflow_record.payment_id IS NULL
+						AND workflow_record.business_type IN ('contract_termination', 'contract_room_review')
+					)
+				  )
 			)
-		)
+			)
 	</sql>
 
 	<select id="selectPaymentPage" resultMap="paymentResultMap">

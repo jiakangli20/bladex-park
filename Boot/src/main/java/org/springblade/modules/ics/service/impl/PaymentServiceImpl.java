@@ -487,7 +487,9 @@ public class PaymentServiceImpl implements IPaymentService {
 		if (Func.isEmpty(paymentId) || Func.isEmpty(AuthUtil.getUserId())) {
 			return false;
 		}
-		return overdueInternalNoticeMapper.markRead(paymentId, AuthUtil.getUserId()) >= 0;
+		ContractPayment payment = requirePayment(paymentId);
+		assertAccessible(payment);
+		return overdueInternalNoticeMapper.markRead(paymentId, AuthUtil.getUserId()) > 0;
 	}
 
 	@Override
@@ -747,6 +749,15 @@ public class PaymentServiceImpl implements IPaymentService {
 		List<User> users = userService.list(Wrappers.<User>lambdaQuery()
 			.eq(User::getTenantId, tenantId)
 			.eq(User::getStatus, 1));
+		if (!AuthUtil.isAdministrator()) {
+			Long parkId = currentParkId();
+			Set<Long> parkDeptIds = new LinkedHashSet<>();
+			parkDeptIds.add(parkId);
+			deptService.getDeptChild(parkId).forEach(dept -> parkDeptIds.add(dept.getId()));
+			users = users.stream()
+				.filter(user -> Func.toLongList(user.getDeptId()).stream().anyMatch(parkDeptIds::contains))
+				.toList();
+		}
 		List<Role> roles = roleService.list(Wrappers.<Role>lambdaQuery()
 			.eq(Role::getTenantId, tenantId)
 			.eq(Role::getStatus, 1));
@@ -1275,10 +1286,15 @@ public class PaymentServiceImpl implements IPaymentService {
 			return false;
 		}
 		String businessType = Func.toStr(record.getBusinessType());
-		if ("contract_overdue_legal".equals(businessType)) {
-			return Objects.equals(record.getPaymentId(), paymentId);
+		if ("contract_overdue_legal".equals(businessType)
+			|| "contract_termination".equals(businessType)
+			|| "contract_room_review".equals(businessType)) {
+			// 新记录必须绑定当前账单；旧退租/验收记录没有 payment_id 时按合同兼容回显。
+			return record.getPaymentId() == null
+				? !"contract_overdue_legal".equals(businessType)
+				: Objects.equals(record.getPaymentId(), paymentId);
 		}
-		return "contract_termination".equals(businessType) || "contract_room_review".equals(businessType);
+		return false;
 	}
 
 	private void validateOverdueHistoryReceivable(ContractPayment payment, Date now) {

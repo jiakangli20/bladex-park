@@ -444,8 +444,25 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 				throw new ServiceException("当前合同尚未进入退租交接阶段");
 			}
 			if (FINISH == type && !Set.of(CONTRACT_STATUS_TERMINATION_HANDOVER,
-				CONTRACT_STATUS_ROOM_REVIEW_RUNNING, CONTRACT_STATUS_TERMINATED).contains(contract.getContractStatus())) {
-				throw new ServiceException("当前合同状态不能完成房屋验收");
+					CONTRACT_STATUS_ROOM_REVIEW_RUNNING, CONTRACT_STATUS_TERMINATED).contains(contract.getContractStatus())) {
+					throw new ServiceException("当前合同状态不能完成房屋验收");
+			}
+		}
+		if (BUSINESS_TYPE_CONTRACT_OVERDUE_LEGAL.equals(record.getBusinessType()) && START == type) {
+			ContractPayment payment = record.getPaymentId() == null ? null : contractPaymentMapper.selectById(record.getPaymentId());
+			if (payment == null) {
+				throw new ServiceException("逾期律师函流程必须关联账单");
+			}
+			if (PAYMENT_DIRECTION_PAYABLE.equals(Func.toStr(payment.getDirection(), "receivable"))) {
+				throw new ServiceException("付款账单不能发起逾期律师函流程");
+			}
+			if (PAY_STATUS_PAID.equals(payment.getPayStatus())) {
+				throw new ServiceException("已结清账单不能发起逾期律师函流程");
+			}
+			if (payment.getPayDeadline() == null
+				|| DateUtil.format(payment.getPayDeadline(), DateUtil.PATTERN_DATE)
+				.compareTo(DateUtil.format(DateUtil.now(), DateUtil.PATTERN_DATE)) >= 0) {
+				throw new ServiceException("账单尚未逾期，不能发起逾期律师函流程");
 			}
 		}
 	}
