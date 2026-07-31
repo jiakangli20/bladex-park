@@ -38,6 +38,7 @@ import org.springblade.modules.contract.mapper.ContractMapper;
 import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractExpiryRule;
 import org.springblade.modules.contract.service.IContractExpiryRuleService;
+import org.springblade.modules.contract.service.ContractParkAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,20 +58,25 @@ public class ContractExpiryRuleServiceImpl extends ServiceImpl<ContractExpiryRul
 	private static final String DELETED_FLAG = "1";
 
 	private final ContractMapper contractMapper;
+	private final ContractParkAccessService contractParkAccessService;
 
 	@Override
 	public IPage<ContractExpiryRule> selectRulePage(IPage<ContractExpiryRule> page, ContractExpiryRule rule) {
-		return page(page, Wrappers.<ContractExpiryRule>lambdaQuery()
-			.eq(ContractExpiryRule::getDelFlag, DEFAULT_DEL_FLAG)
-			.like(Func.isNotBlank(rule.getRuleName()), ContractExpiryRule::getRuleName, rule.getRuleName())
-			.orderByDesc(ContractExpiryRule::getCreateTime)
-			.orderByDesc(ContractExpiryRule::getRuleId));
+		Long parkId = AuthUtil.isAdministrator() ? null : contractParkAccessService.currentParkId();
+		return baseMapper.selectRulePage(page, rule == null ? null : rule.getRuleName(), parkId);
 	}
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean submitRule(ContractExpiryRule rule) {
 		validateRule(rule);
+		if (rule.getRuleId() != null) {
+			ContractExpiryRule existing = getById(rule.getRuleId());
+			if (existing == null || !DEFAULT_DEL_FLAG.equals(existing.getDelFlag())) {
+				throw new ServiceException("规则不存在或已删除");
+			}
+			validateRuleBuildings(existing);
+		}
 		Date now = DateUtil.now();
 		String userName = currentUserName();
 		rule.setDelFlag(DEFAULT_DEL_FLAG);
@@ -95,6 +101,13 @@ public class ContractExpiryRuleServiceImpl extends ServiceImpl<ContractExpiryRul
 		if (idList.isEmpty()) {
 			throw new ServiceException("请选择需要删除的规则");
 		}
+		List<ContractExpiryRule> rules = list(Wrappers.<ContractExpiryRule>lambdaQuery()
+			.in(ContractExpiryRule::getRuleId, idList)
+			.eq(ContractExpiryRule::getDelFlag, DEFAULT_DEL_FLAG));
+		if (rules.size() != idList.size()) {
+			throw new ServiceException("部分规则不存在或已删除");
+		}
+		rules.forEach(this::validateRuleBuildings);
 		ContractExpiryRule update = new ContractExpiryRule();
 		update.setDelFlag(DELETED_FLAG);
 		update.setUpdateBy(currentUserName());
@@ -117,20 +130,37 @@ public class ContractExpiryRuleServiceImpl extends ServiceImpl<ContractExpiryRul
 		if (rule.getRemindDays() == null || rule.getRemindDays() < 1) {
 			throw new ServiceException("提前提醒天数必须大于0");
 		}
+		validateRuleBuildings(rule);
+	}
+
+	private void validateRuleBuildings(ContractExpiryRule rule) {
+		List<Long> buildingIds = normalizeBuildingIds(rule.getBuildingIds());
+		if (buildingIds.isEmpty()) {
+			throw new ServiceException("请选择有效的关联楼宇");
+		}
+		Long parkId = AuthUtil.isAdministrator() ? null : contractParkAccessService.currentParkId();
+		for (Long buildingId : buildingIds) {
+			Long count = parkId == null
+				? contractMapper.existsBuilding(buildingId)
+				: contractMapper.existsBuildingInPark(buildingId, parkId);
+			if (count == null || count == 0) {
+				throw new ServiceException(parkId == null ? "存在无效的关联楼宇" : "存在不属于当前园区的关联楼宇");
+			}
+		}
 	}
 
 	private void applyRuleToContracts(ContractExpiryRule rule) {
-		List<Long> buildingIds = Func.toLongList(rule.getBuildingIds()).stream().filter(Func::isNotEmpty).toList();
+		List<Long> buildingIds = normalizeBuildingIds(rule.getBuildingIds());
 		if (buildingIds.isEmpty()) {
 			return;
 		}
-		Contract update = new Contract();
-		update.setRenewalRemindDays(rule.getRemindDays());
-		update.setUpdateBy(currentUserName());
-		update.setUpdateTime(DateUtil.now());
-		contractMapper.update(update, Wrappers.<Contract>lambdaUpdate()
-			.eq(Contract::getDelFlag, DEFAULT_DEL_FLAG)
-			.in(Contract::getBuildingId, buildingIds));
+		contractMapper.updateRenewalRemindDaysByBuildingIds(buildingIds, rule.getRemindDays(),
+			currentUserName(), DateUtil.now());
+	}
+
+	private List<Long> normalizeBuildingIds(String buildingIds) {
+		return Func.toLongList(Func.toStr(buildingIds, "").replace("building_", ""))
+			.stream().filter(Func::isNotEmpty).distinct().toList();
 	}
 
 	private String currentUserName() {

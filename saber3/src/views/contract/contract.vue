@@ -381,7 +381,7 @@
                         min-width="150"
                         show-overflow-tooltip
                       />
-                      <el-table-column prop="feeName" label="账单名称" min-width="150" />
+                      <el-table-column prop="feeName" label="账单名称" min-width="150" align="center" />
                       <el-table-column label="账期" min-width="200" align="center">
                         <template #default="{ row }">
                           {{ row.periodStart || '-' }} ~ {{ row.periodEnd || '-' }}
@@ -1294,17 +1294,17 @@
         class="contract-payment-drawer"
       >
         <el-table v-loading="paymentLoading" :data="paymentData" border>
-          <el-table-column prop="feeName" label="费用" width="110" />
-          <el-table-column prop="periodStart" label="账期开始" width="110" />
-          <el-table-column prop="periodEnd" label="账期结束" width="110" />
+          <el-table-column prop="feeName" label="费用" width="110" align="center" />
+          <el-table-column prop="periodStart" label="账期开始" width="110" align="center" />
+          <el-table-column prop="periodEnd" label="账期结束" width="110" align="center" />
           <el-table-column prop="amountDue" label="应收" width="100" align="right">
             <template #default="{ row }">{{ formatMoney(row.amountDue) }}</template>
           </el-table-column>
           <el-table-column prop="amountPaid" label="实收" width="100" align="right">
             <template #default="{ row }">{{ formatMoney(row.amountPaid) }}</template>
           </el-table-column>
-          <el-table-column prop="payDeadline" label="应缴日期" width="110" />
-          <el-table-column label="状态" width="90">
+          <el-table-column prop="payDeadline" label="应缴日期" width="110" align="center" />
+          <el-table-column label="状态" width="90" align="center">
             <template #default="{ row }">
               <el-tag :type="paymentTagType(row)" effect="plain">{{
                 paymentStatusText(row.payStatus)

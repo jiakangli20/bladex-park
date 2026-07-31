@@ -519,7 +519,7 @@
                   </el-col>
                   <el-col :span="8">
                     <el-form-item label="合同状态">
-                      <el-select v-model="form.contractStatus" style="width: 100%">
+                      <el-select v-model="form.contractStatus" style="width: 100%" disabled>
                         <el-option label="待审批" value="0" />
                         <el-option label="生效" value="1" />
                       </el-select>
@@ -1363,7 +1363,6 @@ export default {
       const payload = {
         contractNo: this.form.contractNo,
         contractName: this.form.contractName,
-        parentContractId: this.form.parentContractId,
         customerId: this.customerMode === 'existing' ? this.form.customerId : undefined,
         customerName: String(this.form.customerName || '').trim(),
         parkId: this.form.parkId,
@@ -1382,10 +1381,9 @@ export default {
         startDate: this.form.startDate,
         endDate: this.form.endDate,
         signDate: this.form.signDate,
-        renewalRemindDays: this.form.renewalRemindDays,
-        contractStatus: this.form.contractStatus,
         paymentCycle: this.form.paymentCycle,
-        rentIncreaseNode: this.isFloatingTemplate ? this.rentIncreaseSummary() : '',
+        // 递增节点字段只保存枚举值，完整的分阶段金额已写入合同备注。
+        rentIncreaseNode: this.isFloatingTemplate ? 'custom' : '',
         remark: this.buildRemark(),
       };
       return Object.keys(payload).reduce((result, key) => {

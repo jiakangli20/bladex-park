@@ -618,15 +618,15 @@
 
             <el-tab-pane label="缴费记录" name="payment">
               <el-table :data="payments" border>
-                <el-table-column prop="feeName" label="费用名称" min-width="120" />
-                <el-table-column label="账期" min-width="190">
+                <el-table-column prop="feeName" label="费用名称" min-width="120" align="center" />
+                <el-table-column label="账期" min-width="190" align="center">
                   <template #default="{ row }">
                     {{ row.periodStart || '-' }} ~ {{ row.periodEnd || '-' }}
                   </template>
                 </el-table-column>
-                <el-table-column prop="amountDue" label="应收" width="110" align="right" />
-                <el-table-column prop="amountPaid" label="实收" width="110" align="right" />
-                <el-table-column label="状态" width="100">
+                <el-table-column prop="amountDue" label="应收" width="110" align="center" />
+                <el-table-column prop="amountPaid" label="实收" width="110" align="center" />
+                <el-table-column label="状态" width="100" align="center">
                   <template #default="{ row }">
                     <el-tag :type="row.payStatus === '1' ? 'success' : 'warning'">
                       {{ dicText(paymentStatusDic, row.payStatus) }}
@@ -687,14 +687,14 @@
 
             <el-tab-pane label="退租记录" name="termination">
               <el-table :data="terminations" border>
-                <el-table-column prop="terminationNo" label="退租单号" min-width="150" />
-                <el-table-column prop="terminationTime" label="退租时间" width="170" />
-                <el-table-column label="审批状态" width="120">
+                <el-table-column prop="terminationNo" label="退租单号" min-width="150" align="center" />
+                <el-table-column prop="terminationTime" label="退租时间" width="170" align="center" />
+                <el-table-column label="审批状态" width="120" align="center">
                   <template #default="{ row }">
                     {{ dicText(terminationApprovalStatusDic, row.approvalStatus) }}
                   </template>
                 </el-table-column>
-                <el-table-column label="结算状态" width="120">
+                <el-table-column label="结算状态" width="120" align="center">
                   <template #default="{ row }">
                     {{ dicText(terminationStatusDic, row.status) }}
                   </template>

@@ -1302,7 +1302,10 @@ public class PaymentServiceImpl implements IPaymentService {
 
 	private Long currentParkId() {
 		Long deptId = Func.firstLong(AuthUtil.getDeptId());
-		return Func.isEmpty(deptId) ? 1L : deptId;
+		if (Func.isEmpty(deptId)) {
+			throw new ServiceException("当前账号未绑定所属园区");
+		}
+		return deptId;
 	}
 
 	private String currentUserName() {

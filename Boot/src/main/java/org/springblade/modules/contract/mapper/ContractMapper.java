@@ -83,6 +83,10 @@ public interface ContractMapper extends BaseMapper<Contract> {
 	 */
 	ContractExpirySummaryVO selectExpiringSummary(@Param("contract") Contract contract);
 
+	int updateRenewalRemindDaysByBuildingIds(@Param("buildingIds") List<Long> buildingIds,
+			@Param("remindDays") Integer remindDays, @Param("updateBy") String updateBy,
+			@Param("updateTime") java.util.Date updateTime);
+
 	/**
 	 * 合同统计
 	 *

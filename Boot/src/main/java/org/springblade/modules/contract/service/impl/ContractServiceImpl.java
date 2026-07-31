@@ -164,7 +164,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		newContract.setParkId(oldContract.getParkId());
 		newContract.setParentContractId(contractId);
 		newContract.setContractStatus(STATUS_PENDING);
-		boolean result = createContract(newContract);
+		boolean result = createContract(newContract, contractId);
 		addLog(contractId, "renew", "发起续签，旧合同状态保持不变，待新合同生效后回写");
 		addLog(newContract.getContractId(), "create", "续签新建合同，源合同ID：" + contractId);
 		return result;
@@ -484,18 +484,23 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	}
 
 	private boolean createContract(Contract contract) {
+		return createContract(contract, null);
+	}
+
+	private boolean createContract(Contract contract, Long parentContractId) {
 		contract.setParkId(contractParkAccessService.scopedParkId(contract.getParkId()));
 		validateNewRelations(contract);
 		Date now = DateUtil.now();
 		if (Func.isBlank(contract.getContractNo())) {
 			contract.setContractNo(generateContractNo());
 		}
-		if (Func.isBlank(contract.getContractStatus())) {
-			contract.setContractStatus(STATUS_PENDING);
-		}
+		contract.setContractStatus(STATUS_PENDING);
 		if (Func.isBlank(contract.getPaymentCycle())) {
 			contract.setPaymentCycle("monthly");
 		}
+		normalizeRentIncreaseNode(contract);
+		contract.setContractFileUrl(null);
+		contract.setParentContractId(parentContractId);
 		contract.setRenewalRemindDays(resolveRenewalRemindDays(contract));
 		contract.setDelFlag(DEFAULT_DEL_FLAG);
 		contract.setCreateBy(currentUserName());
@@ -509,17 +514,73 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 
 	private boolean updateContract(Contract contract) {
 		Contract oldContract = requireContract(contract.getContractId());
-		contract.setParkId(oldContract.getParkId());
-		validateNewRelations(contract);
-		contract.setRenewalRemindDays(resolveRenewalRemindDays(contract));
-		contract.setDelFlag(DEFAULT_DEL_FLAG);
-		contract.setUpdateBy(currentUserName());
-		contract.setUpdateTime(DateUtil.now());
-		boolean result = updateById(contract);
+		Contract update = editableContract(contract);
+		update.setContractId(oldContract.getContractId());
+		update.setParkId(oldContract.getParkId());
+		validateNewRelations(update);
+		update.setRenewalRemindDays(resolveRenewalRemindDays(update));
+		normalizeRentIncreaseNode(update);
+		update.setUpdateBy(currentUserName());
+		update.setUpdateTime(DateUtil.now());
+		boolean result = updateById(update);
 		if (result) {
 			addLog(contract.getContractId(), "update", "更新合同信息");
 		}
 		return result;
+	}
+
+	/**
+	 * 通用编辑接口只允许修改合同业务字段，生命周期和归档字段必须由专用业务动作维护.
+	 */
+	private Contract editableContract(Contract source) {
+		Contract update = new Contract();
+		update.setContractNo(source.getContractNo());
+		update.setContractName(source.getContractName());
+		update.setCustomerId(source.getCustomerId());
+		update.setCustomerName(source.getCustomerName());
+		update.setRoomId(source.getRoomId());
+		update.setRoomIds(source.getRoomIds());
+		update.setRoomName(source.getRoomName());
+		update.setBuildingId(source.getBuildingId());
+		update.setBuildingIds(source.getBuildingIds());
+		update.setBuildingName(source.getBuildingName());
+		update.setRentPrice(source.getRentPrice());
+		update.setRentArea(source.getRentArea());
+		update.setMonthlyRent(source.getMonthlyRent());
+		update.setPropertyFee(source.getPropertyFee());
+		update.setDeposit(source.getDeposit());
+		update.setFollowUser(source.getFollowUser());
+		update.setRentIncreaseNode(source.getRentIncreaseNode());
+		update.setRentIncreaseRate(source.getRentIncreaseRate());
+		update.setRentIncreaseUnit(source.getRentIncreaseUnit());
+		update.setLateFeeRatio(source.getLateFeeRatio());
+		update.setLateFeeUnit(source.getLateFeeUnit());
+		update.setLateFeeCap(source.getLateFeeCap());
+		update.setManagementFee(source.getManagementFee());
+		update.setPublicFee(source.getPublicFee());
+		update.setStartDate(source.getStartDate());
+		update.setEndDate(source.getEndDate());
+		update.setSignDate(source.getSignDate());
+		update.setPaymentCycle(source.getPaymentCycle());
+		update.setRemark(source.getRemark());
+		return update;
+	}
+
+	/**
+	 * 递增节点字段只保存短枚举，详细分阶段租金放在备注中，兼容历史短字段长度.
+	 */
+	private void normalizeRentIncreaseNode(Contract contract) {
+		String node = Func.toStr(contract.getRentIncreaseNode(), "").trim();
+		if (node.length() <= 32) {
+			contract.setRentIncreaseNode(node);
+			return;
+		}
+		String detail = "租金递增：" + node;
+		String remark = Func.toStr(contract.getRemark(), "");
+		if (!remark.contains(detail)) {
+			contract.setRemark(limitText(Func.isBlank(remark) ? detail : remark + "\n" + detail, 500));
+		}
+		contract.setRentIncreaseNode("custom");
 	}
 
 	private Contract requireContract(Long contractId) {

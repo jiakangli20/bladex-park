@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.springblade.modules.contract.mapper.ContractExpiryRuleMapper">
+
+    <select id="selectRulePage" resultType="org.springblade.modules.contract.pojo.entity.ContractExpiryRule">
+        SELECT er.*
+        FROM biz_contract_expiry_rule er
+        WHERE er.del_flag = '0'
+        <if test="ruleName != null and ruleName != ''">
+            AND er.rule_name LIKE CONCAT('%', #{ruleName}, '%')
+        </if>
+        <if test="parkId != null">
+            AND EXISTS (
+                SELECT 1
+                FROM ics_building b
+                WHERE b.park_id = #{parkId}
+                  AND FIND_IN_SET(CAST(b.id AS CHAR), REPLACE(COALESCE(er.building_ids, ''), 'building_', '')) &gt; 0
+            )
+        </if>
+        ORDER BY er.create_time DESC, er.rule_id DESC
+    </select>
+
+</mapper>
