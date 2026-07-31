@@ -160,6 +160,31 @@
         WHERE id = #{id}
     </update>
 
+    <update id="releaseRoomIfUnoccupied">
+        UPDATE ics_room
+        SET status = '0',
+            vacant_since = CASE
+                WHEN status = '0' THEN COALESCE(vacant_since, NOW())
+                ELSE NOW()
+            END,
+            sync_status = '0',
+            update_by = #{updateBy},
+            update_time = NOW()
+        WHERE id = #{id}
+          AND park_id = #{parkId}
+          AND NOT EXISTS (
+            SELECT 1
+            FROM biz_contract c
+            WHERE c.del_flag = '0'
+              AND c.contract_id != #{excludeContractId}
+              AND COALESCE(c.contract_status, '') != '4'
+              AND (
+                c.room_id = #{id}
+                OR FIND_IN_SET(CAST(#{id} AS CHAR), REPLACE(COALESCE(c.room_ids, ''), 'room_', '')) &gt; 0
+              )
+          )
+    </update>
+
     <update id="markSyncMini">
         UPDATE ics_room
         SET sync_status = '1',

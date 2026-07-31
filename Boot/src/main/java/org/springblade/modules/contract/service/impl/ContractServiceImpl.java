@@ -41,15 +41,18 @@ import org.springblade.modules.contract.mapper.ContractExpiryRuleMapper;
 import org.springblade.modules.contract.mapper.ContractLogMapper;
 import org.springblade.modules.contract.mapper.ContractMapper;
 import org.springblade.modules.contract.mapper.ContractPaymentMapper;
+import org.springblade.modules.contract.mapper.ContractPaymentRecordMapper;
 import org.springblade.modules.contract.mapper.ContractWorkflowRecordMapper;
 import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractChange;
 import org.springblade.modules.contract.pojo.entity.ContractExpiryRule;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
+import org.springblade.modules.contract.pojo.entity.ContractPaymentRecord;
 import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.pojo.vo.ContractStatsVO;
 import org.springblade.modules.contract.pojo.vo.ContractExpirySummaryVO;
+import org.springblade.modules.contract.service.ContractParkAccessService;
 import org.springblade.modules.contract.service.IContractService;
 import org.springblade.modules.park.mapper.RoomMapper;
 import org.springframework.stereotype.Service;
@@ -65,9 +68,11 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * 合同主档服务实现类
@@ -99,29 +104,40 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private static final String BUSINESS_TYPE_CONTRACT_ROOM_REVIEW = "contract_room_review";
 	private static final String FEE_TYPE_DEPOSIT_REFUND = "deposit_refund";
 	private static final String PAY_STATUS_UNPAID = "0";
-	private static final String ROOM_STATUS_VACANT = "0";
+	private static final String PAY_STATUS_PAID = "1";
+	private static final String PAY_STATUS_PARTIAL = "3";
+	private static final String ACCEPTANCE_PASSED = "验收通过";
+	private static final String ACCEPTANCE_RECTIFICATION = "需整改";
 
 	private final ContractPaymentMapper contractPaymentMapper;
+	private final ContractPaymentRecordMapper contractPaymentRecordMapper;
 	private final ContractLogMapper contractLogMapper;
 	private final ContractChangeMapper contractChangeMapper;
 	private final ContractWorkflowRecordMapper contractWorkflowRecordMapper;
 	private final ContractExpiryRuleMapper contractExpiryRuleMapper;
 	private final RoomMapper roomMapper;
 	private final TaskService taskService;
+	private final ContractParkAccessService contractParkAccessService;
 
 	@Override
 	public IPage<Contract> selectContractPage(IPage<Contract> page, Contract contract) {
+		contract.setParkId(contractParkAccessService.scopedParkId(contract.getParkId()));
 		return page.setRecords(baseMapper.selectContractPage(page, contract));
 	}
 
 	@Override
 	public Contract selectContractById(Long contractId) {
-		return baseMapper.selectContractById(contractId);
+		Contract contract = baseMapper.selectContractById(contractId);
+		if (contract != null) {
+			contractParkAccessService.assertAccessible(contract.getParkId());
+		}
+		return contract;
 	}
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean submitContract(Contract contract) {
+		contract.setParkId(contractParkAccessService.scopedParkId(contract.getParkId()));
 		if (Func.isEmpty(contract.getContractId())) {
 			return createContract(contract);
 		}
@@ -135,6 +151,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		if (idList.isEmpty()) {
 			return false;
 		}
+		idList.forEach(this::requireContract);
 		return baseMapper.deleteContractByIds(idList) > 0;
 	}
 
@@ -292,18 +309,20 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 
 	@Override
 	public IPage<Contract> selectExpiringPage(IPage<Contract> page, Contract contract) {
+		contract.setParkId(contractParkAccessService.scopedParkId(contract.getParkId()));
 		return page.setRecords(baseMapper.selectExpiringPage(page, contract));
 	}
 
 	@Override
 	public ContractExpirySummaryVO expiringSummary(Contract contract) {
+		contract.setParkId(contractParkAccessService.scopedParkId(contract.getParkId()));
 		ContractExpirySummaryVO summary = baseMapper.selectExpiringSummary(contract);
 		return summary == null ? new ContractExpirySummaryVO() : summary;
 	}
 
 	@Override
 	public ContractStatsVO stats(Long parkId) {
-		ContractStatsVO stats = baseMapper.selectStats(parkId);
+		ContractStatsVO stats = baseMapper.selectStats(contractParkAccessService.scopedParkId(parkId));
 		return normalizeStats(stats);
 	}
 
@@ -338,11 +357,13 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 
 	@Override
 	public IPage<ContractPayment> selectPaymentPage(IPage<ContractPayment> page, ContractPayment payment) {
+		payment.setParkId(contractParkAccessService.scopedParkId(payment.getParkId()));
 		return page.setRecords(contractPaymentMapper.selectPaymentPage(page, payment));
 	}
 
 	@Override
 	public List<ContractPayment> selectPaymentByContractId(Long contractId) {
+		requireContract(contractId);
 		return contractPaymentMapper.selectByContractId(contractId);
 	}
 
@@ -355,50 +376,66 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public ContractPayment ensureDepositRefundPayment(Long contractId) {
-		Contract contract = requireContract(contractId);
+		Contract contract = requireContractForUpdate(contractId);
 		if (!STATUS_TERMINATED.equals(contract.getContractStatus())) {
 			throw new ServiceException("房屋验收完成后才可以发起押金退还");
 		}
-		if (contract.getDeposit() == null || contract.getDeposit().compareTo(BigDecimal.ZERO) <= 0) {
-			throw new ServiceException("该合同未配置可退保证金");
-		}
+		validateDepositRefundMaterials(contractId);
 		ContractPayment existing = findDepositRefundPayment(contractId);
-		if (existing != null) {
+		if (existing != null && (PAY_STATUS_PAID.equals(existing.getPayStatus())
+			|| "termination_settlement".equals(existing.getSpecialBillType()))) {
 			return existing;
 		}
-		validateDepositRefundMaterials(contractId);
+		TerminationSettlement settlement = settleTerminationPayments(contract);
+		return existing == null
+			? createDepositRefundPayment(contract, settlement)
+			: refreshDepositRefundPayment(existing, settlement);
+	}
+
+	private ContractPayment createDepositRefundPayment(Contract contract, TerminationSettlement settlement) {
 		Date now = DateUtil.now();
 		ContractPayment payment = new ContractPayment();
-		payment.setContractId(contractId);
+		payment.setContractId(contract.getContractId());
 		payment.setDirection("payable");
 		payment.setFeeType(FEE_TYPE_DEPOSIT_REFUND);
 		payment.setFeeName("押金退还");
 		payment.setPeriodStart(now);
 		payment.setPeriodEnd(now);
-		payment.setAmountDue(contract.getDeposit());
+		payment.setAmountDue(settlement.refundableAmount());
 		payment.setAmountPaid(BigDecimal.ZERO);
 		payment.setPayDeadline(now);
-		payment.setPayStatus(PAY_STATUS_UNPAID);
+		payment.setPayStatus(settlement.refundableAmount().compareTo(BigDecimal.ZERO) > 0 ? PAY_STATUS_UNPAID : PAY_STATUS_PAID);
+		payment.setPayTime(settlement.refundableAmount().compareTo(BigDecimal.ZERO) > 0 ? null : now);
 		payment.setParkId(contract.getParkId());
-		payment.setRemark("退租押金退还付款单");
+		payment.setSpecialBillType("termination_settlement");
+		payment.setRemark(settlement.remark());
 		payment.setCreateBy(currentUserName());
 		payment.setCreateTime(now);
 		contractPaymentMapper.insert(payment);
-		addLog(contractId, "deposit_refund", "生成押金退还付款单");
-		return contractPaymentMapper.selectById(payment.getPaymentId());
+		addLog(contract.getContractId(), "deposit_refund", "生成押金退还付款单：" + settlement.remark());
+		return findDepositRefundPayment(contract.getContractId());
 	}
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public ContractWorkflowRecord offlineRoomReview(Long contractId, Map<String, Object> formData) {
-		Contract contract = requireContract(contractId);
+		Contract contract = requireContractForUpdate(contractId);
 		if (!canOfflineRoomReview(contract.getContractStatus())) {
 			throw new ServiceException("退租审批通过后才可以登记验收情况");
 		}
 		Date now = DateUtil.now();
 		Map<String, Object> snapshot = normalizeOfflineForm(formData);
 		snapshot.putIfAbsent("acceptanceDate", DateUtil.format(now, DateUtil.PATTERN_DATE));
-		snapshot.putIfAbsent("acceptanceResult", "验收通过");
+		snapshot.putIfAbsent("acceptanceResult", ACCEPTANCE_PASSED);
+		String acceptanceResult = textValue(snapshot, "acceptanceResult");
+		if (!ACCEPTANCE_PASSED.equals(acceptanceResult) && !ACCEPTANCE_RECTIFICATION.equals(acceptanceResult)) {
+			throw new ServiceException("请选择正确的验收结果");
+		}
+		BigDecimal deductionAmount = validateNonNegativeAmount(snapshot.get("deductionAmount"), "其他扣款");
+		if (deductionAmount.compareTo(BigDecimal.ZERO) > 0
+			&& Func.isBlank(textValue(snapshot, "deductionRemark"))) {
+			throw new ServiceException("请填写其他扣款说明");
+		}
 		if (Func.isBlank(textValue(snapshot, "returnDate"))) {
 			snapshot.put("returnDate", snapshot.get("acceptanceDate"));
 		}
@@ -430,23 +467,24 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		record.setCreateTime(now);
 		contractWorkflowRecordMapper.insert(record);
 
-		Contract update = new Contract();
-		update.setContractId(contractId);
-		update.setContractStatus(STATUS_TERMINATED);
-		update.setUpdateBy(currentUserName());
-		update.setUpdateTime(now);
-		baseMapper.updateById(update);
-		releaseRooms(contract);
-		addLog(contractId, "room_review", "线下房屋验收完成");
+		completeRoomReviewInternal(contract);
 		return contractWorkflowRecordMapper.selectById(record.getRecordId());
 	}
 
 	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public boolean completeRoomReview(Long contractId) {
+		return completeRoomReviewInternal(requireContractForUpdate(contractId));
+	}
+
+	@Override
 	public List<ContractLog> selectLogByContractId(Long contractId) {
+		requireContract(contractId);
 		return contractLogMapper.selectByContractId(contractId);
 	}
 
 	private boolean createContract(Contract contract) {
+		contract.setParkId(contractParkAccessService.scopedParkId(contract.getParkId()));
 		validateNewRelations(contract);
 		Date now = DateUtil.now();
 		if (Func.isBlank(contract.getContractNo())) {
@@ -471,8 +509,8 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 
 	private boolean updateContract(Contract contract) {
 		Contract oldContract = requireContract(contract.getContractId());
-		validateNewRelations(contract);
 		contract.setParkId(oldContract.getParkId());
+		validateNewRelations(contract);
 		contract.setRenewalRemindDays(resolveRenewalRemindDays(contract));
 		contract.setDelFlag(DEFAULT_DEL_FLAG);
 		contract.setUpdateBy(currentUserName());
@@ -489,6 +527,18 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		if (contract == null) {
 			throw new ServiceException("合同不存在");
 		}
+		return contract;
+	}
+
+	private Contract requireContractForUpdate(Long contractId) {
+		if (contractId == null) {
+			throw new ServiceException("合同ID不能为空");
+		}
+		Contract contract = baseMapper.selectContractByIdForUpdate(contractId);
+		if (contract == null) {
+			throw new ServiceException("合同不存在");
+		}
+		contractParkAccessService.assertAccessible(contract.getParkId());
 		return contract;
 	}
 
@@ -515,6 +565,258 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 			.orElse(null);
 	}
 
+	private ContractPayment refreshDepositRefundPayment(ContractPayment existing, TerminationSettlement settlement) {
+		if (PAY_STATUS_PAID.equals(existing.getPayStatus())) {
+			return existing;
+		}
+		BigDecimal currentAmount = nullToZero(existing.getAmountDue());
+		BigDecimal targetAmount = settlement.refundableAmount();
+		if (currentAmount.compareTo(targetAmount) != 0
+			&& (nullToZero(existing.getAmountPaid()).compareTo(BigDecimal.ZERO) > 0
+			|| PROCESS_STATUS_RUNNING.equals(existing.getPaymentApprovalStatus())
+			|| PROCESS_STATUS_APPROVED.equals(existing.getPaymentApprovalStatus()))) {
+			throw new ServiceException("退租结算金额已变化，请先撤回原付款审批后重新发起");
+		}
+		if (currentAmount.compareTo(targetAmount) == 0 && java.util.Objects.equals(existing.getRemark(), settlement.remark())) {
+			return existing;
+		}
+		ContractPayment update = new ContractPayment();
+		update.setPaymentId(existing.getPaymentId());
+		update.setAmountDue(targetAmount);
+		update.setSpecialBillType("termination_settlement");
+		update.setRemark(settlement.remark());
+		update.setPayStatus(targetAmount.compareTo(BigDecimal.ZERO) > 0 ? PAY_STATUS_UNPAID : PAY_STATUS_PAID);
+		if (targetAmount.compareTo(BigDecimal.ZERO) == 0) {
+			update.setPayTime(DateUtil.now());
+		}
+		update.setUpdateBy(currentUserName());
+		update.setUpdateTime(DateUtil.now());
+		contractPaymentMapper.updateById(update);
+		return findDepositRefundPayment(existing.getContractId());
+	}
+
+	private boolean completeRoomReviewInternal(Contract contract) {
+		validateTerminationApproved(contract.getContractId());
+		ContractWorkflowRecord roomReviewRecord = requireApprovedRoomReview(contract.getContractId());
+		if (requiresRectification(roomReviewRecord.getFormDataJson())) {
+			if (STATUS_ROOM_REVIEW_RUNNING.equals(contract.getContractStatus())) {
+				updateContractStatus(contract.getContractId(), STATUS_TERMINATION_HANDOVER);
+			}
+			addLog(contract.getContractId(), "room_review_rectification", "房屋验收结果为需整改，合同保持退租交接中");
+			return false;
+		}
+		if (!STATUS_TERMINATION_HANDOVER.equals(contract.getContractStatus())
+			&& !STATUS_ROOM_REVIEW_RUNNING.equals(contract.getContractStatus())
+			&& !STATUS_TERMINATED.equals(contract.getContractStatus())) {
+			throw new ServiceException("当前合同状态不能完成房屋验收");
+		}
+		ContractPayment existingRefund = findDepositRefundPayment(contract.getContractId());
+		if (existingRefund == null) {
+			createDepositRefundPayment(contract, settleTerminationPayments(contract));
+		} else if (!PAY_STATUS_PAID.equals(existingRefund.getPayStatus())
+			&& !"termination_settlement".equals(existingRefund.getSpecialBillType())) {
+			refreshDepositRefundPayment(existingRefund, settleTerminationPayments(contract));
+		}
+		boolean newlyTerminated = !STATUS_TERMINATED.equals(contract.getContractStatus());
+		if (newlyTerminated) {
+			updateContractStatus(contract.getContractId(), STATUS_TERMINATED);
+		}
+		releaseRooms(contract);
+		if (newlyTerminated) {
+			addLog(contract.getContractId(), "room_review", "房屋验收通过，退租结算完成并安全释放房源");
+		}
+		return true;
+	}
+
+	private TerminationSettlement settleTerminationPayments(Contract contract) {
+		ContractWorkflowRecord roomReviewRecord = requireApprovedRoomReview(contract.getContractId());
+		if (requiresRectification(roomReviewRecord.getFormDataJson())) {
+			throw new ServiceException("房屋验收尚需整改，不能进行退租结算");
+		}
+		Date settlementDate = resolveSettlementDate(roomReviewRecord);
+		BigDecimal futurePaidCredit = nullToZero(contractPaymentMapper.sumFuturePaidCredit(contract.getContractId(), settlementDate));
+		int closedFutureBills = contractPaymentMapper.closeFutureReceivables(contract.getContractId(), settlementDate, currentUserName());
+		List<ContractPayment> unsettledPayments = contractPaymentMapper.selectUnsettledReceivablesForUpdate(contract.getContractId(), settlementDate);
+		BigDecimal unsettledReceivable = unsettledPayments.stream()
+			.map(payment -> nullToZero(payment.getAmountDue()).subtract(nullToZero(payment.getAmountPaid())).max(BigDecimal.ZERO))
+			.reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal manualDeduction = resolveManualDeduction(roomReviewRecord.getFormDataJson());
+		BigDecimal deposit = nullToZero(contract.getDeposit());
+		BigDecimal availableCredit = deposit.add(futurePaidCredit).subtract(manualDeduction).max(BigDecimal.ZERO);
+		BigDecimal offsetAmount = applyReceivableOffsets(unsettledPayments, availableCredit, settlementDate, contract);
+		BigDecimal remainingReceivable = unsettledReceivable.subtract(offsetAmount).max(BigDecimal.ZERO);
+		BigDecimal refundableAmount = deposit.add(futurePaidCredit)
+			.subtract(unsettledReceivable)
+			.subtract(manualDeduction)
+			.max(BigDecimal.ZERO)
+			.setScale(2, RoundingMode.HALF_UP);
+		String remark = "退租结算：押金" + money(deposit)
+			+ " + 未来账期预收" + money(futurePaidCredit)
+			+ " - 未结应收" + money(unsettledReceivable)
+			+ " - 其他扣款" + money(manualDeduction)
+			+ " = 应退" + money(refundableAmount)
+			+ "；押金抵扣应收" + money(offsetAmount)
+			+ "，剩余未结应收" + money(remainingReceivable)
+			+ "，已终止未来账单" + closedFutureBills + "笔";
+		return new TerminationSettlement(settlementDate, unsettledReceivable, futurePaidCredit,
+			manualDeduction, refundableAmount, closedFutureBills, remark);
+	}
+
+	private BigDecimal applyReceivableOffsets(List<ContractPayment> payments, BigDecimal availableCredit,
+											 Date settlementDate, Contract contract) {
+		BigDecimal remainingCredit = availableCredit;
+		BigDecimal totalOffset = BigDecimal.ZERO;
+		for (ContractPayment payment : payments) {
+			if (remainingCredit.compareTo(BigDecimal.ZERO) <= 0) {
+				break;
+			}
+			BigDecimal currentPaid = nullToZero(payment.getAmountPaid());
+			BigDecimal remainingDue = nullToZero(payment.getAmountDue()).subtract(currentPaid).max(BigDecimal.ZERO);
+			BigDecimal offset = remainingCredit.min(remainingDue).setScale(2, RoundingMode.HALF_UP);
+			if (offset.compareTo(BigDecimal.ZERO) <= 0) {
+				continue;
+			}
+			BigDecimal cumulativeAmount = currentPaid.add(offset);
+			ContractPayment update = new ContractPayment();
+			update.setPaymentId(payment.getPaymentId());
+			update.setAmountPaid(cumulativeAmount);
+			update.setPayStatus(cumulativeAmount.compareTo(nullToZero(payment.getAmountDue())) >= 0 ? PAY_STATUS_PAID : PAY_STATUS_PARTIAL);
+			update.setPayTime(settlementDate);
+			update.setUpdateBy(currentUserName());
+			update.setUpdateTime(DateUtil.now());
+			if (contractPaymentMapper.updateById(update) <= 0) {
+				throw new ServiceException("退租押金抵扣应收账单失败");
+			}
+
+			ContractPaymentRecord record = new ContractPaymentRecord();
+			record.setPaymentId(payment.getPaymentId());
+			record.setContractId(contract.getContractId());
+			record.setPaymentAmount(offset);
+			record.setCumulativeAmount(cumulativeAmount);
+			record.setPaymentTime(settlementDate);
+			record.setRemark("退租结算押金抵扣");
+			record.setOperatorUserId(AuthUtil.getUserId());
+			record.setOperatorAccount(AuthUtil.getUserName());
+			record.setOperatorName(currentUserName());
+			record.setParkId(contract.getParkId());
+			record.setDelFlag(DEFAULT_DEL_FLAG);
+			record.setCreateBy(currentUserName());
+			record.setCreateTime(DateUtil.now());
+			contractPaymentRecordMapper.insert(record);
+			remainingCredit = remainingCredit.subtract(offset);
+			totalOffset = totalOffset.add(offset);
+		}
+		return totalOffset;
+	}
+
+	private void validateTerminationApproved(Long contractId) {
+		ContractWorkflowRecord terminationRecord = contractWorkflowRecordMapper.selectLatest(contractId, BUSINESS_TYPE_CONTRACT_TERMINATION);
+		if (terminationRecord == null || !PROCESS_STATUS_APPROVED.equals(terminationRecord.getProcessStatus())) {
+			throw new ServiceException("退租审批完成后才可以办理房屋验收");
+		}
+	}
+
+	private ContractWorkflowRecord requireApprovedRoomReview(Long contractId) {
+		ContractWorkflowRecord record = contractWorkflowRecordMapper.selectLatest(contractId, BUSINESS_TYPE_CONTRACT_ROOM_REVIEW);
+		if (record == null || !PROCESS_STATUS_APPROVED.equals(record.getProcessStatus())) {
+			throw new ServiceException("房屋验收完成后才可以进行退租结算");
+		}
+		return record;
+	}
+
+	private boolean requiresRectification(String formDataJson) {
+		Map<String, Object> formData = parseFormData(formDataJson);
+		String result = firstNotBlank(textValue(formData, "acceptanceResult"), textValue(formData, "验收结果"));
+		return ACCEPTANCE_RECTIFICATION.equals(result) || result.contains("整改") || result.contains("不通过");
+	}
+
+	private Date resolveSettlementDate(ContractWorkflowRecord record) {
+		Map<String, Object> formData = parseFormData(record.getFormDataJson());
+		String value = firstNotBlank(textValue(formData, "acceptanceDate"), textValue(formData, "returnDate"), textValue(formData, "验收日期"));
+		if (Func.isNotBlank(value)) {
+			try {
+				LocalDate date = LocalDate.parse(value.substring(0, Math.min(value.length(), 10)));
+				return Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
+			} catch (Exception ignored) {
+				// 历史流程日期格式不统一时，使用审批完成时间兜底.
+			}
+		}
+		return record.getApprovalTime() == null ? DateUtil.now() : record.getApprovalTime();
+	}
+
+	private BigDecimal resolveManualDeduction(String formDataJson) {
+		Map<String, Object> formData = parseFormData(formDataJson);
+		Object value = firstNotNull(
+			formData.get("deductionAmount"), formData.get("deductAmount"), formData.get("totalDeductionAmount"),
+			formData.get("其他扣款"), formData.get("扣款金额"), formData.get("应扣金额")
+		);
+		BigDecimal amount = toBigDecimal(value);
+		if (amount.compareTo(BigDecimal.ZERO) < 0) {
+			throw new ServiceException("退租扣款金额不能小于0");
+		}
+		return amount.setScale(2, RoundingMode.HALF_UP);
+	}
+
+	private Map<String, Object> parseFormData(String formDataJson) {
+		if (Func.isBlank(formDataJson)) {
+			return new LinkedHashMap<>();
+		}
+		try {
+			Map<String, Object> formData = JsonUtil.readMap(formDataJson);
+			return formData == null ? new LinkedHashMap<>() : new LinkedHashMap<>(formData);
+		} catch (Exception ignored) {
+			return new LinkedHashMap<>();
+		}
+	}
+
+	private BigDecimal toBigDecimal(Object value) {
+		if (value == null || Func.isBlank(Func.toStr(value, ""))) {
+			return BigDecimal.ZERO;
+		}
+		try {
+			return new BigDecimal(Func.toStr(value, "0").replace(",", "").trim());
+		} catch (NumberFormatException exception) {
+			throw new ServiceException("退租扣款金额格式不正确");
+		}
+	}
+
+	private BigDecimal validateNonNegativeAmount(Object value, String fieldName) {
+		BigDecimal amount = toBigDecimal(value).setScale(2, RoundingMode.HALF_UP);
+		if (amount.compareTo(BigDecimal.ZERO) < 0) {
+			throw new ServiceException(fieldName + "不能小于0");
+		}
+		return amount;
+	}
+
+	private String money(BigDecimal amount) {
+		return nullToZero(amount).setScale(2, RoundingMode.HALF_UP).toPlainString();
+	}
+
+	private BigDecimal nullToZero(BigDecimal amount) {
+		return amount == null ? BigDecimal.ZERO : amount;
+	}
+
+	@SafeVarargs
+	private final <T> T firstNotNull(T... values) {
+		for (T value : values) {
+			if (value != null) {
+				return value;
+			}
+		}
+		return null;
+	}
+
+	private void updateContractStatus(Long contractId, String status) {
+		Contract update = new Contract();
+		update.setContractId(contractId);
+		update.setContractStatus(status);
+		update.setUpdateBy(currentUserName());
+		update.setUpdateTime(DateUtil.now());
+		if (baseMapper.updateById(update) <= 0) {
+			throw new ServiceException("合同状态更新失败");
+		}
+	}
+
 	private void validateNewRelations(Contract contract) {
 		contract.setCustomerName(Func.toStr(contract.getCustomerName(), "").trim());
 		if (Func.isBlank(contract.getCustomerName())) {
@@ -529,11 +831,21 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		if (contract.getCustomerId() != null) {
 			validateCustomer(contract.getCustomerId());
 		}
-		if (contract.getBuildingId() != null && emptyCount(baseMapper.existsBuilding(contract.getBuildingId()))) {
-			throw new ServiceException("楼宇不存在");
+		if (contract.getBuildingId() != null && emptyCount(baseMapper.existsBuildingInPark(contract.getBuildingId(), contract.getParkId()))) {
+			throw new ServiceException("楼宇不存在或不属于所选园区");
 		}
-		if (contract.getRoomId() != null && emptyCount(baseMapper.existsRoom(contract.getRoomId()))) {
-			throw new ServiceException("房源不存在");
+		for (Long buildingId : Func.toLongList(Func.toStr(contract.getBuildingIds(), "").replace("building_", ""))) {
+			if (emptyCount(baseMapper.existsBuildingInPark(buildingId, contract.getParkId()))) {
+				throw new ServiceException("存在不属于所选园区的楼宇");
+			}
+		}
+		if (contract.getRoomId() != null && emptyCount(baseMapper.existsRoomInPark(contract.getRoomId(), contract.getParkId()))) {
+			throw new ServiceException("房源不存在或不属于所选园区");
+		}
+		for (Long roomId : Func.toLongList(Func.toStr(contract.getRoomIds(), "").replace("room_", ""))) {
+			if (emptyCount(baseMapper.existsRoomInPark(roomId, contract.getParkId()))) {
+				throw new ServiceException("存在不属于所选园区的房源");
+			}
 		}
 	}
 
@@ -587,8 +899,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 
 	private boolean canOfflineRoomReview(String contractStatus) {
 		return STATUS_TERMINATION_HANDOVER.equals(contractStatus)
-			|| STATUS_ROOM_REVIEW_RUNNING.equals(contractStatus)
-			|| STATUS_TERMINATED.equals(contractStatus);
+			|| STATUS_ROOM_REVIEW_RUNNING.equals(contractStatus);
 	}
 
 	private void validateDepositRefundMaterials(Long contractId) {
@@ -771,11 +1082,16 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	}
 
 	private String resolveContractRoomIds(Contract contract) {
-		String roomIds = contract == null ? "" : Func.toStr(contract.getRoomIds(), "");
-		if (Func.isNotBlank(roomIds)) {
-			return roomIds;
+		if (contract == null) {
+			return "";
 		}
-		return contract != null && contract.getRoomId() != null ? String.valueOf(contract.getRoomId()) : "";
+		Set<Long> roomIds = new LinkedHashSet<>(Func.toLongList(
+			Func.toStr(contract.getRoomIds(), "").replace("room_", "")
+		));
+		if (contract.getRoomId() != null) {
+			roomIds.add(contract.getRoomId());
+		}
+		return roomIds.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
 	}
 
 	private void releaseRooms(Contract contract) {
@@ -783,7 +1099,11 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 			return;
 		}
 		for (Long roomId : Func.toLongList(resolveContractRoomIds(contract))) {
-			roomMapper.updateRoomStatus(roomId, ROOM_STATUS_VACANT, currentUserName(), true);
+			int released = roomMapper.releaseRoomIfUnoccupied(roomId, contract.getParkId(), contract.getContractId(), currentUserName());
+			if (released == 0) {
+				addLog(contract.getContractId(), "room_release_skipped",
+					"房源" + roomId + "不存在、园区不一致或仍被其他未终止合同占用，未释放为空置");
+			}
 		}
 	}
 
@@ -944,6 +1264,15 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private String currentUserName() {
 		String userName = AuthUtil.getUserName();
 		return Func.isBlank(userName) ? "system" : userName;
+	}
+
+	private record TerminationSettlement(Date settlementDate,
+									 BigDecimal unsettledReceivable,
+									 BigDecimal futurePaidCredit,
+									 BigDecimal manualDeduction,
+									 BigDecimal refundableAmount,
+									 int closedFutureBills,
+									 String remark) {
 	}
 
 }

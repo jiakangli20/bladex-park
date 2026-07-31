@@ -207,6 +207,14 @@
           AND c.del_flag = '0'
     </select>
 
+    <select id="selectContractByIdForUpdate" resultMap="contractResultMap">
+        SELECT *
+        FROM biz_contract
+        WHERE contract_id = #{contractId}
+          AND del_flag = '0'
+        FOR UPDATE
+    </select>
+
     <sql id="expiringWhere">
             c.del_flag = '0'
             AND c.contract_status = '1'
@@ -301,10 +309,24 @@
         WHERE id = #{buildingId}
     </select>
 
+    <select id="existsBuildingInPark" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM ics_building
+        WHERE id = #{buildingId}
+          AND park_id = #{parkId}
+    </select>
+
     <select id="existsRoom" resultType="java.lang.Long">
         SELECT COUNT(1)
         FROM ics_room
         WHERE id = #{roomId}
+    </select>
+
+    <select id="existsRoomInPark" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM ics_room
+        WHERE id = #{roomId}
+          AND park_id = #{parkId}
     </select>
 
     <select id="existsSettledCustomer" resultType="java.lang.Long">

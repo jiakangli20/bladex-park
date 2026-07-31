@@ -188,6 +188,14 @@ public interface IContractService extends IService<Contract> {
 	ContractWorkflowRecord offlineRoomReview(Long contractId, Map<String, Object> formData);
 
 	/**
+	 * 完成房屋验收后的退租收口，包含状态、账单和房源处理.
+	 *
+	 * @param contractId 合同ID
+	 * @return 是否验收通过并完成退租
+	 */
+	boolean completeRoomReview(Long contractId);
+
+	/**
 	 * 合同日志
 	 *
 	 * @param contractId 合同ID

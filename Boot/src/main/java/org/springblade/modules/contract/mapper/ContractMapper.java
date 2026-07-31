@@ -59,6 +59,14 @@ public interface ContractMapper extends BaseMapper<Contract> {
 	Contract selectContractById(@Param("contractId") Long contractId);
 
 	/**
+	 * 锁定合同主档，串行化退租结算与状态变更.
+	 *
+	 * @param contractId 合同ID
+	 * @return 合同
+	 */
+	Contract selectContractByIdForUpdate(@Param("contractId") Long contractId);
+
+	/**
 	 * 到期提醒列表
 	 *
 	 * @param page     分页
@@ -107,6 +115,8 @@ public interface ContractMapper extends BaseMapper<Contract> {
 	 */
 	Long existsBuilding(@Param("buildingId") Long buildingId);
 
+	Long existsBuildingInPark(@Param("buildingId") Long buildingId, @Param("parkId") Long parkId);
+
 	/**
 	 * 房源是否存在
 	 *
@@ -114,6 +124,8 @@ public interface ContractMapper extends BaseMapper<Contract> {
 	 * @return 数量
 	 */
 	Long existsRoom(@Param("roomId") Long roomId);
+
+	Long existsRoomInPark(@Param("roomId") Long roomId, @Param("parkId") Long parkId);
 
 	/**
 	 * 已入驻客户是否存在

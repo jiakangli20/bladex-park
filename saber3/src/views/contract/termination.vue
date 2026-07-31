@@ -430,6 +430,38 @@
               placeholder="填写线下房屋验收情况、交接说明、遗留问题等"
             />
           </el-form-item>
+          <el-form-item label="其他扣款">
+            <el-input-number
+              v-model="offlineReviewForm.deductionAmount"
+              :min="0"
+              :precision="2"
+              :step="100"
+              controls-position="right"
+              style="width: 100%"
+              placeholder="不含系统自动抵扣的未结应收"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="Number(offlineReviewForm.deductionAmount || 0) > 0"
+            label="扣款说明"
+            required
+          >
+            <el-input
+              v-model="offlineReviewForm.deductionRemark"
+              type="textarea"
+              :rows="2"
+              maxlength="300"
+              show-word-limit
+              placeholder="请填写维修、损坏赔偿等其他扣款依据"
+            />
+          </el-form-item>
+          <el-alert
+            class="settlement-tip"
+            type="info"
+            :closable="false"
+            show-icon
+            title="验收通过后，系统将自动抵扣验收日前未结应收，终止验收日后的未发生账单，并将未来账期已预收金额计入应退金额。"
+          />
           <el-form-item label="验收附件">
             <el-upload
               ref="offlineReviewUploadRef"
@@ -606,6 +638,8 @@ export default {
         acceptanceDate: '',
         acceptanceResult: '验收通过',
         acceptanceSituation: '',
+        deductionAmount: 0,
+        deductionRemark: '',
         acceptanceFileUrl: '',
         acceptanceFileName: '',
       },
@@ -842,6 +876,12 @@ export default {
       return this.depositPaymentDisplayItems(this.detailRecord);
     },
     depositPaymentStatusText() {
+      if (
+        this.detailRecord?.depositRefundPaymentId &&
+        Number(this.detailRecord?.depositRefundAmount || 0) === 0
+      ) {
+        return '无需退款';
+      }
       if (this.isDepositRefundCompleted(this.detailRecord)) return '已付款';
       if (String(this.detailRecord?.depositRefundPayStatus || '') === '3') return '部分付款';
       const status = this.paymentApprovalStatus(this.detailRecord);
@@ -894,7 +934,7 @@ export default {
           { label: '合同编号', value: row.contractNo || payment.contractNo || '-' },
           { label: '企业名称', value: row.customerName || payment.customerName || '-' },
           { label: '退款事项', value: payment.feeName || '押金退还' },
-          { label: '退款金额', value: this.formatMoney(payment.amountDue || row.deposit) },
+          { label: '退款金额', value: this.formatMoney(payment.amountDue ?? row.deposit) },
           {
             label: '合同状态',
             value: row.contractStatusName || this.statusText(row.contractStatus),
@@ -994,6 +1034,8 @@ export default {
                 depositRefundPayStatus: String(payment.payStatus || ''),
                 depositRefundPaymentId: payment.paymentId || '',
                 depositRefundApprovalStatus: payment.paymentApprovalStatus || '',
+                depositRefundAmount: payment.amountDue,
+                depositSettlementRemark: payment.remark || '',
               };
             })
             .catch(() => ({
@@ -1001,6 +1043,8 @@ export default {
               depositRefundPayStatus: '',
               depositRefundPaymentId: '',
               depositRefundApprovalStatus: '',
+              depositRefundAmount: null,
+              depositSettlementRemark: '',
             }))
         )
       );
@@ -1315,7 +1359,9 @@ export default {
           return;
         }
         if (payment.payStatus === '1') {
-          this.$message.warning('该押金退还已完成');
+          this.$message.warning(
+            Number(payment.amountDue || 0) === 0 ? '退租结算后无需退款' : '该押金退还已完成'
+          );
           return;
         }
         if (payment.paymentApprovalStatus === 'approved') {
@@ -1341,6 +1387,8 @@ export default {
         acceptanceDate: this.formatDate(new Date()),
         acceptanceResult: '验收通过',
         acceptanceSituation: '',
+        deductionAmount: 0,
+        deductionRemark: '',
         acceptanceFileUrl: '',
         acceptanceFileName: '',
       };
@@ -1403,6 +1451,13 @@ export default {
         this.$message.warning('请填写房屋验收情况');
         return;
       }
+      if (
+        Number(this.offlineReviewForm.deductionAmount || 0) > 0 &&
+        !String(this.offlineReviewForm.deductionRemark || '').trim()
+      ) {
+        this.$message.warning('请填写其他扣款说明');
+        return;
+      }
       this.offlineReviewLoading = true;
       offlineRoomReview(this.offlineReviewRecord.contractId, this.offlineReviewForm)
         .then(() => {
@@ -1420,6 +1475,8 @@ export default {
         acceptanceDate: '',
         acceptanceResult: '验收通过',
         acceptanceSituation: '',
+        deductionAmount: 0,
+        deductionRemark: '',
         acceptanceFileUrl: '',
         acceptanceFileName: '',
       };
@@ -1581,7 +1638,10 @@ export default {
         {
           label: '产业园付款',
           done: this.isDepositRefundCompleted(row),
-          doneText: '财务已确认付款',
+          doneText:
+            row?.depositRefundPaymentId && Number(row?.depositRefundAmount || 0) === 0
+              ? '结算后无需退款'
+              : '财务已确认付款',
           pendingText:
             String(row?.depositRefundPayStatus || '') === '3'
               ? '已部分付款，待财务付清'
@@ -1677,6 +1737,8 @@ export default {
           parkId: row.parkId,
           monthlyRent: row.monthlyRent,
           deposit: row.deposit,
+          acceptanceResult: '验收通过',
+          deductionAmount: 0,
           startDate: row.startDate,
           endDate: row.endDate,
           sourceTerminationRecordId: row.recordId,
@@ -1713,7 +1775,7 @@ export default {
           direction: 'payable',
           periodStart: payment.periodStart,
           periodEnd: payment.periodEnd,
-          amountDue: payment.amountDue || row.deposit,
+          amountDue: payment.amountDue ?? row.deposit,
           amountPaid: payment.amountPaid,
           payDeadline: payment.payDeadline,
           templateKey: 'payment-notice',
@@ -2169,6 +2231,11 @@ export default {
   width: 100%;
 }
 
+.settlement-tip {
+  margin: 0 0 18px 96px;
+  width: calc(100% - 96px);
+}
+
 .termination-pagination {
   display: flex;
   justify-content: flex-end;
@@ -2196,6 +2263,11 @@ export default {
 
   .offline-summary {
     grid-template-columns: 1fr;
+  }
+
+  .settlement-tip {
+    margin-left: 0;
+    width: 100%;
   }
 }
 </style>

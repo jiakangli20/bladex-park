@@ -188,4 +188,40 @@
         FOR UPDATE
     </select>
 
+    <select id="selectUnsettledReceivablesForUpdate" resultMap="paymentResultMap">
+        SELECT *
+        FROM biz_contract_payment
+        WHERE contract_id = #{contractId}
+          AND COALESCE(direction, 'receivable') = 'receivable'
+          AND COALESCE(pay_status, '0') != '1'
+          AND COALESCE(special_bill_type, '') != 'termination_cancelled'
+          AND (period_start IS NULL OR period_start &lt;= DATE(#{settlementDate}))
+        ORDER BY pay_deadline ASC, payment_id ASC
+        FOR UPDATE
+    </select>
+
+    <select id="sumFuturePaidCredit" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(COALESCE(amount_paid, 0)), 0)
+        FROM biz_contract_payment
+        WHERE contract_id = #{contractId}
+          AND COALESCE(direction, 'receivable') = 'receivable'
+          AND period_start &gt; DATE(#{settlementDate})
+    </select>
+
+    <update id="closeFutureReceivables">
+        UPDATE biz_contract_payment
+        SET amount_due = COALESCE(amount_paid, 0),
+            pay_status = '1',
+            pay_time = COALESCE(pay_time, #{settlementDate}),
+            special_bill_type = 'termination_cancelled',
+            remark = CONCAT_WS('；', NULLIF(remark, ''), '退租结算：验收日后未发生账单已终止'),
+            update_by = #{updateBy},
+            update_time = NOW()
+        WHERE contract_id = #{contractId}
+          AND COALESCE(direction, 'receivable') = 'receivable'
+          AND COALESCE(pay_status, '0') != '1'
+          AND period_start &gt; DATE(#{settlementDate})
+          AND COALESCE(special_bill_type, '') != 'termination_cancelled'
+    </update>
+
 </mapper>

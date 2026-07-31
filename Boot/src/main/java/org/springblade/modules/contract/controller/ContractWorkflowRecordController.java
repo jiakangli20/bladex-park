@@ -86,7 +86,7 @@ public class ContractWorkflowRecordController extends BladeController {
 	@ApiOperationSupport(order = 2)
 	@Operation(summary = "详情", description = "传入recordId")
 	public R<ContractWorkflowRecord> detail(@Parameter(description = "记录ID") @PathVariable Long recordId) {
-		return R.data(contractWorkflowService.getById(recordId));
+		return R.data(contractWorkflowService.selectRecordById(recordId));
 	}
 
 	/**

@@ -88,6 +88,18 @@ public interface RoomMapper extends BaseMapper<Room> {
 						 @Param("updateBy") String updateBy, @Param("resetVacantSince") boolean resetVacantSince);
 
 	/**
+	 * 仅当房间不存在其他未终止合同时释放为空置.
+	 *
+	 * @param id 房源ID
+	 * @param excludeContractId 本次退租合同ID
+	 * @param updateBy 更新人
+	 * @return 更新数量
+	 */
+	int releaseRoomIfUnoccupied(@Param("id") Long id, @Param("parkId") Long parkId,
+								 @Param("excludeContractId") Long excludeContractId,
+								 @Param("updateBy") String updateBy);
+
+	/**
 	 * 标记小程序同步
 	 *
 	 * @param id 房源ID

@@ -30,6 +30,8 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.apache.ibatis.annotations.Param;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 
+import java.math.BigDecimal;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -63,5 +65,24 @@ public interface ContractPaymentMapper extends BaseMapper<ContractPayment> {
 	 * @return 账单基础数据
 	 */
 	ContractPayment selectByIdForUpdate(@Param("paymentId") Long paymentId);
+
+	/**
+	 * 锁定并按到期顺序查询退租结算日前未结应收账单.
+	 */
+	List<ContractPayment> selectUnsettledReceivablesForUpdate(@Param("contractId") Long contractId,
+														 @Param("settlementDate") Date settlementDate);
+
+	/**
+	 * 汇总退租结算日之后已预收的金额，作为应退金额的一部分.
+	 */
+	BigDecimal sumFuturePaidCredit(@Param("contractId") Long contractId,
+									 @Param("settlementDate") Date settlementDate);
+
+	/**
+	 * 终止退租结算日之后尚未完成的应收账单.
+	 */
+	int closeFutureReceivables(@Param("contractId") Long contractId,
+							 @Param("settlementDate") Date settlementDate,
+							 @Param("updateBy") String updateBy);
 
 }

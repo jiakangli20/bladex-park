@@ -23,6 +23,7 @@ import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
+import org.springblade.modules.contract.service.ContractParkAccessService;
 import org.springblade.modules.contract.service.IContractNoticeService;
 import org.springblade.modules.contract.service.IContractPrintTemplateService;
 import org.springblade.modules.contract.service.IContractTemplateRenderService;
@@ -78,6 +79,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	private final IContractTemplateRenderService contractTemplateRenderService;
 	private final ContractDocumentPreviewService contractDocumentPreviewService;
 	private final IContractPrintTemplateService contractPrintTemplateService;
+	private final ContractParkAccessService contractParkAccessService;
 
 	@Override
 	public ContractNoticeFileVO buildNotice(String noticeType, Long paymentId, Long contractId) {
@@ -633,6 +635,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		if (contract == null) {
 			throw new ServiceException("合同不存在");
 		}
+		contractParkAccessService.assertAccessible(contract.getParkId());
 		if (needsPayment(normalized) && payment == null) {
 			throw new ServiceException("账单不存在");
 		}

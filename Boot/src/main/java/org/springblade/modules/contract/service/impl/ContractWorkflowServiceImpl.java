@@ -48,10 +48,10 @@ import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
+import org.springblade.modules.contract.service.ContractParkAccessService;
 import org.springblade.modules.contract.service.IContractNoticeService;
 import org.springblade.modules.contract.service.IContractService;
 import org.springblade.modules.contract.service.IContractWorkflowService;
-import org.springblade.modules.park.mapper.RoomMapper;
 import org.springblade.plugin.workflow.core.constant.WfProcessConstant;
 import org.springblade.plugin.workflow.core.user.WfUser;
 import org.springblade.plugin.workflow.process.dto.WfNoticeDTO;
@@ -66,6 +66,7 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import static org.springblade.plugin.workflow.process.entity.WfNotice.Type.*;
@@ -105,7 +106,6 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 	private static final String PAY_STATUS_PAID = "1";
 	private static final String PAY_STATUS_PARTIAL = "3";
 	private static final String FEE_TYPE_DEPOSIT_REFUND = "deposit_refund";
-	private static final String ROOM_STATUS_VACANT = "0";
 	private static final String NODE_START = "流程发起";
 	private static final String NODE_END = "流程结束";
 	private static final Set<String> PAYMENT_AMOUNT_KEYS = Set.of(
@@ -154,18 +154,27 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 	private final ContractLogMapper contractLogMapper;
 	private final IContractNoticeService contractNoticeService;
 	private final IContractService contractService;
-	private final RoomMapper roomMapper;
 	private final TaskService taskService;
+	private final ContractParkAccessService contractParkAccessService;
 
 	@Override
 	public IPage<ContractWorkflowRecord> selectRecordPage(IPage<ContractWorkflowRecord> page, ContractWorkflowRecord record) {
+		record.setParkId(contractParkAccessService.scopedParkId(record.getParkId()));
 		return page.setRecords(baseMapper.selectRecordPage(page, record).stream()
 			.map(this::enrichProcessAttachments)
 			.toList());
 	}
 
 	@Override
+	public ContractWorkflowRecord selectRecordById(Long recordId) {
+		ContractWorkflowRecord record = baseMapper.selectById(recordId);
+		assertRecordAccessible(record);
+		return enrichProcessAttachments(record);
+	}
+
+	@Override
 	public List<ContractWorkflowRecord> selectByContractId(Long contractId) {
+		assertContractAccessible(contractId);
 		return baseMapper.selectByContractId(contractId).stream()
 			.map(this::enrichProcessAttachments)
 			.toList();
@@ -173,6 +182,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 
 	@Override
 	public ContractWorkflowRecord selectLatest(Long contractId, String businessType) {
+		assertContractAccessible(contractId);
 		return enrichProcessAttachments(baseMapper.selectLatest(contractId, businessType));
 	}
 
@@ -183,6 +193,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		if (record == null || DELETED_DEL_FLAG.equals(record.getDelFlag())) {
 			throw new ServiceException("退租记录不存在");
 		}
+		assertRecordAccessible(record);
 		Map<String, Object> attachments = parseAttachmentJson(record.getAttachmentJson());
 		List<Object> files = attachmentFiles(attachments.get("materials"));
 		Map<String, Object> file = buildAttachmentFile(payload);
@@ -209,6 +220,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		if (record == null || DELETED_DEL_FLAG.equals(record.getDelFlag())) {
 			throw new ServiceException("退租记录不存在");
 		}
+		assertRecordAccessible(record);
 		Map<String, Object> attachments = parseAttachmentJson(record.getAttachmentJson());
 		List<Object> files = attachmentFiles(attachments.get("materials"));
 		int originalSize = files.size();
@@ -280,6 +292,10 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			return;
 		}
 		WfNotice.Type type = notice.getType();
+		if (isDuplicateNotice(record, type)) {
+			return;
+		}
+		validateNoticeTransition(record, notice);
 		applyNoticeState(record, notice);
 		saveRecord(record, notice);
 		updateBusinessState(record, type);
@@ -290,6 +306,9 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		ProcessInstance processInstance = notice.getProcessInstance();
 		Map<String, Object> variables = notice.getVariables();
 		ContractWorkflowRecord record = baseMapper.selectByProcessInsId(processInstance.getId());
+		Long persistedContractId = record == null ? null : record.getContractId();
+		Long persistedPaymentId = record == null ? null : record.getPaymentId();
+		String persistedBusinessType = record == null ? null : record.getBusinessType();
 		if (record == null) {
 			record = new ContractWorkflowRecord();
 			record.setDelFlag(DEFAULT_DEL_FLAG);
@@ -297,7 +316,12 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			record.setCreateBy(currentUserName(notice));
 		}
 
-		String businessType = firstNotBlank(record.getBusinessType(), resolveBusinessType(processInstance.getProcessDefinitionKey(), variables));
+		String resolvedBusinessType = resolveBusinessType(processInstance.getProcessDefinitionKey(), variables);
+		if (StringUtil.isNotBlank(persistedBusinessType) && StringUtil.isNotBlank(resolvedBusinessType)
+			&& !persistedBusinessType.equals(resolvedBusinessType)) {
+			throw new ServiceException("流程定义与已登记业务类型不一致");
+		}
+		String businessType = firstNotBlank(persistedBusinessType, resolvedBusinessType);
 		record.setBusinessType(businessType);
 		record.setBusinessKey(limit(firstNotBlank(record.getBusinessKey(), resolveBusinessKey(processInstance, variables, businessType)), 64));
 		record.setProcessDefKey(limit(firstNotBlank(processInstance.getProcessDefinitionKey(), getString(variables, "processDefKey", record.getProcessDefKey())), 128));
@@ -305,28 +329,125 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		record.setProcessName(limit(firstNotBlank(processInstance.getName(), processInstance.getProcessDefinitionName()), 200));
 		record.setProcessInsId(processInstance.getId());
 
-		Long paymentId = firstNotNull(record.getPaymentId(), getLong(variables, "paymentId"));
-		record.setPaymentId(paymentId);
-		Long contractId = firstNotNull(record.getContractId(), getLong(variables, "contractId"));
-		if (contractId == null && BUSINESS_TYPE_CONTRACT_APPROVAL.equals(businessType)) {
-			contractId = toLong(record.getBusinessKey());
-		}
-
+		Long businessKeyId = toLong(record.getBusinessKey());
+		Long variablePaymentId = getLong(variables, "paymentId");
+		Long variableContractId = getLong(variables, "contractId");
+		boolean paymentBusiness = BUSINESS_TYPE_CONTRACT_PAYMENT.equals(businessType)
+			|| BUSINESS_TYPE_CONTRACT_OVERDUE_LEGAL.equals(businessType);
+		Long paymentId = paymentBusiness
+			? firstNotNull(persistedPaymentId, businessKeyId, variablePaymentId)
+			: persistedPaymentId;
+		assertSameBusinessId("账单", persistedPaymentId, paymentId);
+		assertSameBusinessId("账单", variablePaymentId, paymentId);
 		ContractPayment payment = paymentId == null ? null : contractPaymentMapper.selectById(paymentId);
-		if (contractId == null && payment != null) {
-			contractId = payment.getContractId();
+		if (paymentBusiness && payment == null) {
+			throw new ServiceException("流程关联账单不存在");
 		}
-		record.setContractId(contractId);
 
+		Long contractId = payment == null
+			? firstNotNull(persistedContractId, businessKeyId, variableContractId)
+			: payment.getContractId();
+		if (paymentBusiness && contractId == null) {
+			throw new ServiceException("流程关联账单未绑定合同");
+		}
+		assertSameBusinessId("合同", persistedContractId, contractId);
+		assertSameBusinessId("合同", variableContractId, contractId);
 		Contract contract = contractId == null ? null : contractMapper.selectContractById(contractId);
-		record.setParkId(firstNotNull(record.getParkId(), getLong(variables, "parkId"), payment == null ? null : payment.getParkId(), contract == null ? null : contract.getParkId()));
-		record.setCustomerId(firstNotNull(record.getCustomerId(), getLong(variables, "customerId"), contract == null ? null : contract.getCustomerId()));
-		record.setRoomIds(limit(firstNotBlank(record.getRoomIds(), getString(variables, "roomIds", null), contract == null ? null : firstNotBlank(contract.getRoomIds(), contract.getRoomId() == null ? null : String.valueOf(contract.getRoomId()))), 500));
+		if (contractId != null && contract == null) {
+			throw new ServiceException("流程关联合同不存在");
+		}
+		if (contract != null && payment != null && !contract.getContractId().equals(payment.getContractId())) {
+			throw new ServiceException("流程关联账单与合同不一致");
+		}
+		if (contract != null && payment != null && payment.getParkId() != null
+			&& !Objects.equals(contract.getParkId(), payment.getParkId())) {
+			throw new ServiceException("流程关联账单与合同所属园区不一致");
+		}
+		record.setPaymentId(paymentId);
+		record.setContractId(contractId);
+		record.setParkId(contract == null ? payment == null ? null : payment.getParkId() : contract.getParkId());
+		record.setCustomerId(contract == null ? null : contract.getCustomerId());
+		record.setRoomIds(contract == null ? null : limit(firstNotBlank(contract.getRoomIds(),
+			contract.getRoomId() == null ? null : String.valueOf(contract.getRoomId())), 500));
+		if (contract != null) {
+			contractParkAccessService.assertAccessible(contract.getParkId());
+			validateWorkflowStarterAccess(notice, contract);
+		}
 		record.setTemplateKey(limit(firstNotBlank(record.getTemplateKey(), getString(variables, "templateKey", null), businessType), 128));
 		record.setFormKey(limit(firstNotBlank(record.getFormKey(), getString(variables, "formKey", null)), 128));
 		record.setFormDataJson(resolveFormDataJson(variables, record.getFormDataJson()));
 		record.setAttachmentJson(resolveAttachmentJson(notice, record.getAttachmentJson(), businessType));
 		return record;
+	}
+
+	private void assertSameBusinessId(String businessName, Long suppliedId, Long authoritativeId) {
+		if (suppliedId != null && authoritativeId != null && !suppliedId.equals(authoritativeId)) {
+			throw new ServiceException("流程" + businessName + "ID与业务主键不一致");
+		}
+	}
+
+	private void validateWorkflowStarterAccess(WfNoticeDTO notice, Contract contract) {
+		if (notice == null || START != notice.getType() || contract == null || notice.getStartUser() == null) {
+			return;
+		}
+		WfUser startUser = notice.getStartUser();
+		if ("admin".equalsIgnoreCase(Func.toStr(startUser.getAccount(), ""))) {
+			return;
+		}
+		Long starterParkId = Func.firstLong(startUser.getDeptId());
+		if (starterParkId != null && !starterParkId.equals(contract.getParkId())) {
+			throw new ServiceException("无权发起其他园区的合同流程");
+		}
+	}
+
+	private boolean isDuplicateNotice(ContractWorkflowRecord record, WfNotice.Type type) {
+		if (record == null || type == null) {
+			return false;
+		}
+		if (START == type) {
+			return STATUS_RUNNING.equals(record.getProcessStatus());
+		}
+		if (FINISH == type) {
+			return STATUS_APPROVED.equals(record.getProcessStatus());
+		}
+		return isCanceledType(type)
+			&& (STATUS_REJECTED.equals(record.getProcessStatus())
+			|| STATUS_CANCELED.equals(record.getProcessStatus())
+			|| STATUS_DELETED.equals(record.getProcessStatus()));
+	}
+
+	private void validateNoticeTransition(ContractWorkflowRecord record, WfNoticeDTO notice) {
+		if (record == null || record.getContractId() == null || notice == null) {
+			return;
+		}
+		Contract contract = contractMapper.selectContractById(record.getContractId());
+		if (contract == null) {
+			throw new ServiceException("流程关联合同不存在");
+		}
+		WfNotice.Type type = notice.getType();
+		if (BUSINESS_TYPE_CONTRACT_TERMINATION.equals(record.getBusinessType())) {
+			if (START == type && !Set.of(CONTRACT_STATUS_ACTIVE, CONTRACT_STATUS_EXPIRED)
+				.contains(contract.getContractStatus())) {
+				throw new ServiceException("仅生效或已到期合同可以发起退租审批");
+			}
+			if (FINISH == type && !Set.of(CONTRACT_STATUS_TERMINATION_RUNNING,
+				CONTRACT_STATUS_TERMINATION_HANDOVER).contains(contract.getContractStatus())) {
+				throw new ServiceException("当前合同状态不能完成退租审批");
+			}
+		}
+		if (BUSINESS_TYPE_CONTRACT_ROOM_REVIEW.equals(record.getBusinessType())) {
+			ContractWorkflowRecord terminationRecord = baseMapper.selectLatest(record.getContractId(), BUSINESS_TYPE_CONTRACT_TERMINATION);
+			if (terminationRecord == null || !STATUS_APPROVED.equals(terminationRecord.getProcessStatus())) {
+				throw new ServiceException("退租审批完成后才可以办理房屋验收");
+			}
+			if (START == type && !CONTRACT_STATUS_TERMINATION_HANDOVER.equals(contract.getContractStatus())) {
+				throw new ServiceException("当前合同尚未进入退租交接阶段");
+			}
+			if (FINISH == type && !Set.of(CONTRACT_STATUS_TERMINATION_HANDOVER,
+				CONTRACT_STATUS_ROOM_REVIEW_RUNNING, CONTRACT_STATUS_TERMINATED).contains(contract.getContractStatus())) {
+				throw new ServiceException("当前合同状态不能完成房屋验收");
+			}
+		}
 	}
 
 	private void applyNoticeState(ContractWorkflowRecord record, WfNoticeDTO notice) {
@@ -466,9 +587,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		if (START == type) {
 			updateContractStatus(record, CONTRACT_STATUS_ROOM_REVIEW_RUNNING);
 		} else if (FINISH == type) {
-			updateContractStatus(record, CONTRACT_STATUS_TERMINATED);
-			releaseContractRooms(record);
-			ensureDepositRefundPayment(record);
+			contractService.completeRoomReview(record.getContractId());
 		} else if (isCanceledType(type)) {
 			Contract contract = contractMapper.selectContractById(record.getContractId());
 			if (contract != null && CONTRACT_STATUS_ROOM_REVIEW_RUNNING.equals(contract.getContractStatus())) {
@@ -487,7 +606,9 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		update.setContractStatus(contractStatus);
 		update.setUpdateBy(record.getUpdateBy());
 		update.setUpdateTime(DateUtil.now());
-		contractMapper.updateById(update);
+		if (contractMapper.updateById(update) <= 0) {
+			throw new ServiceException("合同状态更新失败");
+		}
 	}
 
 	private String activeOrExpiredStatus(Contract contract) {
@@ -512,12 +633,17 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 	}
 
 	private String resolveBusinessType(String processDefKey, Map<String, Object> variables) {
-		String businessType = getString(variables, "businessType", null);
-		if (BUSINESS_TYPES.contains(businessType)) {
-			return businessType;
+		String suppliedBusinessType = getString(variables, "businessType", null);
+		String mappedBusinessType = StringUtil.isBlank(processDefKey) ? null : PROCESS_KEY_BUSINESS_TYPE.get(processDefKey);
+		if (mappedBusinessType != null && BUSINESS_TYPES.contains(suppliedBusinessType)
+			&& !mappedBusinessType.equals(suppliedBusinessType)) {
+			throw new ServiceException("流程定义与业务类型不一致");
 		}
-		if (StringUtil.isNotBlank(processDefKey) && PROCESS_KEY_BUSINESS_TYPE.containsKey(processDefKey)) {
-			return PROCESS_KEY_BUSINESS_TYPE.get(processDefKey);
+		if (mappedBusinessType != null) {
+			return mappedBusinessType;
+		}
+		if (BUSINESS_TYPES.contains(suppliedBusinessType)) {
+			return suppliedBusinessType;
 		}
 		if (getLong(variables, "paymentId") != null) {
 			return BUSINESS_TYPE_CONTRACT_PAYMENT;
@@ -526,9 +652,9 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			return BUSINESS_TYPE_CONTRACT_APPROVAL;
 		}
 		if (StringUtil.isBlank(processDefKey)) {
-			return businessType;
+			return suppliedBusinessType;
 		}
-		return PROCESS_KEY_BUSINESS_TYPE.getOrDefault(processDefKey, businessType);
+		return suppliedBusinessType;
 	}
 
 	private String resolveBusinessKey(ProcessInstance processInstance, Map<String, Object> variables, String businessType) {
@@ -937,53 +1063,6 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		return JsonUtil.toJson(attachments);
 	}
 
-	private void releaseContractRooms(ContractWorkflowRecord record) {
-		if (record.getContractId() == null) {
-			return;
-		}
-		Contract contract = contractMapper.selectContractById(record.getContractId());
-		if (contract == null) {
-			return;
-		}
-		for (Long roomId : resolveRoomIds(contract, record)) {
-			roomMapper.updateRoomStatus(roomId, ROOM_STATUS_VACANT, record.getUpdateBy(), true);
-		}
-	}
-
-	private void ensureDepositRefundPayment(ContractWorkflowRecord record) {
-		if (record.getContractId() == null) {
-			return;
-		}
-		try {
-			contractService.ensureDepositRefundPayment(record.getContractId());
-		} catch (Exception exception) {
-			log.info("房屋验收完成后未自动生成押金退还付款单，contractId={}, reason={}", record.getContractId(), exception.getMessage());
-		}
-	}
-
-	private Set<Long> resolveRoomIds(Contract contract, ContractWorkflowRecord record) {
-		Set<Long> roomIds = new java.util.LinkedHashSet<>();
-		addRoomIds(roomIds, contract == null ? null : contract.getRoomIds());
-		addRoomIds(roomIds, record == null ? null : record.getRoomIds());
-		if (contract != null && contract.getRoomId() != null) {
-			roomIds.add(contract.getRoomId());
-		}
-		return roomIds;
-	}
-
-	private void addRoomIds(Set<Long> roomIds, String source) {
-		if (StringUtil.isBlank(source)) {
-			return;
-		}
-		for (String item : source.split(",")) {
-			String normalized = Func.toStr(item, "").replace("room_", "").trim();
-			Long roomId = toLong(normalized);
-			if (roomId != null) {
-				roomIds.add(roomId);
-			}
-		}
-	}
-
 	private boolean shouldLog(WfNotice.Type type) {
 		return START == type || FINISH == type || REJECT == type || RECALL == type
 			|| WITHDRAW == type || TERMINATE == type || DELETE_PROCESS == type;
@@ -1197,6 +1276,28 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		}
 		String sourceName = firstNotBlank(Func.toStr(map.get("materialName"), null), Func.toStr(map.get("categoryName"), null), Func.toStr(map.get("category"), null));
 		return StringUtil.isBlank(sourceName) || StringUtil.equals(sourceName, materialName);
+	}
+
+	private void assertContractAccessible(Long contractId) {
+		if (contractId == null) {
+			throw new ServiceException("合同ID不能为空");
+		}
+		Contract contract = contractMapper.selectContractById(contractId);
+		if (contract == null) {
+			throw new ServiceException("合同不存在");
+		}
+		contractParkAccessService.assertAccessible(contract.getParkId());
+	}
+
+	private void assertRecordAccessible(ContractWorkflowRecord record) {
+		if (record == null || DELETED_DEL_FLAG.equals(record.getDelFlag())) {
+			throw new ServiceException("流程记录不存在");
+		}
+		if (record.getContractId() != null) {
+			assertContractAccessible(record.getContractId());
+			return;
+		}
+		contractParkAccessService.assertAccessible(record.getParkId());
 	}
 
 	private String currentUserName(WfNoticeDTO notice) {

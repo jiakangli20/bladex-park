@@ -50,6 +50,14 @@ public interface IContractWorkflowService extends IService<ContractWorkflowRecor
 	IPage<ContractWorkflowRecord> selectRecordPage(IPage<ContractWorkflowRecord> page, ContractWorkflowRecord record);
 
 	/**
+	 * 合同流程记录详情.
+	 *
+	 * @param recordId 记录ID
+	 * @return 流程记录
+	 */
+	ContractWorkflowRecord selectRecordById(Long recordId);
+
+	/**
 	 * 合同流程记录列表
 	 *
 	 * @param contractId 合同ID
