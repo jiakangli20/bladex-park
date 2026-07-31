@@ -15,6 +15,7 @@ import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.business.mapper.PolicyServiceMapper;
 import org.springblade.modules.business.pojo.entity.PolicyService;
 import org.springblade.modules.business.service.IPolicyServiceService;
+import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,10 +41,19 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 	private static final String PERMANENT_NO = "1";
 	private static final String DEL_FLAG_NORMAL = "0";
 
+	private final ParkDataAccessService parkDataAccessService;
+
+	public PolicyServiceServiceImpl(ParkDataAccessService parkDataAccessService) {
+		this.parkDataAccessService = parkDataAccessService;
+	}
+
 	@Override
 	public PolicyService selectPolicyById(Long policyId) {
 		PolicyService policy = baseMapper.selectPolicyById(policyId);
-		if (Func.isNotEmpty(policy) && !hasAccessToPark(policy.getParkId())) {
+		if (Func.isNotEmpty(policy)) {
+			parkDataAccessService.assertAccessible(policy.getParkId());
+		}
+		if (Func.isEmpty(policy)) {
 			throw new ServiceException("政策服务不存在");
 		}
 		return policy;
@@ -125,7 +135,7 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean submitPolicy(PolicyService policy) {
-		return Func.isEmpty(policy.getPolicyId()) ? insertPolicy(policy) : updatePolicy(policy);
+		return Func.isEmpty(policy) || Func.isEmpty(policy.getPolicyId()) ? insertPolicy(policy) : updatePolicy(policy);
 	}
 
 	@Override
@@ -135,7 +145,7 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 		if (policyIds.isEmpty()) {
 			throw new ServiceException("请选择需要删除的政策服务");
 		}
-		Long parkId = AuthUtil.isAdministrator() ? null : currentParkId();
+		Long parkId = parkDataAccessService.scopedParkId(null);
 		return baseMapper.deletePolicyByIds(policyIds, parkId, currentUserName()) > 0;
 	}
 
@@ -175,9 +185,10 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 
 	private PolicyService requireWritablePolicy(Long policyId) {
 		PolicyService policy = baseMapper.selectPolicyById(policyId);
-		if (Func.isEmpty(policy) || !hasAccessToPark(policy.getParkId())) {
+		if (Func.isEmpty(policy)) {
 			throw new ServiceException("政策服务不存在");
 		}
+		parkDataAccessService.assertAccessible(policy.getParkId());
 		return policy;
 	}
 
@@ -187,6 +198,12 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 		}
 		if (StringUtil.isBlank(policy.getProjectScope())) {
 			throw new ServiceException("请选择项目范围");
+		}
+		if (StringUtil.isNotBlank(policy.getServiceStatus()) && !List.of(STATUS_PUBLISHED, STATUS_DRAFT, STATUS_OFFLINE).contains(policy.getServiceStatus())) {
+			throw new ServiceException("政策服务状态不正确");
+		}
+		if (StringUtil.isNotBlank(policy.getOnlineFlag()) && !List.of(ONLINE_YES, ONLINE_NO).contains(policy.getOnlineFlag())) {
+			throw new ServiceException("政策上架状态不正确");
 		}
 		if (PERMANENT_NO.equals(policy.getPermanentFlag()) && Func.isEmpty(policy.getValidTime())) {
 			throw new ServiceException("请选择有效期");
@@ -205,26 +222,16 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 
 	private PolicyService normalizeQuery(PolicyService policy) {
 		PolicyService query = Func.isEmpty(policy) ? new PolicyService() : policy;
-		if (!AuthUtil.isAdministrator()) {
-			query.setParkId(currentParkId());
-		}
+		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		return query;
 	}
 
 	private Long resolveWriteParkId(Long parkId) {
-		if (AuthUtil.isAdministrator() && Func.isNotEmpty(parkId) && parkId > 0) {
-			return parkId;
+		Long scopedParkId = parkDataAccessService.scopedParkId(parkId);
+		if (Func.isEmpty(scopedParkId)) {
+			throw new ServiceException("请选择园区");
 		}
-		return currentParkId();
-	}
-
-	private boolean hasAccessToPark(Long parkId) {
-		return AuthUtil.isAdministrator() || Func.isEmpty(parkId) || currentParkId().equals(parkId);
-	}
-
-	private Long currentParkId() {
-		Long deptId = Func.firstLong(AuthUtil.getDeptId());
-		return Func.isEmpty(deptId) ? 1L : deptId;
+		return scopedParkId;
 	}
 
 	private String currentUserName() {

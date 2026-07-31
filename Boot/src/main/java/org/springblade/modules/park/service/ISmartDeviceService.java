@@ -27,6 +27,11 @@ public interface ISmartDeviceService extends IService<SmartDevice> {
 
 	List<Map<String, Object>> selectDeviceTypeStatistics();
 
+	/**
+	 * 企业服务“在园企业数据”看板使用的全部园区设备统计。
+	 */
+	List<Map<String, Object>> selectAllParkDeviceTypeStatistics();
+
 	boolean submitDevice(SmartDevice device);
 
 	boolean removeDevice(String ids);

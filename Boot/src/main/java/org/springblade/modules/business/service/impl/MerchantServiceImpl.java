@@ -15,6 +15,7 @@ import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.business.mapper.MerchantMapper;
 import org.springblade.modules.business.pojo.entity.Merchant;
 import org.springblade.modules.business.service.IMerchantService;
+import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,10 +36,19 @@ public class MerchantServiceImpl extends ServiceImpl<MerchantMapper, Merchant> i
 	private static final String STATUS_SUSPENDED = "2";
 	private static final String DEL_FLAG_NORMAL = "0";
 
+	private final ParkDataAccessService parkDataAccessService;
+
+	public MerchantServiceImpl(ParkDataAccessService parkDataAccessService) {
+		this.parkDataAccessService = parkDataAccessService;
+	}
+
 	@Override
 	public Merchant selectMerchantById(Long merchantId) {
 		Merchant merchant = baseMapper.selectMerchantById(merchantId);
-		if (Func.isNotEmpty(merchant) && !hasAccessToPark(merchant.getParkId())) {
+		if (Func.isNotEmpty(merchant)) {
+			parkDataAccessService.assertAccessible(merchant.getParkId());
+		}
+		if (Func.isEmpty(merchant)) {
 			throw new ServiceException("商户不存在");
 		}
 		return merchant;
@@ -99,7 +109,7 @@ public class MerchantServiceImpl extends ServiceImpl<MerchantMapper, Merchant> i
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean submitMerchant(Merchant merchant) {
-		return Func.isEmpty(merchant.getMerchantId()) ? insertMerchant(merchant) : updateMerchant(merchant);
+		return Func.isEmpty(merchant) || Func.isEmpty(merchant.getMerchantId()) ? insertMerchant(merchant) : updateMerchant(merchant);
 	}
 
 	@Override
@@ -109,7 +119,7 @@ public class MerchantServiceImpl extends ServiceImpl<MerchantMapper, Merchant> i
 		if (merchantIds.isEmpty()) {
 			throw new ServiceException("请选择需要删除的商户");
 		}
-		Long parkId = AuthUtil.isAdministrator() ? null : currentParkId();
+		Long parkId = parkDataAccessService.scopedParkId(null);
 		return baseMapper.deleteMerchantByIds(merchantIds, parkId, currentUserName()) > 0;
 	}
 
@@ -128,34 +138,25 @@ public class MerchantServiceImpl extends ServiceImpl<MerchantMapper, Merchant> i
 
 	private Merchant requireWritableMerchant(Long merchantId) {
 		Merchant merchant = baseMapper.selectMerchantById(merchantId);
-		if (Func.isEmpty(merchant) || !hasAccessToPark(merchant.getParkId())) {
+		if (Func.isEmpty(merchant)) {
 			throw new ServiceException("商户不存在");
 		}
+		parkDataAccessService.assertAccessible(merchant.getParkId());
 		return merchant;
 	}
 
 	private Merchant normalizeQuery(Merchant merchant) {
 		Merchant query = Func.isEmpty(merchant) ? new Merchant() : merchant;
-		if (!AuthUtil.isAdministrator()) {
-			query.setParkId(currentParkId());
-		}
+		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		return query;
 	}
 
 	private Long resolveWriteParkId(Long parkId) {
-		if (AuthUtil.isAdministrator() && Func.isNotEmpty(parkId) && parkId > 0) {
-			return parkId;
+		Long scopedParkId = parkDataAccessService.scopedParkId(parkId);
+		if (Func.isEmpty(scopedParkId)) {
+			throw new ServiceException("请选择园区");
 		}
-		return currentParkId();
-	}
-
-	private boolean hasAccessToPark(Long parkId) {
-		return AuthUtil.isAdministrator() || Func.isEmpty(parkId) || currentParkId().equals(parkId);
-	}
-
-	private Long currentParkId() {
-		Long deptId = Func.firstLong(AuthUtil.getDeptId());
-		return Func.isEmpty(deptId) ? 1L : deptId;
+		return scopedParkId;
 	}
 
 	private String currentUserName() {
@@ -169,6 +170,9 @@ public class MerchantServiceImpl extends ServiceImpl<MerchantMapper, Merchant> i
 		}
 		if (StringUtil.isBlank(merchant.getBusinessType())) {
 			throw new ServiceException("服务类型不能为空");
+		}
+		if (StringUtil.isNotBlank(merchant.getStatus()) && !List.of(STATUS_NORMAL, STATUS_DISABLED, STATUS_SUSPENDED).contains(merchant.getStatus())) {
+			throw new ServiceException("商户状态不正确");
 		}
 		merchant.setMerchantName(merchant.getMerchantName().trim());
 		merchant.setBusinessType(merchant.getBusinessType().trim());

@@ -80,7 +80,7 @@ public class EnterpriseDataServiceImpl implements IEnterpriseDataService {
 	}
 
 	private List<Kv> buildDeviceSummary() {
-		List<Map<String, Object>> statistics = smartDeviceService.selectDeviceTypeStatistics();
+		List<Map<String, Object>> statistics = smartDeviceService.selectAllParkDeviceTypeStatistics();
 		List<Kv> list = new ArrayList<>();
 		list.add(device("electric", "电表", findDeviceStatistics(statistics, "electric")));
 		list.add(device("water", "水表", findDeviceStatistics(statistics, "water")));

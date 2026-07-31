@@ -14,6 +14,7 @@ import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.business.mapper.PropertyServiceMapper;
 import org.springblade.modules.business.pojo.entity.PropertyService;
 import org.springblade.modules.business.service.IPropertyServiceService;
+import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,12 +30,22 @@ import java.util.stream.Collectors;
 public class PropertyServiceServiceImpl extends ServiceImpl<PropertyServiceMapper, PropertyService> implements IPropertyServiceService {
 
 	private static final String STATUS_NORMAL = "0";
+	private static final String STATUS_DISABLED = "1";
 	private static final String DEL_FLAG_NORMAL = "0";
+
+	private final ParkDataAccessService parkDataAccessService;
+
+	public PropertyServiceServiceImpl(ParkDataAccessService parkDataAccessService) {
+		this.parkDataAccessService = parkDataAccessService;
+	}
 
 	@Override
 	public PropertyService selectPropertyServiceById(Long serviceId) {
 		PropertyService service = baseMapper.selectPropertyServiceById(serviceId);
-		if (Func.isNotEmpty(service) && !hasAccessToPark(service.getParkId())) {
+		if (Func.isNotEmpty(service)) {
+			parkDataAccessService.assertAccessible(service.getParkId());
+		}
+		if (Func.isEmpty(service)) {
 			throw new ServiceException("服务项不存在");
 		}
 		return service;
@@ -71,11 +82,8 @@ public class PropertyServiceServiceImpl extends ServiceImpl<PropertyServiceMappe
 		}
 		PropertyService old = requireWritableService(service.getServiceId());
 		validateService(service);
-		if (AuthUtil.isAdministrator() && Func.isNotEmpty(service.getParkId()) && service.getParkId() > 0) {
-			service.setParkId(service.getParkId());
-		} else {
-			service.setParkId(old.getParkId());
-		}
+		service.setParkId(resolveWriteParkId(AuthUtil.isAdministrator() && Func.isNotEmpty(service.getParkId())
+			? service.getParkId() : old.getParkId()));
 		service.setUpdateBy(currentUserName());
 		service.setUpdateTime(DateUtil.now());
 		return baseMapper.updatePropertyService(service) > 0;
@@ -84,7 +92,7 @@ public class PropertyServiceServiceImpl extends ServiceImpl<PropertyServiceMappe
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean submitPropertyService(PropertyService service) {
-		return Func.isEmpty(service.getServiceId()) ? insertPropertyService(service) : updatePropertyService(service);
+		return Func.isEmpty(service) || Func.isEmpty(service.getServiceId()) ? insertPropertyService(service) : updatePropertyService(service);
 	}
 
 	@Override
@@ -94,40 +102,31 @@ public class PropertyServiceServiceImpl extends ServiceImpl<PropertyServiceMappe
 		if (serviceIds.isEmpty()) {
 			throw new ServiceException("请选择需要删除的服务项");
 		}
-		Long parkId = AuthUtil.isAdministrator() ? null : currentParkId();
+		Long parkId = parkDataAccessService.scopedParkId(null);
 		return baseMapper.deletePropertyServiceByIds(serviceIds, parkId) > 0;
 	}
 
 	private PropertyService requireWritableService(Long serviceId) {
 		PropertyService service = baseMapper.selectPropertyServiceById(serviceId);
-		if (Func.isEmpty(service) || !hasAccessToPark(service.getParkId())) {
+		if (Func.isEmpty(service)) {
 			throw new ServiceException("服务项不存在");
 		}
+		parkDataAccessService.assertAccessible(service.getParkId());
 		return service;
 	}
 
 	private PropertyService normalizeQuery(PropertyService service) {
 		PropertyService query = Func.isEmpty(service) ? new PropertyService() : service;
-		if (!AuthUtil.isAdministrator()) {
-			query.setParkId(currentParkId());
-		}
+		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		return query;
 	}
 
 	private Long resolveWriteParkId(Long parkId) {
-		if (AuthUtil.isAdministrator() && Func.isNotEmpty(parkId) && parkId > 0) {
-			return parkId;
+		Long scopedParkId = parkDataAccessService.scopedParkId(parkId);
+		if (Func.isEmpty(scopedParkId)) {
+			throw new ServiceException("请选择园区");
 		}
-		return currentParkId();
-	}
-
-	private boolean hasAccessToPark(Long parkId) {
-		return AuthUtil.isAdministrator() || currentParkId().equals(parkId);
-	}
-
-	private Long currentParkId() {
-		Long deptId = Func.firstLong(AuthUtil.getDeptId());
-		return Func.isEmpty(deptId) ? 1L : deptId;
+		return scopedParkId;
 	}
 
 	private String currentUserName() {
@@ -141,6 +140,9 @@ public class PropertyServiceServiceImpl extends ServiceImpl<PropertyServiceMappe
 		}
 		if (StringUtil.isBlank(service.getServiceType())) {
 			throw new ServiceException("服务类型不能为空");
+		}
+		if (StringUtil.isNotBlank(service.getStatus()) && !List.of(STATUS_NORMAL, STATUS_DISABLED).contains(service.getStatus())) {
+			throw new ServiceException("服务项状态不正确");
 		}
 		service.setServiceName(service.getServiceName().trim());
 		service.setServiceType(service.getServiceType().trim());

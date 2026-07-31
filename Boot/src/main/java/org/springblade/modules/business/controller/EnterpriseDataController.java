@@ -35,7 +35,7 @@ public class EnterpriseDataController extends BladeController {
 
 	@GetMapping("/overview")
 	@ApiOperationSupport(order = 1)
-	@Operation(summary = "在园企业数据总览", description = "传入parkId")
+	@Operation(summary = "在园企业数据总览", description = "全部园区汇总；保留parkId参数以兼容旧调用，当前不按园区过滤")
 	public R<Kv> overview(@RequestParam(required = false) Long parkId) {
 		return R.data(enterpriseDataService.overview(parkId));
 	}

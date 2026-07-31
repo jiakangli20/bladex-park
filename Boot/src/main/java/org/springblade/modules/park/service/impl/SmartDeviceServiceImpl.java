@@ -77,6 +77,11 @@ public class SmartDeviceServiceImpl extends ServiceImpl<SmartDeviceMapper, Smart
 	}
 
 	@Override
+	public List<Map<String, Object>> selectAllParkDeviceTypeStatistics() {
+		return baseMapper.selectDeviceTypeStatistics(null);
+	}
+
+	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean submitDevice(SmartDevice device) {
 		normalizeDevice(device);

@@ -18,6 +18,7 @@ import org.springblade.modules.business.pojo.entity.MerchantServiceOrder;
 import org.springblade.modules.business.pojo.entity.MerchantServiceOrderLog;
 import org.springblade.modules.business.service.IMerchantService;
 import org.springblade.modules.business.service.IMerchantServiceOrderService;
+import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,15 +44,20 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 	private static final String PRIORITY_NORMAL = "1";
 
 	private final IMerchantService merchantService;
+	private final ParkDataAccessService parkDataAccessService;
 
-	public MerchantServiceOrderServiceImpl(IMerchantService merchantService) {
+	public MerchantServiceOrderServiceImpl(IMerchantService merchantService, ParkDataAccessService parkDataAccessService) {
 		this.merchantService = merchantService;
+		this.parkDataAccessService = parkDataAccessService;
 	}
 
 	@Override
 	public MerchantServiceOrder selectOrderById(Long orderId) {
 		MerchantServiceOrder order = baseMapper.selectOrderById(orderId);
-		if (Func.isNotEmpty(order) && !hasAccessToPark(order.getParkId())) {
+		if (Func.isNotEmpty(order)) {
+			parkDataAccessService.assertAccessible(order.getParkId());
+		}
+		if (Func.isEmpty(order)) {
 			throw new ServiceException("服务单不存在");
 		}
 		return order;
@@ -84,8 +90,9 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 	public boolean insertOrder(MerchantServiceOrder order) {
 		validateCreate(order);
 		Date now = DateUtil.now();
+		order.setParkId(resolveOrderParkId(order, null));
 		fillMerchantSnapshot(order);
-		order.setParkId(resolveWriteParkId(order.getParkId()));
+		validateMerchantPark(order);
 		order.setOrderNo(generateOrderNo());
 		order.setOrderStatus(StringUtil.isBlank(order.getOrderStatus()) ? STATUS_PENDING : order.getOrderStatus());
 		order.setPriority(StringUtil.isBlank(order.getPriority()) ? PRIORITY_NORMAL : order.getPriority());
@@ -113,8 +120,10 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 		if (STATUS_CLOSED.equals(old.getOrderStatus())) {
 			throw new ServiceException("已关闭服务单不可继续编辑");
 		}
-		fillMerchantSnapshot(order);
+		// 服务单园区是业务归属快照，编辑时不允许通过请求体迁移园区。
 		order.setParkId(old.getParkId());
+		fillMerchantSnapshot(order);
+		validateMerchantPark(order);
 		order.setUpdateBy(currentUserName());
 		order.setUpdateTime(DateUtil.now());
 		int rows = baseMapper.updateOrder(order);
@@ -127,7 +136,7 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean submitOrder(MerchantServiceOrder order) {
-		return Func.isEmpty(order.getOrderId()) ? insertOrder(order) : updateOrder(order);
+		return Func.isEmpty(order) || Func.isEmpty(order.getOrderId()) ? insertOrder(order) : updateOrder(order);
 	}
 
 	@Override
@@ -137,7 +146,7 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 		if (orderIds.isEmpty()) {
 			throw new ServiceException("请选择需要删除的服务单");
 		}
-		Long parkId = AuthUtil.isAdministrator() ? null : currentParkId();
+		Long parkId = parkDataAccessService.scopedParkId(null);
 		return baseMapper.deleteOrderByIds(orderIds, parkId, currentUserName()) > 0;
 	}
 
@@ -261,9 +270,10 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 
 	private MerchantServiceOrder requireWritableOrder(Long orderId) {
 		MerchantServiceOrder order = baseMapper.selectOrderById(orderId);
-		if (Func.isEmpty(order) || !hasAccessToPark(order.getParkId())) {
+		if (Func.isEmpty(order)) {
 			throw new ServiceException("服务单不存在");
 		}
+		parkDataAccessService.assertAccessible(order.getParkId());
 		return order;
 	}
 
@@ -286,6 +296,9 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 		if (StringUtil.isBlank(order.getDemandDesc())) {
 			throw new ServiceException("需求描述不能为空");
 		}
+		if (StringUtil.isNotBlank(order.getOrderStatus()) && !STATUS_PENDING.equals(order.getOrderStatus())) {
+			throw new ServiceException("新服务单只能处于待受理状态");
+		}
 	}
 
 	private void fillMerchantSnapshot(MerchantServiceOrder order) {
@@ -299,13 +312,38 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 		order.setMerchantName(StringUtil.isBlank(order.getMerchantName()) ? merchant.getMerchantName() : order.getMerchantName());
 		order.setServiceType(StringUtil.isBlank(order.getServiceType()) ? merchant.getBusinessType() : order.getServiceType());
 		order.setServiceScope(StringUtil.isBlank(order.getServiceScope()) ? merchant.getServiceScope() : order.getServiceScope());
-		if (Func.isNotEmpty(merchant.getParkId())) {
-			order.setParkId(merchant.getParkId());
+	}
+
+	private Long resolveOrderParkId(MerchantServiceOrder order, MerchantServiceOrder old) {
+		Long requestedParkId = order.getParkId();
+		if (Func.isEmpty(requestedParkId) && Func.isNotEmpty(order.getMerchantId())) {
+			Merchant merchant = merchantService.selectMerchantById(order.getMerchantId());
+			if (Func.isEmpty(merchant) || Func.isEmpty(merchant.getParkId())) {
+				throw new ServiceException("服务商未关联园区");
+			}
+			requestedParkId = merchant.getParkId();
+		}
+		if (Func.isEmpty(requestedParkId) && old != null) {
+			requestedParkId = old.getParkId();
+		}
+		return resolveWriteParkId(requestedParkId);
+	}
+
+	private void validateMerchantPark(MerchantServiceOrder order) {
+		if (Func.isEmpty(order.getMerchantId())) {
+			return;
+		}
+		Merchant merchant = merchantService.selectMerchantById(order.getMerchantId());
+		if (Func.isEmpty(merchant) || Func.isEmpty(merchant.getParkId()) || !merchant.getParkId().equals(order.getParkId())) {
+			throw new ServiceException("服务商与服务单必须属于同一园区");
 		}
 	}
 
 	private void normalizeProcessFields(MerchantServiceOrder order, MerchantServiceOrder old, Date now) {
 		String targetStatus = StringUtil.isBlank(order.getOrderStatus()) ? (old == null ? STATUS_PENDING : old.getOrderStatus()) : order.getOrderStatus();
+		if (!List.of(STATUS_PENDING, STATUS_PROCESSING, STATUS_DEALT, STATUS_CLOSED).contains(targetStatus)) {
+			throw new ServiceException("服务单状态不正确");
+		}
 		if (STATUS_PROCESSING.equals(targetStatus) && StringUtil.isBlank(order.getAssignTo()) && (old == null || StringUtil.isBlank(old.getAssignTo()))) {
 			throw new ServiceException("请选择处理人");
 		}
@@ -329,9 +367,7 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 
 	private MerchantServiceOrder normalizeQuery(MerchantServiceOrder order) {
 		MerchantServiceOrder query = Func.isEmpty(order) ? new MerchantServiceOrder() : order;
-		if (!AuthUtil.isAdministrator()) {
-			query.setParkId(currentParkId());
-		}
+		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		if (Boolean.TRUE.equals(query.getMine())) {
 			query.setCurrentUser(currentUserName());
 		}
@@ -339,14 +375,11 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 	}
 
 	private Long resolveWriteParkId(Long parkId) {
-		if (AuthUtil.isAdministrator() && Func.isNotEmpty(parkId) && parkId > 0) {
-			return parkId;
+		Long scopedParkId = parkDataAccessService.scopedParkId(parkId);
+		if (Func.isEmpty(scopedParkId)) {
+			throw new ServiceException("请选择园区");
 		}
-		return currentParkId();
-	}
-
-	private boolean hasAccessToPark(Long parkId) {
-		return AuthUtil.isAdministrator() || Func.isEmpty(parkId) || currentParkId().equals(parkId);
+		return scopedParkId;
 	}
 
 	private String defaultAssignee(MerchantServiceOrder old) {
@@ -354,11 +387,6 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 			return old.getAssignTo();
 		}
 		return currentUserName();
-	}
-
-	private Long currentParkId() {
-		Long deptId = Func.firstLong(AuthUtil.getDeptId());
-		return Func.isEmpty(deptId) ? 1L : deptId;
 	}
 
 	private String currentUserName() {
