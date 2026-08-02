@@ -2457,14 +2457,63 @@ export default {
         dateRange: [],
       };
     },
-    handleStartWorkflow(type, contract = {}, payment = {}) {
+    async handleStartWorkflow(type, contract = {}, payment = {}) {
       this.approvalType = type || CONTRACT_APPROVAL_BUSINESS_TYPE;
-      this.approvalContract = { ...(contract || {}) };
+      this.approvalContract = await this.enrichWorkflowContract(contract);
       this.approvalPayment = { ...(payment || {}) };
       this.approvalExtra = this.defaultApprovalExtra();
       this.approvalForm.processDefKey = '';
       this.approvalVisible = true;
       this.loadApprovalProcessOptions();
+    },
+    async enrichWorkflowContract(contract = {}) {
+      let selectedContract = { ...(contract || {}) };
+      if (selectedContract.contractId && !selectedContract.customerId) {
+        try {
+          const res = await getDetail(selectedContract.contractId);
+          selectedContract = {
+            ...selectedContract,
+            ...((res.data && res.data.data) || {}),
+          };
+        } catch (error) {
+          // 保留列表已有数据，客户档案仍可由后端在生成文书时兜底。
+        }
+      }
+      const customerId = selectedContract.customerId;
+      let customer = {};
+      if (
+        customerId &&
+        String(this.customerDetail.customerId || '') === String(customerId) &&
+        (this.customerDetail.enterpriseName || this.customerDetail.contactPhone)
+      ) {
+        customer = this.customerDetail;
+      } else if (customerId) {
+        try {
+          const res = await getCustomerDetail(customerId);
+          customer = res.data.data || {};
+        } catch (error) {
+          customer = {};
+        }
+      }
+      const customerName =
+        selectedContract.customerName ||
+        customer.enterpriseName ||
+        selectedContract.contractName ||
+        '';
+      const contactName =
+        customer.contactName || customer.approvalContactName || selectedContract.contactName || '';
+      const contactPhone = customer.contactPhone || selectedContract.contactPhone || '';
+      return {
+        ...selectedContract,
+        customerName,
+        enterpriseName: customerName,
+        tenantName: customerName,
+        lesseeName: customerName,
+        contactName,
+        contactPhone,
+        customerPhone: contactPhone,
+        applicantContactPhone: contactPhone,
+      };
     },
     loadApprovalProcessOptions() {
       this.approvalLoading = true;
@@ -2809,6 +2858,16 @@ export default {
         contractName: selectedContract.contractName,
         customerId: selectedContract.customerId,
         customerName: selectedContract.customerName,
+        enterpriseName: selectedContract.enterpriseName || selectedContract.customerName,
+        tenantName: selectedContract.tenantName || selectedContract.customerName,
+        lesseeName: selectedContract.lesseeName || selectedContract.customerName,
+        contactName: selectedContract.contactName,
+        contactPhone: selectedContract.contactPhone,
+        customerPhone: selectedContract.customerPhone || selectedContract.contactPhone,
+        applicantContactPhone:
+          selectedContract.applicantContactPhone || selectedContract.contactPhone,
+        a17822890872424035: selectedContract.customerName,
+        a178228912328564023: selectedContract.contactPhone || selectedContract.customerPhone,
         roomId: selectedContract.roomId,
         roomIds: selectedContract.roomIds,
         roomName: selectedContract.roomName,

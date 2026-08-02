@@ -253,15 +253,41 @@ export default {
         return pick(['contractPartyA', 'partyA', 'lessorName', 'ownerName', 'parkName']);
       }
       if (
+        label.includes('退租申请单位') ||
+        label === '申请单位' ||
+        label === '申请单位（个人）'
+      ) {
+        return pick(['customerName', 'enterpriseName', 'tenantName', 'lesseeName']);
+      }
+      if (
+        label.includes('申请人联系方式') ||
+        label.includes('联系电话') ||
+        label.includes('联系方式')
+      ) {
+        return pick([
+          'contactPhone',
+          'customerPhone',
+          'applicantContactPhone',
+          'principalPhone',
+          'billContactPhone',
+        ]);
+      }
+      if (label.includes('企业名称')) {
+        return pick(['enterpriseName', 'customerName', 'tenantName', 'lesseeName']);
+      }
+      if (
         label.includes('合同乙方') ||
         label.includes('乙方') ||
-        label.includes('企业名称') ||
-        label.includes('客户名称')
+        label.includes('租客') ||
+        label.includes('租户') ||
+        label.includes('承租方') ||
+        label.includes('客户名称') ||
+        label.includes('对方名称')
       ) {
-        return pick(['contractPartyB', 'partyB', 'lesseeName', 'customerName']);
+        return pick(['customerName', 'tenantName', 'enterpriseName', 'contractPartyB', 'partyB', 'lesseeName']);
       }
-      if (label.includes('房源') || label.includes('房屋')) {
-        return pick(['roomName', 'buildingName']);
+      if (label.includes('房源') || label.includes('房屋') || label.includes('房间')) {
+        return pick(['roomName', 'buildingName', 'roomNo']);
       }
       if (label.includes('租赁面积') || label.includes('面积')) return pick(['rentArea']);
       if (label.includes('租赁单价') || label.includes('租金单价')) return pick(['rentPrice']);
@@ -301,7 +327,8 @@ export default {
       return undefined;
     },
     buildContractMatter(params = {}) {
-      const customer = params.customerName || params.contractName || '';
+      const customer =
+        params.customerName || params.enterpriseName || params.tenantName || params.contractName || '';
       const room = params.roomName || params.buildingName || '';
       const dateRange =
         params.startDate || params.endDate

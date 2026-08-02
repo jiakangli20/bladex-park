@@ -50,6 +50,7 @@ import NfFlow from '../../../components/nf-flow/index.vue';
 import NfFormVariable from '../../../components/nf-form-variable/index.vue';
 import NfUserSelect from '../../../components/nf-user-select/index.vue';
 import exForm from '../../../mixins/ex-form';
+import { Base64 } from 'js-base64';
 
 export default {
   components: { NfButton, NfExamineForm, NfFlow, NfFormVariable, NfUserSelect },
@@ -58,7 +59,7 @@ export default {
     '$route.query.p': {
       handler(val) {
         if (!val) return;
-        const param = JSON.parse(window.atob(decodeURIComponent(val)));
+        const param = JSON.parse(Base64.decode(decodeURIComponent(val)));
         const { taskId, processInsId } = param;
         if (processInsId) this.getDetail(taskId, processInsId);
       },

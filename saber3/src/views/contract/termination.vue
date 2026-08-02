@@ -517,6 +517,7 @@ import {
   uploadWorkflowRecordAttachment,
 } from '@/api/contract/contract';
 import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
+import { getCustomerDetail } from '@/api/business/customer';
 import { approvalStatusDic } from '@/option/contract/archive';
 import { statusDic } from '@/option/contract/contract';
 import { mapGetters } from 'vuex';
@@ -1333,26 +1334,26 @@ export default {
         },
       });
     },
-    handleStartRoomReview(row) {
+    async handleStartRoomReview(row) {
       if (
         !this.ensurePrerequisites('发起房屋验收流程前置条件', this.roomReviewPrerequisites(row))
       ) {
         return;
       }
       this.workflowType = ROOM_REVIEW_BUSINESS_TYPE;
-      this.workflowRecord = { ...(row || {}) };
+      this.workflowRecord = await this.enrichWorkflowRecord(row);
       this.workflowPayment = {};
       this.workflowForm.processDefKey = '';
       this.workflowVisible = true;
       this.loadWorkflowProcessOptions();
     },
-    handleStartDepositRefund(row) {
+    async handleStartDepositRefund(row) {
       if (
         !this.ensurePrerequisites('付款申请前置条件', this.paymentApplicationPrerequisites(row))
       ) {
         return;
       }
-      ensureDepositRefundPayment(row.contractId).then(res => {
+      ensureDepositRefundPayment(row.contractId).then(async res => {
         const payment = res.data.data || {};
         if (payment.paymentApprovalStatus === 'running') {
           this.$message.warning('该押金退还付款审批正在进行中');
@@ -1369,12 +1370,38 @@ export default {
           return;
         }
         this.workflowType = PAYMENT_BUSINESS_TYPE;
-        this.workflowRecord = { ...(row || {}) };
+        this.workflowRecord = await this.enrichWorkflowRecord(row);
         this.workflowPayment = payment;
         this.workflowForm.processDefKey = '';
         this.workflowVisible = true;
         this.loadWorkflowProcessOptions();
       });
+    },
+    async enrichWorkflowRecord(row = {}) {
+      const record = { ...(row || {}) };
+      let customer = {};
+      if (record.customerId) {
+        try {
+          const res = await getCustomerDetail(record.customerId);
+          customer = res.data.data || {};
+        } catch (error) {
+          customer = {};
+        }
+      }
+      const customerName = customer.enterpriseName || record.customerName || '';
+      const contactName = customer.contactName || customer.approvalContactName || '';
+      const contactPhone = customer.contactPhone || '';
+      return {
+        ...record,
+        customerName,
+        enterpriseName: customerName,
+        tenantName: customerName,
+        lesseeName: customerName,
+        contactName,
+        contactPhone,
+        customerPhone: contactPhone,
+        applicantContactPhone: contactPhone,
+      };
     },
     handleOfflineRoomReview(row) {
       if (
@@ -1731,6 +1758,13 @@ export default {
           contractName: row.contractName,
           customerId: row.customerId,
           customerName: row.customerName,
+          enterpriseName: row.enterpriseName || row.customerName,
+          tenantName: row.tenantName || row.customerName,
+          lesseeName: row.lesseeName || row.customerName,
+          contactName: row.contactName,
+          contactPhone: row.contactPhone,
+          customerPhone: row.customerPhone || row.contactPhone,
+          applicantContactPhone: row.applicantContactPhone || row.contactPhone,
           roomIds: row.roomIds,
           roomName: row.roomName,
           buildingName: row.buildingName,
@@ -1766,6 +1800,13 @@ export default {
           contractName: row.contractName || payment.contractName,
           customerId: row.customerId,
           customerName: row.customerName || payment.customerName,
+          enterpriseName: row.enterpriseName || row.customerName || payment.customerName,
+          tenantName: row.tenantName || row.customerName || payment.customerName,
+          lesseeName: row.lesseeName || row.customerName || payment.customerName,
+          contactName: row.contactName,
+          contactPhone: row.contactPhone,
+          customerPhone: row.customerPhone || row.contactPhone,
+          applicantContactPhone: row.applicantContactPhone || row.contactPhone,
           roomIds: row.roomIds,
           roomName: row.roomName,
           buildingName: row.buildingName,

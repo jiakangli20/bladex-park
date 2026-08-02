@@ -54,6 +54,7 @@ import NfExamineForm from '../../../components/nf-exam-form/index.vue';
 import NfUserSelect from '../../../components/nf-user-select/index.vue';
 
 import exForm from '../../../mixins/ex-form';
+import { Base64 } from 'js-base64';
 import draft from '../../../mixins/draft';
 
 export default {
@@ -66,7 +67,7 @@ export default {
     '$route.query.p': {
       handler(val) {
         if (val) {
-          const param = JSON.parse(window.atob(val));
+          const param = JSON.parse(Base64.decode(decodeURIComponent(val)));
           const { processId } = param;
           if (processId) this.getForm(processId);
         }

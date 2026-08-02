@@ -24,6 +24,7 @@ import { mapGetters } from 'vuex';
 import module from './module.js'
 
 import { version } from '@nutflow/nf-design-elp';
+import { Base64 } from 'js-base64';
 
 export default {
   mixins: [defaultValues, module(['d'])],
@@ -47,10 +48,13 @@ export default {
   methods: {
     // 动态路由跳转
     dynamicRoute(row, type, async = false) {
-      const { id, taskId, processInstanceId, processId, formKey, formUrl, processDefKey, params } = row;
+      const { id, taskId, processInstanceId, processId, formKey, formUrl, processDefKey } = row;
+      // 流程列表把业务字段放在 variables，业务页面直达入口则使用 params。
+      // 统一回退后，重新发起和直达发起都能把租客/企业等字段带入表单。
+      const params = row.params || row.variables || {};
       const businessType = row && row.variables ? row.variables.businessType : '';
       const resolvedFormKey = businessType === 'tenant_entry' ? 'wf_ex_TenantEntry' : formKey;
-      let param = window.btoa(
+      const param = Base64.encode(
         JSON.stringify({
           processId: id,
           taskId,

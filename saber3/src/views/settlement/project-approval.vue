@@ -214,6 +214,7 @@
 
 <script>
 import { mapGetters } from 'vuex';
+import { Base64 } from 'js-base64';
 import Layout from '@/page/index/index.vue';
 import {
   copyList,
@@ -593,7 +594,7 @@ export default {
       });
     },
     pushExternal(type, payload) {
-      const encodedParam = encodeURIComponent(window.btoa(JSON.stringify(payload)));
+      const encodedParam = encodeURIComponent(Base64.encode(JSON.stringify(payload)));
       const routeName = type === 'start' ? '发起流程TenantEntry' : '流程详情TenantEntry';
       if (!this.$router.hasRoute(routeName)) {
         this.$router.addRoute({

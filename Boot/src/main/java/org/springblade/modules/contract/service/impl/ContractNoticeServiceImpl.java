@@ -961,12 +961,12 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			formatDate(DateUtil.now())
 		);
 		fields.put("退租申请单位（个人）", firstNotBlank(
-			formValue(context, "a17822890872424035", "退租申请单位（个人）"),
+			formValue(context, "a17822890872424035", "customerName", "enterpriseName", "tenantName", "lesseeName", "退租申请单位（个人）", "申请单位（个人）", "申请单位"),
 			context.customerName()
 		));
 		fields.put("申请时间", applyDate);
 		fields.put("申请人联系方式", firstNotBlank(
-			formValue(context, "a178228912328564023", "申请人联系方式", "联系方式"),
+			formValue(context, "a178228912328564023", "contactPhone", "customerPhone", "applicantContactPhone", "principalPhone", "billContactPhone", "申请人联系方式", "联系方式", "联系电话"),
 			customerContactPhone(context),
 			"-"
 		));

@@ -19,6 +19,7 @@
 import { mapGetters } from 'vuex';
 import exForm from '../../../mixins/ex-form';
 import { getTenantEntryCandidateDetail } from '@/api/business/opportunity';
+import { Base64 } from 'js-base64';
 
 const DEFAULT_PROCESS_KEY = 'tenant_entry-1';
 const BUSINESS_TYPE = 'tenant_entry';
@@ -32,7 +33,7 @@ export default {
     '$route.query.p': {
       handler(val) {
         if (!val) return;
-        const param = JSON.parse(window.atob(decodeURIComponent(val)));
+        const param = JSON.parse(Base64.decode(decodeURIComponent(val)));
         const { processId, processDefKey, params } = param;
         if (processId || processDefKey) this.getForm(processId, processDefKey);
         if (params) this.initParams(params);
