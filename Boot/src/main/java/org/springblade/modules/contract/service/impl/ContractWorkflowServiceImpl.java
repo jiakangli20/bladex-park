@@ -296,6 +296,11 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			return;
 		}
 		validateNoticeTransition(record, notice);
+		// 最终节点的表单变量先写入流程记录，文书服务随后读取到的就是本次审批快照。
+		// 文件生成仍处于同一事务内，生成失败会连同本次快照一起回滚。
+		if (FINISH == type) {
+			saveRecord(record, notice);
+		}
 		applyNoticeState(record, notice);
 		saveRecord(record, notice);
 		updateBusinessState(record, type);

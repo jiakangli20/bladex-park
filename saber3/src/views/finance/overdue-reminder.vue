@@ -502,6 +502,7 @@ import {
   downloadNoticeFile,
   openNoticePreview,
 } from '@/utils/contract-notice';
+import { enrichContractWorkflowContext } from '@/utils/workflow-business-context';
 
 const OVERDUE_WORKFLOW = 'contract_overdue_legal';
 const TERMINATION_WORKFLOW = 'contract_termination';
@@ -1027,9 +1028,9 @@ export default {
       }
       this.openWorkflowDialog(ROOM_REVIEW_WORKFLOW, row);
     },
-    openWorkflowDialog(type, row) {
+    async openWorkflowDialog(type, row) {
       this.workflowType = type;
-      this.workflowRow = { ...(row || {}) };
+      this.workflowRow = await enrichContractWorkflowContext(row || {});
       this.workflowForm.processDefKey = '';
       this.workflowVisible = true;
       this.loadWorkflowProcessOptions();
@@ -1098,21 +1099,22 @@ export default {
       const commonParams = {
         processDefKey: this.workflowForm.processDefKey,
         contractId: row.contractId,
-        paymentId: row.paymentId,
         contractNo: row.contractNo,
         contractName: row.contractName,
+        customerId: row.customerId,
         customerName: row.customerName,
+        enterpriseName: row.enterpriseName || row.customerName,
+        tenantName: row.tenantName || row.customerName,
+        lesseeName: row.lesseeName || row.customerName,
+        contactName: row.contactName,
+        contactPhone: row.contactPhone,
+        customerPhone: row.customerPhone || row.contactPhone,
+        applicantContactPhone: row.applicantContactPhone || row.contactPhone,
+        creditCode: row.creditCode,
+        registeredAddress: row.registeredAddress,
         roomName: row.roomName,
         buildingName: row.buildingName,
         parkId: row.parkId,
-        feeName: row.feeName,
-        periodStart: row.periodStart,
-        periodEnd: row.periodEnd,
-        amountDue: row.amountDue,
-        amountPaid: row.amountPaid,
-        unpaidAmount: this.unpaidAmount(row),
-        payDeadline: row.payDeadline,
-        overdueDays: this.overdueDays(row),
         applicant: this.userInfo.nick_name,
         applicantDept: this.userInfo.dept_name,
         applyTime: this.formatDate(new Date()),
@@ -1126,7 +1128,18 @@ export default {
             businessTable: 'biz_contract',
             businessKey: String(row.contractId || ''),
             templateKey: 'termination-approval',
+            paymentId: row.paymentId,
+            feeName: row.feeName,
             expectedTerminationDate: this.formatDate(new Date()),
+            periodStart: row.periodStart,
+            periodEnd: row.periodEnd,
+            amountDue: row.amountDue,
+            amountPaid: row.amountPaid,
+            unpaidAmount: this.unpaidAmount(row),
+            payDeadline: row.payDeadline,
+            overdueDays: this.overdueDays(row),
+            a17822890872424035: row.customerName,
+            a178228912328564023: row.contactPhone || row.customerPhone,
           },
         };
       }
@@ -1153,7 +1166,15 @@ export default {
           businessTable: 'biz_contract_payment',
           businessKey: String(row.paymentId || ''),
           paymentId: row.paymentId,
+          feeName: row.feeName,
           templateKey: 'legal-letter',
+          periodStart: row.periodStart,
+          periodEnd: row.periodEnd,
+          amountDue: row.amountDue,
+          amountPaid: row.amountPaid,
+          unpaidAmount: this.unpaidAmount(row),
+          payDeadline: row.payDeadline,
+          overdueDays: this.overdueDays(row),
         },
       };
     },

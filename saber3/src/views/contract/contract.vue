@@ -2513,6 +2513,13 @@ export default {
         contactPhone,
         customerPhone: contactPhone,
         applicantContactPhone: contactPhone,
+        creditCode: customer.creditCode || selectedContract.creditCode || '',
+        registeredAddress:
+          customer.registeredAddress ||
+          customer.address ||
+          selectedContract.registeredAddress ||
+          '',
+        contactEmail: customer.contactEmail || selectedContract.contactEmail || '',
       };
     },
     loadApprovalProcessOptions() {
@@ -2771,6 +2778,17 @@ export default {
           contractName: selectedContract.contractName,
           customerId: selectedContract.customerId,
           customerName: selectedContract.customerName,
+          enterpriseName: selectedContract.enterpriseName || selectedContract.customerName,
+          tenantName: selectedContract.tenantName || selectedContract.customerName,
+          lesseeName: selectedContract.lesseeName || selectedContract.customerName,
+          contactName: selectedContract.contactName,
+          contactPhone: selectedContract.contactPhone,
+          customerPhone: selectedContract.customerPhone || selectedContract.contactPhone,
+          applicantContactPhone:
+            selectedContract.applicantContactPhone || selectedContract.contactPhone,
+          creditCode: selectedContract.creditCode,
+          registeredAddress: selectedContract.registeredAddress,
+          contactEmail: selectedContract.contactEmail,
           roomId: selectedContract.roomId,
           roomName: selectedContract.roomName,
           buildingId: selectedContract.buildingId,
@@ -2813,6 +2831,26 @@ export default {
           contractName: selectedContract.contractName,
           customerId: selectedContract.customerId,
           customerName: selectedContract.customerName || selectedPayment.customerName,
+          enterpriseName:
+            selectedContract.enterpriseName ||
+            selectedContract.customerName ||
+            selectedPayment.customerName,
+          tenantName:
+            selectedContract.tenantName ||
+            selectedContract.customerName ||
+            selectedPayment.customerName,
+          lesseeName:
+            selectedContract.lesseeName ||
+            selectedContract.customerName ||
+            selectedPayment.customerName,
+          contactName: selectedContract.contactName,
+          contactPhone: selectedContract.contactPhone,
+          customerPhone: selectedContract.customerPhone || selectedContract.contactPhone,
+          applicantContactPhone:
+            selectedContract.applicantContactPhone || selectedContract.contactPhone,
+          creditCode: selectedContract.creditCode,
+          registeredAddress: selectedContract.registeredAddress,
+          contactEmail: selectedContract.contactEmail,
           roomId: selectedContract.roomId,
           roomName: selectedContract.roomName,
           buildingId: selectedContract.buildingId,
@@ -2877,14 +2915,9 @@ export default {
         parkId: selectedContract.parkId,
         parkName: selectedContract.parkName,
         rentArea: selectedContract.rentArea,
-        rentPrice: selectedContract.rentPrice,
-        monthlyRent: selectedContract.monthlyRent,
-        deposit: selectedContract.deposit,
         startDate: selectedContract.startDate,
         endDate: selectedContract.endDate,
         followUser: selectedContract.followUser,
-        unpaidAmount,
-        overdueAmount,
         expectedTerminationDate: this.formatDate(new Date()),
         templateKey: templateKeyMap[type] || type,
         applicant: this.userInfo.nick_name,
@@ -2900,6 +2933,11 @@ export default {
           breachPenalty: this.approvalExtra.breachPenalty,
           terminationReason: this.approvalExtra.terminationReason,
           offlineSpecialProcess: this.approvalExtra.terminationType === 'special',
+          rentPrice: selectedContract.rentPrice,
+          monthlyRent: selectedContract.monthlyRent,
+          deposit: selectedContract.deposit,
+          unpaidAmount,
+          overdueAmount,
         });
       }
       return {

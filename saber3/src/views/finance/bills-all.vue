@@ -540,6 +540,7 @@ import {
   openAttachmentPreview,
   openNoticePreview,
 } from '@/utils/contract-notice';
+import { enrichContractWorkflowContext } from '@/utils/workflow-business-context';
 import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
 import BillCreateDrawer from './components/bill-create-drawer.vue';
 
@@ -1032,19 +1033,23 @@ export default {
         },
       });
     },
-    openApplicationWorkflow(row) {
+    async openApplicationWorkflow(row) {
       if (!row || !row.paymentId || !row.contractId) {
         this.$message.warning('当前账单缺少合同信息，无法发起申请');
         return;
       }
-      this.workflowRow = { ...row };
       this.workflowProcessOptions = [];
       this.workflowExistingRecord = {};
       this.workflowForm.processDefKey = '';
       this.workflowVisible = true;
       this.workflowLoading = true;
-      Promise.all([getDeploymentList(1, -1, { status: 1 }), getWorkflowRecords(row.contractId)])
-        .then(([deploymentRes, workflowRes]) => {
+      Promise.all([
+        enrichContractWorkflowContext(row),
+        getDeploymentList(1, -1, { status: 1 }),
+        getWorkflowRecords(row.contractId),
+      ])
+        .then(([workflowRow, deploymentRes, workflowRes]) => {
+          this.workflowRow = workflowRow;
           const deployments = (deploymentRes.data.data || {}).records || [];
           this.workflowProcessOptions = deployments
             .filter(item => this.isApplicationWorkflowProcess(item))
@@ -1330,7 +1335,18 @@ export default {
           paymentId: row.paymentId,
           contractNo: row.contractNo,
           contractName: row.contractName,
+          customerId: row.customerId,
           customerName: row.customerName,
+          enterpriseName: row.enterpriseName || row.customerName,
+          tenantName: row.tenantName || row.customerName,
+          lesseeName: row.lesseeName || row.customerName,
+          contactName: row.contactName,
+          contactPhone: row.contactPhone,
+          customerPhone: row.customerPhone || row.contactPhone,
+          applicantContactPhone: row.applicantContactPhone || row.contactPhone,
+          creditCode: row.creditCode,
+          registeredAddress: row.registeredAddress,
+          contactEmail: row.contactEmail,
           roomName: row.roomName,
           buildingName: row.buildingName,
           parkId: row.parkId,
