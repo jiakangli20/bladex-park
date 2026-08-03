@@ -156,13 +156,13 @@ AND NOT EXISTS (
   SELECT 1 FROM `blade_role_menu` existing_id WHERE existing_id.`id` = grants.`id`
 );
 
-SELECT `park_id`, `enterprise_name`, COUNT(*) AS `duplicate_count`
+SELECT `park_id`, TRIM(`enterprise_name`) AS `enterprise_name`, COUNT(*) AS `duplicate_count`
 FROM `biz_customer`
 WHERE `del_flag` = '0'
 GROUP BY `park_id`, TRIM(`enterprise_name`)
 HAVING COUNT(*) > 1;
 
-SELECT `enterprise_name`, COUNT(*) AS `duplicate_count`
+SELECT TRIM(`enterprise_name`) AS `enterprise_name`, COUNT(*) AS `duplicate_count`
 FROM `biz_business_opportunity`
 WHERE `del_flag` = '0'
 GROUP BY TRIM(`enterprise_name`)

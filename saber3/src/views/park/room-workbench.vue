@@ -289,6 +289,7 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import { getDevicePage } from '@/api/park/smart-device';
@@ -380,6 +381,7 @@ export default {
     };
   },
   computed: {
+    ...mapGetters(['permission']),
     roomContextText() {
       return [this.parkName, this.buildingName, this.floorNo ? `${this.floorNo}层` : '', this.room.name]
         .filter(Boolean)
