@@ -2,16 +2,7 @@
   <basic-container>
     <div class="tenant-entry-page">
       <section class="summary-grid">
-		<div
-		  v-for="item in summaryCards"
-		  :key="item.key"
-		  class="summary-card"
-		  :class="{ 'is-active': query.scope === item.key }"
-		  role="button"
-		  tabindex="0"
-		  @click="switchScope(item.key)"
-		  @keyup.enter="switchScope(item.key)"
-		>
+		<div v-for="item in summaryCards" :key="item.key" class="summary-card">
           <span>{{ item.label }}</span>
           <strong>{{ item.value }}</strong>
         </div>
@@ -246,7 +237,6 @@ export default {
       data: [],
       query: {
         enterpriseName: '',
-			scope: 'todo',
         processIsFinished: '',
       },
       page: {
@@ -295,32 +285,21 @@ export default {
 		  formBtn: Boolean(this.permission.settlement_project_approval_form),
 		};
 	  },
-	},
+  },
   created() {
     this.applyRouteQuery();
-    this.loadSummary();
     this.onLoad();
   },
   activated() {
     this.applyRouteQuery();
-    this.loadSummary();
     this.onLoad();
   },
   methods: {
     applyRouteQuery() {
-      const { scope, processIsFinished, processStatus } = this.$route.query || {};
-      if (scope && this.scopeOptions.some(item => item.value === scope)) {
-        this.query.scope = scope;
-      }
+      const { processIsFinished, processStatus } = this.$route.query || {};
       const routeStatus = processIsFinished || processStatus;
       if (routeStatus && this.statusOptions.some(item => item.value === routeStatus)) {
         this.query.processIsFinished = routeStatus;
-      } else if (scope === 'todo') {
-        this.query.processIsFinished = 'unfinished';
-      } else if (scope === 'done') {
-        this.query.processIsFinished = 'finished';
-      } else if (scope) {
-        this.query.processIsFinished = '';
       }
     },
     requestByScope(
@@ -347,43 +326,81 @@ export default {
       };
       return apiMap[scope](current, size, { ...params, ...extraParams });
     },
-    loadSummary() {
-      this.summaryCards.forEach(card => {
-        this.requestByScope(card.key, 1, 1).then(res => {
-          const result = res.data.data || {};
-          card.value = Number(result.total) || 0;
-        });
-      });
-    },
-    onLoad() {
+	async requestAllByScope(scope) {
+	  const size = 100;
+	  const firstResponse = await this.requestByScope(scope, 1, size);
+	  const firstResult = firstResponse.data.data || {};
+	  const records = [...(firstResult.records || [])];
+	  const total = Number(firstResult.total) || records.length;
+	  const pageCount = Math.ceil(total / size);
+	  if (pageCount > 1) {
+		const remainingResponses = await Promise.all(
+		  Array.from({ length: pageCount - 1 }, (_, index) => this.requestByScope(scope, index + 2, size))
+		);
+		remainingResponses.forEach(res => {
+		  records.push(...((res.data.data || {}).records || []));
+		});
+	  }
+	  return this.filterTenantEntryRecords(records, scope);
+	},
+    async loadAllVisibleRecords() {
+	  const scopes = this.scopeOptions.map(item => item.value);
+	  const scopedRecordLists = await Promise.all(scopes.map(scope => this.requestAllByScope(scope)));
+	  const records = [];
+	  const totals = {};
+	  scopedRecordLists.forEach((scopedRecords, index) => {
+		const scope = scopes[index];
+		totals[scope] = scopedRecords.length;
+		scopedRecords.forEach(item => {
+		  records.push(this.normalizeRow(item, scope));
+		});
+	  });
+	  this.summaryCards = this.summaryCards.map(card => ({
+		...card,
+		value: Number(totals[card.key]) || 0,
+	  }));
+	  return this.deduplicateRecords(records);
+	},
+	deduplicateRecords(records) {
+	  const scopePriority = { todo: 5, send: 4, myDone: 3, done: 2, copy: 1 };
+	  const recordMap = new Map();
+	  records.forEach(row => {
+		const key = row.processInstanceId || row.processId || row.taskId || row.id || row.rowKey;
+		const existing = recordMap.get(key);
+		if (!existing || (scopePriority[row.scope] || 0) > (scopePriority[existing.scope] || 0)) {
+		  recordMap.set(key, row);
+		}
+	  });
+	  return [...recordMap.values()].sort((left, right) => {
+		return this.recordTimestamp(right) - this.recordTimestamp(left);
+	  });
+	},
+	recordTimestamp(row) {
+	  const value = row.createTime || row.startTime || row.endTime || row.arriveTime;
+	  const timestamp = value ? new Date(value).getTime() : 0;
+	  return Number.isNaN(timestamp) ? 0 : timestamp;
+	},
+	async onLoad() {
       this.loading = true;
-      this.requestByScope(
-        this.query.scope,
-        this.page.currentPage,
-        this.page.pageSize,
-        this.processStatusParams()
-      )
-        .then(res => {
-          const result = res.data.data || {};
-          const records = this.filterTenantEntryRecords(result.records || [], this.query.scope);
-		  this.data = records.map(item => this.normalizeRow(item));
-		  this.page.total = Number(result.total) || this.data.length;
-        })
-        .finally(() => {
-          this.loading = false;
-        });
+	  try {
+		const records = (await this.loadAllVisibleRecords()).filter(row => this.matchesStatus(row));
+		this.page.total = records.length;
+		const start = (this.page.currentPage - 1) * this.page.pageSize;
+		this.data = records.slice(start, start + this.page.pageSize);
+	  } finally {
+		this.loading = false;
+	  }
     },
     reload() {
-      this.loadSummary();
       this.onLoad();
     },
-    normalizeRow(row) {
+    normalizeRow(row, scope) {
       const vars = row.variables || {};
       const processInstanceId = row.processInstanceId || row.processId || row.processInsId;
       return {
         ...row,
         rowKey: row.taskId || row.id || processInstanceId,
-        scope: this.query.scope,
+		scope,
         processInstanceId,
         enterpriseName:
           vars.enterpriseName ||
@@ -492,23 +509,12 @@ export default {
       };
       return (statusMap[this.query.processIsFinished] || []).includes(value);
     },
-    processStatusParams() {
-      if (!this.query.processIsFinished || this.query.scope === 'copy') return {};
-      return { processIsFinished: this.query.processIsFinished };
-    },
     searchChange() {
       this.page.currentPage = 1;
       this.onLoad();
     },
 		searchReset() {
-		  this.query = { enterpriseName: '', scope: 'todo', processIsFinished: 'unfinished' };
-		  this.page.currentPage = 1;
-		  this.onLoad();
-		},
-		switchScope(scope) {
-		  if (!this.summaryCards.some(item => item.key === scope)) return;
-		  this.query.scope = scope;
-		  this.query.processIsFinished = scope === 'todo' ? 'unfinished' : scope === 'done' ? 'finished' : '';
+		  this.query = { enterpriseName: '', processIsFinished: '' };
 		  this.page.currentPage = 1;
 		  this.onLoad();
 		},
@@ -669,49 +675,6 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.summary-card {
-  display: flex;
-  min-height: 88px;
-  cursor: pointer;
-  flex-direction: column;
-  justify-content: center;
-  gap: 8px;
-  padding: 16px 20px;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  background: #fff;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.summary-card:hover,
-.summary-card:focus-visible,
-.summary-card.is-active {
-  border-color: #1059c6;
-  box-shadow: 0 4px 14px rgba(16, 89, 198, 0.12);
-  outline: none;
-}
-
-.summary-card span {
-  color: #606266;
-  font-size: 14px;
-}
-
-.summary-card strong {
-  color: #1f2937;
-  font-size: 26px;
-  line-height: 1;
-}
-
-.summary-card.is-active strong {
-  color: #1059c6;
 }
 
 .tenant-entry-search,

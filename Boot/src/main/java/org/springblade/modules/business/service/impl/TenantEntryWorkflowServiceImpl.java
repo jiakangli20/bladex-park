@@ -111,16 +111,20 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 			String approvalUrl = buildApprovalFileUrl(opportunity, processInstance);
 			Customer customer = customerService.completeTenantEntryApproval(opportunity, processInsId, approvalUrl);
 			updateOpportunity(opportunity, processInsId, "approved", "流程结束", approvalUrl, DateUtil.now(), AUDIT_FLAG_YES, OPPORTUNITY_STATUS_DEAL);
-			if (customer != null && customer.getCustomerId() != null) {
+			if (customer != null && isValidCustomerId(customer.getCustomerId())) {
 				customerMapper.updateTenantEntryFlowState(customer.getCustomerId(), processInsId, "approved", "流程结束", approvalUrl, DateUtil.now(), 3, currentUserName());
 			}
 		} else if (REJECT == type || WITHDRAW == type || TERMINATE == type || DELETE_PROCESS == type) {
 			String status = REJECT == type ? "rejected" : "canceled";
 			updateOpportunity(opportunity, processInsId, status, currentNode, null, null, AUDIT_FLAG_NO, OPPORTUNITY_STATUS_INITIAL);
-			if (opportunity.getCustomerId() != null) {
+			if (isValidCustomerId(opportunity.getCustomerId())) {
 				customerMapper.updateTenantEntryFlowState(opportunity.getCustomerId(), processInsId, status, currentNode, null, null, 1, currentUserName());
 			}
 		}
+	}
+
+	private boolean isValidCustomerId(Long customerId) {
+		return customerId != null && customerId > 0;
 	}
 
 	private boolean isTenantEntryProcess(String processDefinitionKey, Map<String, Object> variables) {

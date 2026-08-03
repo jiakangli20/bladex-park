@@ -394,8 +394,9 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		List<Tag> tags = tagService.selectTagsByOpportunityId(opportunityId);
 		if (Func.isEmpty(tags)) {
 			BusinessOpportunity opportunity = baseMapper.selectBusinessOpportunityById(opportunityId);
-			if (Func.isNotEmpty(opportunity) && Func.isNotEmpty(opportunity.getCustomerId())) {
-				return tagService.selectTagsByCustomerId(opportunity.getCustomerId());
+			Customer customer = findActiveLinkedCustomer(opportunity);
+			if (customer != null) {
+				return tagService.selectTagsByCustomerId(customer.getCustomerId());
 			}
 		}
 		return tags;
@@ -406,8 +407,9 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	public boolean setOpportunityTags(Long opportunityId, List<Long> tagIds) {
 		BusinessOpportunity opportunity = requireAccessibleOpportunity(opportunityId);
 		boolean result = tagService.setOpportunityTags(opportunityId, tagIds);
-		if (Func.isNotEmpty(opportunity.getCustomerId())) {
-			tagService.setCustomerTags(opportunity.getCustomerId(), tagIds);
+		Customer customer = findActiveLinkedCustomer(opportunity);
+		if (customer != null) {
+			tagService.setCustomerTags(customer.getCustomerId(), tagIds);
 		}
 		return result;
 	}
@@ -457,7 +459,11 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (opportunity != null) {
 			scopedParkId = opportunity.getParkId();
 			investigation.setOpportunityId(opportunity.getOpportunityId());
-			investigation.setCustomerId(opportunity.getCustomerId());
+			Customer linkedCustomer = findActiveLinkedCustomer(opportunity);
+			investigation.setCustomerId(linkedCustomer == null ? null : linkedCustomer.getCustomerId());
+		}
+		if (!isValidCustomerId(investigation.getCustomerId())) {
+			investigation.setCustomerId(null);
 		}
 		if (investigation.getCustomerId() != null) {
 			Customer customer = customerMapper.selectById(investigation.getCustomerId());
@@ -529,7 +535,9 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		result.put("enterpriseName", enterpriseName);
 		result.put("parkId", parkId);
 		result.put("opportunityId", opportunity == null ? null : opportunity.getOpportunityId());
-		result.put("customerId", opportunity == null ? (latest == null ? null : latest.getCustomerId()) : opportunity.getCustomerId());
+		Customer linkedCustomer = findActiveLinkedCustomer(opportunity);
+		Long latestCustomerId = latest == null || !isValidCustomerId(latest.getCustomerId()) ? null : latest.getCustomerId();
+		result.put("customerId", linkedCustomer == null ? latestCustomerId : linkedCustomer.getCustomerId());
 		result.put("latest", latest);
 		result.put("history", history);
 		result.put("externalStatus", "reserved");
@@ -786,7 +794,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	}
 
 	private void linkExistingCustomer(BusinessOpportunity opportunity) {
-		if (Func.isNotEmpty(opportunity.getCustomerId())) {
+		if (isValidCustomerId(opportunity.getCustomerId())) {
 			Customer customer = customerMapper.selectById(opportunity.getCustomerId());
 			if (Func.isEmpty(customer) || !DEL_FLAG_NORMAL.equals(customer.getDelFlag())) {
 				throw new ServiceException("关联客户不存在");
@@ -803,6 +811,21 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 				opportunity.setCustomerId(customerId);
 			}
 		}
+	}
+
+	private boolean isValidCustomerId(Long customerId) {
+		return customerId != null && customerId > 0;
+	}
+
+	private Customer findActiveLinkedCustomer(BusinessOpportunity opportunity) {
+		if (opportunity == null || !isValidCustomerId(opportunity.getCustomerId())) {
+			return null;
+		}
+		Customer customer = customerMapper.selectById(opportunity.getCustomerId());
+		if (customer == null || !DEL_FLAG_NORMAL.equals(customer.getDelFlag())) {
+			return null;
+		}
+		return java.util.Objects.equals(opportunity.getParkId(), customer.getParkId()) ? customer : null;
 	}
 
 	private String[] splitCarrierTypes(String carrierTypes) {

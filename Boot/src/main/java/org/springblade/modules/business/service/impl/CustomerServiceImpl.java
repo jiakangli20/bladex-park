@@ -565,7 +565,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 
 	private Long resolveCustomerId(ApprovalProject project, BusinessOpportunity opportunity) {
 		Long parkId = Func.isNotEmpty(project.getParkId()) ? project.getParkId() : opportunity == null ? null : opportunity.getParkId();
-		if (Func.isNotEmpty(project.getCustomerId())) {
+		if (isValidCustomerId(project.getCustomerId())) {
 			Customer customer = baseMapper.selectCustomerById(project.getCustomerId());
 			if (Func.isNotEmpty(customer)) {
 				if (!Objects.equals(parkId, customer.getParkId())) {
@@ -586,7 +586,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 	}
 
 	private Long resolveCustomerId(BusinessOpportunity opportunity) {
-		if (Func.isNotEmpty(opportunity.getCustomerId())) {
+		if (isValidCustomerId(opportunity.getCustomerId())) {
 			Customer customer = baseMapper.selectCustomerById(opportunity.getCustomerId());
 			if (Func.isNotEmpty(customer)) {
 				if (!Objects.equals(opportunity.getParkId(), customer.getParkId())) {
@@ -603,6 +603,10 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		}
 		return StringUtil.isBlank(opportunity.getEnterpriseName()) ? null
 			: baseMapper.selectCustomerIdByEnterpriseAndPark(opportunity.getEnterpriseName(), opportunity.getParkId(), null);
+	}
+
+	private boolean isValidCustomerId(Long customerId) {
+		return customerId != null && customerId > 0;
 	}
 
 	private void mergeApprovalCustomer(Customer customer, ApprovalProject project, BusinessOpportunity opportunity) {
