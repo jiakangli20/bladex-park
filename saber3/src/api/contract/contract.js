@@ -156,17 +156,6 @@ export const ensureDepositRefundPayment = contractId => {
   });
 };
 
-export const offlineRoomReview = (contractId, row) => {
-  return request({
-    url: '/blade-contract/contract/room-review/offline',
-    method: 'post',
-    params: {
-      contractId,
-    },
-    data: row,
-  });
-};
-
 export const getPaymentList = (current, size, params) => {
   return request({
     url: '/blade-contract/contract/payment/list',

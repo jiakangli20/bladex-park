@@ -31,12 +31,10 @@ import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractChange;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
-import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.pojo.vo.ContractExpirySummaryVO;
 import org.springblade.modules.contract.pojo.vo.ContractStatsVO;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 合同主档服务类
@@ -177,15 +175,6 @@ public interface IContractService extends IService<Contract> {
 	 * @return 押金退还付款单
 	 */
 	ContractPayment ensureDepositRefundPayment(Long contractId);
-
-	/**
-	 * 线下登记房屋验收情况
-	 *
-	 * @param contractId 合同ID
-	 * @param formData   验收情况
-	 * @return 验收记录
-	 */
-	ContractWorkflowRecord offlineRoomReview(Long contractId, Map<String, Object> formData);
 
 	/**
 	 * 完成房屋验收后的退租收口，包含状态、账单和房源处理.

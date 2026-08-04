@@ -42,7 +42,6 @@ import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractChange;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
-import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.pojo.vo.ContractStatsVO;
 import org.springblade.modules.contract.pojo.vo.ContractExpirySummaryVO;
 import org.springblade.modules.contract.service.IContractService;
@@ -50,7 +49,6 @@ import org.springblade.modules.ics.service.IPaymentService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 合同管理控制器
@@ -216,16 +214,6 @@ public class ContractController extends BladeController {
 	@Operation(summary = "获取或创建押金退还付款单", description = "传入contractId")
 	public R<ContractPayment> depositRefundPayment(@RequestParam Long contractId) {
 		return R.data(contractService.ensureDepositRefundPayment(contractId));
-	}
-
-	/**
-	 * 线下登记房屋验收情况
-	 */
-	@PostMapping("/room-review/offline")
-	@ApiOperationSupport(order = 13)
-	@Operation(summary = "线下登记房屋验收情况", description = "传入contractId和验收情况")
-	public R<ContractWorkflowRecord> offlineRoomReview(@RequestParam Long contractId, @RequestBody Map<String, Object> formData) {
-		return R.data(contractService.offlineRoomReview(contractId, formData));
 	}
 
 	/**

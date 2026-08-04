@@ -485,7 +485,10 @@ public class PaymentServiceImpl implements IPaymentService {
 		}
 		ContractPayment payment = requirePayment(paymentId);
 		assertAccessible(payment);
-		return overdueInternalNoticeMapper.markRead(paymentId, AuthUtil.getUserId()) > 0;
+		// 标记已读需要保持幂等：通知已读或当前账号不是收件人时，更新行数为 0
+		// 也不应导致打开逾期处置抽屉提示“操作失败”。
+		overdueInternalNoticeMapper.markRead(paymentId, AuthUtil.getUserId());
+		return true;
 	}
 
 	@Override

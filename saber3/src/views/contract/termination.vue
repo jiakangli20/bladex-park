@@ -53,9 +53,9 @@
         <el-table-column
           prop="customerName"
           label="租客名称"
-          min-width="150"
+          min-width="260"
           align="center"
-          class-name="termination-full-cell"
+          class-name="termination-single-line-cell"
         />
         <el-table-column
           prop="roomName"
@@ -82,7 +82,12 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="退租阶段" width="130" align="center">
+        <el-table-column
+          label="退租阶段"
+          min-width="190"
+          align="center"
+          class-name="termination-single-line-cell"
+        >
           <template #default="{ row }">
             <el-tag :type="terminationStageType(row)" effect="plain">{{
               terminationStageText(row)
@@ -154,8 +159,8 @@
             <div class="detail-section-title">业务操作</div>
             <div class="drawer-actions">
               <el-button type="primary" @click="openArchive(detailRecord)">合同归档</el-button>
-              <el-button type="primary" plain @click="handleOfflineRoomReview(detailRecord)">
-                登记房屋验收
+              <el-button type="primary" plain @click="handleStartRoomReview(detailRecord)">
+                房屋验收审批
               </el-button>
               <el-button type="primary" plain @click="handleStartDepositRefund(detailRecord)">
                 付款申请
@@ -381,112 +386,6 @@
         </template>
       </el-dialog>
 
-      <el-dialog
-        v-model="offlineReviewVisible"
-        title="登记房屋验收"
-        width="680px"
-        append-to-body
-        @close="resetOfflineReview"
-      >
-        <section class="offline-summary">
-          <div>
-            <span>合同编号</span>
-            <strong>{{ offlineReviewRecord.contractNo || '-' }}</strong>
-          </div>
-          <div>
-            <span>企业名称</span>
-            <strong>{{ offlineReviewRecord.customerName || '-' }}</strong>
-          </div>
-          <div>
-            <span>交接房源</span>
-            <strong>{{
-              offlineReviewRecord.roomName || offlineReviewRecord.buildingName || '-'
-            }}</strong>
-          </div>
-        </section>
-        <el-form :model="offlineReviewForm" label-width="96px" class="offline-form">
-          <el-form-item label="验收日期" required>
-            <el-date-picker
-              v-model="offlineReviewForm.acceptanceDate"
-              type="date"
-              value-format="YYYY-MM-DD"
-              placeholder="请选择验收日期"
-              style="width: 100%"
-            />
-          </el-form-item>
-          <el-form-item label="验收结果" required>
-            <el-radio-group v-model="offlineReviewForm.acceptanceResult">
-              <el-radio-button label="验收通过" />
-              <el-radio-button label="需整改" />
-            </el-radio-group>
-          </el-form-item>
-          <el-form-item label="验收说明" required>
-            <el-input
-              v-model="offlineReviewForm.acceptanceSituation"
-              type="textarea"
-              :rows="4"
-              maxlength="500"
-              show-word-limit
-              placeholder="填写线下房屋验收情况、交接说明、遗留问题等"
-            />
-          </el-form-item>
-          <el-form-item label="其他扣款">
-            <el-input-number
-              v-model="offlineReviewForm.deductionAmount"
-              :min="0"
-              :precision="2"
-              :step="100"
-              controls-position="right"
-              style="width: 100%"
-              placeholder="不含系统自动抵扣的未结应收"
-            />
-          </el-form-item>
-          <el-form-item
-            v-if="Number(offlineReviewForm.deductionAmount || 0) > 0"
-            label="扣款说明"
-            required
-          >
-            <el-input
-              v-model="offlineReviewForm.deductionRemark"
-              type="textarea"
-              :rows="2"
-              maxlength="300"
-              show-word-limit
-              placeholder="请填写维修、损坏赔偿等其他扣款依据"
-            />
-          </el-form-item>
-          <el-alert
-            class="settlement-tip"
-            type="info"
-            :closable="false"
-            show-icon
-            title="验收通过后，系统将自动抵扣验收日前未结应收，终止验收日后的未发生账单，并将未来账期已预收金额计入应退金额。"
-          />
-          <el-form-item label="验收附件">
-            <el-upload
-              ref="offlineReviewUploadRef"
-              action="/api/blade-resource/oss/endpoint/put-file"
-              :headers="uploadHeaders"
-              :limit="1"
-              :show-file-list="true"
-              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-              :before-upload="beforeOfflineFileUpload"
-              :on-success="handleOfflineReviewUploadSuccess"
-              :on-error="handleOfflineUploadError"
-              :on-remove="handleOfflineReviewUploadRemove"
-            >
-              <el-button icon="el-icon-upload">上传附件</el-button>
-            </el-upload>
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <el-button @click="offlineReviewVisible = false">取消</el-button>
-          <el-button type="primary" :loading="offlineReviewLoading" @click="submitOfflineReview">
-            确认登记
-          </el-button>
-        </template>
-      </el-dialog>
-
       <notice-preview-dialog
         v-model="noticePreview.visible"
         :title="noticePreview.title"
@@ -512,7 +411,6 @@ import {
   getDepositRefundPayment,
   getLatestWorkflowRecord,
   getWorkflowRecordPage,
-  offlineRoomReview,
   removeWorkflowRecordAttachment,
   uploadWorkflowRecordAttachment,
 } from '@/api/contract/contract';
@@ -631,18 +529,6 @@ export default {
         fileUrl: '',
         fileName: '',
         remark: '',
-      },
-      offlineReviewVisible: false,
-      offlineReviewLoading: false,
-      offlineReviewRecord: {},
-      offlineReviewForm: {
-        acceptanceDate: '',
-        acceptanceResult: '验收通过',
-        acceptanceSituation: '',
-        deductionAmount: 0,
-        deductionRemark: '',
-        acceptanceFileUrl: '',
-        acceptanceFileName: '',
       },
       precheckVisible: false,
       precheckTitle: '',
@@ -1403,28 +1289,6 @@ export default {
         applicantContactPhone: contactPhone,
       };
     },
-    handleOfflineRoomReview(row) {
-      if (
-        !this.ensurePrerequisites('登记房屋验收前置条件', this.offlineRoomReviewPrerequisites(row))
-      ) {
-        return;
-      }
-      this.offlineReviewRecord = { ...(row || {}) };
-      this.offlineReviewForm = {
-        acceptanceDate: this.formatDate(new Date()),
-        acceptanceResult: '验收通过',
-        acceptanceSituation: '',
-        deductionAmount: 0,
-        deductionRemark: '',
-        acceptanceFileUrl: '',
-        acceptanceFileName: '',
-      };
-      this.offlineReviewVisible = true;
-      this.$nextTick(() => {
-        const upload = this.$refs.offlineReviewUploadRef;
-        if (upload && upload.clearFiles) upload.clearFiles();
-      });
-    },
     beforeOfflineFileUpload(file) {
       const allowTypes = [
         'application/pdf',
@@ -1448,65 +1312,9 @@ export default {
       const data = response?.data || {};
       return data.link || data.url || data.path || response?.link || response?.url || '';
     },
-    handleOfflineReviewUploadSuccess(response, file) {
-      if (!response || response.success === false) {
-        this.$message.error((response && response.msg) || '上传失败');
-        return;
-      }
-      this.offlineReviewForm.acceptanceFileUrl = this.extractUploadUrl(response);
-      this.offlineReviewForm.acceptanceFileName = file?.name || '';
-      this.$message.success(file?.name ? `${file.name} 上传成功` : '上传成功');
-    },
-    handleOfflineReviewUploadRemove() {
-      this.offlineReviewForm.acceptanceFileUrl = '';
-      this.offlineReviewForm.acceptanceFileName = '';
-    },
     handleOfflineUploadError(error) {
       const message = (error && error.message) || '上传失败，请重试';
       this.$message.error(message);
-    },
-    submitOfflineReview() {
-      if (!this.offlineReviewRecord.contractId) {
-        this.$message.warning('请选择退租记录');
-        return;
-      }
-      if (!this.offlineReviewForm.acceptanceDate) {
-        this.$message.warning('请选择验收日期');
-        return;
-      }
-      if (!this.offlineReviewForm.acceptanceSituation) {
-        this.$message.warning('请填写房屋验收情况');
-        return;
-      }
-      if (
-        Number(this.offlineReviewForm.deductionAmount || 0) > 0 &&
-        !String(this.offlineReviewForm.deductionRemark || '').trim()
-      ) {
-        this.$message.warning('请填写其他扣款说明');
-        return;
-      }
-      this.offlineReviewLoading = true;
-      offlineRoomReview(this.offlineReviewRecord.contractId, this.offlineReviewForm)
-        .then(() => {
-          this.$message.success('房屋验收情况已登记');
-          this.offlineReviewVisible = false;
-          this.loadData();
-        })
-        .finally(() => {
-          this.offlineReviewLoading = false;
-        });
-    },
-    resetOfflineReview() {
-      this.offlineReviewRecord = {};
-      this.offlineReviewForm = {
-        acceptanceDate: '',
-        acceptanceResult: '验收通过',
-        acceptanceSituation: '',
-        deductionAmount: 0,
-        deductionRemark: '',
-        acceptanceFileUrl: '',
-        acceptanceFileName: '',
-      };
     },
     loadWorkflowProcessOptions() {
       this.workflowLoading = true;
@@ -1618,9 +1426,6 @@ export default {
       ];
     },
     roomReviewPrerequisites(row) {
-      return this.basicRecordPrerequisites(row, { requireHandover: true });
-    },
-    offlineRoomReviewPrerequisites(row) {
       return this.basicRecordPrerequisites(row, { requireHandover: true });
     },
     paymentApplicationPrerequisites(row) {
@@ -1849,7 +1654,7 @@ export default {
       if (this.paymentApprovalStatus(row) === 'approved') return '待财务付款';
       if (this.paymentApprovalStatus(row) === 'running') return '付款审批中';
       if (String(row.contractStatus) === '4') return '待付款申请';
-      if (String(row.contractStatus) === '7') return '待登记房屋验收';
+      if (String(row.contractStatus) === '7') return '待发起房屋验收审批';
       if (row.processStatus === 'approved') return '退租已通过';
       return this.approvalStatusText(row.processStatus);
     },
@@ -1980,6 +1785,11 @@ export default {
   white-space: normal;
   word-break: break-all;
   line-height: 20px;
+}
+
+.termination-table :deep(.termination-single-line-cell .cell) {
+  white-space: nowrap;
+  word-break: keep-all;
 }
 
 .table-actions {
@@ -2238,43 +2048,8 @@ export default {
   font-style: normal;
 }
 
-.offline-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
-}
-
-.offline-summary div {
-  min-height: 60px;
-  padding: 10px 12px;
-  border: 1px solid #edf0f5;
-  border-radius: 8px;
-  background: #f8fafc;
-}
-
-.offline-summary span {
-  display: block;
-  color: #8c98aa;
-  font-size: 12px;
-}
-
-.offline-summary strong {
-  display: block;
-  margin-top: 6px;
-  color: #303133;
-  font-size: 14px;
-  font-weight: 500;
-  overflow-wrap: anywhere;
-}
-
 .offline-form :deep(.el-upload) {
   width: 100%;
-}
-
-.settlement-tip {
-  margin: 0 0 18px 96px;
-  width: calc(100% - 96px);
 }
 
 .termination-pagination {
@@ -2302,13 +2077,5 @@ export default {
     grid-template-columns: 1fr;
   }
 
-  .offline-summary {
-    grid-template-columns: 1fr;
-  }
-
-  .settlement-tip {
-    margin-left: 0;
-    width: 100%;
-  }
 }
 </style>

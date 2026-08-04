@@ -1323,6 +1323,9 @@ export default {
       const selectedProcess =
         this.workflowProcessOptions.find(item => item.key === this.workflowForm.processDefKey) ||
         {};
+      const invoiceAmountParams = this.workflowIsPayable
+        ? {}
+        : this.buildInvoiceAmountParams(row);
       const payload = {
         processDefKey: this.workflowForm.processDefKey,
         params: {
@@ -1357,16 +1360,37 @@ export default {
           periodEnd: row.periodEnd,
           amountDue: row.amountDue,
           amountPaid: row.amountPaid,
+          invoiceAmount: row.amountDue,
           payDeadline: row.payDeadline,
           templateKey: this.workflowTemplateKey,
-          applicant: (this.userInfo || {}).nick_name || (this.userInfo || {}).user_name || '',
+          applicant:
+            (this.userInfo || {}).real_name ||
+            (this.userInfo || {}).realName ||
+            (this.userInfo || {}).nick_name ||
+            (this.userInfo || {}).user_name ||
+            '',
           applicantDept: (this.userInfo || {}).dept_name || '',
           applyTime: this.formatDateTime(new Date()),
+          ...invoiceAmountParams,
         },
       };
       const encodedParam = encodeURIComponent(Base64.encode(JSON.stringify(payload)));
       this.workflowVisible = false;
       this.$router.push(`/plugin/workflow/pages/process/form/start/${encodedParam}`);
+    },
+    buildInvoiceAmountParams(row = {}) {
+      const marker = `${row.feeType || ''}|${row.feeName || ''}`.toLowerCase();
+      const amount = Number(row.amountDue || 0).toFixed(2);
+      const zero = '0.00';
+      const isRent = marker.includes('rent') || marker.includes('房租') || marker.includes('租金');
+      const isProperty = marker.includes('property') || marker.includes('物业');
+      const isDeposit =
+        marker.includes('deposit') || marker.includes('押金') || marker.includes('保证金');
+      return {
+        a178229043562386124: isRent ? amount : zero,
+        a178229053048579216: isProperty ? amount : zero,
+        a178229053161649966: isDeposit ? amount : zero,
+      };
     },
     resetWorkflowDialog() {
       this.workflowRow = {};

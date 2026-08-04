@@ -105,7 +105,6 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private static final String PAY_STATUS_UNPAID = "0";
 	private static final String PAY_STATUS_PAID = "1";
 	private static final String PAY_STATUS_PARTIAL = "3";
-	private static final String ACCEPTANCE_PASSED = "验收通过";
 	private static final String ACCEPTANCE_RECTIFICATION = "需整改";
 
 	private final ContractPaymentMapper contractPaymentMapper;
@@ -404,61 +403,6 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		contractPaymentMapper.insert(payment);
 		addLog(contract.getContractId(), "deposit_refund", "生成押金退还付款单：" + settlement.remark());
 		return findDepositRefundPayment(contract.getContractId());
-	}
-
-	@Override
-	@Transactional(rollbackFor = Exception.class)
-	public ContractWorkflowRecord offlineRoomReview(Long contractId, Map<String, Object> formData) {
-		Contract contract = requireContractForUpdate(contractId);
-		if (!canOfflineRoomReview(contract.getContractStatus())) {
-			throw new ServiceException("退租审批通过后才可以登记验收情况");
-		}
-		Date now = DateUtil.now();
-		Map<String, Object> snapshot = normalizeOfflineForm(formData);
-		snapshot.putIfAbsent("acceptanceDate", DateUtil.format(now, DateUtil.PATTERN_DATE));
-		snapshot.putIfAbsent("acceptanceResult", ACCEPTANCE_PASSED);
-		String acceptanceResult = textValue(snapshot, "acceptanceResult");
-		if (!ACCEPTANCE_PASSED.equals(acceptanceResult) && !ACCEPTANCE_RECTIFICATION.equals(acceptanceResult)) {
-			throw new ServiceException("请选择正确的验收结果");
-		}
-		BigDecimal deductionAmount = validateNonNegativeAmount(snapshot.get("deductionAmount"), "其他扣款");
-		if (deductionAmount.compareTo(BigDecimal.ZERO) > 0
-			&& Func.isBlank(textValue(snapshot, "deductionRemark"))) {
-			throw new ServiceException("请填写其他扣款说明");
-		}
-		if (Func.isBlank(textValue(snapshot, "returnDate"))) {
-			snapshot.put("returnDate", snapshot.get("acceptanceDate"));
-		}
-		if (Func.isBlank(textValue(snapshot, "handoverResult"))) {
-			snapshot.put("handoverResult", firstNotBlank(textValue(snapshot, "acceptanceSituation"), textValue(snapshot, "acceptanceResult")));
-		}
-
-		ContractWorkflowRecord record = new ContractWorkflowRecord();
-		record.setParkId(contract.getParkId());
-		record.setBusinessType(BUSINESS_TYPE_CONTRACT_ROOM_REVIEW);
-		record.setBusinessKey(String.valueOf(contractId));
-		record.setProcessDefKey("offline-room-review");
-		record.setProcessName("线下房屋验收");
-		record.setProcessStatus(PROCESS_STATUS_APPROVED);
-		record.setCurrentNodeKey("offline_room_review");
-		record.setCurrentNode("线下验收完成");
-		record.setContractId(contractId);
-		record.setCustomerId(contract.getCustomerId());
-		record.setRoomIds(resolveContractRoomIds(contract));
-		record.setTemplateKey("room-review");
-		record.setFormKey("return");
-		record.setFormDataJson(JsonUtil.toJson(snapshot));
-		record.setAttachmentJson(JsonUtil.toJson(resolveAttachmentSnapshot(snapshot)));
-		record.setPrintFileUrl("/blade-contract/print/room-review/" + contractId);
-		record.setApprovalTime(now);
-		record.setRemark(limitText(firstNotBlank(textValue(snapshot, "acceptanceSituation"), textValue(snapshot, "remark"), "线下验收登记"), 500));
-		record.setDelFlag(DEFAULT_DEL_FLAG);
-		record.setCreateBy(currentUserName());
-		record.setCreateTime(now);
-		contractWorkflowRecordMapper.insert(record);
-
-		completeRoomReviewInternal(contract);
-		return contractWorkflowRecordMapper.selectById(record.getRecordId());
 	}
 
 	@Override
@@ -829,14 +773,6 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		}
 	}
 
-	private BigDecimal validateNonNegativeAmount(Object value, String fieldName) {
-		BigDecimal amount = toBigDecimal(value).setScale(2, RoundingMode.HALF_UP);
-		if (amount.compareTo(BigDecimal.ZERO) < 0) {
-			throw new ServiceException(fieldName + "不能小于0");
-		}
-		return amount;
-	}
-
 	private String money(BigDecimal amount) {
 		return nullToZero(amount).setScale(2, RoundingMode.HALF_UP).toPlainString();
 	}
@@ -944,11 +880,6 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 
 	private boolean emptyCount(Long count) {
 		return count == null || count == 0;
-	}
-
-	private boolean canOfflineRoomReview(String contractStatus) {
-		return STATUS_TERMINATION_HANDOVER.equals(contractStatus)
-			|| STATUS_ROOM_REVIEW_RUNNING.equals(contractStatus);
 	}
 
 	private void validateDepositRefundMaterials(Long contractId) {
@@ -1082,30 +1013,6 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 			return attachment == null ? new LinkedHashMap<>() : new LinkedHashMap<>(attachment);
 		} catch (Exception ignored) {
 			return new LinkedHashMap<>();
-		}
-	}
-
-	private Map<String, Object> normalizeOfflineForm(Map<String, Object> formData) {
-		Map<String, Object> snapshot = new LinkedHashMap<>();
-		if (formData != null) {
-			snapshot.putAll(formData);
-		}
-		snapshot.putIfAbsent("operator", currentUserName());
-		snapshot.putIfAbsent("operateTime", DateUtil.format(DateUtil.now(), DateUtil.PATTERN_DATETIME));
-		return snapshot;
-	}
-
-	private Map<String, Object> resolveAttachmentSnapshot(Map<String, Object> snapshot) {
-		Map<String, Object> attachments = new LinkedHashMap<>();
-		putIfPresent(attachments, "acceptanceFileUrl", snapshot.get("acceptanceFileUrl"));
-		putIfPresent(attachments, "acceptanceFileName", snapshot.get("acceptanceFileName"));
-		putIfPresent(attachments, "fileList", snapshot.get("fileList"));
-		return attachments;
-	}
-
-	private void putIfPresent(Map<String, Object> target, String key, Object value) {
-		if (value != null && Func.isNotBlank(Func.toStr(value, ""))) {
-			target.put(key, value);
 		}
 	}
 

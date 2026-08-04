@@ -37,7 +37,10 @@
 		<result column="selected_room_name" property="selectedRoomName"/>
 		<result column="selected_building_name" property="selectedBuildingName"/>
 		<result column="contract_no" property="contractNo"/>
+		<result column="customer_id" property="customerId"/>
 		<result column="customer_name" property="customerName"/>
+		<result column="credit_code" property="creditCode"/>
+		<result column="registered_address" property="registeredAddress"/>
 		<result column="contract_name" property="contractName"/>
 		<result column="room_name" property="roomName"/>
 		<result column="building_name" property="buildingName"/>
@@ -115,7 +118,10 @@
 			p.selected_room_name,
 			p.selected_building_name,
 			c.contract_no,
-			c.customer_name,
+			c.customer_id,
+			COALESCE(NULLIF(c.customer_name, ''), cu.enterprise_name) AS customer_name,
+			cu.credit_code,
+			cu.registered_address,
 			c.contract_name,
 			COALESCE(p.selected_room_name, c.room_name) AS room_name,
 			COALESCE(p.selected_building_name, c.building_name) AS building_name,
@@ -151,6 +157,8 @@
 			term_cwr.print_file_url AS termination_file_url
 		FROM biz_contract_payment p
 		LEFT JOIN biz_contract c ON c.contract_id = p.contract_id
+		LEFT JOIN biz_customer cu ON cu.customer_id = c.customer_id
+			AND COALESCE(cu.del_flag, '0') = '0'
 		LEFT JOIN (
 			SELECT payment_id, MAX(record_id) AS record_id
 			FROM biz_contract_workflow_record

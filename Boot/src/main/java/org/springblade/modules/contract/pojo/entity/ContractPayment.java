@@ -135,9 +135,22 @@ public class ContractPayment implements Serializable {
 	@Schema(description = "合同编号")
 	private String contractNo;
 
+	@JsonSerialize(using = ToStringSerializer.class)
+	@TableField(exist = false)
+	@Schema(description = "客户ID")
+	private Long customerId;
+
 	@TableField(exist = false)
 	@Schema(description = "客户名称")
 	private String customerName;
+
+	@TableField(exist = false)
+	@Schema(description = "客户统一社会信用代码")
+	private String creditCode;
+
+	@TableField(exist = false)
+	@Schema(description = "客户注册地址")
+	private String registeredAddress;
 
 	@TableField(exist = false)
 	@Schema(description = "合同名称")

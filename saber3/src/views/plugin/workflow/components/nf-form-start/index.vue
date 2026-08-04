@@ -203,9 +203,9 @@ export default {
       this.visible = false;
     },
     applyInitialParams() {
-      if (this.validatenull(this.params)) return;
-      const mappedValues = this.buildMappedParamValues(this.option, this.params);
-      this.form = { ...this.form, ...this.params, ...mappedValues };
+      const params = this.validatenull(this.params) ? {} : this.params;
+      const mappedValues = this.buildMappedParamValues(this.option, params);
+      this.form = { ...this.form, ...params, ...mappedValues };
     },
     buildMappedParamValues(option = {}, params = {}) {
       const values = {};
@@ -244,7 +244,19 @@ export default {
         const key = keys.find(item => !this.validatenull(params[item]));
         return key ? params[key] : undefined;
       };
-      if (label.includes('合同编号')) return pick(['contractNo']);
+      const contractDateRange = this.resolveContractDateRange(column, label, params);
+      if (!this.validatenull(contractDateRange)) return contractDateRange;
+      if (label.includes('经办人') || (label.includes('申请人') && !label.includes('联系方式'))) {
+        return (
+          pick(['handlerName', 'operatorName', 'applicant', 'applicantName', 'createBy']) ||
+          this.resolveCurrentUserName()
+        );
+      }
+      if (label === '日期' || label.includes('申请日期')) {
+        const dateValue = pick(['applyDate', 'applyTime', 'createTime']);
+        return this.validatenull(dateValue) ? undefined : String(dateValue).slice(0, 10);
+      }
+      if (label.includes('合同编号') || label.includes('合同号')) return pick(['contractNo']);
       if (label.includes('合同名称')) return pick(['contractName']);
       if (label.includes('送审部门')) {
         return pick(['applicantDept', 'deptName', 'createDeptName']);
@@ -274,6 +286,15 @@ export default {
       }
       if (label.includes('企业名称')) {
         return pick(['enterpriseName', 'customerName', 'tenantName', 'lesseeName']);
+      }
+      if (label.includes('单位名称')) {
+        return pick(['customerName', 'enterpriseName', 'tenantName', 'lesseeName']);
+      }
+      if (label.includes('税号') || label.includes('统一社会信用代码')) {
+        return pick(['creditCode', 'taxNo']);
+      }
+      if (label.includes('单位地址')) {
+        return pick(['registeredAddress', 'address', 'contactAddress']);
       }
       if (
         label.includes('合同乙方') ||
@@ -325,6 +346,56 @@ export default {
       if (label.includes('结束') || label.includes('到期')) return pick(['endDate']);
       if (label.includes('签订')) return pick(['signDate']);
       return undefined;
+    },
+    resolveCurrentUserName() {
+      const user = this.userInfo || {};
+      return (
+        user.nick_name ||
+        user.real_name ||
+        user.realName ||
+        user.user_name ||
+        user.userName ||
+        user.account ||
+        ''
+      );
+    },
+    resolveContractDateRange(column = {}, label = '', params = {}) {
+      const startDate = params.startDate || params.contractStartDate || params.leaseStartDate;
+      const endDate = params.endDate || params.contractEndDate || params.leaseEndDate;
+      if (this.validatenull(startDate) && this.validatenull(endDate)) return undefined;
+
+      const type = String(column.type || '').toLowerCase();
+      const prop = String(column.prop || '').toLowerCase();
+      const isRangeControl =
+        type.includes('range') ||
+        prop.includes('daterange') ||
+        prop.includes('date_range') ||
+        prop.includes('period');
+      const isContractRangeLabel =
+        label.includes('合同有效期') ||
+        label.includes('合同期限') ||
+        label.includes('租赁期限') ||
+        label.includes('租赁时间') ||
+        label === '租期' ||
+        (label.includes('有效期') && (label.includes('合同') || label.includes('租赁')));
+
+      if (!isRangeControl && !isContractRangeLabel) return undefined;
+      const values = [
+        this.formatRangeDateValue(startDate, column, false),
+        this.formatRangeDateValue(endDate, column, true),
+      ];
+      return column.dataType === 'string' ? values.join(',') : values;
+    },
+    formatRangeDateValue(value, column = {}, isEnd = false) {
+      if (this.validatenull(value)) return '';
+      const text = String(value).trim();
+      const valueFormat = String(column.valueFormat || column.valueformat || column.format || '');
+      const needsTime = valueFormat
+        ? /h{1,2}:m{1,2}:s{1,2}/i.test(valueFormat)
+        : String(column.type || '').toLowerCase().includes('time');
+      if (!needsTime) return text.slice(0, 10);
+      if (/\d{2}:\d{2}:\d{2}/.test(text)) return text;
+      return `${text.slice(0, 10)} ${isEnd ? '23:59:59' : '00:00:00'}`;
     },
     buildContractMatter(params = {}) {
       const customer =
