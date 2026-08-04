@@ -786,14 +786,16 @@ export default {
       const status = payable ? row.paymentApprovalStatus : row.invoiceApprovalStatus;
       const fileUrl = payable ? row.paymentFileUrl : row.invoiceFileUrl;
       const fileLabel = payable ? '付款申请单' : '开票申请单';
-      const resolvedFileUrl =
-        fileUrl ||
-        (status === 'approved'
+      // 审批归档文件在流程结束回调中生成，最终节点的历史记录可能尚未落库。
+      // 已审批文件统一通过动态接口重新生成，确保分管领导等最后审批节点与预览一致。
+      const latestFileUrl =
+        status === 'approved'
           ? noticePrintUrl(payable ? PAYMENT_APPLICATION_TEMPLATE : INVOICE_APPLICATION_TEMPLATE, {
               paymentId: row.paymentId,
               contractId: row.contractId,
             })
-          : '');
+          : '';
+      const resolvedFileUrl = latestFileUrl || fileUrl;
       const rows = [
         {
           name: fileLabel,
