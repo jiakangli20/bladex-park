@@ -21,7 +21,7 @@ import exForm from '../../../mixins/ex-form';
 import { getTenantEntryCandidateDetail } from '@/api/business/opportunity';
 import { Base64 } from 'js-base64';
 
-const DEFAULT_PROCESS_KEY = 'tenant_entry-1';
+const DEFAULT_PROCESS_KEY = 'entry';
 const BUSINESS_TYPE = 'tenant_entry';
 
 export default {
@@ -65,16 +65,19 @@ export default {
           { label: '申请时间', prop: 'applyTime', type: 'date', format: 'YYYY-MM-DD', valueFormat: 'YYYY-MM-DD', span: 12 },
           { label: '股东信息', prop: 'shareholderInfo', type: 'input', span: 24, placeholder: '如：自然人、社会团体、企业法人等' },
           { label: '经营范围', prop: 'businessScope', type: 'textarea', span: 24, minRows: 4, rules: [{ required: true, message: '请输入经营范围', trigger: 'blur' }] },
-          { label: '负责人', prop: 'principalName', type: 'input', span: 12, rules: [{ required: true, message: '请输入负责人', trigger: 'blur' }] },
-          { label: '联系方式', prop: 'principalPhone', type: 'input', span: 12, rules: [{ required: true, message: '请输入联系方式', trigger: 'blur' }] },
-          { label: '租赁楼层、面积', prop: 'leaseFloorArea', type: 'input', span: 12, placeholder: '如：2111,141平' },
+          { label: '税收', prop: 'taxRevenue', type: 'input', span: 24, placeholder: '填写预计税收或税收情况' },
+          { label: '法人', prop: 'principalName', type: 'input', span: 12, rules: [{ required: true, message: '请输入法人', trigger: 'blur' }] },
+          { label: '法人联系方式', prop: 'principalPhone', type: 'input', span: 12, rules: [{ required: true, message: '请输入法人联系方式', trigger: 'blur' }] },
+          { label: '财务联系人', prop: 'financeContactName', type: 'input', span: 12 },
+          { label: '财务联系方式', prop: 'financeContactPhone', type: 'input', span: 12 },
+          { label: '意向楼层', prop: 'leaseFloorArea', type: 'input', span: 12, placeholder: '如：2111，141平' },
           { label: '免租期', prop: 'rentFreePeriod', type: 'input', span: 12 },
-          { label: '单价（元）', prop: 'unitPrice', type: 'number', span: 12, precision: 2, controls: false },
+          { label: '租金', prop: 'unitPrice', type: 'number', span: 12, precision: 2, controls: false },
           { label: '保证金（元）', prop: 'deposit', type: 'number', span: 12, precision: 2, controls: false },
           { label: '合同有效期', prop: 'contractPeriod', type: 'input', span: 24, placeholder: '如：自2026年2月1日至2027年1月31日止' },
           { label: '经办人', prop: 'handlerName', type: 'input', span: 12 },
           { label: '部门', prop: 'handlerDept', type: 'input', span: 12 },
-          { label: '审批事项', prop: 'approvalMatter', type: 'textarea', span: 24, minRows: 3 },
+          { label: '情况说明', prop: 'approvalMatter', type: 'textarea', span: 24, minRows: 3 },
           {
             label: '附件',
             prop: 'attachment',

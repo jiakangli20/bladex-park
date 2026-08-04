@@ -5,7 +5,13 @@
       class="top-menu-shell__scroll"
       @wheel.prevent="handleMenuWheel"
     >
-      <el-menu class="top-menu" :default-active="activeIndex" mode="horizontal" :ellipsis="false">
+      <el-menu
+        :key="resolvedActiveIndex"
+        class="top-menu"
+        :default-active="resolvedActiveIndex"
+        mode="horizontal"
+        :ellipsis="false"
+      >
         <el-menu-item index="0" @click="openHome">
           <template #title>
             <i :class="itemHome.source" style="padding-right: 5px"></i>
@@ -47,6 +53,21 @@ export default {
   },
   computed: {
     ...mapGetters(['tagCurrent', 'topMenu', 'tagWel']),
+    resolvedActiveIndex() {
+      const path = this.$route.path;
+      if (path === this.tagWel.path) {
+        return '0';
+      }
+      const topMenuIdentity = this.topMenuIdentityByRoute(path);
+      const activeMenu =
+        this.items.find(item => this.matchPath(item, path)) ||
+        this.items.find(
+          item =>
+            topMenuIdentity &&
+            (item.code === topMenuIdentity.code || item.name === topMenuIdentity.name)
+        );
+      return activeMenu ? String(activeMenu.id) : this.activeIndex;
+    },
   },
   watch: {
     topMenu: {
@@ -98,12 +119,36 @@ export default {
         this.setActive(0);
         return;
       }
-      const activeMenu = this.items.find(item => this.matchPath(item, path));
-      this.setActive(activeMenu ? activeMenu.id : 0);
+      const topMenuIdentity = this.topMenuIdentityByRoute(path);
+      const activeMenu =
+        this.items.find(item => this.matchPath(item, path)) ||
+        this.items.find(
+          item =>
+            topMenuIdentity &&
+            (item.code === topMenuIdentity.code || item.name === topMenuIdentity.name)
+        );
+      if (activeMenu) {
+        this.setActive(activeMenu.id);
+      }
+    },
+    topMenuIdentityByRoute(path) {
+      const routeMap = [
+        { prefix: '/plugin/workflow', code: 'office', name: '协同办公' },
+        { prefix: '/settlement', code: 'entry', name: '入驻管理' },
+        { prefix: '/enterprise', code: 'service', name: '企业服务' },
+        { prefix: '/contract', code: 'contract', name: '合同管理' },
+        { prefix: '/finance', code: 'finance', name: '逾期管理' },
+        { prefix: '/park', code: 'park', name: '园区管理' },
+      ];
+      const matched = routeMap.find(
+        item => path === item.prefix || path.indexOf(`${item.prefix}/`) === 0
+      );
+      return matched || null;
     },
     getMenu() {
       this.$store.dispatch('GetTopMenu').then(res => {
         this.items = this.normalizeTopMenu(res);
+        this.$nextTick(this.syncActiveByRoute);
       });
     },
     handleMenuWheel(event) {

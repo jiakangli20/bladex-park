@@ -18,7 +18,6 @@ import org.springblade.modules.park.pojo.entity.Room;
 import org.springblade.modules.park.service.IAssetRecordService;
 import org.springblade.modules.park.service.IBuildingService;
 import org.springblade.modules.park.service.IRoomService;
-import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,20 +39,15 @@ public class AssetRecordServiceImpl extends ServiceImpl<AssetRecordMapper, Asset
 
 	private final IBuildingService buildingService;
 	private final IRoomService roomService;
-	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public AssetRecord selectAssetById(Long assetId) {
 		AssetRecord asset = baseMapper.selectAssetById(assetId);
-		if (asset != null) {
-			parkDataAccessService.assertAccessible(asset.getParkId());
-		}
 		return asset;
 	}
 
 	@Override
 	public IPage<AssetRecord> selectAssetPage(IPage<AssetRecord> page, AssetRecord asset) {
-		asset.setParkId(parkDataAccessService.scopedParkId(asset.getParkId()));
 		return page.setRecords(baseMapper.selectAssetPage(page, asset));
 	}
 

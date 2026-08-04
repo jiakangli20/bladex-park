@@ -15,7 +15,6 @@ import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.business.mapper.PolicyServiceMapper;
 import org.springblade.modules.business.pojo.entity.PolicyService;
 import org.springblade.modules.business.service.IPolicyServiceService;
-import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,18 +40,9 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 	private static final String PERMANENT_NO = "1";
 	private static final String DEL_FLAG_NORMAL = "0";
 
-	private final ParkDataAccessService parkDataAccessService;
-
-	public PolicyServiceServiceImpl(ParkDataAccessService parkDataAccessService) {
-		this.parkDataAccessService = parkDataAccessService;
-	}
-
 	@Override
 	public PolicyService selectPolicyById(Long policyId) {
 		PolicyService policy = baseMapper.selectPolicyById(policyId);
-		if (Func.isNotEmpty(policy)) {
-			parkDataAccessService.assertAccessible(policy.getParkId());
-		}
 		if (Func.isEmpty(policy)) {
 			throw new ServiceException("政策服务不存在");
 		}
@@ -122,11 +112,8 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 		}
 		PolicyService old = requireWritablePolicy(policy.getPolicyId());
 		validatePolicy(mergeForValidate(old, policy));
-		if (AuthUtil.isAdministrator() && Func.isNotEmpty(policy.getParkId()) && policy.getParkId() > 0) {
-			policy.setParkId(policy.getParkId());
-		} else {
-			policy.setParkId(old.getParkId());
-		}
+		policy.setParkId(resolveWriteParkId(Func.isNotEmpty(policy.getParkId()) && policy.getParkId() > 0
+			? policy.getParkId() : old.getParkId()));
 		policy.setUpdateBy(currentUserName());
 		policy.setUpdateTime(DateUtil.now());
 		return baseMapper.updatePolicy(policy) > 0;
@@ -145,8 +132,7 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 		if (policyIds.isEmpty()) {
 			throw new ServiceException("请选择需要删除的政策服务");
 		}
-		Long parkId = parkDataAccessService.scopedParkId(null);
-		return baseMapper.deletePolicyByIds(policyIds, parkId, currentUserName()) > 0;
+		return baseMapper.deletePolicyByIds(policyIds, null, currentUserName()) > 0;
 	}
 
 	@Override
@@ -188,7 +174,6 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 		if (Func.isEmpty(policy)) {
 			throw new ServiceException("政策服务不存在");
 		}
-		parkDataAccessService.assertAccessible(policy.getParkId());
 		return policy;
 	}
 
@@ -222,16 +207,14 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 
 	private PolicyService normalizeQuery(PolicyService policy) {
 		PolicyService query = Func.isEmpty(policy) ? new PolicyService() : policy;
-		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		return query;
 	}
 
 	private Long resolveWriteParkId(Long parkId) {
-		Long scopedParkId = parkDataAccessService.scopedParkId(parkId);
-		if (Func.isEmpty(scopedParkId)) {
+		if (Func.isEmpty(parkId)) {
 			throw new ServiceException("请选择园区");
 		}
-		return scopedParkId;
+		return parkId;
 	}
 
 	private String currentUserName() {

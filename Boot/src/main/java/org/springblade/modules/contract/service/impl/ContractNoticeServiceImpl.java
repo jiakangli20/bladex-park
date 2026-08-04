@@ -23,7 +23,6 @@ import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
-import org.springblade.modules.contract.service.ContractParkAccessService;
 import org.springblade.modules.contract.service.IContractNoticeService;
 import org.springblade.modules.contract.service.IContractPrintTemplateService;
 import org.springblade.modules.contract.service.IContractTemplateRenderService;
@@ -79,7 +78,6 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	private final IContractTemplateRenderService contractTemplateRenderService;
 	private final ContractDocumentPreviewService contractDocumentPreviewService;
 	private final IContractPrintTemplateService contractPrintTemplateService;
-	private final ContractParkAccessService contractParkAccessService;
 
 	@Override
 	public ContractNoticeFileVO buildNotice(String noticeType, Long paymentId, Long contractId) {
@@ -128,10 +126,10 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			throw new ServiceException("合同不存在");
 		}
 		Map<String, String> fileMap = new LinkedHashMap<>();
-		ContractNoticeFileVO approval = uploadNotice(NOTICE_CONTRACT_APPROVAL, null, contractId);
+		ContractNoticeFileVO approval = uploadDocument(buildNotice(NOTICE_CONTRACT_APPROVAL, null, contractId));
 		fileMap.put(NOTICE_CONTRACT_APPROVAL, approval.getFileUrl());
 		String contractTextType = resolveContractTextType(contract);
-		ContractNoticeFileVO contractText = uploadNotice(contractTextType, null, contractId);
+		ContractNoticeFileVO contractText = uploadDocument(buildNotice(contractTextType, null, contractId));
 		fileMap.put(contractTextType, contractText.getFileUrl());
 		return fileMap;
 	}
@@ -179,15 +177,15 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			throw new ServiceException("仅应收账单可以生成逾期法务文书");
 		}
 		Map<String, String> fileMap = new LinkedHashMap<>();
-		ContractNoticeFileVO projectApproval = uploadNotice(NOTICE_PROJECT_APPROVAL, paymentId, null);
+		ContractNoticeFileVO projectApproval = uploadDocument(buildNotice(NOTICE_PROJECT_APPROVAL, paymentId, null));
 		fileMap.put(NOTICE_PROJECT_APPROVAL, projectApproval.getFileUrl());
-		ContractNoticeFileVO reminderNotice = uploadNotice(NOTICE_REMINDER, paymentId, null);
+		ContractNoticeFileVO reminderNotice = uploadDocument(buildNotice(NOTICE_REMINDER, paymentId, null));
 		fileMap.put(NOTICE_REMINDER, reminderNotice.getFileUrl());
-		ContractNoticeFileVO overdueNotice = uploadNotice(NOTICE_OVERDUE, paymentId, null);
+		ContractNoticeFileVO overdueNotice = uploadDocument(buildNotice(NOTICE_OVERDUE, paymentId, null));
 		fileMap.put(NOTICE_OVERDUE, overdueNotice.getFileUrl());
-		ContractNoticeFileVO legalLetter = uploadNotice(NOTICE_LEGAL, paymentId, null);
+		ContractNoticeFileVO legalLetter = uploadDocument(buildNotice(NOTICE_LEGAL, paymentId, null));
 		fileMap.put(NOTICE_LEGAL, legalLetter.getFileUrl());
-		ContractNoticeFileVO moveOutNotice = uploadNotice(NOTICE_MOVE_OUT, paymentId, null);
+		ContractNoticeFileVO moveOutNotice = uploadDocument(buildNotice(NOTICE_MOVE_OUT, paymentId, null));
 		fileMap.put(NOTICE_MOVE_OUT, moveOutNotice.getFileUrl());
 		return fileMap;
 	}
@@ -610,7 +608,8 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		return resolveContext(noticeType, paymentId, contractId, Collections.emptyMap());
 	}
 
-	private NoticeContext resolveContext(String noticeType, Long paymentId, Long contractId, Map<String, Object> formData) {
+	private NoticeContext resolveContext(String noticeType, Long paymentId, Long contractId,
+		Map<String, Object> formData) {
 		String normalized = normalizeNoticeType(noticeType);
 		ContractPayment payment = null;
 		Contract contract = null;
@@ -635,7 +634,6 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		if (contract == null) {
 			throw new ServiceException("合同不存在");
 		}
-		contractParkAccessService.assertAccessible(contract.getParkId());
 		if (needsPayment(normalized) && payment == null) {
 			throw new ServiceException("账单不存在");
 		}

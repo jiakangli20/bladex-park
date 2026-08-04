@@ -121,8 +121,7 @@ public class ApprovalFlowServiceImpl extends ServiceImpl<ApprovalFlowMapper, App
 		if (idList.isEmpty()) {
 			throw new ServiceException("请选择需要删除的审批流程");
 		}
-		Long parkId = AuthUtil.isAdministrator() ? null : currentParkId();
-		return baseMapper.deleteApprovalFlowByIds(idList, parkId, currentUserName()) > 0;
+		return baseMapper.deleteApprovalFlowByIds(idList, null, currentUserName()) > 0;
 	}
 
 	@Override
@@ -168,7 +167,7 @@ public class ApprovalFlowServiceImpl extends ServiceImpl<ApprovalFlowMapper, App
 	@Transactional(rollbackFor = Exception.class)
 	public ApprovalFlow copyFlow(Long flowId) {
 		ApprovalFlow source = requireReadableFlow(flowId);
-		Long targetParkId = AuthUtil.isAdministrator() ? Func.toLong(source.getParkId(), currentParkId()) : currentParkId();
+		Long targetParkId = source.getParkId();
 		ApprovalFlow copy = new ApprovalFlow();
 		copy.setParkId(targetParkId);
 		copy.setFlowName(source.getFlowName() + "（副本）");
@@ -185,12 +184,6 @@ public class ApprovalFlowServiceImpl extends ServiceImpl<ApprovalFlowMapper, App
 
 	private ApprovalFlow normalizeQuery(ApprovalFlow flow) {
 		ApprovalFlow query = Func.isEmpty(flow) ? new ApprovalFlow() : flow;
-		if (!AuthUtil.isAdministrator()) {
-			query.setParkId(currentParkId());
-		}
-		if (Boolean.TRUE.equals(query.getIncludeGlobal()) && Func.isEmpty(query.getParkId())) {
-			query.setParkId(currentParkId());
-		}
 		return query;
 	}
 
@@ -209,30 +202,19 @@ public class ApprovalFlowServiceImpl extends ServiceImpl<ApprovalFlowMapper, App
 		if (Func.isEmpty(flow) || STATUS_DISABLED.equals(flow.getStatus())) {
 			throw new ServiceException("审批流程不存在");
 		}
-		if (!AuthUtil.isAdministrator() && !currentParkId().equals(flow.getParkId())) {
-			throw new ServiceException("无权访问该审批流程");
-		}
 		return flow;
 	}
 
 	private ApprovalFlow requireWritableFlow(Long flowId) {
 		ApprovalFlow flow = requireReadableFlow(flowId);
-		if (!AuthUtil.isAdministrator() && !currentParkId().equals(flow.getParkId())) {
-			throw new ServiceException("无权操作该审批流程");
-		}
 		return flow;
 	}
 
 	private Long resolveWriteParkId(Long parkId) {
-		if (AuthUtil.isAdministrator() && Func.isNotEmpty(parkId) && parkId > 0) {
+		if (Func.isNotEmpty(parkId)) {
 			return parkId;
 		}
-		return currentParkId();
-	}
-
-	private Long currentParkId() {
-		Long deptId = Func.firstLong(AuthUtil.getDeptId());
-		return Func.isEmpty(deptId) ? 1L : deptId;
+		throw new ServiceException("所属园区不能为空");
 	}
 
 	private String currentUserName() {

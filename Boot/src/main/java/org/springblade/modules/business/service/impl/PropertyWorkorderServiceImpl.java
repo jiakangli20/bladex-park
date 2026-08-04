@@ -18,7 +18,6 @@ import org.springblade.modules.business.pojo.entity.ServiceWorkorder;
 import org.springblade.modules.business.pojo.entity.WorkorderLog;
 import org.springblade.modules.business.service.IPropertyServiceService;
 import org.springblade.modules.business.service.IPropertyWorkorderService;
-import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,14 +47,10 @@ public class PropertyWorkorderServiceImpl extends ServiceImpl<PropertyWorkorderM
 	private static final String SERVICE_STATUS_NORMAL = "0";
 
 	private final IPropertyServiceService propertyServiceService;
-	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public ServiceWorkorder selectWorkorderById(Long orderId) {
 		ServiceWorkorder workorder = baseMapper.selectWorkorderById(orderId);
-		if (Func.isNotEmpty(workorder)) {
-			parkDataAccessService.assertAccessible(workorder.getParkId());
-		}
 		if (Func.isEmpty(workorder)) {
 			throw new ServiceException("工单不存在");
 		}
@@ -144,8 +139,7 @@ public class PropertyWorkorderServiceImpl extends ServiceImpl<PropertyWorkorderM
 		if (orderIds.isEmpty()) {
 			throw new ServiceException("请选择需要删除的工单");
 		}
-		Long parkId = parkDataAccessService.scopedParkId(null);
-		return baseMapper.deleteWorkorderByIds(orderIds, parkId) > 0;
+		return baseMapper.deleteWorkorderByIds(orderIds, null) > 0;
 	}
 
 	@Override
@@ -273,7 +267,6 @@ public class PropertyWorkorderServiceImpl extends ServiceImpl<PropertyWorkorderM
 		if (Func.isEmpty(workorder)) {
 			throw new ServiceException("工单不存在");
 		}
-		parkDataAccessService.assertAccessible(workorder.getParkId());
 		return workorder;
 	}
 
@@ -362,7 +355,6 @@ public class PropertyWorkorderServiceImpl extends ServiceImpl<PropertyWorkorderM
 
 	private ServiceWorkorder normalizeQuery(ServiceWorkorder workorder) {
 		ServiceWorkorder query = Func.isEmpty(workorder) ? new ServiceWorkorder() : workorder;
-		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		if (Boolean.TRUE.equals(query.getMine())) {
 			query.setCurrentUser(currentUserName());
 		}
@@ -370,11 +362,10 @@ public class PropertyWorkorderServiceImpl extends ServiceImpl<PropertyWorkorderM
 	}
 
 	private Long resolveWriteParkId(Long parkId) {
-		Long scopedParkId = parkDataAccessService.scopedParkId(parkId);
-		if (Func.isEmpty(scopedParkId)) {
+		if (Func.isEmpty(parkId)) {
 			throw new ServiceException("请选择园区");
 		}
-		return scopedParkId;
+		return parkId;
 	}
 
 	private String currentUserName() {

@@ -52,7 +52,6 @@ import org.springblade.modules.contract.pojo.entity.ContractPaymentRecord;
 import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.pojo.vo.ContractStatsVO;
 import org.springblade.modules.contract.pojo.vo.ContractExpirySummaryVO;
-import org.springblade.modules.contract.service.ContractParkAccessService;
 import org.springblade.modules.contract.service.IContractService;
 import org.springblade.modules.park.mapper.RoomMapper;
 import org.springframework.stereotype.Service;
@@ -117,27 +116,21 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private final ContractExpiryRuleMapper contractExpiryRuleMapper;
 	private final RoomMapper roomMapper;
 	private final TaskService taskService;
-	private final ContractParkAccessService contractParkAccessService;
 
 	@Override
 	public IPage<Contract> selectContractPage(IPage<Contract> page, Contract contract) {
-		contract.setParkId(contractParkAccessService.scopedParkId(contract.getParkId()));
 		return page.setRecords(baseMapper.selectContractPage(page, contract));
 	}
 
 	@Override
 	public Contract selectContractById(Long contractId) {
 		Contract contract = baseMapper.selectContractById(contractId);
-		if (contract != null) {
-			contractParkAccessService.assertAccessible(contract.getParkId());
-		}
 		return contract;
 	}
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean submitContract(Contract contract) {
-		contract.setParkId(contractParkAccessService.scopedParkId(contract.getParkId()));
 		if (Func.isEmpty(contract.getContractId())) {
 			return createContract(contract);
 		}
@@ -309,20 +302,18 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 
 	@Override
 	public IPage<Contract> selectExpiringPage(IPage<Contract> page, Contract contract) {
-		contract.setParkId(contractParkAccessService.scopedParkId(contract.getParkId()));
 		return page.setRecords(baseMapper.selectExpiringPage(page, contract));
 	}
 
 	@Override
 	public ContractExpirySummaryVO expiringSummary(Contract contract) {
-		contract.setParkId(contractParkAccessService.scopedParkId(contract.getParkId()));
 		ContractExpirySummaryVO summary = baseMapper.selectExpiringSummary(contract);
 		return summary == null ? new ContractExpirySummaryVO() : summary;
 	}
 
 	@Override
 	public ContractStatsVO stats(Long parkId) {
-		ContractStatsVO stats = baseMapper.selectStats(contractParkAccessService.scopedParkId(parkId));
+		ContractStatsVO stats = baseMapper.selectStats(parkId);
 		return normalizeStats(stats);
 	}
 
@@ -357,7 +348,6 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 
 	@Override
 	public IPage<ContractPayment> selectPaymentPage(IPage<ContractPayment> page, ContractPayment payment) {
-		payment.setParkId(contractParkAccessService.scopedParkId(payment.getParkId()));
 		return page.setRecords(contractPaymentMapper.selectPaymentPage(page, payment));
 	}
 
@@ -488,7 +478,6 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	}
 
 	private boolean createContract(Contract contract, Long parentContractId) {
-		contract.setParkId(contractParkAccessService.scopedParkId(contract.getParkId()));
 		validateNewRelations(contract);
 		Date now = DateUtil.now();
 		if (Func.isBlank(contract.getContractNo())) {
@@ -599,7 +588,6 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		if (contract == null) {
 			throw new ServiceException("合同不存在");
 		}
-		contractParkAccessService.assertAccessible(contract.getParkId());
 		return contract;
 	}
 

@@ -147,9 +147,12 @@
                 :key="item.id || item.key"
                 :label="processOptionLabel(item)"
                 :value="item.key"
+				:disabled="!isProcessActive(item)"
               >
                 <span>{{ item.name }}</span>
-                <span class="option-extra">{{ item.key }} / v{{ item.version }}</span>
+				<span class="option-extra">
+				  {{ item.key }} / v{{ item.version }} / {{ isProcessActive(item) ? '已启用' : '已挂起' }}
+				</span>
               </el-option>
             </el-select>
           </el-form-item>
@@ -179,7 +182,7 @@
         </el-form>
         <template #footer>
           <el-button @click="startVisible = false">取消</el-button>
-		  <el-button type="primary" :disabled="!startForm.processDefKey || !startForm.opportunityId" @click="goStart"
+		  <el-button type="primary" :disabled="!canStartApproval" @click="goStart"
             >下一步</el-button
           >
         </template>
@@ -224,7 +227,7 @@ import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue
 import { downloadFile } from '@/utils/util';
 import { createNoticePreviewState, resolveDownloadFilename } from '@/utils/contract-notice';
 
-const DEFAULT_PROCESS_KEY = 'tenant_entry-1';
+const DEFAULT_PROCESS_KEY = 'entry';
 const TENANT_ENTRY_BUSINESS_TYPE = 'tenant_entry';
 const COPY_FORM_KEYS = ['wf_ex_TenantEntry', 'wf_ex_入驻'];
 
@@ -284,6 +287,16 @@ export default {
 		  viewBtn: Boolean(this.permission.settlement_project_approval_view),
 		  formBtn: Boolean(this.permission.settlement_project_approval_form),
 		};
+	  },
+	  selectedStartProcess() {
+		return this.processOptions.find(item => item.key === this.startForm.processDefKey);
+	  },
+	  canStartApproval() {
+		return Boolean(
+		  this.startForm.opportunityId &&
+		  this.selectedStartProcess &&
+		  this.isProcessActive(this.selectedStartProcess)
+		);
 	  },
   },
   created() {
@@ -533,21 +546,27 @@ export default {
     },
     loadProcessOptions() {
       this.processLoading = true;
-      getDeploymentList(1, -1, {
-        status: 1,
-      })
+      getDeploymentList(1, -1, {})
         .then(res => {
           const records = (res.data.data || {}).records || [];
-          this.processOptions = records.filter(item => this.isTenantEntryProcess(item));
+		  const categoryAnchor =
+			  records.find(item => `${item.key || ''}`.toLowerCase() === DEFAULT_PROCESS_KEY) ||
+			  records.find(item => this.isTenantEntryProcess(item));
+		  const category = categoryAnchor && categoryAnchor.category;
+		  this.processOptions = category
+			  ? records.filter(item => `${item.category || ''}` === `${category}`)
+			  : records.filter(item => this.isTenantEntryProcess(item));
           if (
             !this.startForm.processDefKey ||
-            !this.processOptions.some(item => item.key === this.startForm.processDefKey)
+			!this.processOptions.some(
+			  item => item.key === this.startForm.processDefKey && this.isProcessActive(item)
+			)
           ) {
             const preferred =
-              this.processOptions.find(item => item.key === DEFAULT_PROCESS_KEY) ||
-              this.processOptions.find(item => item.name && item.name.includes('入驻')) ||
-              this.processOptions[0];
-            this.startForm.processDefKey = preferred ? preferred.key : DEFAULT_PROCESS_KEY;
+			  this.processOptions.find(
+				item => item.key === DEFAULT_PROCESS_KEY && this.isProcessActive(item)
+			  ) || this.processOptions.find(item => this.isProcessActive(item));
+			this.startForm.processDefKey = preferred ? preferred.key : '';
           }
         })
         .finally(() => {
@@ -556,10 +575,18 @@ export default {
     },
 		isTenantEntryProcess(item = {}) {
 		  const key = `${item.key || ''}`.toLowerCase();
-		  return key === TENANT_ENTRY_BUSINESS_TYPE || key.startsWith(`${TENANT_ENTRY_BUSINESS_TYPE}-`);
+		  return (
+			key === DEFAULT_PROCESS_KEY ||
+			key === TENANT_ENTRY_BUSINESS_TYPE ||
+			key.startsWith(`${TENANT_ENTRY_BUSINESS_TYPE}-`)
+		  );
+		},
+		isProcessActive(item = {}) {
+		  return Number(item.status) === 1;
 		},
     processOptionLabel(item = {}) {
-      return `${item.name || item.key}${item.version ? ` v${item.version}` : ''}`;
+	  const status = this.isProcessActive(item) ? '已启用' : '已挂起';
+	  return `${item.name || item.key}${item.version ? ` v${item.version}` : ''}（${item.key}，${status}）`;
     },
     searchOpportunity(keyword) {
       this.opportunityLoading = true;
@@ -577,6 +604,10 @@ export default {
 		goStart() {
 		  if (!this.startForm.opportunityId) {
 			this.$message.warning('请选择需要发起审批的商机企业');
+			return;
+		  }
+		  if (!this.selectedStartProcess || !this.isProcessActive(this.selectedStartProcess)) {
+			this.$message.warning('请选择已启用的入驻审批流程');
 			return;
 		  }
       const formParams = {

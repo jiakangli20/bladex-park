@@ -37,7 +37,6 @@ import org.springblade.modules.approval.service.impl.WorkflowApprovalTraceServic
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractTemplateRenderService;
 import org.springblade.modules.contract.service.impl.ContractDocumentPreviewService;
-import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springblade.modules.resource.builder.OssBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
@@ -49,6 +48,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.io.BufferedInputStream;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -77,7 +77,8 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	private static final String STATUS_INITIAL = "INITIAL";
 	private static final String STATUS_DEAL = "DEAL";
 	private static final String BUSINESS_TYPE_TENANT_ENTRY = "tenant_entry";
-	private static final String PROCESS_KEY_TENANT_ENTRY_CUSTOM = "tenant_entry-1";
+	private static final String PROCESS_KEY_TENANT_ENTRY = "entry";
+	private static final String PROCESS_KEY_TENANT_ENTRY_CUSTOM_LEGACY = "tenant_entry-1";
 	private static final String TEMPLATE_TENANT_ENTRY_APPROVAL = "君联大厦招商管理办法2023/附件一：企业入驻审批表.docx";
 	private static final Set<String> OPPORTUNITY_FILE_SUFFIXES = Set.of("doc", "docx", "xls", "xlsx", "pdf", "jpg", "jpeg", "png");
 	private static final Set<String> DANGEROUS_SUFFIXES = Set.of("exe", "com", "dll", "msi", "bat", "cmd", "sh", "js", "jar", "php", "jsp", "html", "htm", "svg", "scr");
@@ -94,7 +95,6 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	private final ContractDocumentPreviewService contractDocumentPreviewService;
 	private final BackgroundInvestigationMapper backgroundInvestigationMapper;
 	private final CustomerMapper customerMapper;
-	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public BusinessOpportunity selectBusinessOpportunityById(Long opportunityId) {
@@ -132,7 +132,6 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean insertBusinessOpportunity(BusinessOpportunity opportunity) {
-		opportunity.setParkId(parkDataAccessService.scopedParkId(opportunity.getParkId()));
 		validateUniqueEnterpriseName(opportunity);
 		opportunity.setCreateBy(currentUserName());
 		opportunity.setCreateTime(DateUtil.now());
@@ -174,7 +173,6 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		}
 		// 园区归属不允许通过普通编辑迁移，避免背景调查、标签和后续审批形成跨园区关系。
 		opportunity.setParkId(old.getParkId());
-		parkDataAccessService.assertAccessible(opportunity.getParkId());
 		validateUniqueEnterpriseName(opportunity);
 		opportunity.setUpdateBy(currentUserName());
 		opportunity.setUpdateTime(DateUtil.now());
@@ -425,7 +423,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (StringUtil.isBlank(enterpriseName)) {
 			throw new ServiceException("请先填写企业名称");
 		}
-		Long scopedParkId = parkDataAccessService.scopedParkId(parkId);
+		Long scopedParkId = parkId;
 		BusinessOpportunity opportunity = baseMapper.selectOne(Wrappers.<BusinessOpportunity>lambdaQuery()
 			.eq(BusinessOpportunity::getEnterpriseName, enterpriseName.trim())
 			.eq(Func.isNotEmpty(scopedParkId), BusinessOpportunity::getParkId, scopedParkId)
@@ -445,7 +443,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 			throw new ServiceException("企业名称不能为空");
 		}
 		String enterpriseName = investigation.getEnterpriseName().trim();
-		Long scopedParkId = parkDataAccessService.scopedParkId(investigation.getParkId());
+		Long scopedParkId = investigation.getParkId();
 		BusinessOpportunity opportunity = investigation.getOpportunityId() == null ? null
 			: requireAccessibleOpportunity(investigation.getOpportunityId());
 		if (opportunity == null) {
@@ -470,7 +468,6 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 			if (customer == null || !DEL_FLAG_NORMAL.equals(customer.getDelFlag())) {
 				throw new ServiceException("关联客户不存在");
 			}
-			parkDataAccessService.assertAccessible(customer.getParkId());
 			if (opportunity != null && !java.util.Objects.equals(opportunity.getParkId(), customer.getParkId())) {
 				throw new ServiceException("商机与关联客户必须属于同一园区");
 			}
@@ -491,7 +488,6 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (Func.isEmpty(scopedParkId)) {
 			throw new ServiceException("未找到该企业所属园区，无法保存核验记录");
 		}
-		parkDataAccessService.assertAccessible(scopedParkId);
 		investigation.setInvestigationId(null);
 		investigation.setParkId(scopedParkId);
 		investigation.setEnterpriseName(enterpriseName);
@@ -595,7 +591,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		Map<String, String> summary = new LinkedHashMap<>();
 		summary.put("企业名称", value(preview.opportunity().getEnterpriseName()));
 		summary.put("文件格式", "Word");
-		List<String> missingFields = List.of("企业名称", "经营范围", "负责人", "联系方式")
+		List<String> missingFields = List.of("企业名称", "经营范围", "法人、联系方式")
 			.stream()
 			.filter(field -> StringUtil.isBlank(preview.fields().get(field)))
 			.toList();
@@ -650,6 +646,21 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 			opportunity.getFollowUser(),
 			opportunity.getCreateBy()
 		);
+		String department = firstNotBlank(variableText(variables, "handlerDept"), variableText(variables, "applicantDept"));
+		String legalContact = joinNonBlank("，",
+			firstNotBlank(variableText(variables, "legalRepresentative"), variableText(variables, "principalName"), opportunity.getContactName()),
+			firstNotBlank(variableText(variables, "legalPhone"), variableText(variables, "principalPhone"), opportunity.getContactPhone())
+		);
+		String financeContact = joinNonBlank("，",
+			firstNotBlank(variableText(variables, "financeContactName"), variableText(variables, "financialContactName")),
+			firstNotBlank(variableText(variables, "financeContactPhone"), variableText(variables, "financialContactPhone"))
+		);
+		String intentFloor = firstNotBlank(variableText(variables, "intentFloor"), variableText(variables, "leaseFloorArea"), formatArea(opportunity));
+		String rent = firstNotBlank(variableText(variables, "rent"), variableText(variables, "unitPrice"));
+		String description = firstNotBlank(variableText(variables, "situationDescription"), variableText(variables, "approvalMatter"), opportunity.getRemark(), opportunity.getMainBusiness());
+		fields.put("申请人", value(applicant));
+		fields.put("部门", value(department));
+		fields.put("申请日期", value(applyTime));
 		fields.put("企业名称", value(firstNotBlank(variableText(variables, "enterpriseName"), opportunity.getEnterpriseName())));
 		fields.put("申请时间", value(applyTime));
 		fields.put("股东信息", value(firstNotBlank(
@@ -664,14 +675,19 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		)));
 		fields.put("负责人", value(firstNotBlank(variableText(variables, "principalName"), opportunity.getContactName())));
 		fields.put("联系方式", value(firstNotBlank(variableText(variables, "principalPhone"), opportunity.getContactPhone())));
+		fields.put("税收", value(firstNotBlank(variableText(variables, "taxRevenue"), variableText(variables, "taxAmount"), variableText(variables, "taxDescription"))));
+		fields.put("法人、联系方式", value(legalContact));
+		fields.put("财务、联系方式", value(financeContact));
+		fields.put("情况说明", value(description));
+		fields.put("意向楼层", value(intentFloor));
+		fields.put("租金", value(rent));
 		fields.put("租赁楼层、面积", value(firstNotBlank(variableText(variables, "leaseFloorArea"), formatArea(opportunity))));
 		fields.put("免租期", value(variableText(variables, "rentFreePeriod")));
 		fields.put("单价（元）", value(variableText(variables, "unitPrice")));
 		fields.put("保证金（元）", value(variableText(variables, "deposit")));
 		fields.put("合同有效期", value(firstNotBlank(variableText(variables, "contractPeriod"), opportunity.getLeaseTermLabel())));
 		fields.put("经办人", value(applicant));
-		fields.put("部门", value(firstNotBlank(variableText(variables, "handlerDept"), variableText(variables, "applicantDept"))));
-		fields.put("审批事项", value(firstNotBlank(variableText(variables, "approvalMatter"), opportunity.getRemark(), opportunity.getMainBusiness())));
+		fields.put("审批事项", value(description));
 		return fields;
 	}
 
@@ -702,8 +718,9 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		}
 		String processDefinitionKey = processInstance.getProcessDefinitionKey();
 		String businessType = variableText(variables, "businessType");
-		boolean tenantEntryProcess = BUSINESS_TYPE_TENANT_ENTRY.equalsIgnoreCase(processDefinitionKey)
-			|| PROCESS_KEY_TENANT_ENTRY_CUSTOM.equalsIgnoreCase(processDefinitionKey)
+		boolean tenantEntryProcess = PROCESS_KEY_TENANT_ENTRY.equalsIgnoreCase(processDefinitionKey)
+			|| BUSINESS_TYPE_TENANT_ENTRY.equalsIgnoreCase(processDefinitionKey)
+			|| PROCESS_KEY_TENANT_ENTRY_CUSTOM_LEGACY.equalsIgnoreCase(processDefinitionKey)
 			|| (StringUtil.isNotBlank(processDefinitionKey)
 			&& processDefinitionKey.toLowerCase(Locale.ROOT).startsWith(BUSINESS_TYPE_TENANT_ENTRY + "-"));
 		if (!tenantEntryProcess) {
@@ -743,7 +760,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 
 	@Override
 	public Map<String, Object> selectOpportunityStatistics() {
-		Map<String, Object> statistics = baseMapper.selectOpportunityStatistics(parkDataAccessService.scopedParkId(null));
+		Map<String, Object> statistics = baseMapper.selectOpportunityStatistics(null);
 		return Func.isEmpty(statistics) ? Collections.emptyMap() : statistics;
 	}
 
@@ -799,7 +816,6 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 			if (Func.isEmpty(customer) || !DEL_FLAG_NORMAL.equals(customer.getDelFlag())) {
 				throw new ServiceException("关联客户不存在");
 			}
-			parkDataAccessService.assertAccessible(customer.getParkId());
 			if (!java.util.Objects.equals(opportunity.getParkId(), customer.getParkId())) {
 				throw new ServiceException("商机与关联客户必须属于同一园区");
 			}
@@ -844,7 +860,6 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 
 	private BusinessOpportunity normalizeQuery(BusinessOpportunity opportunity) {
 		BusinessOpportunity query = Func.isEmpty(opportunity) ? new BusinessOpportunity() : opportunity;
-		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		return query;
 	}
 
@@ -853,7 +868,6 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (Func.isEmpty(opportunity)) {
 			throw new ServiceException("商机不存在");
 		}
-		parkDataAccessService.assertAccessible(opportunity.getParkId());
 		return opportunity;
 	}
 
@@ -934,6 +948,18 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 
 	private String value(String value) {
 		return StringUtil.isBlank(value) ? "-" : value;
+	}
+
+	private String joinNonBlank(String delimiter, String... values) {
+		if (values == null) {
+			return null;
+		}
+		List<String> parts = Arrays.stream(values)
+			.filter(StringUtil::isNotBlank)
+			.map(String::trim)
+			.filter(item -> !"-".equals(item))
+			.toList();
+		return parts.isEmpty() ? null : String.join(delimiter, parts);
 	}
 
 	private String formatDate(Date date) {

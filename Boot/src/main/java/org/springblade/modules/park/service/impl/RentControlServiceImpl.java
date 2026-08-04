@@ -47,7 +47,6 @@ import org.springblade.modules.park.service.IBuildingService;
 import org.springblade.modules.park.service.IFloorService;
 import org.springblade.modules.park.service.IRentControlService;
 import org.springblade.modules.park.service.IRoomService;
-import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springblade.modules.park.pojo.entity.Park;
 import org.springblade.modules.park.service.IParkService;
 import org.springframework.stereotype.Service;
@@ -82,11 +81,9 @@ public class RentControlServiceImpl implements IRentControlService {
 	private final ICustomerService customerService;
 	private final IContractService contractService;
 	private final IPaymentService paymentService;
-	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public Map<String, Object> getBoard(Long parkId, Long buildingId, Integer floorNo, String keyword, String searchType, String status, String orientation, boolean includeTree) {
-		parkId = parkDataAccessService.scopedParkId(parkId);
 		Building buildingQuery = new Building();
 		buildingQuery.setParkId(parkId);
 		if ("building".equals(searchType) && hasText(keyword)) {

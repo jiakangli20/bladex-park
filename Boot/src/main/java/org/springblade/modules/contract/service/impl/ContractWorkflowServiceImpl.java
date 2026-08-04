@@ -48,7 +48,6 @@ import org.springblade.modules.contract.pojo.entity.ContractLog;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.entity.ContractWorkflowRecord;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
-import org.springblade.modules.contract.service.ContractParkAccessService;
 import org.springblade.modules.contract.service.IContractNoticeService;
 import org.springblade.modules.contract.service.IContractService;
 import org.springblade.modules.contract.service.IContractWorkflowService;
@@ -155,11 +154,9 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 	private final IContractNoticeService contractNoticeService;
 	private final IContractService contractService;
 	private final TaskService taskService;
-	private final ContractParkAccessService contractParkAccessService;
 
 	@Override
 	public IPage<ContractWorkflowRecord> selectRecordPage(IPage<ContractWorkflowRecord> page, ContractWorkflowRecord record) {
-		record.setParkId(contractParkAccessService.scopedParkId(record.getParkId()));
 		return page.setRecords(baseMapper.selectRecordPage(page, record).stream()
 			.map(this::enrichProcessAttachments)
 			.toList());
@@ -374,10 +371,6 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		record.setCustomerId(contract == null ? null : contract.getCustomerId());
 		record.setRoomIds(contract == null ? null : limit(firstNotBlank(contract.getRoomIds(),
 			contract.getRoomId() == null ? null : String.valueOf(contract.getRoomId())), 500));
-		if (contract != null) {
-			contractParkAccessService.assertAccessible(contract.getParkId());
-			validateWorkflowStarterAccess(notice, contract);
-		}
 		record.setTemplateKey(limit(firstNotBlank(record.getTemplateKey(), getString(variables, "templateKey", null), businessType), 128));
 		record.setFormKey(limit(firstNotBlank(record.getFormKey(), getString(variables, "formKey", null)), 128));
 		record.setFormDataJson(resolveFormDataJson(variables, record.getFormDataJson()));
@@ -388,20 +381,6 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 	private void assertSameBusinessId(String businessName, Long suppliedId, Long authoritativeId) {
 		if (suppliedId != null && authoritativeId != null && !suppliedId.equals(authoritativeId)) {
 			throw new ServiceException("流程" + businessName + "ID与业务主键不一致");
-		}
-	}
-
-	private void validateWorkflowStarterAccess(WfNoticeDTO notice, Contract contract) {
-		if (notice == null || START != notice.getType() || contract == null || notice.getStartUser() == null) {
-			return;
-		}
-		WfUser startUser = notice.getStartUser();
-		if ("admin".equalsIgnoreCase(Func.toStr(startUser.getAccount(), ""))) {
-			return;
-		}
-		Long starterParkId = Func.firstLong(startUser.getDeptId());
-		if (starterParkId != null && !starterParkId.equals(contract.getParkId())) {
-			throw new ServiceException("无权发起其他园区的合同流程");
 		}
 	}
 
@@ -1308,7 +1287,6 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		if (contract == null) {
 			throw new ServiceException("合同不存在");
 		}
-		contractParkAccessService.assertAccessible(contract.getParkId());
 	}
 
 	private void assertRecordAccessible(ContractWorkflowRecord record) {
@@ -1319,7 +1297,6 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			assertContractAccessible(record.getContractId());
 			return;
 		}
-		contractParkAccessService.assertAccessible(record.getParkId());
 	}
 
 	private String currentUserName(WfNoticeDTO notice) {

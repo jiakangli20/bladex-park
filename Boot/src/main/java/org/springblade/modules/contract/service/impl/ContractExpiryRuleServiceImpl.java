@@ -38,7 +38,6 @@ import org.springblade.modules.contract.mapper.ContractMapper;
 import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractExpiryRule;
 import org.springblade.modules.contract.service.IContractExpiryRuleService;
-import org.springblade.modules.contract.service.ContractParkAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,12 +57,10 @@ public class ContractExpiryRuleServiceImpl extends ServiceImpl<ContractExpiryRul
 	private static final String DELETED_FLAG = "1";
 
 	private final ContractMapper contractMapper;
-	private final ContractParkAccessService contractParkAccessService;
 
 	@Override
 	public IPage<ContractExpiryRule> selectRulePage(IPage<ContractExpiryRule> page, ContractExpiryRule rule) {
-		Long parkId = AuthUtil.isAdministrator() ? null : contractParkAccessService.currentParkId();
-		return baseMapper.selectRulePage(page, rule == null ? null : rule.getRuleName(), parkId);
+		return baseMapper.selectRulePage(page, rule == null ? null : rule.getRuleName(), null);
 	}
 
 	@Override
@@ -138,13 +135,10 @@ public class ContractExpiryRuleServiceImpl extends ServiceImpl<ContractExpiryRul
 		if (buildingIds.isEmpty()) {
 			throw new ServiceException("请选择有效的关联楼宇");
 		}
-		Long parkId = AuthUtil.isAdministrator() ? null : contractParkAccessService.currentParkId();
 		for (Long buildingId : buildingIds) {
-			Long count = parkId == null
-				? contractMapper.existsBuilding(buildingId)
-				: contractMapper.existsBuildingInPark(buildingId, parkId);
+			Long count = contractMapper.existsBuilding(buildingId);
 			if (count == null || count == 0) {
-				throw new ServiceException(parkId == null ? "存在无效的关联楼宇" : "存在不属于当前园区的关联楼宇");
+				throw new ServiceException("存在无效的关联楼宇");
 			}
 		}
 	}

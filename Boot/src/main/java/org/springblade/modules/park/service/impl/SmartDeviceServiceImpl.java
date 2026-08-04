@@ -19,7 +19,6 @@ import org.springblade.modules.park.pojo.entity.SmartDevice;
 import org.springblade.modules.park.service.IBuildingService;
 import org.springblade.modules.park.service.IRoomService;
 import org.springblade.modules.park.service.ISmartDeviceService;
-import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,26 +42,20 @@ public class SmartDeviceServiceImpl extends ServiceImpl<SmartDeviceMapper, Smart
 
 	private final IBuildingService buildingService;
 	private final IRoomService roomService;
-	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public SmartDevice selectDeviceById(Long deviceId) {
 		SmartDevice device = baseMapper.selectDeviceById(deviceId);
-		if (device != null) {
-			parkDataAccessService.assertAccessible(device.getParkId());
-		}
 		return device;
 	}
 
 	@Override
 	public IPage<SmartDevice> selectDevicePage(IPage<SmartDevice> page, SmartDevice device) {
-		device.setParkId(parkDataAccessService.scopedParkId(device.getParkId()));
 		return page.setRecords(baseMapper.selectDevicePage(page, device));
 	}
 
 	@Override
 	public Kv selectDeviceStatistics(SmartDevice device) {
-		device.setParkId(parkDataAccessService.scopedParkId(device.getParkId()));
 		Map<String, Object> statistics = baseMapper.selectDeviceStatistics(device);
 		return Kv.create()
 			.set("totalCount", toLong(statistics, "totalCount"))
@@ -73,7 +66,7 @@ public class SmartDeviceServiceImpl extends ServiceImpl<SmartDeviceMapper, Smart
 
 	@Override
 	public List<Map<String, Object>> selectDeviceTypeStatistics() {
-		return baseMapper.selectDeviceTypeStatistics(parkDataAccessService.scopedParkId(null));
+		return baseMapper.selectDeviceTypeStatistics(null);
 	}
 
 	@Override
@@ -206,7 +199,6 @@ public class SmartDeviceServiceImpl extends ServiceImpl<SmartDeviceMapper, Smart
 		if (device.getParkId() == null) {
 			throw new ServiceException("请选择所属园区");
 		}
-		parkDataAccessService.assertAccessible(device.getParkId());
 	}
 
 	private String currentUserName() {

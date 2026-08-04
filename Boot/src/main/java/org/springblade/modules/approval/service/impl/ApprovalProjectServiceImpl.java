@@ -31,7 +31,6 @@ import org.springblade.modules.business.pojo.entity.BusinessOpportunity;
 import org.springblade.modules.business.service.ICustomerService;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractTemplateRenderService;
-import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,7 +74,6 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 	private final ICustomerService customerService;
 	private final BusinessOpportunityMapper businessOpportunityMapper;
 	private final IContractTemplateRenderService contractTemplateRenderService;
-	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public ApprovalProject selectApprovalProjectById(Long projectId) {
@@ -157,8 +155,7 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 		if (idList.isEmpty()) {
 			throw new ServiceException("请选择需要删除的审批项目");
 		}
-		Long parkId = parkDataAccessService.scopedParkId(null);
-		return baseMapper.deleteApprovalProjectByIds(idList, parkId, currentUserName()) > 0;
+		return baseMapper.deleteApprovalProjectByIds(idList, null, currentUserName()) > 0;
 	}
 
 	@Override
@@ -306,14 +303,12 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 	@Override
 	public List<ApprovalMaterial> selectApprovalMaterialList(ApprovalMaterial material) {
 		ApprovalMaterial query = Func.isEmpty(material) ? new ApprovalMaterial() : material;
-		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		return approvalMaterialMapper.selectApprovalMaterialList(query);
 	}
 
 	@Override
 	public List<ApprovalLog> selectApprovalLogList(ApprovalLog log) {
 		ApprovalLog query = Func.isEmpty(log) ? new ApprovalLog() : log;
-		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		return approvalLogMapper.selectApprovalLogList(query);
 	}
 
@@ -331,8 +326,24 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 	private Map<String, String> createTenantEntryApprovalFields(ApprovalProject project, BusinessOpportunity opportunity) {
 		Map<String, String> fields = new LinkedHashMap<>();
 		String enterpriseName = firstNotBlank(project.getEnterpriseName(), opportunity == null ? null : opportunity.getEnterpriseName());
+		String applicant = firstNotBlank(project.getApplicant(), project.getCreateBy(), opportunity == null ? null : opportunity.getFollowUser());
+		String applyDate = formatDate(firstNotNull(project.getApplicantTime(), project.getCreateTime()));
+		String legalContact = joinNonBlank("，",
+			firstNotBlank(project.getResponsiblePerson(), opportunity == null ? null : opportunity.getContactName()),
+			firstNotBlank(project.getContactPhone(), opportunity == null ? null : opportunity.getContactPhone())
+		);
+		String intentFloor = formatLeaseFloorArea(project, opportunity);
+		String description = firstNotBlank(
+			project.getApprovalMatter(),
+			project.getSummary(),
+			opportunity == null ? null : opportunity.getRemark(),
+			enterpriseName == null ? null : enterpriseName + " 入驻审批申请"
+		);
+		fields.put("申请人", value(applicant));
+		fields.put("部门", value(project.getApplicantDept()));
+		fields.put("申请日期", applyDate);
 		fields.put("企业名称", value(enterpriseName));
-		fields.put("申请时间", formatDate(firstNotNull(project.getApplicantTime(), project.getCreateTime())));
+		fields.put("申请时间", applyDate);
 		fields.put("股东信息", value(firstNotBlank(
 			project.getShareholderInfo(),
 			opportunity == null ? null : opportunity.getEquityStructure(),
@@ -351,19 +362,19 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 			project.getContactPhone(),
 			opportunity == null ? null : opportunity.getContactPhone()
 		)));
-		fields.put("租赁楼层、面积", value(formatLeaseFloorArea(project, opportunity)));
+		fields.put("税收", "-");
+		fields.put("法人、联系方式", value(legalContact));
+		fields.put("财务、联系方式", "-");
+		fields.put("情况说明", value(description));
+		fields.put("意向楼层", value(intentFloor));
+		fields.put("租金", formatMoney(project.getRentPrice()));
+		fields.put("租赁楼层、面积", value(intentFloor));
 		fields.put("免租期", value(project.getRentFreePeriod()));
 		fields.put("单价（元）", formatMoney(project.getRentPrice()));
 		fields.put("保证金（元）", formatMoney(project.getDeposit()));
 		fields.put("合同有效期", formatContractPeriod(project, opportunity));
-		fields.put("经办人", value(firstNotBlank(project.getApplicant(), project.getCreateBy(), opportunity == null ? null : opportunity.getFollowUser())));
-		fields.put("部门", value(project.getApplicantDept()));
-		fields.put("审批事项", value(firstNotBlank(
-			project.getApprovalMatter(),
-			project.getSummary(),
-			opportunity == null ? null : opportunity.getRemark(),
-			enterpriseName == null ? null : enterpriseName + " 入驻审批申请"
-		)));
+		fields.put("经办人", value(applicant));
+		fields.put("审批事项", value(description));
 		return fields;
 	}
 
@@ -451,7 +462,6 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 
 	private ApprovalProject normalizeQuery(ApprovalProject project) {
 		ApprovalProject query = Func.isEmpty(project) ? new ApprovalProject() : project;
-		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		query.setCurrentUser(currentUserName());
 		query.setAdmin(AuthUtil.isAdministrator());
 		if (StringUtil.isBlank(query.getScope())) {
@@ -465,7 +475,6 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 		if (Func.isEmpty(project) || STATUS_DELETED.equals(project.getProcessStatus()) || "1".equals(project.getDelFlag())) {
 			throw new ServiceException("审批项目不存在");
 		}
-		parkDataAccessService.assertAccessible(project.getParkId());
 		return project;
 	}
 
@@ -603,15 +612,10 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 	}
 
 	private Long resolveWriteParkId(Long parkId) {
-		Long scopedParkId = parkDataAccessService.scopedParkId(parkId);
-		if (Func.isEmpty(scopedParkId)) {
+		if (Func.isEmpty(parkId)) {
 			throw new ServiceException("所属园区不能为空");
 		}
-		return scopedParkId;
-	}
-
-	private Long currentParkId() {
-		return parkDataAccessService.currentParkId();
+		return parkId;
 	}
 
 	private String currentUserName() {

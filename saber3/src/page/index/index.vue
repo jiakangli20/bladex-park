@@ -149,6 +149,9 @@ export default {
     },
     findFirstPagePath(menuList = []) {
       for (const menuItem of menuList) {
+        if (menuItem.path === website.fistPage.path) {
+          continue;
+        }
         const children = menuItem.children || [];
         if (children.length) {
           const childPath = this.findFirstPagePath(children);

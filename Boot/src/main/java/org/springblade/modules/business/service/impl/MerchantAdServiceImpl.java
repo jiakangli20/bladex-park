@@ -17,7 +17,6 @@ import org.springblade.modules.business.pojo.entity.MerchantAd;
 import org.springblade.modules.business.pojo.entity.Merchant;
 import org.springblade.modules.business.service.IMerchantAdService;
 import org.springblade.modules.business.service.IMerchantService;
-import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,19 +40,14 @@ public class MerchantAdServiceImpl extends ServiceImpl<MerchantAdMapper, Merchan
 	private static final String LINK_TYPE_URL = "url";
 
 	private final IMerchantService merchantService;
-	private final ParkDataAccessService parkDataAccessService;
 
-	public MerchantAdServiceImpl(IMerchantService merchantService, ParkDataAccessService parkDataAccessService) {
+	public MerchantAdServiceImpl(IMerchantService merchantService) {
 		this.merchantService = merchantService;
-		this.parkDataAccessService = parkDataAccessService;
 	}
 
 	@Override
 	public MerchantAd selectAdById(Long adId) {
 		MerchantAd ad = baseMapper.selectAdById(adId);
-		if (Func.isNotEmpty(ad)) {
-			parkDataAccessService.assertAccessible(ad.getParkId());
-		}
 		if (Func.isEmpty(ad)) {
 			throw new ServiceException("广告不存在");
 		}
@@ -106,7 +100,7 @@ public class MerchantAdServiceImpl extends ServiceImpl<MerchantAdMapper, Merchan
 			throw new ServiceException("广告不存在");
 		}
 		MerchantAd old = requireWritableAd(ad.getAdId());
-		Long targetParkId = resolveWriteParkId(AuthUtil.isAdministrator() && Func.isNotEmpty(ad.getParkId())
+		Long targetParkId = resolveWriteParkId(Func.isNotEmpty(ad.getParkId()) && ad.getParkId() > 0
 			? ad.getParkId() : old.getParkId());
 		MerchantAd merged = mergeForValidate(old, ad);
 		merged.setParkId(targetParkId);
@@ -130,8 +124,7 @@ public class MerchantAdServiceImpl extends ServiceImpl<MerchantAdMapper, Merchan
 		if (adIds.isEmpty()) {
 			throw new ServiceException("请选择需要删除的广告");
 		}
-		Long parkId = parkDataAccessService.scopedParkId(null);
-		return baseMapper.deleteAdByIds(adIds, parkId, currentUserName()) > 0;
+		return baseMapper.deleteAdByIds(adIds, null, currentUserName()) > 0;
 	}
 
 	@Override
@@ -152,7 +145,6 @@ public class MerchantAdServiceImpl extends ServiceImpl<MerchantAdMapper, Merchan
 		if (Func.isEmpty(ad)) {
 			throw new ServiceException("广告不存在");
 		}
-		parkDataAccessService.assertAccessible(ad.getParkId());
 		return ad;
 	}
 
@@ -212,16 +204,14 @@ public class MerchantAdServiceImpl extends ServiceImpl<MerchantAdMapper, Merchan
 
 	private MerchantAd normalizeQuery(MerchantAd ad) {
 		MerchantAd query = Func.isEmpty(ad) ? new MerchantAd() : ad;
-		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		return query;
 	}
 
 	private Long resolveWriteParkId(Long parkId) {
-		Long scopedParkId = parkDataAccessService.scopedParkId(parkId);
-		if (Func.isEmpty(scopedParkId)) {
+		if (Func.isEmpty(parkId)) {
 			throw new ServiceException("请选择园区");
 		}
-		return scopedParkId;
+		return parkId;
 	}
 
 	private String currentUserName() {

@@ -160,9 +160,6 @@ public class PaymentServiceImpl implements IPaymentService {
 		if (contract == null) {
 			throw new ServiceException("关联合同不存在");
 		}
-		if (!AuthUtil.isAdministrator() && !Objects.equals(currentParkId(), contract.getParkId())) {
-			throw new ServiceException("无权为该园区合同创建账单");
-		}
 		String direction = normalizeDirection(payment.getDirection());
 		if (DIRECTION_PAYABLE.equals(direction)
 			&& FEE_TYPE_DEPOSIT_REFUND.equals(Func.toStr(payment.getFeeType(), "").trim())) {
@@ -208,8 +205,7 @@ public class PaymentServiceImpl implements IPaymentService {
 
 	@Override
 	public List<Contract> contractOptions(String keyword) {
-		Long parkId = AuthUtil.isAdministrator() ? null : currentParkId();
-		List<Contract> contracts = paymentMapper.selectContractOptions(StringUtil.isBlank(keyword) ? null : keyword.trim(), parkId);
+		List<Contract> contracts = paymentMapper.selectContractOptions(StringUtil.isBlank(keyword) ? null : keyword.trim(), null);
 		attachContractRooms(contracts);
 		return contracts;
 	}
@@ -749,15 +745,6 @@ public class PaymentServiceImpl implements IPaymentService {
 		List<User> users = userService.list(Wrappers.<User>lambdaQuery()
 			.eq(User::getTenantId, tenantId)
 			.eq(User::getStatus, 1));
-		if (!AuthUtil.isAdministrator()) {
-			Long parkId = currentParkId();
-			Set<Long> parkDeptIds = new LinkedHashSet<>();
-			parkDeptIds.add(parkId);
-			deptService.getDeptChild(parkId).forEach(dept -> parkDeptIds.add(dept.getId()));
-			users = users.stream()
-				.filter(user -> Func.toLongList(user.getDeptId()).stream().anyMatch(parkDeptIds::contains))
-				.toList();
-		}
 		List<Role> roles = roleService.list(Wrappers.<Role>lambdaQuery()
 			.eq(Role::getTenantId, tenantId)
 			.eq(Role::getStatus, 1));
@@ -1170,9 +1157,7 @@ public class PaymentServiceImpl implements IPaymentService {
 
 	private ContractPayment normalizeQuery(ContractPayment payment) {
 		ContractPayment query = payment == null ? new ContractPayment() : payment;
-		if (!AuthUtil.isAdministrator()) {
-			query.setParkId(currentParkId());
-		} else if (query.getParkId() != null && query.getParkId() <= 0) {
+		if (query.getParkId() != null && query.getParkId() <= 0) {
 			query.setParkId(null);
 		}
 		return query;
@@ -1180,9 +1165,7 @@ public class PaymentServiceImpl implements IPaymentService {
 
 	private PaymentNoticeVO normalizeNoticeQuery(PaymentNoticeVO query) {
 		PaymentNoticeVO normalized = query == null ? new PaymentNoticeVO() : query;
-		if (!AuthUtil.isAdministrator()) {
-			normalized.setParkId(currentParkId());
-		} else if (normalized.getParkId() != null && normalized.getParkId() <= 0) {
+		if (normalized.getParkId() != null && normalized.getParkId() <= 0) {
 			normalized.setParkId(null);
 		}
 		return normalized;
@@ -1210,12 +1193,7 @@ public class PaymentServiceImpl implements IPaymentService {
 	}
 
 	private void assertAccessible(ContractPayment payment) {
-		if (AuthUtil.isAdministrator()) {
-			return;
-		}
-		if (!Objects.equals(currentParkId(), payment.getParkId())) {
-			throw new ServiceException("无权操作该园区账单");
-		}
+		// 账单可见范围不再与用户部门绑定，操作权限由菜单和按钮权限控制。
 	}
 
 	private PaymentNotice getOrCreateNotice(Long paymentId) {
@@ -1314,14 +1292,6 @@ public class PaymentServiceImpl implements IPaymentService {
 		contractLog.setOperator(currentUserName());
 		contractLog.setOperateTime(DateUtil.now());
 		contractLogMapper.insert(contractLog);
-	}
-
-	private Long currentParkId() {
-		Long deptId = Func.firstLong(AuthUtil.getDeptId());
-		if (Func.isEmpty(deptId)) {
-			throw new ServiceException("当前账号未绑定所属园区");
-		}
-		return deptId;
 	}
 
 	private String currentUserName() {

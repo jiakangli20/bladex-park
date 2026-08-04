@@ -45,7 +45,6 @@ import org.springblade.modules.contract.pojo.vo.ContractArchiveDetailVO;
 import org.springblade.modules.contract.pojo.vo.ContractArchiveVO;
 import org.springblade.modules.contract.pojo.vo.ContractChangeArchiveVO;
 import org.springblade.modules.contract.pojo.vo.TerminationArchiveVO;
-import org.springblade.modules.contract.service.ContractParkAccessService;
 import org.springblade.modules.contract.service.IContractArchiveService;
 import org.springblade.modules.contract.service.IContractNoticeService;
 import org.springframework.stereotype.Service;
@@ -78,11 +77,9 @@ public class ContractArchiveServiceImpl implements IContractArchiveService {
 	private final ContractLogMapper contractLogMapper;
 	private final ContractSupplementAgreementMapper contractSupplementAgreementMapper;
 	private final IContractNoticeService contractNoticeService;
-	private final ContractParkAccessService contractParkAccessService;
 
 	@Override
 	public IPage<ContractArchiveVO> selectArchivePage(IPage<ContractArchiveVO> page, ContractArchiveVO contract) {
-		contract.setParkId(contractParkAccessService.scopedParkId(contract.getParkId()));
 		return page.setRecords(contractArchiveMapper.selectArchivePage(page, contract));
 	}
 
@@ -207,7 +204,6 @@ public class ContractArchiveServiceImpl implements IContractArchiveService {
 		if (contract == null) {
 			throw new ServiceException("合同不存在");
 		}
-		contractParkAccessService.assertAccessible(contract.getParkId());
 		return contract;
 	}
 

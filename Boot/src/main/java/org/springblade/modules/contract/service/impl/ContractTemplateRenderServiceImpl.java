@@ -73,6 +73,7 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 	private static final String EXACT_REPLACEMENT_PREFIX = "__exact__:";
 	private static final String WORD_NAMESPACE = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 	private static final String XML_NAMESPACE = "http://www.w3.org/XML/1998/namespace";
+	private static final String TENANT_ENTRY_APPROVAL_TEMPLATE = "附件一：企业入驻审批表.docx";
 	private final OssBuilder ossBuilder;
 
 	@Override
@@ -116,12 +117,17 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		try (InputStream input = Files.newInputStream(templatePath);
 			 XWPFDocument document = new XWPFDocument(input);
 			 ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+				String templateFileName = templatePath.getFileName().toString();
 				replaceParagraphs(document.getParagraphs(), replacements);
 				replaceStructuredDocumentTagParagraphs(document.getDocument().getDomNode(), replacements);
 				fillInlineFieldParagraphs(document.getParagraphs(), fields);
 				fillSignatureDate(document.getParagraphs(), fields);
-				for (XWPFTable table : document.getTables()) {
-					fillDocxTable(table, fields, replacements);
+				if (TENANT_ENTRY_APPROVAL_TEMPLATE.equals(templateFileName)) {
+					fillTenantEntryApprovalTemplate(document, fields, replacements);
+				} else {
+					for (XWPFTable table : document.getTables()) {
+						fillDocxTable(table, fields, replacements);
+					}
 				}
 				document.getHeaderList().forEach(header -> {
 					replaceParagraphs(header.getParagraphs(), replacements);
@@ -135,9 +141,135 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 					fillSignatureDate(footer.getParagraphs(), fields);
 					footer.getTables().forEach(table -> fillDocxTable(table, fields, replacements));
 				});
-			ensureTemplatePagination(document, templatePath.getFileName().toString());
+			ensureTemplatePagination(document, templateFileName);
 			document.write(output);
 			return output.toByteArray();
+		}
+	}
+
+	private void fillTenantEntryApprovalTemplate(XWPFDocument document, Map<String, String> fields,
+												 Map<String, String> replacements) {
+		if (document == null || document.getTables().isEmpty()) {
+			return;
+		}
+		XWPFTable table = document.getTables().get(0);
+		if (table.getNumberOfRows() < 12) {
+			fillDocxTable(table, fields, replacements);
+			return;
+		}
+		Map<String, String> templateLabels = tenantEntryApprovalLabels();
+		for (XWPFTableRow row : table.getRows()) {
+			for (XWPFTableCell cell : row.getTableCells()) {
+				replaceParagraphs(cell.getParagraphs(), replacements);
+			}
+		}
+		setRowCellText(table.getRow(0), 0, templateLabels.get("title"));
+		setRowCellText(table.getRow(1), 0, templateLabels.get("applicant"));
+		setRowCellText(table.getRow(1), 2, templateLabels.get("department"));
+		setRowCellText(table.getRow(1), 4, templateLabels.get("applyDate"));
+		setRowCellText(table.getRow(2), 0, templateLabels.get("enterpriseName"));
+		setRowCellText(table.getRow(3), 0, templateLabels.get("shareholderInfo"));
+		setRowCellText(table.getRow(4), 0, templateLabels.get("businessScope"));
+		setRowCellText(table.getRow(5), 0, templateLabels.get("taxRevenue"));
+		setRowCellText(table.getRow(6), 0, templateLabels.get("legalContact"));
+		setRowCellText(table.getRow(6), 2, templateLabels.get("financeContact"));
+		setRowCellText(table.getRow(7), 0, templateLabels.get("description"));
+		setRowCellText(table.getRow(8), 0, templateLabels.get("intentFloor"));
+		setRowCellText(table.getRow(8), 2, templateLabels.get("rent"));
+		setRowCellText(table.getRow(8), 4, templateLabels.get("rentFreePeriod"));
+		setRowCellText(table.getRow(9), 0, templateLabels.get("departmentApproval"));
+		setRowCellText(table.getRow(10), 0, templateLabels.get("leaderApproval"));
+		setRowCellText(table.getRow(11), 0, templateLabels.get("generalManagerApproval"));
+		setRowCellText(table.getRow(1), 1, fields.get("申请人"));
+		setRowCellText(table.getRow(1), 3, fields.get("部门"));
+		setRowCellText(table.getRow(1), 5, fields.get("申请日期"));
+		setRowCellText(table.getRow(2), 1, fields.get("企业名称"));
+		setRowCellText(table.getRow(3), 1, fields.get("股东信息"));
+		setRowCellText(table.getRow(4), 1, fields.get("经营范围"));
+		setRowCellText(table.getRow(5), 1, fields.get("税收"));
+		setRowCellText(table.getRow(6), 1, fields.get("法人、联系方式"));
+		setRowCellText(table.getRow(6), 3, fields.get("财务、联系方式"));
+		setRowCellText(table.getRow(7), 1, fields.get("情况说明"));
+		setRowCellText(table.getRow(8), 1, fields.get("意向楼层"));
+		setRowCellText(table.getRow(8), 3, fields.get("租金"));
+		setRowCellText(table.getRow(8), 5, fields.get("免租期"));
+		setTenantEntryApprovalCell(table.getRow(9).getCell(1), fields.get("部门审批"));
+		setTenantEntryApprovalCell(table.getRow(10).getCell(1), fields.get("分管领导审批"));
+		setTenantEntryApprovalCell(table.getRow(11).getCell(1), fields.get("总经理审批"));
+		normalizeTenantEntryApprovalText(table);
+	}
+
+	private Map<String, String> tenantEntryApprovalLabels() {
+		Map<String, String> labels = new LinkedHashMap<>();
+		labels.put("title", "\u4f01\u4e1a\u5165\u9a7b\u5ba1\u6838\u8868");
+		labels.put("applicant", "\u7533\u8bf7\u4eba");
+		labels.put("department", "\u90e8\u95e8");
+		labels.put("applyDate", "\u7533\u8bf7\u65e5\u671f");
+		labels.put("enterpriseName", "\u4f01\u4e1a\u540d\u79f0");
+		labels.put("shareholderInfo", "\u80a1\u4e1c\u4fe1\u606f");
+		labels.put("businessScope", "\u7ecf\u8425\u8303\u56f4");
+		labels.put("taxRevenue", "\u7a0e\u6536");
+		labels.put("legalContact", "\u6cd5\u4eba\u3001\u8054\u7cfb\u65b9\u5f0f");
+		labels.put("financeContact", "\u8d22\u52a1\u3001\u8054\u7cfb\u65b9\u5f0f");
+		labels.put("description", "\u60c5\u51b5\u8bf4\u660e");
+		labels.put("intentFloor", "\u610f\u5411\u697c\u5c42");
+		labels.put("rent", "\u79df\u91d1");
+		labels.put("rentFreePeriod", "\u514d\u79df\u671f");
+		labels.put("departmentApproval", "\u90e8\u95e8\u5ba1\u6279\uff1a");
+		labels.put("leaderApproval", "\u5206\u7ba1\u9886\u5bfc\u5ba1\u6279\uff1a");
+		labels.put("generalManagerApproval", "\u603b\u7ecf\u7406\u5ba1\u6279\uff1a");
+		return labels;
+	}
+
+	private void setTenantEntryApprovalCell(XWPFTableCell cell, String approvalValue) {
+		String value = StringUtil.isBlank(approvalValue) ? "-" : approvalValue;
+		setCellText(cell, value);
+	}
+
+	private void normalizeTenantEntryApprovalText(XWPFTable table) {
+		for (XWPFTableRow row : table.getRows()) {
+			for (XWPFTableCell cell : row.getTableCells()) {
+				for (XWPFParagraph paragraph : cell.getParagraphs()) {
+					for (XWPFRun run : paragraph.getRuns()) {
+						if (StringUtil.isNotBlank(run.text())) {
+							run.setColor("000000");
+							setRunFontFamily(run.getCTR().getDomNode(), "Microsoft YaHei");
+						}
+					}
+				}
+			}
+		}
+	}
+
+	private void setRunFontFamily(Node runNode, String fontFamily) {
+		if (runNode == null || StringUtil.isBlank(fontFamily)) {
+			return;
+		}
+		Node runProperties = null;
+		for (Node child = runNode.getFirstChild(); child != null; child = child.getNextSibling()) {
+			if (hasLocalName(child, "rPr")) {
+				runProperties = child;
+				break;
+			}
+		}
+		if (runProperties == null) {
+			runProperties = runNode.getOwnerDocument().createElementNS(WORD_NAMESPACE, "w:rPr");
+			runNode.insertBefore(runProperties, runNode.getFirstChild());
+		}
+		Node fonts = null;
+		for (Node child = runProperties.getFirstChild(); child != null; child = child.getNextSibling()) {
+			if (hasLocalName(child, "rFonts")) {
+				fonts = child;
+				break;
+			}
+		}
+		if (fonts == null) {
+			fonts = runProperties.getOwnerDocument().createElementNS(WORD_NAMESPACE, "w:rFonts");
+			runProperties.appendChild(fonts);
+		}
+		Element element = (Element) fonts;
+		for (String attribute : List.of("ascii", "hAnsi", "eastAsia", "cs")) {
+			element.setAttributeNS(WORD_NAMESPACE, "w:" + attribute, fontFamily);
 		}
 	}
 

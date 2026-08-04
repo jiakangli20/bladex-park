@@ -15,7 +15,6 @@ import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.business.mapper.MerchantMapper;
 import org.springblade.modules.business.pojo.entity.Merchant;
 import org.springblade.modules.business.service.IMerchantService;
-import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,18 +35,9 @@ public class MerchantServiceImpl extends ServiceImpl<MerchantMapper, Merchant> i
 	private static final String STATUS_SUSPENDED = "2";
 	private static final String DEL_FLAG_NORMAL = "0";
 
-	private final ParkDataAccessService parkDataAccessService;
-
-	public MerchantServiceImpl(ParkDataAccessService parkDataAccessService) {
-		this.parkDataAccessService = parkDataAccessService;
-	}
-
 	@Override
 	public Merchant selectMerchantById(Long merchantId) {
 		Merchant merchant = baseMapper.selectMerchantById(merchantId);
-		if (Func.isNotEmpty(merchant)) {
-			parkDataAccessService.assertAccessible(merchant.getParkId());
-		}
 		if (Func.isEmpty(merchant)) {
 			throw new ServiceException("商户不存在");
 		}
@@ -96,11 +86,8 @@ public class MerchantServiceImpl extends ServiceImpl<MerchantMapper, Merchant> i
 		}
 		Merchant old = requireWritableMerchant(merchant.getMerchantId());
 		validateMerchant(mergeForValidate(old, merchant));
-		if (AuthUtil.isAdministrator() && Func.isNotEmpty(merchant.getParkId()) && merchant.getParkId() > 0) {
-			merchant.setParkId(merchant.getParkId());
-		} else {
-			merchant.setParkId(old.getParkId());
-		}
+		merchant.setParkId(resolveWriteParkId(Func.isNotEmpty(merchant.getParkId()) && merchant.getParkId() > 0
+			? merchant.getParkId() : old.getParkId()));
 		merchant.setUpdateBy(currentUserName());
 		merchant.setUpdateTime(DateUtil.now());
 		return baseMapper.updateMerchant(merchant) > 0;
@@ -119,8 +106,7 @@ public class MerchantServiceImpl extends ServiceImpl<MerchantMapper, Merchant> i
 		if (merchantIds.isEmpty()) {
 			throw new ServiceException("请选择需要删除的商户");
 		}
-		Long parkId = parkDataAccessService.scopedParkId(null);
-		return baseMapper.deleteMerchantByIds(merchantIds, parkId, currentUserName()) > 0;
+		return baseMapper.deleteMerchantByIds(merchantIds, null, currentUserName()) > 0;
 	}
 
 	@Override
@@ -141,22 +127,19 @@ public class MerchantServiceImpl extends ServiceImpl<MerchantMapper, Merchant> i
 		if (Func.isEmpty(merchant)) {
 			throw new ServiceException("商户不存在");
 		}
-		parkDataAccessService.assertAccessible(merchant.getParkId());
 		return merchant;
 	}
 
 	private Merchant normalizeQuery(Merchant merchant) {
 		Merchant query = Func.isEmpty(merchant) ? new Merchant() : merchant;
-		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		return query;
 	}
 
 	private Long resolveWriteParkId(Long parkId) {
-		Long scopedParkId = parkDataAccessService.scopedParkId(parkId);
-		if (Func.isEmpty(scopedParkId)) {
+		if (Func.isEmpty(parkId)) {
 			throw new ServiceException("请选择园区");
 		}
-		return scopedParkId;
+		return parkId;
 	}
 
 	private String currentUserName() {

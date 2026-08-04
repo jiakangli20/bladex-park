@@ -45,7 +45,6 @@ import org.springblade.modules.park.service.IBuildingService;
 import org.springblade.modules.park.service.IFloorService;
 import org.springblade.modules.park.pojo.entity.Park;
 import org.springblade.modules.park.service.IParkService;
-import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,17 +69,14 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 	private final IParkService parkService;
 	private final IFloorService floorService;
 	private final FloorMapper floorMapper;
-	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public List<Building> selectBuildingList(Building building) {
-		building.setParkId(parkDataAccessService.scopedParkId(building.getParkId()));
 		return baseMapper.selectBuildingList(building);
 	}
 
 	@Override
 	public IPage<BuildingVO> selectBuildingPage(IPage<BuildingVO> page, Building building) {
-		building.setParkId(parkDataAccessService.scopedParkId(building.getParkId()));
 		page.setRecords(baseMapper.selectBuildingPage(page, building));
 		return page;
 	}
@@ -89,7 +85,6 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 	public BuildingVO selectBuildingById(Long id) {
 		BuildingVO building = baseMapper.selectBuildingById(id);
 		if (building != null) {
-			parkDataAccessService.assertAccessible(building.getParkId());
 			building.setFloorAreas(floorMapper.selectFloorAreaListByBuildingId(id));
 		}
 		return building;
@@ -100,13 +95,12 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 	public boolean submit(BuildingDTO buildingDTO) {
 		BuildingVO oldBuilding = null;
 		if (buildingDTO.getId() == null) {
-			buildingDTO.setParkId(parkDataAccessService.scopedParkId(buildingDTO.getParkId()));
 		} else {
 			oldBuilding = selectBuildingById(buildingDTO.getId());
 			if (oldBuilding == null) {
 				throw new ServiceException("建筑不存在");
 			}
-			if (parkDataAccessService.requiresDataScope()) {
+			if (Func.isEmpty(buildingDTO.getParkId())) {
 				buildingDTO.setParkId(oldBuilding.getParkId());
 			}
 		}
@@ -165,8 +159,7 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 		if (Func.isEmpty(data)) {
 			return;
 		}
-		Map<String, Long> parkMap = parkService.list(Wrappers.<Park>lambdaQuery()
-			.eq(parkDataAccessService.requiresDataScope(), Park::getId, parkDataAccessService.requiresDataScope() ? parkDataAccessService.currentParkId() : null))
+		Map<String, Long> parkMap = parkService.list(Wrappers.<Park>lambdaQuery())
 			.stream()
 			.collect(Collectors.toMap(Park::getName, Park::getId, (left, right) -> left, LinkedHashMap::new));
 		List<BuildingDTO> buildingList = new ArrayList<>();
@@ -188,7 +181,6 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 		if (building.getParkId() == null) {
 			throw new ServiceException("请选择所属园区");
 		}
-		parkDataAccessService.assertAccessible(building.getParkId());
 		Park park = parkService.getById(building.getParkId());
 		if (park == null) {
 			throw new ServiceException("所属园区不存在");

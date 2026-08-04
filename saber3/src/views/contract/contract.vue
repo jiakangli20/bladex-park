@@ -539,9 +539,8 @@
           <el-table-column
             prop="customerName"
             label="租客名称"
-            min-width="180"
+            :width="customerNameColumnWidth"
             align="center"
-            show-overflow-tooltip
           >
             <template #default="{ row }">
               <el-button text type="primary" class="tenant-name-btn" @click="openDetail(row)">
@@ -1924,6 +1923,13 @@ export default {
     },
     ids() {
       return this.selectionList.map(item => item.contractId).join(',');
+    },
+    customerNameColumnWidth() {
+      const maxLength = Math.max(
+        4,
+        ...(this.data || []).map(item => String(item.customerName || '').length)
+      );
+      return Math.min(Math.max(maxLength * 15 + 56, 180), 320);
     },
     currentCustomerId() {
       return this.customerDetail.customerId || this.detailContract.customerId || '';
@@ -4746,15 +4752,17 @@ export default {
 }
 
 .tenant-name-btn {
-  max-width: 100%;
   display: inline-flex;
-  overflow: hidden;
+  max-width: none;
+  min-width: 0;
+  padding: 0;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .tenant-name-btn :deep(span) {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
 }
 

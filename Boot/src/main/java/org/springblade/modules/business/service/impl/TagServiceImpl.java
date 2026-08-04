@@ -20,7 +20,6 @@ import org.springblade.modules.business.pojo.entity.Customer;
 import org.springblade.modules.business.pojo.entity.Tag;
 import org.springblade.modules.business.pojo.entity.TagType;
 import org.springblade.modules.business.service.ITagService;
-import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,7 +45,6 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 
 	private final CustomerMapper customerMapper;
 	private final BusinessOpportunityMapper businessOpportunityMapper;
-	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public Tag selectTagById(Long tagId) {
@@ -66,7 +64,6 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean insertTag(Tag tag) {
-		tag.setParkId(parkDataAccessService.scopedParkId(tag.getParkId()));
 		if (Func.isEmpty(tag.getParkId())) {
 			throw new ServiceException("所属园区不能为空");
 		}
@@ -94,7 +91,6 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 		Tag old = requireAccessibleTag(tag.getTagId());
 		// 已绑定客户或商机的标签不得通过普通编辑迁移园区，避免产生跨园区关系。
 		tag.setParkId(old.getParkId());
-		parkDataAccessService.assertAccessible(tag.getParkId());
 		validateTag(tag, tag.getTagId());
 		tag.setUpdateTime(DateUtil.now());
 		return baseMapper.updateTag(tag) > 0;
@@ -125,7 +121,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 
 	@Override
 	public List<Tag> selectTagByType(Integer tagType, Long parkId) {
-		return baseMapper.selectTagByType(tagType, parkDataAccessService.scopedParkId(parkId));
+		return baseMapper.selectTagByType(tagType, parkId);
 	}
 
 	@Override
@@ -212,7 +208,6 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 
 	private Tag normalizeQuery(Tag tag) {
 		Tag query = Func.isEmpty(tag) ? new Tag() : tag;
-		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		return query;
 	}
 
@@ -221,7 +216,6 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 		if (tag == null || !DEL_FLAG_NORMAL.equals(tag.getDelFlag())) {
 			throw new ServiceException("标签不存在");
 		}
-		parkDataAccessService.assertAccessible(tag.getParkId());
 		return tag;
 	}
 
@@ -230,7 +224,6 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 		if (customer == null || !DEL_FLAG_NORMAL.equals(customer.getDelFlag())) {
 			throw new ServiceException("客户不存在");
 		}
-		parkDataAccessService.assertAccessible(customer.getParkId());
 		return customer;
 	}
 
@@ -240,7 +233,6 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 		if (opportunity == null || !DEL_FLAG_NORMAL.equals(opportunity.getDelFlag())) {
 			throw new ServiceException("商机不存在");
 		}
-		parkDataAccessService.assertAccessible(opportunity.getParkId());
 		return opportunity;
 	}
 

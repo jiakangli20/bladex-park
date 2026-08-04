@@ -47,11 +47,6 @@
               <el-option v-for="item in channelOptions" :key="item" :label="item" :value="item" />
             </el-select>
           </el-form-item>
-          <el-form-item label="租期">
-            <el-select v-model="query.leaseTermLabel" clearable placeholder="全部租期">
-              <el-option v-for="item in leaseTermOptions" :key="item" :label="item" :value="item" />
-            </el-select>
-          </el-form-item>
           <el-form-item>
             <el-button type="primary" icon="el-icon-search" @click="searchChange">搜索</el-button>
             <el-button icon="el-icon-delete" @click="searchReset">清空</el-button>
@@ -968,7 +963,6 @@ export default {
       },
       channelOptions: ['自主招商', '中介推荐', '政府推荐', '第三方渠道', '线上咨询', '其他'],
       carrierTypeOptions: ['办公', '研发', '生产', '仓储', '商业', '配套'],
-      leaseTermOptions: ['1年以内', '1-3年', '3-5年', '5年以上'],
       uploadHeaders: {
         'Blade-Auth': `bearer ${getToken()}`,
         'Blade-Requested-With': 'BladeHttpRequest',

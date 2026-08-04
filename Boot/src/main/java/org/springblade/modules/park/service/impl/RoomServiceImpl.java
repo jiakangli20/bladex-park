@@ -41,7 +41,6 @@ import org.springblade.modules.park.pojo.vo.RoomVO;
 import org.springblade.modules.park.service.IBuildingService;
 import org.springblade.modules.park.service.IFloorService;
 import org.springblade.modules.park.service.IRoomService;
-import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,26 +64,20 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements IR
 
 	private final IBuildingService buildingService;
 	private final IFloorService floorService;
-	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public RoomVO selectRoomById(Long id) {
 		RoomVO room = baseMapper.selectRoomById(id);
-		if (room != null) {
-			parkDataAccessService.assertAccessible(room.getParkId());
-		}
 		return room;
 	}
 
 	@Override
 	public List<RoomVO> selectRoomList(Room room) {
-		room.setParkId(parkDataAccessService.scopedParkId(room.getParkId()));
 		return baseMapper.selectRoomList(room);
 	}
 
 	@Override
 	public IPage<RoomVO> selectRoomPage(IPage<RoomVO> page, Room room) {
-		room.setParkId(parkDataAccessService.scopedParkId(room.getParkId()));
 		return page.setRecords(baseMapper.selectRoomPage(page, room));
 	}
 

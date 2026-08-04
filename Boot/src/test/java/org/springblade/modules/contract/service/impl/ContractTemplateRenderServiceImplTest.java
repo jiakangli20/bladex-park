@@ -8,6 +8,7 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.junit.jupiter.api.Test;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
@@ -28,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ContractTemplateRenderServiceImplTest {
 
 	private static final String CONTRACT_FIXED = "君联合同/科技服务中心租赁合同（固定租金）202508版 - 解锁.docx";
+	private static final String TENANT_ENTRY_APPROVAL = "君联大厦招商管理办法2023/附件一：企业入驻审批表.docx";
 	private static final String CONTRACT_APPROVAL = "君联大厦招商管理办法2023/附件二：合同会签审批表.docx";
 	private static final String PAYMENT_NOTICE = "君联大厦招商管理办法2023/附件四：君联大厦付款通知单.docx";
 	private static final String INVOICE_APPLY = "君联大厦招商管理办法2023/开票申请.docx";
@@ -39,6 +41,44 @@ class ContractTemplateRenderServiceImplTest {
 
 	// 本测试仅覆盖仓库内置模板，不访问 OSS；生产环境由 Spring 注入 OssBuilder。
 	private final ContractTemplateRenderServiceImpl service = new ContractTemplateRenderServiceImpl(null);
+
+	@Test
+	void fillsUpdatedTenantEntryApprovalTemplate() throws Exception {
+		Map<String, String> fields = new LinkedHashMap<>();
+		fields.put("申请人", "招商员张三");
+		fields.put("部门", "招商服务部");
+		fields.put("申请日期", "2026-08-03");
+		fields.put("企业名称", "苏州验收科技有限公司");
+		fields.put("股东信息", "自然人股东");
+		fields.put("经营范围", "软件开发与技术服务");
+		fields.put("税收", "预计年税收100万元");
+		fields.put("法人、联系方式", "张三，13800000000");
+		fields.put("财务、联系方式", "李四，13900000000");
+		fields.put("情况说明", "申请入驻君联大厦");
+		fields.put("意向楼层", "22层2201，559.8㎡");
+		fields.put("租金", "50元/㎡/月");
+		fields.put("免租期", "2个月");
+		fields.put("部门审批", "王经理（同意，2026-08-03）");
+		fields.put("分管领导审批", "李总（同意，2026-08-03）");
+		fields.put("总经理审批", "赵总（同意，2026-08-03）");
+
+		ContractNoticeFileVO file = render(TENANT_ENTRY_APPROVAL, fields, Map.of());
+		try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(file.getFileBytes()))) {
+			assertEquals(1, document.getTables().size());
+			XWPFTable table = document.getTables().get(0);
+			assertEquals(12, table.getNumberOfRows());
+			assertEquals("企业入驻审核表", table.getRow(0).getCell(0).getText());
+			assertFalse(documentText(document).contains("合同会签审批表"));
+			assertEquals("招商员张三", table.getRow(1).getCell(1).getText());
+			assertEquals("苏州验收科技有限公司", table.getRow(2).getCell(1).getText());
+			assertEquals("张三，13800000000", table.getRow(6).getCell(1).getText());
+			assertEquals("李四，13900000000", table.getRow(6).getCell(3).getText());
+			assertEquals("50元/㎡/月", table.getRow(8).getCell(3).getText());
+			assertEquals("王经理（同意，2026-08-03）", table.getRow(9).getCell(1).getText());
+			assertFalse(table.getRow(9).getCell(1).getText().contains("日期："));
+			assertEquals(1, occurrences(table.getRow(9).getCell(1).getText(), "2026-08-03"));
+		}
+	}
 
 	@Test
 	void preservesContractSlotUnderlineWhenFillingInlineValues() throws Exception {
@@ -236,6 +276,15 @@ class ContractTemplateRenderServiceImplTest {
 			.flatMap(row -> row.getTableCells().stream())
 			.mapToInt(cell -> cell.getParagraphs().size())
 			.sum();
+	}
+
+	private String documentText(XWPFDocument document) {
+		return document.getParagraphs().stream().map(XWPFParagraph::getText).reduce("", String::concat)
+			+ document.getTables().stream()
+			.flatMap(table -> table.getRows().stream())
+			.flatMap(row -> row.getTableCells().stream())
+			.map(XWPFTableCell::getText)
+			.reduce("", String::concat);
 	}
 
 	private String underlinedDomText(Node root) {

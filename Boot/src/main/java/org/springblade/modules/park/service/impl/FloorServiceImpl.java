@@ -39,7 +39,6 @@ import org.springblade.modules.park.pojo.entity.Building;
 import org.springblade.modules.park.pojo.entity.Floor;
 import org.springblade.modules.park.pojo.entity.Room;
 import org.springblade.modules.park.service.IFloorService;
-import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,11 +62,9 @@ import java.util.stream.Collectors;
 public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements IFloorService {
 
 	private final BuildingMapper buildingMapper;
-	private final ParkDataAccessService parkDataAccessService;
 
 	@Override
 	public List<Floor> selectFloorList(Floor floor) {
-		floor.setParkId(parkDataAccessService.scopedParkId(floor.getParkId()));
 		List<Floor> floors = baseMapper.selectFloorList(floor);
 		attachFloorDetail(floors, floor == null ? null : floor.getRoomStatus());
 		return floors;
@@ -75,13 +72,11 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 
 	@Override
 	public List<Floor> selectFloorStructureList(Floor floor) {
-		floor.setParkId(parkDataAccessService.scopedParkId(floor.getParkId()));
 		return baseMapper.selectFloorStructureList(floor);
 	}
 
 	@Override
 	public IPage<Floor> selectFloorPage(IPage<Floor> page, Floor floor) {
-		floor.setParkId(parkDataAccessService.scopedParkId(floor.getParkId()));
 		page.setRecords(baseMapper.selectFloorPage(page, floor));
 		attachFloorDetail(page.getRecords(), floor == null ? null : floor.getRoomStatus());
 		return page;
@@ -93,7 +88,6 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 		if (floor == null) {
 			throw new ServiceException("楼层不存在");
 		}
-		parkDataAccessService.assertAccessible(floor.getParkId());
 		attachFloorDetail(List.of(floor), roomStatus);
 		return floor;
 	}
@@ -102,7 +96,6 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 	public Floor selectFloorByBuildingAndNo(Long buildingId, Integer floorNo) {
 		Floor floor = baseMapper.selectFloorByBuildingAndNo(buildingId, floorNo);
 		if (floor != null) {
-			parkDataAccessService.assertAccessible(floor.getParkId());
 			fillOccupancyRate(floor);
 		}
 		return floor;
@@ -115,7 +108,6 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 		if (building == null || building.getFloors() == null || building.getFloors() < 1) {
 			throw new ServiceException("建筑不存在或未配置有效楼层数");
 		}
-		parkDataAccessService.assertAccessible(building.getParkId());
 		Date now = new Date();
 		String userName = currentOperator(operator);
 		BigDecimal defaultArea = defaultFloorArea(building);
@@ -185,8 +177,6 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 	@Transactional(rollbackFor = Exception.class)
 	public void syncAllBuildingFloors(String operator) {
 		List<Building> buildingList = buildingMapper.selectList(Wrappers.<Building>lambdaQuery()
-			.eq(parkDataAccessService.requiresDataScope(), Building::getParkId,
-				parkDataAccessService.requiresDataScope() ? parkDataAccessService.currentParkId() : null)
 			.isNotNull(Building::getId)
 			.orderByAsc(Building::getId));
 		for (Building building : buildingList) {
@@ -208,7 +198,6 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 			if (oldFloor == null) {
 				throw new ServiceException("楼层不存在");
 			}
-			parkDataAccessService.assertAccessible(oldFloor.getParkId());
 			// 楼层是房源和历史业务的物理定位，不允许通过编辑接口迁移到其他楼宇或楼层号。
 			floor.setBuildingId(oldFloor.getBuildingId());
 			floor.setFloorNo(oldFloor.getFloorNo());
@@ -247,7 +236,6 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 			if (floor == null) {
 				throw new ServiceException("楼层不存在");
 			}
-			parkDataAccessService.assertAccessible(floor.getParkId());
 			if (baseMapper.countRoomsByFloor(floor.getBuildingId(), floor.getFloorNo()) > 0) {
 				throw new ServiceException("楼层已存在房源，不能删除");
 			}
@@ -257,7 +245,6 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 
 	@Override
 	public Map<String, Object> selectFloorStatistics(Floor floor) {
-		floor.setParkId(parkDataAccessService.scopedParkId(floor.getParkId()));
 		List<Floor> floors = baseMapper.selectFloorList(floor);
 		BigDecimal totalArea = BigDecimal.ZERO;
 		BigDecimal usedArea = BigDecimal.ZERO;
@@ -341,7 +328,6 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 		if (building == null || building.getParkId() == null) {
 			throw new ServiceException("所属建筑不存在");
 		}
-		parkDataAccessService.assertAccessible(building.getParkId());
 		if (floor.getFloorNo() == null) {
 			throw new ServiceException("请输入楼层号");
 		}

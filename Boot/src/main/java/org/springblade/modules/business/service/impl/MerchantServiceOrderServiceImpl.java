@@ -18,7 +18,6 @@ import org.springblade.modules.business.pojo.entity.MerchantServiceOrder;
 import org.springblade.modules.business.pojo.entity.MerchantServiceOrderLog;
 import org.springblade.modules.business.service.IMerchantService;
 import org.springblade.modules.business.service.IMerchantServiceOrderService;
-import org.springblade.modules.park.service.ParkDataAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,19 +43,14 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 	private static final String PRIORITY_NORMAL = "1";
 
 	private final IMerchantService merchantService;
-	private final ParkDataAccessService parkDataAccessService;
 
-	public MerchantServiceOrderServiceImpl(IMerchantService merchantService, ParkDataAccessService parkDataAccessService) {
+	public MerchantServiceOrderServiceImpl(IMerchantService merchantService) {
 		this.merchantService = merchantService;
-		this.parkDataAccessService = parkDataAccessService;
 	}
 
 	@Override
 	public MerchantServiceOrder selectOrderById(Long orderId) {
 		MerchantServiceOrder order = baseMapper.selectOrderById(orderId);
-		if (Func.isNotEmpty(order)) {
-			parkDataAccessService.assertAccessible(order.getParkId());
-		}
 		if (Func.isEmpty(order)) {
 			throw new ServiceException("服务单不存在");
 		}
@@ -146,8 +140,7 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 		if (orderIds.isEmpty()) {
 			throw new ServiceException("请选择需要删除的服务单");
 		}
-		Long parkId = parkDataAccessService.scopedParkId(null);
-		return baseMapper.deleteOrderByIds(orderIds, parkId, currentUserName()) > 0;
+		return baseMapper.deleteOrderByIds(orderIds, null, currentUserName()) > 0;
 	}
 
 	@Override
@@ -273,7 +266,6 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 		if (Func.isEmpty(order)) {
 			throw new ServiceException("服务单不存在");
 		}
-		parkDataAccessService.assertAccessible(order.getParkId());
 		return order;
 	}
 
@@ -367,7 +359,6 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 
 	private MerchantServiceOrder normalizeQuery(MerchantServiceOrder order) {
 		MerchantServiceOrder query = Func.isEmpty(order) ? new MerchantServiceOrder() : order;
-		query.setParkId(parkDataAccessService.scopedParkId(query.getParkId()));
 		if (Boolean.TRUE.equals(query.getMine())) {
 			query.setCurrentUser(currentUserName());
 		}
@@ -375,11 +366,10 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 	}
 
 	private Long resolveWriteParkId(Long parkId) {
-		Long scopedParkId = parkDataAccessService.scopedParkId(parkId);
-		if (Func.isEmpty(scopedParkId)) {
+		if (Func.isEmpty(parkId)) {
 			throw new ServiceException("请选择园区");
 		}
-		return scopedParkId;
+		return parkId;
 	}
 
 	private String defaultAssignee(MerchantServiceOrder old) {
