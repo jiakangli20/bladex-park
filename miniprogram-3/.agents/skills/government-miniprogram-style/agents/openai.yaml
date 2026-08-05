@@ -1,0 +1,4 @@
+interface:
+  display_name: "政企小程序 UI 交付规范"
+  short_description: "按可审计、可验收标准改造政企小程序页面与样式"
+  default_prompt: "使用 $government-miniprogram-style 审计并改造当前小程序，按政企小程序 UI 交付规范完成页面、样式、Skyline 兼容和验收检查。"

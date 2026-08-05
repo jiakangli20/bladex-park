@@ -1,0 +1,100 @@
+<view class="overview-page">
+  <scroll-view class="overview-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="overview-content">
+      <view class="overview-header">
+        <view class="nav-row">
+          <view class="nav-action" bindtap="goBack">‹</view>
+          <view class="nav-title">园区概览</view>
+          <view class="nav-action"></view>
+        </view>
+        <view class="overview-title">总体运行情况</view>
+        <view class="overview-sub">今日运行数据 · 更新至 09:30</view>
+      </view>
+
+      <view class="metric-grid">
+        <block wx:for="{{metrics}}" wx:key="label">
+          <view class="metric-card metric-{{item.tone}}">
+            <view class="metric-value">{{item.value}}<text>{{item.unit}}</text></view>
+            <view class="metric-label">{{item.label}}</view>
+          </view>
+        </block>
+      </view>
+
+      <view class="section-block">
+        <view class="section-title">租赁概况</view>
+        <view class="overview-card">
+          <view class="progress-row">
+            <view>
+              <view class="progress-label">出租面积</view>
+              <view class="progress-value">{{progress.rentedArea}} / {{progress.totalArea}}</view>
+            </view>
+            <text>{{progress.rentRate}}%</text>
+          </view>
+          <view class="progress-track">
+            <view class="progress-fill rent-fill" style="width: {{progress.rentRate}}%;"></view>
+          </view>
+
+          <view class="progress-row second-row">
+            <view>
+              <view class="progress-label">本月收缴</view>
+              <view class="progress-value">{{progress.monthReceived}} / {{progress.monthReceivable}}</view>
+            </view>
+            <text>{{progress.collectionRate}}%</text>
+          </view>
+          <view class="progress-track">
+            <view class="progress-fill collection-fill" style="width: {{progress.collectionRate}}%;"></view>
+          </view>
+        </view>
+      </view>
+
+      <view class="section-block">
+        <view class="section-title">待办提醒</view>
+        <view class="todo-row">
+          <block wx:for="{{todos}}" wx:key="label">
+            <view class="todo-card todo-{{item.tone}}" data-label="{{item.label}}" bindtap="openTodo">
+              <view class="todo-count">{{item.count}}</view>
+              <view class="todo-label">{{item.label}}</view>
+            </view>
+          </block>
+        </view>
+      </view>
+
+      <view class="section-block tenant-section">
+        <view class="section-title">租客企业与租赁详情</view>
+        <block wx:for="{{tenants}}" wx:key="id">
+          <view class="tenant-card" data-id="{{item.id}}" bindtap="openTenant">
+            <view class="tenant-head">
+              <view>
+                <view class="tenant-name">{{item.companyName}}</view>
+                <view class="tenant-industry">{{item.industry}}</view>
+              </view>
+              <view class="tenant-status {{item.rentStatus === '正常' ? 'is-normal' : 'is-warn'}}">
+                {{item.rentStatus}}
+              </view>
+            </view>
+            <view class="tenant-info">
+              <view class="tenant-room-line">
+                <text>租赁房间</text>
+                <view>{{item.room}}</view>
+              </view>
+              <view class="tenant-info-row">
+                <view class="tenant-info-item">
+                  <text>租赁面积</text>
+                  <view>{{item.area}}</view>
+                </view>
+                <view class="tenant-info-item">
+                  <text>合同状态</text>
+                  <view>{{item.contractStatus}}</view>
+                </view>
+              </view>
+              <view class="tenant-period-line">
+                <text>合同周期</text>
+                <view>{{item.leasePeriod}}</view>
+              </view>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </scroll-view>
+</view>

@@ -1,0 +1,75 @@
+<view class="sub-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="sub-content">
+      <view class="blue-header plain-header">
+        <view class="nav-row">
+          <view class="nav-action" bindtap="goBack">‹</view>
+          <view class="nav-title">租客详情</view>
+          <view class="nav-action"></view>
+        </view>
+        <view class="intro-title">{{tenant.companyName}}</view>
+        <view class="intro-sub">{{tenant.industry}} · {{tenant.room}}</view>
+      </view>
+
+      <view class="section-card">
+        <view class="tenant-head">
+          <view>
+            <view class="card-title">企业信息</view>
+            <view class="card-sub">租赁企业基础信息和缴费状态</view>
+          </view>
+          <view class="status-pill {{tenant.rentStatus === '正常' ? 'status-green' : 'status-orange'}}">{{tenant.rentStatus}}</view>
+        </view>
+        <view class="tenant-detail-info">
+          <view class="detail-info-row">
+            <text>租赁房间</text>
+            <view>{{tenant.room}}</view>
+          </view>
+          <view class="detail-mini-grid">
+            <view class="detail-mini-item">
+              <text>行业</text>
+              <view>{{tenant.industry}}</view>
+            </view>
+            <view class="detail-mini-item">
+              <text>租赁面积</text>
+              <view>{{tenant.area}}</view>
+            </view>
+            <view class="detail-mini-item">
+              <text>合同状态</text>
+              <view>{{tenant.contractStatus}}</view>
+            </view>
+          </view>
+          <view class="detail-info-row">
+            <text>合同周期</text>
+            <view>{{tenant.leasePeriod}}</view>
+          </view>
+        </view>
+      </view>
+
+      <view class="section-card">
+        <view class="card-title">合同摘要</view>
+        <block wx:for="{{contracts}}" wx:key="id">
+          <view class="summary-row">
+            <view>
+              <view class="summary-title">{{item.title}}</view>
+              <view class="summary-sub">{{item.period}}</view>
+            </view>
+            <view class="summary-value">{{item.amount}}</view>
+          </view>
+        </block>
+      </view>
+
+      <view class="section-card">
+        <view class="card-title">账单状态</view>
+        <block wx:for="{{bills}}" wx:key="id">
+          <view class="summary-row">
+            <view>
+              <view class="summary-title">{{item.title}}</view>
+              <view class="summary-sub">{{item.dueDate}} 到期</view>
+            </view>
+            <view class="status-pill {{item.status === '待缴' ? 'status-orange' : 'status-green'}}">{{item.status}}</view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </scroll-view>
+</view>

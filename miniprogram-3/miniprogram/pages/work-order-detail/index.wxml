@@ -1,0 +1,81 @@
+<view class="sub-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="sub-content has-action">
+      <view class="blue-header plain-header">
+        <view class="nav-row">
+          <view class="nav-action" bindtap="goBack">‹</view>
+          <view class="nav-title">工单详情</view>
+          <view class="nav-action"></view>
+        </view>
+        <view class="intro-title">{{order.title}}</view>
+        <view class="intro-sub">{{order.id}} · {{order.type}}</view>
+      </view>
+
+      <view class="section-card">
+        <view class="order-head">
+          <view>
+            <view class="card-title">基础信息</view>
+            <view class="card-sub">{{order.description}}</view>
+          </view>
+          <view class="status-pill status-{{order.tone}}">{{order.status}}</view>
+        </view>
+        <view class="info-grid">
+          <view class="info-item">
+            <view class="info-label">申请企业</view>
+            <view class="info-value">{{order.companyName}}</view>
+          </view>
+          <view class="info-item">
+            <view class="info-label">房间</view>
+            <view class="info-value">{{order.room}}</view>
+          </view>
+          <view class="info-item">
+            <view class="info-label">联系人</view>
+            <view class="info-value">{{order.contact}}</view>
+          </view>
+          <view class="info-item">
+            <view class="info-label">电话</view>
+            <view class="info-value">{{order.phone}}</view>
+          </view>
+          <view class="info-item">
+            <view class="info-label">紧急程度</view>
+            <view class="info-value">{{order.urgency}}</view>
+          </view>
+          <view class="info-item">
+            <view class="info-label">处理人</view>
+            <view class="info-value">{{order.handler}}</view>
+          </view>
+        </view>
+      </view>
+
+      <view class="section-card">
+        <view class="card-title">处理进度</view>
+        <view class="timeline">
+          <block wx:for="{{order.steps}}" wx:key="title">
+            <view class="timeline-item {{item.done ? 'is-done' : ''}}">
+              <view class="timeline-dot"></view>
+              <view class="timeline-copy">
+                <view class="timeline-head">
+                  <view class="timeline-title">{{item.title}}</view>
+                  <view class="timeline-time">{{item.time}}</view>
+                </view>
+                <view class="timeline-desc">{{item.desc}}</view>
+              </view>
+            </view>
+          </block>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="fixed-action">
+    <block wx:if="{{isAdmin}}">
+      <view class="secondary-button" data-action="驳回" bindtap="handleAction">驳回</view>
+      <view class="secondary-button" data-action="派单" bindtap="handleAction">派单</view>
+      <view class="primary-button" data-action="完成" bindtap="handleAction">完成</view>
+    </block>
+    <block wx:else>
+      <view class="secondary-button" data-action="取消" bindtap="handleAction">取消申请</view>
+      <view class="primary-button" data-action="评价" bindtap="handleAction">评价工单</view>
+    </block>
+  </view>
+</view>

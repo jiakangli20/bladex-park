@@ -1,0 +1,120 @@
+<view class="sub-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="sub-content {{canSave ? 'has-action' : ''}}">
+      <view class="blue-header plain-header">
+        <view class="nav-row">
+          <view class="nav-action" bindtap="goBack">‹</view>
+          <view class="nav-title">{{title}}</view>
+          <view class="nav-action"></view>
+        </view>
+        <view class="intro-title">{{title}}</view>
+        <view class="intro-sub">{{sub}}</view>
+      </view>
+
+      <view wx:if="{{sectionKey === 'company'}}" class="form-card">
+        <view class="form-row">
+          <view class="form-label">企业名称</view>
+          <input class="form-input" data-field="name" value="{{company.name}}" bindinput="handleInput" />
+        </view>
+        <view class="form-row">
+          <view class="form-label">信用代码</view>
+          <input class="form-input" data-field="creditCode" value="{{company.creditCode}}" bindinput="handleInput" />
+        </view>
+        <view class="form-row">
+          <view class="form-label">联系人</view>
+          <input class="form-input" data-field="contact" value="{{company.contact}}" bindinput="handleInput" />
+        </view>
+        <view class="form-row">
+          <view class="form-label">联系电话</view>
+          <input class="form-input" type="number" data-field="phone" value="{{company.phone}}" bindinput="handleInput" />
+        </view>
+        <view class="form-row">
+          <view class="form-label">行业</view>
+          <input class="form-input" data-field="industry" value="{{company.industry}}" bindinput="handleInput" />
+        </view>
+        <view class="form-row">
+          <view class="form-label">规模</view>
+          <input class="form-input" data-field="scale" value="{{company.scale}}" bindinput="handleInput" />
+        </view>
+      </view>
+
+      <view wx:elif="{{sectionKey === 'contracts'}}" class="list-block">
+        <block wx:for="{{contracts}}" wx:key="id">
+          <view class="section-card" data-id="{{item.id}}" bindtap="openContract">
+            <view class="list-head">
+              <view>
+                <view class="card-title">{{item.title}}</view>
+                <view class="card-sub">{{item.id}} · {{item.signDate}}签署</view>
+              </view>
+              <view class="status-pill status-green">{{item.status}}</view>
+            </view>
+            <view class="info-grid">
+              <view class="info-item is-wide">
+                <view class="info-label">租赁房间</view>
+                <view class="info-value">{{item.room}}</view>
+              </view>
+              <view class="info-item">
+                <view class="info-label">合同周期</view>
+                <view class="info-value">{{item.period}}</view>
+              </view>
+              <view class="info-item">
+                <view class="info-label">合同金额</view>
+                <view class="info-value">{{item.amount}}</view>
+              </view>
+            </view>
+          </view>
+        </block>
+      </view>
+
+      <view wx:elif="{{sectionKey === 'payments'}}" class="list-block">
+        <block wx:for="{{bills}}" wx:key="id">
+          <view class="section-card" data-id="{{item.id}}" bindtap="payBill">
+            <view class="list-head">
+              <view>
+                <view class="card-title">{{item.title}}</view>
+                <view class="card-sub">{{item.period}}</view>
+              </view>
+              <view class="status-pill {{item.status === '待缴' ? 'status-orange' : 'status-green'}}">{{item.status}}</view>
+            </view>
+            <view class="info-grid">
+              <view class="info-item">
+                <view class="info-label">金额</view>
+                <view class="info-value">{{item.amount}}</view>
+              </view>
+              <view class="info-item">
+                <view class="info-label">截止日期</view>
+                <view class="info-value">{{item.dueDate}}</view>
+              </view>
+            </view>
+          </view>
+        </block>
+      </view>
+
+      <view wx:elif="{{sectionKey === 'account'}}" class="section-card">
+        <view class="info-grid">
+          <block wx:for="{{accountRows}}" wx:key="label">
+            <view class="info-item">
+              <view class="info-label">{{item.label}}</view>
+              <view class="info-value">{{item.value}}</view>
+            </view>
+          </block>
+        </view>
+      </view>
+
+      <view wx:else class="section-card">
+        <view class="info-grid">
+          <block wx:for="{{contactRows}}" wx:key="label">
+            <view class="info-item">
+              <view class="info-label">{{item.label}}</view>
+              <view class="info-value">{{item.value}}</view>
+            </view>
+          </block>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{canSave}}" class="fixed-action">
+    <view class="primary-button" bindtap="saveInfo">保存</view>
+  </view>
+</view>

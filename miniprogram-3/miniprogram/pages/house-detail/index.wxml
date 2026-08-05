@@ -1,0 +1,79 @@
+<view class="sub-page house-detail-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="sub-content has-action">
+      <view class="detail-hero">
+        <image class="detail-image" src="{{house.image}}" mode="aspectFill"></image>
+        <view class="detail-mask"></view>
+        <view class="detail-nav">
+          <view class="nav-action" bindtap="goBack">‹</view>
+          <view class="nav-title">房源详情</view>
+          <view class="nav-action"></view>
+        </view>
+        <view class="hero-copy">
+          <view class="hero-title">{{house.title}}</view>
+          <view class="hero-subline">{{house.building}} {{house.room}} · {{house.status}}</view>
+        </view>
+      </view>
+
+      <view class="section-card price-card">
+        <view class="price-main"><text>{{house.price}}</text> 元/m²/天</view>
+        <view class="status-pill status-blue">{{house.availableDate}}</view>
+      </view>
+
+      <view class="section-card">
+        <view class="card-title">房源信息</view>
+        <view class="info-grid">
+          <view class="info-item">
+            <view class="info-label">面积</view>
+            <view class="info-value">{{house.area}}</view>
+          </view>
+          <view class="info-item">
+            <view class="info-label">格局</view>
+            <view class="info-value">{{house.layout}}</view>
+          </view>
+          <view class="info-item">
+            <view class="info-label">楼层</view>
+            <view class="info-value">{{house.floor}}</view>
+          </view>
+          <view class="info-item">
+            <view class="info-label">装修</view>
+            <view class="info-value">{{house.decoration}}</view>
+          </view>
+          <view class="info-item">
+            <view class="info-label">朝向</view>
+            <view class="info-value">{{house.orientation}}</view>
+          </view>
+          <view class="info-item">
+            <view class="info-label">物业费</view>
+            <view class="info-value">{{house.propertyFee}}</view>
+          </view>
+        </view>
+      </view>
+
+      <view class="section-card">
+        <view class="card-title">房源介绍</view>
+        <view class="card-sub">{{house.intro}}</view>
+        <view class="tag-row detail-tags">
+          <block wx:for="{{house.tags}}" wx:key="*this">
+            <text class="tag">{{item}}</text>
+          </block>
+        </view>
+      </view>
+
+      <view class="section-card">
+        <view class="card-title">配套设施</view>
+        <view class="facility-grid">
+          <block wx:for="{{house.facilities}}" wx:key="*this">
+            <view class="facility-item">{{item}}</view>
+          </block>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="fixed-action">
+    <view class="secondary-button" bindtap="openVr">在线看房</view>
+    <view class="primary-button" bindtap="bookHouse">预约看房</view>
+    <view class="primary-button settle-button" bindtap="applySettle">入驻意向</view>
+  </view>
+</view>

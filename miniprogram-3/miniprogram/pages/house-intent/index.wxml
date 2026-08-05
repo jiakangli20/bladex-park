@@ -1,0 +1,74 @@
+<view class="sub-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="sub-content has-action">
+      <view class="blue-header plain-header">
+        <view class="nav-row">
+          <view class="nav-action" bindtap="goBack">‹</view>
+          <view class="nav-title">{{title}}</view>
+          <view class="nav-action"></view>
+        </view>
+        <view class="intro-title">{{title}}</view>
+        <view class="intro-sub">{{house.title}} · {{house.area}} · {{house.price}}元/m²/天</view>
+      </view>
+
+      <view class="section-card">
+        <view class="card-title">房源信息</view>
+        <view class="info-grid">
+          <view class="info-item">
+            <view class="info-label">楼宇房间</view>
+            <view class="info-value">{{house.building}} {{house.room}}</view>
+          </view>
+          <view class="info-item">
+            <view class="info-label">可租时间</view>
+            <view class="info-value">{{house.availableDate}}</view>
+          </view>
+        </view>
+      </view>
+
+      <view class="form-card">
+        <view class="form-row">
+          <view class="form-label">联系人</view>
+          <input class="form-input" placeholder="请输入联系人" data-field="contact" value="{{form.contact}}" bindinput="handleInput" />
+        </view>
+        <view class="form-row">
+          <view class="form-label">手机号</view>
+          <input class="form-input" type="number" maxlength="11" placeholder="请输入手机号" data-field="phone" value="{{form.phone}}" bindinput="handleInput" />
+        </view>
+        <view class="form-row">
+          <view class="form-label">企业名称</view>
+          <input class="form-input" placeholder="请输入企业名称" data-field="companyName" value="{{form.companyName}}" bindinput="handleInput" />
+        </view>
+        <view wx:if="{{mode === 'appointment'}}" class="form-row">
+          <view class="form-label">意向时间</view>
+          <input class="form-input" placeholder="例如 2026-07-25 上午" data-field="visitTime" value="{{form.visitTime}}" bindinput="handleInput" />
+        </view>
+        <block wx:else>
+          <view class="form-row">
+            <view class="form-label">意向面积</view>
+            <input class="form-input" placeholder="例如 300m²" data-field="intentArea" value="{{form.intentArea}}" bindinput="handleInput" />
+          </view>
+          <view class="form-row">
+            <view class="form-label">行业类型</view>
+            <input class="form-input" placeholder="例如 软件研发" data-field="industry" value="{{form.industry}}" bindinput="handleInput" />
+          </view>
+          <view class="form-row">
+            <view class="form-label">企业规模</view>
+            <input class="form-input" placeholder="例如 50-100人" data-field="scale" value="{{form.scale}}" bindinput="handleInput" />
+          </view>
+          <view class="form-row">
+            <view class="form-label">预计入驻</view>
+            <input class="form-input" placeholder="例如 2026年8月" data-field="settleTime" value="{{form.settleTime}}" bindinput="handleInput" />
+          </view>
+        </block>
+        <view class="form-row form-textarea-row">
+          <view class="form-label">需求说明</view>
+          <textarea class="form-textarea" placeholder="请输入备注或具体需求" data-field="remark" value="{{form.remark}}" bindinput="handleInput"></textarea>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="fixed-action">
+    <view class="primary-button" bindtap="submitForm">{{submitText}}</view>
+  </view>
+</view>

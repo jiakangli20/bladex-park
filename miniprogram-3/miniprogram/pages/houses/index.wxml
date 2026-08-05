@@ -1,0 +1,59 @@
+<view class="page-shell houses-page">
+  <scroll-view class="houses-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="houses-scroll-content">
+      <view class="blue-header houses-header">
+        <view class="nav-row">
+          <view class="nav-action" bindtap="goBack">‹</view>
+          <view class="nav-title">我要看房</view>
+          <view class="nav-action filter-mark"></view>
+        </view>
+      </view>
+
+      <view class="house-search-wrap">
+        <view class="search-box">
+          <view class="search-icon"></view>
+          <text>搜索房源名称、面积...</text>
+        </view>
+      </view>
+
+      <view class="filter-row">
+        <block wx:for="{{filters}}" wx:key="*this">
+          <view class="filter-item" data-name="{{item}}" bindtap="showFilter">
+            <text>{{item}}</text>
+            <view class="{{item === '更多' ? 'mini-filter' : 'down-arrow'}}"></view>
+          </view>
+        </block>
+      </view>
+
+      <view class="house-list">
+        <block wx:for="{{houses}}" wx:key="id">
+          <view class="house-card card" data-id="{{item.id}}" bindtap="openHouseDetail">
+            <image class="house-image" src="{{item.image}}" mode="aspectFill"></image>
+            <view class="house-body">
+              <view class="house-title-row">
+                <text class="house-title">{{item.title}}</text>
+                <text class="status-tag">{{item.status}}</text>
+              </view>
+              <view class="house-meta">
+                <text>{{item.area}}</text>
+                <text>{{item.layout}}</text>
+                <text>{{item.floor}}</text>
+              </view>
+              <view class="tag-row">
+                <block wx:for="{{item.tags}}" wx:key="*this">
+                  <text class="tag">{{item}}</text>
+                </block>
+              </view>
+              <view class="house-bottom">
+                <view class="price"><text>{{item.price}}</text> 元/m²/天</view>
+                <view class="primary-button" data-id="{{item.id}}" catchtap="bookHouse">预约看房</view>
+              </view>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </scroll-view>
+
+  <app-tab-bar active="houses"></app-tab-bar>
+</view>

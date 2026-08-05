@@ -1,0 +1,39 @@
+<view class="page-shell mine-page">
+  <view class="mine-header">
+    <view class="company-avatar">
+      <view class="company-building"></view>
+    </view>
+    <view class="company-copy">
+      <view class="company-name">上海科技有限公司</view>
+      <view class="company-meta">已认证 · A座12层1201-1205</view>
+    </view>
+    <view class="company-arrow">›</view>
+  </view>
+
+  <view class="menu-card">
+    <block wx:for="{{businessMenus}}" wx:key="key">
+      <view class="menu-row" data-key="{{item.key}}" bindtap="openMenu">
+        <view class="menu-icon menu-{{item.tone}}">
+          <view class="menu-mask menu-mask-{{item.key}}"></view>
+        </view>
+        <text class="menu-label">{{item.label}}</text>
+        <text wx:if="{{item.badge}}" class="menu-badge">{{item.badge}}</text>
+        <text class="menu-arrow">›</text>
+      </view>
+    </block>
+  </view>
+
+  <view class="menu-card account-card">
+    <block wx:for="{{accountMenus}}" wx:key="key">
+      <view class="menu-row" data-key="{{item.key}}" bindtap="openMenu">
+        <view class="menu-icon menu-{{item.tone}}">
+          <view class="menu-mask menu-mask-{{item.key}}"></view>
+        </view>
+        <text class="menu-label">{{item.label}}</text>
+        <text class="menu-arrow">›</text>
+      </view>
+    </block>
+  </view>
+
+  <app-tab-bar active="mine"></app-tab-bar>
+</view>

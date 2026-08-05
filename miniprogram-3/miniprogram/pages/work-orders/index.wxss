@@ -1,0 +1,36 @@
+.order-tabs {
+  display: flex;
+  gap: 16rpx;
+  padding: 24rpx 30rpx 0;
+}
+
+.order-tab {
+  flex: 1;
+  height: 70rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999rpx;
+  background: #ffffff;
+  color: #5f6b7c;
+  font-size: 26rpx;
+}
+
+.order-tab.is-active {
+  background: #1f63f5;
+  color: #ffffff;
+}
+
+.order-list {
+  padding-bottom: 20rpx;
+}
+
+.order-card {
+  margin-top: 24rpx;
+}
+
+.order-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 20rpx;
+}

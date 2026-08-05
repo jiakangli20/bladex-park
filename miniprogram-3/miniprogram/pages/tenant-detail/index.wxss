@@ -1,0 +1,96 @@
+.tenant-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.tenant-detail-info {
+  margin-top: 26rpx;
+}
+
+.detail-info-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 12rpx;
+  background: #f6f8fb;
+}
+
+.detail-info-row + .detail-info-row,
+.detail-mini-grid + .detail-info-row {
+  margin-top: 18rpx;
+}
+
+.detail-info-row text,
+.detail-mini-item text {
+  flex: none;
+  color: #98a3b3;
+  font-size: 22rpx;
+  line-height: 1.3;
+}
+
+.detail-info-row view {
+  flex: 1;
+  min-width: 0;
+  color: #4e5a6e;
+  font-size: 25rpx;
+  line-height: 1.28;
+  text-align: right;
+  word-break: break-all;
+}
+
+.detail-mini-grid {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 18rpx;
+}
+
+.detail-mini-item {
+  flex: 1;
+  min-width: 0;
+  padding: 18rpx 16rpx;
+  border-radius: 12rpx;
+  background: #f6f8fb;
+}
+
+.detail-mini-item view {
+  margin-top: 8rpx;
+  color: #4e5a6e;
+  font-size: 25rpx;
+  line-height: 1.28;
+  word-break: break-all;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #eef1f5;
+}
+
+.summary-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.summary-title {
+  color: #172033;
+  font-size: 27rpx;
+  line-height: 1.35;
+}
+
+.summary-sub {
+  margin-top: 8rpx;
+  color: #98a3b3;
+  font-size: 23rpx;
+}
+
+.summary-value {
+  flex: none;
+  color: #1f63f5;
+  font-size: 26rpx;
+  white-space: nowrap;
+}

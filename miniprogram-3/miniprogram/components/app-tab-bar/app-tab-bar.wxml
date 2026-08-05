@@ -1,0 +1,17 @@
+<view class="app-tabbar">
+  <block wx:for="{{tabs}}" wx:key="key">
+    <view
+      class="tabbar-item {{active === item.key ? 'is-active' : ''}} {{item.key === 'scan' ? 'is-scan' : ''}}"
+      data-key="{{item.key}}"
+      data-url="{{item.url}}"
+      bindtap="handleTap"
+    >
+      <image
+        class="tabbar-icon"
+        src="{{active === item.key ? item.activeIcon : item.icon}}"
+        mode="aspectFit"
+      ></image>
+      <text wx:if="{{item.label}}" class="tabbar-label">{{item.label}}</text>
+    </view>
+  </block>
+</view>

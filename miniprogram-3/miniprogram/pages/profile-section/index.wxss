@@ -1,0 +1,9 @@
+.list-block {
+  padding-bottom: 20rpx;
+}
+
+.list-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 20rpx;
+}

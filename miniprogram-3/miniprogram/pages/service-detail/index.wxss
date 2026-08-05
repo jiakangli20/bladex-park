@@ -1,0 +1,223 @@
+.detail-page {
+  min-height: 100vh;
+  padding-bottom: calc(132rpx + env(safe-area-inset-bottom));
+  background: #ffffff;
+  color: #172033;
+}
+
+.detail-status {
+  height: calc(env(safe-area-inset-top) + 28rpx);
+  background: #1f63f5;
+}
+
+.detail-hero {
+  position: relative;
+  height: 386rpx;
+  overflow: hidden;
+}
+
+.detail-hero-image,
+.detail-hero-mask {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.detail-hero-mask {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.24), rgba(0, 0, 0, 0.04));
+}
+
+.detail-nav {
+  position: relative;
+  z-index: 2;
+  height: 90rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30rpx;
+  color: #ffffff;
+}
+
+.detail-back {
+  width: 72rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  font-size: 54rpx;
+}
+
+.detail-tools {
+  display: flex;
+  gap: 34rpx;
+  align-items: center;
+}
+
+.tool-share,
+.tool-heart {
+  width: 42rpx;
+  height: 42rpx;
+  background: #ffffff;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.tool-share {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M18 16.1c-1 0-1.9.5-2.4 1.2L8.9 13.4c.1-.4.1-.8 0-1.2l6.6-3.8A3 3 0 1 0 14.5 6l-6.6 3.8a3 3 0 1 0 0 5.2l6.6 3.8A3 3 0 1 0 18 16.1'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M18 16.1c-1 0-1.9.5-2.4 1.2L8.9 13.4c.1-.4.1-.8 0-1.2l6.6-3.8A3 3 0 1 0 14.5 6l-6.6 3.8a3 3 0 1 0 0 5.2l6.6 3.8A3 3 0 1 0 18 16.1'/%3E%3C/svg%3E");
+}
+
+.tool-heart {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M12 21.2 4.5 13.7a5 5 0 0 1 7.1-7.1l.4.4.4-.4a5 5 0 0 1 7.1 7.1z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M12 21.2 4.5 13.7a5 5 0 0 1 7.1-7.1l.4.4.4-.4a5 5 0 0 1 7.1 7.1z'/%3E%3C/svg%3E");
+}
+
+.detail-title-block {
+  padding: 38rpx 30rpx 80rpx;
+  background: #ffffff;
+}
+
+.detail-title {
+  color: #172033;
+  font-size: 42rpx;
+}
+
+.rating-row {
+  margin-top: 28rpx;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  color: #8b96a5;
+  font-size: 26rpx;
+}
+
+.stars,
+.score {
+  color: #ff7a00;
+}
+
+.divider {
+  width: 2rpx;
+  height: 28rpx;
+  background: #d8dde6;
+}
+
+.merchant-block {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 34rpx 30rpx;
+  border-top: 20rpx solid #f3f6fb;
+  border-bottom: 20rpx solid #f3f6fb;
+}
+
+.merchant-logo {
+  width: 94rpx;
+  height: 94rpx;
+  border-radius: 50%;
+  flex: none;
+}
+
+.merchant-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.merchant-title-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.merchant-title {
+  color: #172033;
+  font-size: 30rpx;
+}
+
+.cert-tag {
+  height: 40rpx;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14rpx;
+  border-radius: 8rpx;
+  background: #eaf3ff;
+  color: #1f63f5;
+  font-size: 22rpx;
+}
+
+.merchant-sub {
+  margin-top: 8rpx;
+  color: #8b96a5;
+  font-size: 24rpx;
+}
+
+.detail-section {
+  padding: 34rpx 30rpx 36rpx;
+}
+
+.detail-section-title {
+  margin-bottom: 30rpx;
+  color: #172033;
+  font-size: 32rpx;
+}
+
+.detail-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 24rpx;
+  margin-bottom: 34rpx;
+}
+
+.check-dot {
+  width: 48rpx;
+  height: 48rpx;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #eaf3ff;
+  color: #1f63f5;
+  font-size: 28rpx;
+}
+
+.feature-title {
+  color: #172033;
+  font-size: 30rpx;
+}
+
+.feature-content {
+  margin-top: 14rpx;
+  color: #4e5a6e;
+  font-size: 26rpx;
+  line-height: 1.38;
+}
+
+.detail-bottom {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 12;
+  height: calc(118rpx + env(safe-area-inset-bottom));
+  padding: 18rpx 30rpx calc(18rpx + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: flex-end;
+  background: #ffffff;
+  box-shadow: 0 -6rpx 18rpx rgba(30, 47, 74, 0.06);
+}
+
+.intent-button {
+  min-width: 216rpx;
+  height: 82rpx;
+  font-size: 30rpx;
+}

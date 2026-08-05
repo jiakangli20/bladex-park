@@ -1,0 +1,67 @@
+.app-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  height: calc(102rpx + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  border-radius: 24rpx 24rpx 0 0;
+  background: #ffffff;
+  box-shadow: 0 -8rpx 20rpx rgba(30, 47, 74, 0.08);
+}
+
+.tabbar-item {
+  width: 20%;
+  height: 102rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  color: #8b96a5;
+}
+
+.tabbar-item.is-active {
+  color: #3478f6;
+}
+
+.tabbar-icon {
+  width: 42rpx;
+  height: 42rpx;
+  display: block;
+}
+
+.tabbar-label {
+  font-size: 22rpx;
+  line-height: 1;
+}
+
+.tabbar-item.is-scan {
+  position: relative;
+  transform: translateY(-26rpx);
+}
+
+.tabbar-item.is-scan::before {
+  content: "";
+  position: absolute;
+  width: 96rpx;
+  height: 96rpx;
+  left: 50%;
+  top: 50%;
+  border: 6rpx solid #ffffff;
+  border-radius: 50%;
+  background: #3478f6;
+  box-shadow: 0 8rpx 18rpx rgba(52, 120, 246, 0.26);
+  transform: translate(-50%, -50%);
+}
+
+.tabbar-item.is-scan .tabbar-icon {
+  position: relative;
+  z-index: 1;
+  width: 48rpx;
+  height: 48rpx;
+}

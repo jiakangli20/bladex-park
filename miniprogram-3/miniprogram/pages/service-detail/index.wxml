@@ -1,0 +1,54 @@
+<view class="detail-page">
+  <view class="detail-status"></view>
+  <view class="detail-hero">
+    <image class="detail-hero-image" src="/assets/images/service-detail.jpg" mode="aspectFill"></image>
+    <view class="detail-hero-mask"></view>
+    <view class="detail-nav">
+      <view class="detail-back" bindtap="goBack">‹</view>
+      <view class="detail-tools">
+        <view class="tool-share" bindtap="shareService"></view>
+        <view class="tool-heart" bindtap="favoriteService"></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="detail-title-block">
+    <view class="detail-title">{{service.title}}</view>
+    <view class="rating-row">
+      <text class="stars">★★★★☆</text>
+      <text class="score">{{service.rating}}</text>
+      <text class="divider"></text>
+      <text>已申请 {{service.applied}}件</text>
+      <text class="divider"></text>
+      <text>{{service.reviews}}条评价</text>
+    </view>
+  </view>
+
+  <view class="merchant-block">
+    <image class="merchant-logo" src="{{service.image}}" mode="aspectFill"></image>
+    <view class="merchant-info">
+      <view class="merchant-title-row">
+        <text class="merchant-title">园区企业服务中心</text>
+        <text class="cert-tag">官方认证</text>
+      </view>
+      <view class="merchant-sub">服务企业 500+</view>
+    </view>
+  </view>
+
+  <view class="detail-section">
+    <view class="detail-section-title">服务详情</view>
+    <block wx:for="{{serviceDetails}}" wx:key="title">
+      <view class="detail-feature">
+        <view class="check-dot">✓</view>
+        <view class="feature-copy">
+          <view class="feature-title">{{item.title}}</view>
+          <view class="feature-content">{{item.content}}</view>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <view class="detail-bottom">
+    <view class="primary-button intent-button" bindtap="submitIntent">填写意向</view>
+  </view>
+</view>

@@ -1,0 +1,29 @@
+<view class="sub-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="sub-content">
+      <view class="blue-header plain-header">
+        <view class="nav-row">
+          <view class="nav-action" bindtap="goBack">‹</view>
+          <view class="nav-title">通知中心</view>
+          <view class="nav-action"></view>
+        </view>
+        <view class="intro-title">通知中心</view>
+        <view class="intro-sub">客户入驻、工单申请、增值服务和逾期缴费提醒</view>
+      </view>
+
+      <view class="notice-list">
+        <block wx:for="{{notifications}}" wx:key="id">
+          <view class="section-card notice-card" data-id="{{item.id}}" bindtap="openNotification">
+            <view class="notice-head">
+              <view class="notice-type status-pill status-{{item.tone}}">{{item.type}}</view>
+              <view class="notice-status {{item.status === '未读' ? 'is-unread' : ''}}">{{item.status}}</view>
+            </view>
+            <view class="card-title notice-title">{{item.title}}</view>
+            <view class="card-sub">{{item.content}}</view>
+            <view class="notice-time">{{item.time}}</view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </scroll-view>
+</view>

@@ -1,0 +1,92 @@
+<view class="page-shell home-page">
+  <scroll-view class="home-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="home-scroll-content">
+      <view class="hero-panel">
+        <view class="hero-top">
+          <view class="service-center">服务中心⌄</view>
+          <view class="hero-notice" bindtap="showNotice">
+            <view class="hero-bell"></view>
+            <view class="hero-badge">16</view>
+          </view>
+        </view>
+        <image class="hero-park" src="/assets/images/home-hero-park.png" mode="aspectFit"></image>
+        <view class="hero-title">智慧园区</view>
+        <view class="hero-subtitle">助力效率及营收双增长</view>
+      </view>
+
+      <view class="notice-strip" bindtap="showNotice">
+        <view class="notice-mark">
+          <text>通知</text>
+          <text>公告</text>
+        </view>
+        <view class="notice-text">关于开展园区 “智慧安防升级” 专项应急...</view>
+        <view class="notice-arrow">〉</view>
+      </view>
+
+      <view class="feature-panel">
+        <block wx:for="{{quickActions}}" wx:key="key">
+          <view class="feature-item" data-key="{{item.key}}" bindtap="handleQuickAction">
+            <view class="feature-icon feature-{{item.tone}}">
+              <view class="feature-mask feature-{{item.key}}"></view>
+            </view>
+            <text>{{item.label}}</text>
+          </view>
+        </block>
+      </view>
+
+      <view class="service-section">
+        <view class="section-title">企业服务</view>
+        <view class="service-grid">
+          <block wx:for="{{homeServiceCards}}" wx:key="key">
+            <view class="service-card service-{{item.tone}}" data-key="{{item.key}}" bindtap="openServiceCard">
+              <view>
+                <view class="service-title">{{item.title}}</view>
+                <view class="service-desc">{{item.desc}}</view>
+              </view>
+              <view class="service-art">
+                <view class="service-art-mask service-art-{{item.key}}"></view>
+              </view>
+            </view>
+          </block>
+        </view>
+      </view>
+
+      <view class="policy-section">
+        <view class="section-head-line">
+          <text>最新政策</text>
+          <view>更多 〉</view>
+        </view>
+        <block wx:for="{{homePolicies}}" wx:key="id">
+          <view class="policy-item">
+            <view class="policy-copy">
+              <view class="policy-title">{{item.title}}</view>
+              <view class="policy-time">{{item.time}}</view>
+            </view>
+            <image class="policy-image" src="{{item.image}}" mode="aspectFill"></image>
+          </view>
+        </block>
+      </view>
+
+      <view class="activity-section">
+        <view class="section-head-line">
+          <text>物业活动</text>
+          <view>更多 〉</view>
+        </view>
+        <block wx:for="{{homeActivities}}" wx:key="id">
+          <view class="activity-item">
+            <image class="activity-image" src="{{item.image}}" mode="aspectFill"></image>
+            <view class="activity-copy">
+              <view class="activity-title">{{item.title}}</view>
+              <view class="activity-meta">活动开始时间： {{item.startTime}}</view>
+              <view class="activity-meta">报名截止时间： {{item.endTime}}</view>
+              <view wx:if="{{item.address}}" class="activity-address">{{item.address}}</view>
+              <view class="activity-price {{item.price === '免费' ? 'is-free' : 'is-paid'}}">{{item.price}}</view>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </scroll-view>
+
+  <app-tab-bar active="home"></app-tab-bar>
+</view>

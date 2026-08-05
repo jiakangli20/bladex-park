@@ -1,0 +1,144 @@
+<view class="page-shell services-page">
+  <scroll-view class="services-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="services-content">
+      <view class="service-hero">
+        <view class="nav-row hero-nav">
+          <view class="nav-action" bindtap="goBack">‹</view>
+          <view class="nav-title">企业服务</view>
+          <view class="nav-action" bindtap="openWorkOrders">
+            <view class="nav-order-icon"></view>
+          </view>
+        </view>
+
+        <view class="hero-kicker">园区办事台</view>
+        <view class="hero-title">物业与企业服务统一办理</view>
+        <view class="hero-sub">从报修、缴费、车位到工商、知产服务，申请状态都能在工单里查看。</view>
+
+        <view class="service-counter">
+          <block wx:for="{{serviceStats}}" wx:key="label">
+            <view class="counter-item">
+              <view class="counter-value">{{item.value}}</view>
+              <view class="counter-label">{{item.label}}</view>
+            </view>
+          </block>
+        </view>
+      </view>
+
+      <view class="service-switch">
+        <view
+          class="switch-item {{activeTab === 'property' ? 'is-active' : ''}}"
+          data-tab="property"
+          bindtap="switchTab"
+        >
+          <text>物业服务</text>
+          <view>日常办事</view>
+        </view>
+        <view
+          class="switch-item {{activeTab === 'value' ? 'is-active' : ''}}"
+          data-tab="value"
+          bindtap="switchTab"
+        >
+          <text>增值服务</text>
+          <view>企业成长</view>
+        </view>
+      </view>
+
+      <view class="progress-strip" bindtap="openWorkOrders">
+        <block wx:for="{{processSteps}}" wx:key="*this">
+          <view class="progress-step">
+            <view class="step-dot"></view>
+            <text>{{item}}</text>
+          </view>
+        </block>
+        <view class="progress-arrow">〉</view>
+      </view>
+
+      <view wx:if="{{activeTab === 'property'}}" class="service-body">
+        <view class="section-line">
+          <view>
+            <view class="section-title">物业服务</view>
+            <view class="section-caption">高频事项直接提交，管理员端同步生成待办。</view>
+          </view>
+          <view class="section-action" bindtap="openWorkOrders">查看进度</view>
+        </view>
+
+        <view class="property-board">
+          <block wx:for="{{propertyCards}}" wx:key="key">
+            <view class="property-tile tile-{{item.tone}}" data-key="{{item.key}}" bindtap="openPropertyService">
+              <view class="tile-top">
+                <view class="property-icon property-{{item.tone}}">
+                  <view class="property-mask property-mask-{{item.key}}"></view>
+                </view>
+                <view class="tile-eta">{{item.eta}}</view>
+              </view>
+              <view class="tile-title">{{item.title}}</view>
+              <view class="tile-desc">{{item.desc}}</view>
+              <view class="tile-action">
+                <text>{{item.badge}}</text>
+                <view>〉</view>
+              </view>
+            </view>
+          </block>
+        </view>
+      </view>
+
+      <view wx:else class="service-body value-body">
+        <view class="value-search">
+          <view class="search-box is-white">
+            <view class="search-icon"></view>
+            <text>搜索工商注册、财税代理等服务</text>
+          </view>
+        </view>
+
+        <scroll-view class="category-scroll" scroll-x show-scrollbar="{{false}}">
+          <view class="category-list">
+            <block wx:for="{{serviceCategories}}" wx:key="*this">
+              <view
+                class="category-chip {{activeCategory === item ? 'is-active' : ''}}"
+                data-category="{{item}}"
+                bindtap="selectCategory"
+              >{{item}}</view>
+            </block>
+          </view>
+        </scroll-view>
+
+        <view class="section-line value-line">
+          <view>
+            <view class="section-title">企业服务目录</view>
+            <view class="section-caption">按企业发展阶段选择服务，提交后进入增值服务工单。</view>
+          </view>
+        </view>
+
+        <view wx:if="{{valueCards.length}}" class="value-list">
+          <block wx:for="{{valueCards}}" wx:key="id">
+            <view class="value-card" data-id="{{item.id}}" bindtap="openServiceDetail">
+              <image class="value-image" src="{{item.image}}" mode="aspectFill"></image>
+              <view class="value-copy">
+                <view class="value-head">
+                  <view class="value-title">{{item.title}}</view>
+                  <text class="provider provider-{{item.providerTone}}">{{item.providerType}}</text>
+                </view>
+                <view class="value-desc">{{item.desc}}</view>
+                <view class="value-tags">
+                  <block wx:for="{{item.tags}}" wx:key="*this">
+                    <text>{{item}}</text>
+                  </block>
+                </view>
+                <view class="value-foot">
+                  <text>{{item.category}}</text>
+                  <text>{{item.rating}}分 · 已申请 {{item.applied}}</text>
+                </view>
+              </view>
+            </view>
+          </block>
+        </view>
+        <view wx:else class="empty-panel">
+          <view class="empty-title">该分类暂无服务</view>
+          <view class="empty-sub">后续接入服务商后会在这里展示可申请项目</view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <app-tab-bar active="services"></app-tab-bar>
+</view>

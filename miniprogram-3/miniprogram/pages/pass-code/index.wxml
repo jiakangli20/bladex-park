@@ -1,0 +1,33 @@
+<view class="pass-page">
+  <scroll-view class="pass-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="pass-content">
+      <view class="pass-hero">
+        <view class="pass-copy">
+          <view class="pass-title">通行码</view>
+          <view class="pass-subtitle">更方便快速便捷入园</view>
+        </view>
+        <view class="pass-illustration">
+          <view class="door-panel"></view>
+          <view class="door-base"></view>
+          <view class="phone-card"></view>
+        </view>
+      </view>
+
+      <view class="code-card">
+        <view class="tenant-info">
+          <image class="tenant-avatar" src="{{avatar}}" mode="aspectFill"></image>
+          <view>
+            <view class="tenant-name">{{tenantName}}</view>
+            <view class="tenant-role">{{tenantRole}}</view>
+          </view>
+        </view>
+
+        <image class="qr-image" src="{{qrImage}}" mode="aspectFit"></image>
+        <view class="expire-time">失效时间： {{expireTime}}</view>
+        <view class="refresh-button" bindtap="refreshCode">↻ 刷新</view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <app-tab-bar active="scan"></app-tab-bar>
+</view>

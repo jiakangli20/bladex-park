@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "frontend-design": {
+      "source": "modelscope.cn",
+      "sourceType": "well-known",
+      "computedHash": "3e0be122a3db8206b6d0d6b07cca898b5c75fb9b7b2101abe143fb2851734d2e"
+    },
+    "government-miniprogram-style": {
+      "source": "/Users/jiakangli/Desktop/归档(1)",
+      "sourceType": "local",
+      "computedHash": "416022446955ac8999f9cb8b88249b22be8928e817ac20354191eecd7f3c974a"
+    }
+  }
+}

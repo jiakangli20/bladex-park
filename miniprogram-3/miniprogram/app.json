@@ -1,0 +1,41 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/houses/index",
+    "pages/house-detail/index",
+    "pages/house-intent/index",
+    "pages/overview/index",
+    "pages/tenant-detail/index",
+    "pages/pass-code/index",
+    "pages/services/index",
+    "pages/service-detail/index",
+    "pages/property-form/index",
+    "pages/value-intent/index",
+    "pages/work-orders/index",
+    "pages/work-order-detail/index",
+    "pages/profile-section/index",
+    "pages/notifications/index",
+    "pages/admin-work-orders/index",
+    "pages/mine/index",
+    "pages/logs/logs"
+  ],
+  "window": {
+    "navigationBarTextStyle": "black",
+    "navigationStyle": "custom"
+  },
+  "style": "v2",
+  "renderer": "skyline",
+  "rendererOptions": {
+    "skyline": {
+      "defaultDisplayBlock": true,
+      "defaultContentBox": true,
+      "tagNameStyleIsolation": "legacy",
+      "disableABTest": true,
+      "sdkVersionBegin": "3.0.0",
+      "sdkVersionEnd": "15.255.255"
+    }
+  },
+  "componentFramework": "glass-easel",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

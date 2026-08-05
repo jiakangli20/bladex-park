@@ -1,0 +1,49 @@
+<view class="sub-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="sub-content">
+      <view class="blue-header plain-header">
+        <view class="nav-row">
+          <view class="nav-action" bindtap="goBack">‹</view>
+          <view class="nav-title">我的工单</view>
+          <view class="nav-action"></view>
+        </view>
+        <view class="intro-title">我的工单</view>
+        <view class="intro-sub">查看物业服务和增值服务申请处理进度</view>
+      </view>
+
+      <view class="order-tabs">
+        <block wx:for="{{tabs}}" wx:key="key">
+          <view class="order-tab {{activeTab === item.key ? 'is-active' : ''}}" data-tab="{{item.key}}" bindtap="switchTab">{{item.label}}</view>
+        </block>
+      </view>
+
+      <view class="order-list">
+        <block wx:for="{{orders}}" wx:key="id">
+          <view class="section-card order-card" data-id="{{item.id}}" bindtap="openDetail">
+            <view class="order-head">
+              <view>
+                <view class="card-title">{{item.title}}</view>
+                <view class="card-sub">{{item.type}} · {{item.applyTime}}</view>
+              </view>
+              <view class="status-pill status-{{item.tone}}">{{item.status}}</view>
+            </view>
+            <view class="info-grid">
+              <view class="info-item">
+                <view class="info-label">处理人</view>
+                <view class="info-value">{{item.handler}}</view>
+              </view>
+              <view class="info-item">
+                <view class="info-label">紧急程度</view>
+                <view class="info-value">{{item.urgency}}</view>
+              </view>
+              <view class="info-item is-wide">
+                <view class="info-label">说明</view>
+                <view class="info-value">{{item.description}}</view>
+              </view>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </scroll-view>
+</view>

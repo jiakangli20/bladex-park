@@ -1,0 +1,55 @@
+<view class="sub-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="sub-content has-action">
+      <view class="blue-header plain-header">
+        <view class="nav-row">
+          <view class="nav-action" bindtap="goBack">‹</view>
+          <view class="nav-title">{{service.title}}</view>
+          <view class="nav-action"></view>
+        </view>
+        <view class="intro-title">{{service.title}}</view>
+        <view class="intro-sub">{{service.desc}}</view>
+      </view>
+
+      <view class="form-card">
+        <view class="form-row">
+          <view class="form-label">联系人</view>
+          <input class="form-input" placeholder="请输入联系人" data-field="contact" value="{{form.contact}}" bindinput="handleInput" />
+        </view>
+        <view class="form-row">
+          <view class="form-label">手机号</view>
+          <input class="form-input" type="number" maxlength="11" placeholder="请输入手机号" data-field="phone" value="{{form.phone}}" bindinput="handleInput" />
+        </view>
+        <view class="form-row">
+          <view class="form-label">房间</view>
+          <input class="form-input" placeholder="请输入房间信息" data-field="room" value="{{form.room}}" bindinput="handleInput" />
+        </view>
+        <view wx:if="{{serviceKey === 'parking' || serviceKey === 'parking-pay'}}" class="form-row">
+          <view class="form-label">车牌号</view>
+          <input class="form-input" placeholder="请输入车牌号" data-field="carNo" value="{{form.carNo}}" bindinput="handleInput" />
+        </view>
+        <view wx:if="{{serviceKey === 'meeting'}}" class="form-row">
+          <view class="form-label">使用时间</view>
+          <input class="form-input" placeholder="例如 2026-07-25 14:00" data-field="useTime" value="{{form.useTime}}" bindinput="handleInput" />
+        </view>
+        <view wx:if="{{serviceKey === 'utility' || serviceKey === 'parking-pay'}}" class="form-row">
+          <view class="form-label">缴费金额</view>
+          <input class="form-input" type="digit" placeholder="请输入金额" data-field="amount" value="{{form.amount}}" bindinput="handleInput" />
+        </view>
+        <view class="form-row form-textarea-row">
+          <view class="form-label">需求说明</view>
+          <textarea class="form-textarea" placeholder="请描述具体问题或办理需求" data-field="content" value="{{form.content}}" bindinput="handleInput"></textarea>
+        </view>
+      </view>
+
+      <view class="section-card">
+        <view class="card-title">处理说明</view>
+        <view class="card-sub">提交后进入待受理状态，管理员可在小程序端进行受理、派单、更新进度和完成处理。</view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="fixed-action">
+    <view class="primary-button" bindtap="submitForm">{{service.submitText}}</view>
+  </view>
+</view>

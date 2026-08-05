@@ -1,0 +1,57 @@
+<view class="sub-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="sub-content">
+      <view class="blue-header plain-header">
+        <view class="nav-row">
+          <view class="nav-action" bindtap="goBack">‹</view>
+          <view class="nav-title">{{pageTitle}}</view>
+          <view class="nav-action"></view>
+        </view>
+        <view class="intro-title">{{pageTitle}}</view>
+        <view class="intro-sub">管理员可受理、派单、更新进度和完成企业申请</view>
+      </view>
+
+      <view class="admin-tabs">
+        <block wx:for="{{typeTabs}}" wx:key="key">
+          <view class="admin-tab {{activeType === item.key ? 'is-active' : ''}}" data-type="{{item.key}}" bindtap="switchType">{{item.label}}</view>
+        </block>
+      </view>
+
+      <scroll-view class="status-scroll" scroll-x show-scrollbar="{{false}}">
+        <view class="status-list">
+          <block wx:for="{{statusTabs}}" wx:key="*this">
+            <view class="status-chip {{activeStatus === item ? 'is-active' : ''}}" data-status="{{item}}" bindtap="switchStatus">{{item}}</view>
+          </block>
+        </view>
+      </scroll-view>
+
+      <view class="admin-order-list">
+        <block wx:for="{{orders}}" wx:key="id">
+          <view class="section-card admin-order-card" data-id="{{item.id}}" bindtap="openDetail">
+            <view class="order-head">
+              <view>
+                <view class="card-title">{{item.title}}</view>
+                <view class="card-sub">{{item.companyName}} · {{item.applyTime}}</view>
+              </view>
+              <view class="status-pill status-{{item.tone}}">{{item.status}}</view>
+            </view>
+            <view class="info-grid">
+              <view class="info-item">
+                <view class="info-label">类型</view>
+                <view class="info-value">{{item.type}}</view>
+              </view>
+              <view class="info-item">
+                <view class="info-label">紧急程度</view>
+                <view class="info-value">{{item.urgency}}</view>
+              </view>
+              <view class="info-item is-wide">
+                <view class="info-label">申请内容</view>
+                <view class="info-value">{{item.description}}</view>
+              </view>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </scroll-view>
+</view>
