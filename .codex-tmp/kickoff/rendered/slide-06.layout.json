@@ -1,0 +1,891 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/8aio4d",
+    "id": "8aio4d",
+    "slide": 6,
+    "layoutId": "92ffbb3d-56af-456a-86ac-96aa24ba28ff",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "5651eb7c-d31f-4970-98b4-789ede8bc667",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "PingFang SC"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "92ffbb3d-56af-456a-86ac-96aa24ba28ff",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "5651eb7c-d31f-4970-98b4-789ede8bc667",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "5651eb7c-d31f-4970-98b4-789ede8bc667",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fe5kbylg",
+      "id": "1",
+      "name": "slide-title",
+      "bbox": [
+        42,
+        34,
+        1120,
+        78
+      ],
+      "geometry": "rect",
+      "text": "代码整改已完成，正式验收仍需真实UAT",
+      "textPreview": "代码整改已完成，正式验收仍需真实UAT",
+      "resolvedFontSize": 48,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 48,
+        "typeface": "PingFang SC",
+        "color": "#111418",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "none",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "代码整改已完成，正式验收仍需真实UAT"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "代码整改已完成，正式验收仍需真实UAT",
+          "resolvedTextStyle": {
+            "fontSize": 48,
+            "typeface": "PingFang SC",
+            "color": "#111418",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "代码整改已完成，正式验收仍需真实UAT",
+              "fontSize": 48,
+              "typeface": "PingFang SC",
+              "color": "#111418",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gfelkjm1",
+      "id": "2",
+      "name": "section-label",
+      "bbox": [
+        1010,
+        43,
+        228,
+        26
+      ],
+      "geometry": "rect",
+      "text": "项目开工会",
+      "textPreview": "项目开工会",
+      "resolvedFontSize": 13.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 16,
+        "typeface": "PingFang SC",
+        "color": "#2F6B5B",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.85,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "项目开工会"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "项目开工会",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "typeface": "PingFang SC",
+            "color": "#2F6B5B",
+            "bold": true,
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "项目开工会",
+              "fontSize": 16,
+              "typeface": "PingFang SC",
+              "color": "#2F6B5B",
+              "bold": true,
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1gn2do36",
+      "id": "3",
+      "name": "page-number",
+      "bbox": [
+        1184,
+        666,
+        54,
+        20
+      ],
+      "geometry": "rect",
+      "text": "06",
+      "textPreview": "06",
+      "resolvedFontSize": 8.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 14,
+        "typeface": "PingFang SC",
+        "color": "#8A929A",
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.62,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "06"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "06",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "typeface": "PingFang SC",
+            "color": "#8A929A",
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "06",
+              "fontSize": 14,
+              "typeface": "PingFang SC",
+              "color": "#8A929A",
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6pc3e94j",
+      "id": "4",
+      "name": "text",
+      "bbox": [
+        42,
+        126,
+        1050,
+        54
+      ],
+      "geometry": "rect",
+      "text": "当前成果可作为项目建设基础直接复用，但“代码完成”不等于“验收通过”。",
+      "textPreview": "当前成果可作为项目建设基础直接复用，但“代码完成”不等于“验收通过”。",
+      "resolvedFontSize": 25,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 25,
+        "typeface": "PingFang SC",
+        "color": "#5D6670",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "当前成果可作为项目建设基础直接复用，但“代码完成”不等于“验收通过”。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "当前成果可作为项目建设基础直接复用，但“代码完成”不等于“验收通过”。",
+          "resolvedTextStyle": {
+            "fontSize": 25,
+            "typeface": "PingFang SC",
+            "color": "#5D6670",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "当前成果可作为项目建设基础直接复用，但“代码完成”不等于“验收通过”。",
+              "fontSize": 25,
+              "typeface": "PingFang SC",
+              "color": "#5D6670",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rqlk7el4",
+      "id": "5",
+      "name": "panel",
+      "bbox": [
+        42,
+        250,
+        375,
+        286
+      ],
+      "geometry": "rect",
+      "fillColor": "#F2F3F3",
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sbelgjmp",
+      "id": "6",
+      "name": "text",
+      "bbox": [
+        72,
+        292,
+        310,
+        110
+      ],
+      "geometry": "rect",
+      "text": "7/8",
+      "textPreview": "7/8",
+      "resolvedFontSize": 72,
+      "resolvedTextStyle": {
+        "anchor": 3,
+        "fontSize": 72,
+        "typeface": "PingFang SC",
+        "color": "#111418",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "bottom",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "7/8"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "7/8",
+          "resolvedTextStyle": {
+            "fontSize": 72,
+            "typeface": "PingFang SC",
+            "color": "#111418",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "7/8",
+              "fontSize": 72,
+              "typeface": "PingFang SC",
+              "color": "#111418",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tcn29o3a",
+      "id": "7",
+      "name": "text",
+      "bbox": [
+        72,
+        430,
+        310,
+        76
+      ],
+      "geometry": "rect",
+      "text": "当前纳入范围的代码审计进度",
+      "textPreview": "当前纳入范围的代码审计进度",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 23,
+        "typeface": "PingFang SC",
+        "color": "#5D6670",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "当前纳入范围的代码审计进"
+          },
+          {
+            "index": 2,
+            "text": "度"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "当前纳入范围的代码审计进度",
+          "resolvedTextStyle": {
+            "fontSize": 23,
+            "typeface": "PingFang SC",
+            "color": "#5D6670",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "当前纳入范围的代码审计进度",
+              "fontSize": 23,
+              "typeface": "PingFang SC",
+              "color": "#5D6670",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ilcja94n",
+      "id": "8",
+      "name": "panel",
+      "bbox": [
+        453,
+        250,
+        375,
+        286
+      ],
+      "geometry": "rect",
+      "fillColor": "#F2F3F3",
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jmlk3el8",
+      "id": "9",
+      "name": "text",
+      "bbox": [
+        483,
+        292,
+        310,
+        110
+      ],
+      "geometry": "rect",
+      "text": "88–91",
+      "textPreview": "88–91",
+      "resolvedFontSize": 72,
+      "resolvedTextStyle": {
+        "anchor": 3,
+        "fontSize": 72,
+        "typeface": "PingFang SC",
+        "color": "#111418",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "bottom",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "88–91"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "88–91",
+          "resolvedTextStyle": {
+            "fontSize": 72,
+            "typeface": "PingFang SC",
+            "color": "#111418",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "88–91",
+              "fontSize": 72,
+              "typeface": "PingFang SC",
+              "color": "#111418",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jy9wfe1c",
+      "id": "10",
+      "name": "text",
+      "bbox": [
+        483,
+        430,
+        310,
+        76
+      ],
+      "geometry": "rect",
+      "text": "主要已审计模块代码复评分",
+      "textPreview": "主要已审计模块代码复评分",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 23,
+        "typeface": "PingFang SC",
+        "color": "#5D6670",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "主要已审计模块代码复评分"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "主要已审计模块代码复评分",
+          "resolvedTextStyle": {
+            "fontSize": 23,
+            "typeface": "PingFang SC",
+            "color": "#5D6670",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "主要已审计模块代码复评分",
+              "fontSize": 23,
+              "typeface": "PingFang SC",
+              "color": "#5D6670",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ix0vm9k7",
+      "id": "11",
+      "name": "panel",
+      "bbox": [
+        864,
+        250,
+        375,
+        286
+      ],
+      "geometry": "rect",
+      "fillColor": "#EAF2EE",
+      "lineWidth": 0
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/50behoji",
+      "id": "12",
+      "name": "text",
+      "bbox": [
+        894,
+        292,
+        310,
+        110
+      ],
+      "geometry": "rect",
+      "text": "0",
+      "textPreview": "0",
+      "resolvedFontSize": 72,
+      "resolvedTextStyle": {
+        "anchor": 3,
+        "fontSize": 72,
+        "typeface": "PingFang SC",
+        "color": "#264A40",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "bottom",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "0"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "0",
+          "resolvedTextStyle": {
+            "fontSize": 72,
+            "typeface": "PingFang SC",
+            "color": "#264A40",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "0",
+              "fontSize": 72,
+              "typeface": "PingFang SC",
+              "color": "#264A40",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/kzidoj2x",
+      "id": "13",
+      "name": "text",
+      "bbox": [
+        894,
+        430,
+        310,
+        76
+      ],
+      "geometry": "rect",
+      "text": "已审计批次P0/P1代码问题",
+      "textPreview": "已审计批次P0/P1代码问题",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 23,
+        "typeface": "PingFang SC",
+        "color": "#5D6670",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "已审计批次P0/P1代码问题"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "已审计批次P0/P1代码问题",
+          "resolvedTextStyle": {
+            "fontSize": 23,
+            "typeface": "PingFang SC",
+            "color": "#5D6670",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "已审计批次P0/P1代码问题",
+              "fontSize": 23,
+              "typeface": "PingFang SC",
+              "color": "#5D6670",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/72twjy1o",
+      "id": "14",
+      "name": "panel",
+      "bbox": [
+        42,
+        570,
+        1196,
+        64
+      ],
+      "geometry": "rect",
+      "fillColor": "#F5EAD8",
+      "lineWidth": 0
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/61kvqtk3",
+      "id": "15",
+      "name": "text",
+      "bbox": [
+        64,
+        586,
+        1110,
+        32
+      ],
+      "geometry": "rect",
+      "text": "上线门槛仍包括：真实多角色UAT、生产安全配置、性能验证、备份恢复与部署回滚。",
+      "textPreview": "上线门槛仍包括：真实多角色UAT、生产安全配置、性能验证、备份恢复与部署回滚。",
+      "resolvedFontSize": 18.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 23,
+        "typeface": "PingFang SC",
+        "color": "#A56B17",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.81,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "上线门槛仍包括：真实多角色UAT、生产安全配置、性能验证、备份恢复与部署回滚。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "上线门槛仍包括：真实多角色UAT、生产安全配置、性能验证、备份恢复与部署回滚。",
+          "resolvedTextStyle": {
+            "fontSize": 23,
+            "typeface": "PingFang SC",
+            "color": "#A56B17",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "上线门槛仍包括：真实多角色UAT、生产安全配置、性能验证、备份恢复与部署回滚。",
+              "fontSize": 23,
+              "typeface": "PingFang SC",
+              "color": "#A56B17",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

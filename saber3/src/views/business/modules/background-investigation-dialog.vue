@@ -44,23 +44,13 @@
               <el-checkbox v-model="riskFlags.shareholder">股东</el-checkbox>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="24">
             <el-form-item label="风险摘要">
               <el-input
                 v-model="form.riskSummary"
                 maxlength="1000"
                 show-word-limit
                 placeholder="请填写人工核验结论"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="信息来源">
-              <el-input
-                v-model="form.sourceRemark"
-                maxlength="500"
-                show-word-limit
-                placeholder="例如：国家企业信用信息公示系统、线下材料"
               />
             </el-form-item>
           </el-col>
@@ -108,15 +98,6 @@
               show-overflow-tooltip
             >
               <template #default="{ row }">{{ valueText(row.riskSummary) }}</template>
-            </el-table-column>
-            <el-table-column
-              prop="sourceRemark"
-              label="信息来源"
-              min-width="170"
-              align="center"
-              show-overflow-tooltip
-            >
-              <template #default="{ row }">{{ valueText(row.sourceRemark) }}</template>
             </el-table-column>
             <template #empty>
               <el-empty :image-size="64" description="暂无历史核验记录" />

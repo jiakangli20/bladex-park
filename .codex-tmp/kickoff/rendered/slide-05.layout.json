@@ -1,0 +1,83 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/gvsyip",
+    "id": "gvsyip",
+    "slide": 5,
+    "layoutId": "92ffbb3d-56af-456a-86ac-96aa24ba28ff",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "5651eb7c-d31f-4970-98b4-789ede8bc667",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#F5F1E8",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    }
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "92ffbb3d-56af-456a-86ac-96aa24ba28ff",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "5651eb7c-d31f-4970-98b4-789ede8bc667",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "5651eb7c-d31f-4970-98b4-789ede8bc667",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/bytcze1o",
+      "id": "1",
+      "bbox": [
+        66,
+        12,
+        1148,
+        696
+      ],
+      "alt": "园区运营管理平台技术架构图",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "asset": {
+        "assetId": "fb7ed039-2078-4e3f-9cf0-f4fe80ae264c",
+        "contentType": "image/png",
+        "byteLength": 306423
+      }
+    }
+  ],
+  "composeRuns": []
+}

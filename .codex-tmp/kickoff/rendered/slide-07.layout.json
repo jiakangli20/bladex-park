@@ -1,0 +1,866 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/9daipp",
+    "id": "9daipp",
+    "slide": 7,
+    "layoutId": "92ffbb3d-56af-456a-86ac-96aa24ba28ff",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "5651eb7c-d31f-4970-98b4-789ede8bc667",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "PingFang SC"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "92ffbb3d-56af-456a-86ac-96aa24ba28ff",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "5651eb7c-d31f-4970-98b4-789ede8bc667",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "5651eb7c-d31f-4970-98b4-789ede8bc667",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zulkbu5o",
+      "id": "1",
+      "name": "slide-title",
+      "bbox": [
+        42,
+        34,
+        1120,
+        78
+      ],
+      "geometry": "rect",
+      "text": "已有成果可复用，后续重点转向联调与上线",
+      "textPreview": "已有成果可复用，后续重点转向联调与上线",
+      "resolvedFontSize": 48,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 48,
+        "typeface": "PingFang SC",
+        "color": "#111418",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "none",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "已有成果可复用，后续重点转向联调与上线"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "已有成果可复用，后续重点转向联调与上线",
+          "resolvedTextStyle": {
+            "fontSize": 48,
+            "typeface": "PingFang SC",
+            "color": "#111418",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "已有成果可复用，后续重点转向联调与上线",
+              "fontSize": 48,
+              "typeface": "PingFang SC",
+              "color": "#111418",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0vu14zm9",
+      "id": "2",
+      "name": "section-label",
+      "bbox": [
+        1010,
+        43,
+        228,
+        26
+      ],
+      "geometry": "rect",
+      "text": "项目开工会",
+      "textPreview": "项目开工会",
+      "resolvedFontSize": 13.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 16,
+        "typeface": "PingFang SC",
+        "color": "#2F6B5B",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.85,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "项目开工会"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "项目开工会",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "typeface": "PingFang SC",
+            "color": "#2F6B5B",
+            "bold": true,
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "项目开工会",
+              "fontSize": 16,
+              "typeface": "PingFang SC",
+              "color": "#2F6B5B",
+              "bold": true,
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lw32d4nu",
+      "id": "3",
+      "name": "page-number",
+      "bbox": [
+        1184,
+        666,
+        54,
+        20
+      ],
+      "geometry": "rect",
+      "text": "07",
+      "textPreview": "07",
+      "resolvedFontSize": 8.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 14,
+        "typeface": "PingFang SC",
+        "color": "#8A929A",
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.62,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "07"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "07",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "typeface": "PingFang SC",
+            "color": "#8A929A",
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "07",
+              "fontSize": 14,
+              "typeface": "PingFang SC",
+              "color": "#8A929A",
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/mxcj694f",
+      "id": "4",
+      "name": "text",
+      "bbox": [
+        42,
+        154,
+        520,
+        44
+      ],
+      "geometry": "rect",
+      "text": "已完成基础",
+      "textPreview": "已完成基础",
+      "resolvedFontSize": 28.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 30,
+        "typeface": "PingFang SC",
+        "color": "#264A40",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.96,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "已完成基础"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "已完成基础",
+          "resolvedTextStyle": {
+            "fontSize": 30,
+            "typeface": "PingFang SC",
+            "color": "#264A40",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "已完成基础",
+              "fontSize": 30,
+              "typeface": "PingFang SC",
+              "color": "#264A40",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nylkfe5k",
+      "id": "5",
+      "name": "text",
+      "bbox": [
+        660,
+        154,
+        520,
+        44
+      ],
+      "geometry": "rect",
+      "text": "开工后必须完成",
+      "textPreview": "开工后必须完成",
+      "resolvedFontSize": 28.67,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 30,
+        "typeface": "PingFang SC",
+        "color": "#A56B17",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.96,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "开工后必须完成"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "开工后必须完成",
+          "resolvedTextStyle": {
+            "fontSize": 30,
+            "typeface": "PingFang SC",
+            "color": "#A56B17",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "开工后必须完成",
+              "fontSize": 30,
+              "typeface": "PingFang SC",
+              "color": "#A56B17",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8ze18jm5",
+      "id": "6",
+      "name": "panel",
+      "bbox": [
+        42,
+        216,
+        540,
+        350
+      ],
+      "geometry": "rect",
+      "fillColor": "#EAF2EE",
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/90n2honq",
+      "id": "7",
+      "name": "panel",
+      "bbox": [
+        660,
+        216,
+        540,
+        350
+      ],
+      "geometry": "rect",
+      "fillColor": "#F2F3F3",
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/21sju54v",
+      "id": "8",
+      "name": "text",
+      "bbox": [
+        72,
+        248,
+        480,
+        292
+      ],
+      "geometry": "rect",
+      "text": "01  核心业务模块完成代码整改\n02  首页、菜单及表格视觉统一\n03  审批、模板、通知链路完成整改\n04  编译与规范检查通过\n05  权限、状态及数据隔离规则已加固",
+      "textPreview": "01  核心业务模块完成代码整改 | 02  首页、菜单及表格视觉统一 | 03  审批、模板、通知链路完成整改 | 04  编译与规范检查通过 | 05  权限、状态及数据隔离规则已加固",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 22,
+        "typeface": "PingFang SC",
+        "color": "#111418",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 5,
+        "lines": [
+          {
+            "index": 1,
+            "text": "01  核心业务模块完成代码整改"
+          },
+          {
+            "index": 2,
+            "text": "02  首页、菜单及表格视觉统一"
+          },
+          {
+            "index": 3,
+            "text": "03  审批、模板、通知链路完成整改"
+          },
+          {
+            "index": 4,
+            "text": "04  编译与规范检查通过"
+          },
+          {
+            "index": 5,
+            "text": "05  权限、状态及数据隔离规则已加固"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "01  核心业务模块完成代码整改",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "PingFang SC",
+            "color": "#111418",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "01  核心业务模块完成代码整改",
+              "fontSize": 22,
+              "typeface": "PingFang SC",
+              "color": "#111418",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "02  首页、菜单及表格视觉统一",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "PingFang SC",
+            "color": "#111418",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "02  首页、菜单及表格视觉统一",
+              "fontSize": 22,
+              "typeface": "PingFang SC",
+              "color": "#111418",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "03  审批、模板、通知链路完成整改",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "PingFang SC",
+            "color": "#111418",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "03  审批、模板、通知链路完成整改",
+              "fontSize": 22,
+              "typeface": "PingFang SC",
+              "color": "#111418",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 4,
+          "text": "04  编译与规范检查通过",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "PingFang SC",
+            "color": "#111418",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "04  编译与规范检查通过",
+              "fontSize": 22,
+              "typeface": "PingFang SC",
+              "color": "#111418",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 5,
+          "text": "05  权限、状态及数据隔离规则已加固",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "PingFang SC",
+            "color": "#111418",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "05  权限、状态及数据隔离规则已加固",
+              "fontSize": 22,
+              "typeface": "PingFang SC",
+              "color": "#111418",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/32103a5g",
+      "id": "9",
+      "name": "text",
+      "bbox": [
+        690,
+        248,
+        480,
+        292
+      ],
+      "geometry": "rect",
+      "text": "01  多角色真实业务UAT\n02  PC端与微信小程序真实联调\n03  历史数据、流程与文档复验\n04  生产安全、性能与稳定性验证\n05  回滚、培训、试运行与正式验收",
+      "textPreview": "01  多角色真实业务UAT | 02  PC端与微信小程序真实联调 | 03  历史数据、流程与文档复验 | 04  生产安全、性能与稳定性验证 | 05  回滚、培训、试运行与正式验收",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 22,
+        "typeface": "PingFang SC",
+        "color": "#111418",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 5,
+        "lines": [
+          {
+            "index": 1,
+            "text": "01  多角色真实业务UAT"
+          },
+          {
+            "index": 2,
+            "text": "02  PC端与微信小程序真实联调"
+          },
+          {
+            "index": 3,
+            "text": "03  历史数据、流程与文档复验"
+          },
+          {
+            "index": 4,
+            "text": "04  生产安全、性能与稳定性验证"
+          },
+          {
+            "index": 5,
+            "text": "05  回滚、培训、试运行与正式验收"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "01  多角色真实业务UAT",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "PingFang SC",
+            "color": "#111418",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "01  多角色真实业务UAT",
+              "fontSize": 22,
+              "typeface": "PingFang SC",
+              "color": "#111418",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "02  PC端与微信小程序真实联调",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "PingFang SC",
+            "color": "#111418",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "02  PC端与微信小程序真实联调",
+              "fontSize": 22,
+              "typeface": "PingFang SC",
+              "color": "#111418",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "03  历史数据、流程与文档复验",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "PingFang SC",
+            "color": "#111418",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "03  历史数据、流程与文档复验",
+              "fontSize": 22,
+              "typeface": "PingFang SC",
+              "color": "#111418",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 4,
+          "text": "04  生产安全、性能与稳定性验证",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "PingFang SC",
+            "color": "#111418",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "04  生产安全、性能与稳定性验证",
+              "fontSize": 22,
+              "typeface": "PingFang SC",
+              "color": "#111418",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 5,
+          "text": "05  回滚、培训、试运行与正式验收",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "PingFang SC",
+            "color": "#111418",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "05  回滚、培训、试运行与正式验收",
+              "fontSize": 22,
+              "typeface": "PingFang SC",
+              "color": "#111418",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/j2psv2t0",
+      "id": "10",
+      "name": "panel",
+      "bbox": [
+        42,
+        598,
+        1158,
+        42
+      ],
+      "geometry": "rect",
+      "fillColor": "#264A40",
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/yhgrmxcv",
+      "id": "11",
+      "name": "text",
+      "bbox": [
+        62,
+        605,
+        1100,
+        28
+      ],
+      "geometry": "rect",
+      "text": "实施策略：保留现有成果，按需求基线复验，不重复建设已验证的基础能力。",
+      "textPreview": "实施策略：保留现有成果，按需求基线复验，不重复建设已验证的基础能力。",
+      "resolvedFontSize": 15.33,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 22,
+        "typeface": "PingFang SC",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.7,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "实施策略：保留现有成果，按需求基线复验，不重复建设已验证的基础能力。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "实施策略：保留现有成果，按需求基线复验，不重复建设已验证的基础能力。",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "PingFang SC",
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "实施策略：保留现有成果，按需求基线复验，不重复建设已验证的基础能力。",
+              "fontSize": 22,
+              "typeface": "PingFang SC",
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

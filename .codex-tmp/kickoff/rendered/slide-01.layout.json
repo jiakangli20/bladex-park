@@ -1,0 +1,566 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/xgwyr7",
+    "id": "xgwyr7",
+    "slide": 1,
+    "layoutId": "92ffbb3d-56af-456a-86ac-96aa24ba28ff",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "5651eb7c-d31f-4970-98b4-789ede8bc667",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "PingFang SC"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "92ffbb3d-56af-456a-86ac-96aa24ba28ff",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "5651eb7c-d31f-4970-98b4-789ede8bc667",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "5651eb7c-d31f-4970-98b4-789ede8bc667",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4nupovmx",
+      "id": "1",
+      "name": "panel",
+      "bbox": [
+        0,
+        0,
+        16,
+        720
+      ],
+      "geometry": "rect",
+      "fillColor": "#2F6B5B",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jmlofq5c",
+      "id": "2",
+      "name": "text",
+      "bbox": [
+        58,
+        54,
+        420,
+        40
+      ],
+      "geometry": "rect",
+      "text": "项目启动与实施计划",
+      "textPreview": "项目启动与实施计划",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 22,
+        "typeface": "PingFang SC",
+        "color": "#2F6B5B",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "项目启动与实施计划"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "项目启动与实施计划",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "PingFang SC",
+            "color": "#2F6B5B",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "项目启动与实施计划",
+              "fontSize": 22,
+              "typeface": "PingFang SC",
+              "color": "#2F6B5B",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ilc7ml4r",
+      "id": "3",
+      "name": "text",
+      "bbox": [
+        58,
+        188,
+        760,
+        220
+      ],
+      "geometry": "rect",
+      "text": "园区运营管理平台\n项目开工会",
+      "textPreview": "园区运营管理平台 | 项目开工会",
+      "resolvedFontSize": 72,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 72,
+        "typeface": "PingFang SC",
+        "color": "#111418",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "none",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "园区运营管理平台"
+          },
+          {
+            "index": 2,
+            "text": "项目开工会"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "园区运营管理平台",
+          "resolvedTextStyle": {
+            "fontSize": 72,
+            "typeface": "PingFang SC",
+            "color": "#111418",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "园区运营管理平台",
+              "fontSize": 72,
+              "typeface": "PingFang SC",
+              "color": "#111418",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "项目开工会",
+          "resolvedTextStyle": {
+            "fontSize": 72,
+            "typeface": "PingFang SC",
+            "color": "#111418",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "项目开工会",
+              "fontSize": 72,
+              "typeface": "PingFang SC",
+              "color": "#111418",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tsnqlkne",
+      "id": "4",
+      "name": "text",
+      "bbox": [
+        58,
+        470,
+        800,
+        48
+      ],
+      "geometry": "rect",
+      "text": "统一建设边界 · 锁定3+1月计划 · 建立协同机制",
+      "textPreview": "统一建设边界 · 锁定3+1月计划 · 建立协同机制",
+      "resolvedFontSize": 30,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 30,
+        "typeface": "PingFang SC",
+        "color": "#5D6670",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "统一建设边界 · 锁定3+1月计划 · 建立协同机制"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "统一建设边界 · 锁定3+1月计划 · 建立协同机制",
+          "resolvedTextStyle": {
+            "fontSize": 30,
+            "typeface": "PingFang SC",
+            "color": "#5D6670",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "统一建设边界 · 锁定3+1月计划 · 建立协同机制",
+              "fontSize": 30,
+              "typeface": "PingFang SC",
+              "color": "#5D6670",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/srepsfmt",
+      "id": "5",
+      "name": "text",
+      "bbox": [
+        58,
+        604,
+        420,
+        30
+      ],
+      "geometry": "rect",
+      "text": "2026年8月｜项目实施团队",
+      "textPreview": "2026年8月｜项目实施团队",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 20,
+        "typeface": "PingFang SC",
+        "color": "#8A929A",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.85,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "2026年8月｜项目实施团队"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "2026年8月｜项目实施团队",
+          "resolvedTextStyle": {
+            "fontSize": 20,
+            "typeface": "PingFang SC",
+            "color": "#8A929A",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "2026年8月｜项目实施团队",
+              "fontSize": 20,
+              "typeface": "PingFang SC",
+              "color": "#8A929A",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rq5oja58",
+      "id": "6",
+      "name": "panel",
+      "bbox": [
+        1010,
+        90,
+        180,
+        510
+      ],
+      "geometry": "rect",
+      "fillColor": "#EAF2EE",
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6pc7q543",
+      "id": "7",
+      "name": "text",
+      "bbox": [
+        930,
+        228,
+        290,
+        120
+      ],
+      "geometry": "rect",
+      "text": "3+1",
+      "textPreview": "3+1",
+      "resolvedFontSize": 92,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 92,
+        "typeface": "PingFang SC",
+        "color": "#264A40",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "3+1"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "3+1",
+          "resolvedTextStyle": {
+            "fontSize": 92,
+            "typeface": "PingFang SC",
+            "color": "#264A40",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "3+1",
+              "fontSize": 92,
+              "typeface": "PingFang SC",
+              "color": "#264A40",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1gnqpknq",
+      "id": "8",
+      "name": "text",
+      "bbox": [
+        968,
+        362,
+        220,
+        96
+      ],
+      "geometry": "rect",
+      "text": "3个月建设上线\n1个月试运行",
+      "textPreview": "3个月建设上线 | 1个月试运行",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "PingFang SC",
+        "color": "#264A40",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "3个月建设上线"
+          },
+          {
+            "index": 2,
+            "text": "1个月试运行"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "3个月建设上线",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "typeface": "PingFang SC",
+            "color": "#264A40",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "3个月建设上线",
+              "fontSize": 24,
+              "typeface": "PingFang SC",
+              "color": "#264A40",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "1个月试运行",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "typeface": "PingFang SC",
+            "color": "#264A40",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "1个月试运行",
+              "fontSize": 24,
+              "typeface": "PingFang SC",
+              "color": "#264A40",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

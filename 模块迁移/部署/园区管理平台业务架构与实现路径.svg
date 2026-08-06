@@ -1,0 +1,205 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1840" height="1120" viewBox="0 0 1840 1120">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#39463f" flood-opacity="0.08"/>
+    </filter>
+    <linearGradient id="pathHeader" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e7eee8"/>
+      <stop offset="1" stop-color="#f0eee8"/>
+    </linearGradient>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 z" fill="#557a68"/>
+    </marker>
+    <marker id="arrowSmall" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,4 L0,8 z" fill="#6a8f7a"/>
+    </marker>
+    <style>
+      .title { font: 700 34px "PingFang SC", "Microsoft YaHei", sans-serif; fill: #29443a; }
+      .subtitle { font: 400 16px "PingFang SC", "Microsoft YaHei", sans-serif; fill: #6c776f; }
+      .layer-title { font: 700 20px "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .card-title { font: 700 17px "PingFang SC", "Microsoft YaHei", sans-serif; fill: #2c4138; }
+      .card-sub { font: 400 13px "PingFang SC", "Microsoft YaHei", sans-serif; fill: #66736c; }
+      .small { font: 400 12px "PingFang SC", "Microsoft YaHei", sans-serif; fill: #66736c; }
+      .tech { font: 500 13px "PingFang SC", "Microsoft YaHei", sans-serif; fill: #4f685c; }
+      .badge { font: 700 12px "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .footer { font: 400 13px "PingFang SC", "Microsoft YaHei", sans-serif; fill: #718078; }
+      .path-title { font: 700 15px "PingFang SC", "Microsoft YaHei", sans-serif; fill: #2c4138; }
+      .path-sub { font: 400 12px "PingFang SC", "Microsoft YaHei", sans-serif; fill: #66736c; }
+    </style>
+  </defs>
+
+  <rect width="1840" height="1120" fill="#f3efe6"/>
+  <text x="920" y="48" text-anchor="middle" class="title">企业服务平台</text>
+  <text x="920" y="76" text-anchor="middle" class="subtitle">以企业全生命周期为主线 · 业务闭环承接 · 业务数据统一沉淀</text>
+
+  <!-- 业务参与主体 -->
+  <rect x="35" y="98" width="1770" height="112" rx="15" fill="#edf3ec" stroke="#6d967c" stroke-width="2"/>
+  <text x="62" y="128" class="layer-title" fill="#527d65">业务参与主体</text>
+  <g filter="url(#shadow)">
+    <rect x="240" y="120" width="400" height="68" rx="10" fill="#fffdf8" stroke="#b5cfbe"/>
+    <circle cx="274" cy="154" r="18" fill="#e6f0e8"/>
+    <circle cx="274" cy="149" r="5" fill="none" stroke="#557f68" stroke-width="2"/>
+    <path d="M264 164c2-8 18-8 20 0" fill="none" stroke="#557f68" stroke-width="2" stroke-linecap="round"/>
+    <text x="308" y="149" class="card-title">企业客户</text>
+    <text x="308" y="171" class="card-sub">看房、入驻、合同、物业、企业服务</text>
+
+    <rect x="720" y="120" width="400" height="68" rx="10" fill="#fffdf8" stroke="#b5cfbe"/>
+    <circle cx="754" cy="154" r="18" fill="#e6f0e8"/>
+    <path d="M745 145h18v18h-18zM748 141h12M748 151h12M748 157h8" fill="none" stroke="#557f68" stroke-width="2" stroke-linecap="round"/>
+    <text x="788" y="149" class="card-title">园区管理人员</text>
+    <text x="788" y="171" class="card-sub">经营总览、审批配置、运营监管</text>
+
+    <rect x="1200" y="120" width="400" height="68" rx="10" fill="#fffdf8" stroke="#b5cfbe"/>
+    <circle cx="1234" cy="154" r="18" fill="#e6f0e8"/>
+    <path d="M1224 147h20v14h-20zM1227 143h14M1228 151h12M1228 156h7" fill="none" stroke="#557f68" stroke-width="2" stroke-linecap="round"/>
+    <text x="1268" y="149" class="card-title">合作服务商</text>
+    <text x="1268" y="171" class="card-sub">增值服务发布、商户协同</text>
+  </g>
+
+  <line x1="920" y1="210" x2="920" y2="228" stroke="#557a68" stroke-width="3" marker-end="url(#arrowGreen)"/>
+
+  <!-- 园区业务全生命周期 -->
+  <rect x="35" y="232" width="1770" height="300" rx="15" fill="#eef4f0" stroke="#5d9b83" stroke-width="2"/>
+  <text x="62" y="263" class="layer-title" fill="#1488b7">园区业务全生命周期</text>
+  <rect x="1420" y="246" width="335" height="32" rx="16" fill="#e2eee5" stroke="#9dbdaa"/>
+  <text x="1587" y="267" text-anchor="middle" class="badge" fill="#527d65">线索进入 · 业务办理 · 结果回流 · 运营分析</text>
+
+  <g filter="url(#shadow)">
+    <rect x="100" y="306" width="216" height="166" rx="10" fill="#fffdf8" stroke="#b2cfbf"/>
+    <circle cx="128" cy="335" r="14" fill="#5d9b83"/><text x="128" y="340" text-anchor="middle" class="badge" fill="#ffffff">01</text>
+    <text x="155" y="340" class="card-title">客户与招商</text>
+    <text x="122" y="375" class="card-sub">商机线索</text><text x="122" y="398" class="card-sub">洽谈跟进</text><text x="122" y="421" class="card-sub">客户档案</text>
+
+    <rect x="348" y="306" width="216" height="166" rx="10" fill="#fffdf8" stroke="#b2cfbf"/>
+    <circle cx="376" cy="335" r="14" fill="#5d9b83"/><text x="376" y="340" text-anchor="middle" class="badge" fill="#ffffff">02</text>
+    <text x="403" y="340" class="card-title">背景调查</text>
+    <text x="370" y="375" class="card-sub">企业基本信息</text><text x="370" y="398" class="card-sub">行业准入判断</text><text x="370" y="421" class="card-sub">企业及高管、股东风险核查</text>
+
+    <rect x="596" y="306" width="216" height="166" rx="10" fill="#fffdf8" stroke="#b2cfbf"/>
+    <circle cx="624" cy="335" r="14" fill="#5d9b83"/><text x="624" y="340" text-anchor="middle" class="badge" fill="#ffffff">03</text>
+    <text x="651" y="340" class="card-title">入驻审批</text>
+    <text x="618" y="375" class="card-sub">项目审批流转</text><text x="618" y="398" class="card-sub">审批表单生成</text><text x="618" y="421" class="card-sub">审批结果回流</text>
+
+    <rect x="844" y="306" width="216" height="166" rx="10" fill="#fffdf8" stroke="#b2cfbf"/>
+    <circle cx="872" cy="335" r="14" fill="#5d9b83"/><text x="872" y="340" text-anchor="middle" class="badge" fill="#ffffff">04</text>
+    <text x="899" y="340" class="card-title">房源匹配</text>
+    <text x="866" y="375" class="card-sub">房源信息维护</text><text x="866" y="398" class="card-sub">出租 / 空置状态</text><text x="866" y="421" class="card-sub">在线看房与入驻意向</text>
+
+    <rect x="1092" y="306" width="216" height="166" rx="10" fill="#fffdf8" stroke="#b2cfbf"/>
+    <circle cx="1120" cy="335" r="14" fill="#5d9b83"/><text x="1120" y="340" text-anchor="middle" class="badge" fill="#ffffff">05</text>
+    <text x="1147" y="340" class="card-title">合同管理</text>
+    <text x="1114" y="375" class="card-sub">合同签订与归档</text><text x="1114" y="398" class="card-sub">续签、变更、退租</text><text x="1114" y="421" class="card-sub">到期节点提醒</text>
+
+    <rect x="1340" y="306" width="216" height="166" rx="10" fill="#fffdf8" stroke="#b2cfbf"/>
+    <circle cx="1368" cy="335" r="14" fill="#5d9b83"/><text x="1368" y="340" text-anchor="middle" class="badge" fill="#ffffff">06</text>
+    <text x="1395" y="340" class="card-title">履约与逾期</text>
+    <text x="1362" y="375" class="card-sub">缴费计划与确认</text><text x="1362" y="398" class="card-sub">逾期识别与提醒</text><text x="1362" y="421" class="card-sub">催缴处置与记录留痕</text>
+
+    <rect x="1588" y="306" width="150" height="166" rx="10" fill="#fffdf8" stroke="#b2cfbf"/>
+    <circle cx="1616" cy="335" r="14" fill="#5d9b83"/><text x="1616" y="340" text-anchor="middle" class="badge" fill="#ffffff">07</text>
+    <text x="1643" y="340" class="card-title">企业服务</text>
+    <text x="1610" y="375" class="card-sub">车位申请</text><text x="1610" y="398" class="card-sub">报修工单</text><text x="1610" y="421" class="card-sub">增值服务</text>
+  </g>
+
+  <g stroke="#6a8f7a" stroke-width="2.5" marker-end="url(#arrowSmall)" fill="none">
+    <line x1="318" y1="389" x2="340" y2="389"/>
+    <line x1="566" y1="389" x2="588" y2="389"/>
+    <line x1="814" y1="389" x2="836" y2="389"/>
+    <line x1="1062" y1="389" x2="1084" y2="389"/>
+    <line x1="1310" y1="389" x2="1332" y2="389"/>
+    <line x1="1558" y1="389" x2="1580" y2="389"/>
+  </g>
+  <text x="920" y="510" text-anchor="middle" class="tech" fill="#4f685c">企业从“意向进入”到“持续运营”的业务链路贯通，关键节点通过审批、通知和数据回流形成闭环</text>
+
+  <line x1="920" y1="532" x2="920" y2="550" stroke="#557a68" stroke-width="3" marker-end="url(#arrowGreen)"/>
+
+  <!-- 平台业务承接 -->
+  <rect x="35" y="554" width="1770" height="226" rx="15" fill="#f3ede3" stroke="#a2875e" stroke-width="2"/>
+  <text x="62" y="585" class="layer-title" fill="#80683f">平台业务承接与闭环能力</text>
+  <rect x="1400" y="568" width="355" height="32" rx="16" fill="#eee4d5" stroke="#c9b492"/>
+  <text x="1577" y="589" text-anchor="middle" class="badge" fill="#80683f">业务统一受理 · 过程可跟踪 · 结果可追溯</text>
+
+  <g filter="url(#shadow)">
+    <rect x="120" y="625" width="375" height="122" rx="10" fill="#fffdf8" stroke="#d1c09e"/>
+    <text x="307" y="657" text-anchor="middle" class="card-title">PC 后台管理端</text>
+    <text x="307" y="682" text-anchor="middle" class="card-sub">招商、客户、房源、合同、逾期</text>
+    <text x="307" y="705" text-anchor="middle" class="card-sub">物业、工单、商户、广告、园区概览</text>
+    <text x="307" y="728" text-anchor="middle" class="small">面向管理人员的统一运营工作台</text>
+
+    <rect x="520" y="625" width="375" height="122" rx="10" fill="#fffdf8" stroke="#d1c09e"/>
+    <text x="707" y="657" text-anchor="middle" class="card-title">微信小程序端</text>
+    <text x="707" y="682" text-anchor="middle" class="card-sub">我要看房、入驻意向、车位申请</text>
+    <text x="707" y="705" text-anchor="middle" class="card-sub">报修申请、企业服务、合同查询</text>
+    <text x="707" y="728" text-anchor="middle" class="small">面向企业用户的便捷服务入口</text>
+
+    <rect x="920" y="625" width="375" height="122" rx="10" fill="#fffdf8" stroke="#d1c09e"/>
+    <text x="1107" y="657" text-anchor="middle" class="card-title">审批与公共能力</text>
+    <text x="1107" y="682" text-anchor="middle" class="card-sub">审批流程、审批表单、模板打印</text>
+    <text x="1107" y="705" text-anchor="middle" class="card-sub">通知消息、附件管理、文件预览</text>
+    <text x="1107" y="728" text-anchor="middle" class="small">支撑业务线上流转与过程留痕</text>
+
+    <rect x="1320" y="625" width="400" height="122" rx="10" fill="#fffdf8" stroke="#d1c09e"/>
+    <text x="1520" y="657" text-anchor="middle" class="card-title">数据与运营能力</text>
+    <text x="1520" y="682" text-anchor="middle" class="card-sub">客户、房源、合同、工单数据统一沉淀</text>
+    <text x="1520" y="705" text-anchor="middle" class="card-sub">权限管理、操作审计、备份恢复</text>
+    <text x="1520" y="728" text-anchor="middle" class="small">支撑园区概览、待办提醒和运营分析</text>
+  </g>
+
+  <line x1="920" y1="780" x2="920" y2="798" stroke="#557a68" stroke-width="3" marker-end="url(#arrowGreen)"/>
+
+  <!-- 业务数据与资源底座 -->
+  <rect x="35" y="802" width="1770" height="260" rx="15" fill="#e9efeb" stroke="#6f8a79" stroke-width="2"/>
+  <text x="62" y="833" class="layer-title" fill="#5d7467">业务数据与资源底座</text>
+  <rect x="1420" y="816" width="335" height="32" rx="16" fill="#e0ebe3" stroke="#abc0b1"/>
+  <text x="1587" y="837" text-anchor="middle" class="badge" fill="#527d65">统一沉淀 · 业务关联 · 权限可控 · 全程留痕</text>
+
+  <g filter="url(#shadow)">
+    <rect x="75" y="866" width="310" height="140" rx="10" fill="#fffdf8" stroke="#9dbdaa"/>
+    <circle cx="112" cy="901" r="20" fill="#e2eee5"/>
+    <ellipse cx="112" cy="894" rx="11" ry="4" fill="#d3e5d8" stroke="#5d806b"/>
+    <path d="M101 894v14c0 3 5 5 11 5s11-2 11-5v-14M101 901c0 3 5 5 11 5s11-2 11-5" fill="none" stroke="#5d806b" stroke-width="1.5"/>
+    <text x="145" y="906" class="card-title">项目库</text>
+    <text x="98" y="941" class="card-sub">商机线索、招商跟进、入驻项目</text>
+    <text x="98" y="965" class="card-sub">背景调查、项目审批、过程记录</text>
+    <text x="98" y="989" class="small">形成项目从意向到入驻的完整档案</text>
+
+    <rect x="420" y="866" width="310" height="140" rx="10" fill="#fffdf8" stroke="#b6c6bb"/>
+    <circle cx="457" cy="901" r="20" fill="#e2eee5"/>
+    <ellipse cx="457" cy="894" rx="11" ry="4" fill="#d3e5d8" stroke="#5d806b"/>
+    <path d="M446 894v14c0 3 5 5 11 5s11-2 11-5v-14M446 901c0 3 5 5 11 5s11-2 11-5" fill="none" stroke="#5d806b" stroke-width="1.5"/>
+    <text x="490" y="906" class="card-title">企业客户库</text>
+    <text x="443" y="941" class="card-sub">企业资料、联系人、客户标签</text>
+    <text x="443" y="965" class="card-sub">高管股东信息及风险核查结果</text>
+    <text x="443" y="989" class="small">统一维护企业全生命周期客户档案</text>
+
+    <rect x="765" y="866" width="310" height="140" rx="10" fill="#fffdf8" stroke="#b6c6bb"/>
+    <circle cx="802" cy="901" r="20" fill="#e2eee5"/>
+    <ellipse cx="802" cy="894" rx="11" ry="4" fill="#d3e5d8" stroke="#5d806b"/>
+    <path d="M791 894v14c0 3 5 5 11 5s11-2 11-5v-14M791 901c0 3 5 5 11 5s11-2 11-5" fill="none" stroke="#5d806b" stroke-width="1.5"/>
+    <text x="835" y="906" class="card-title">房源资源库</text>
+    <text x="788" y="941" class="card-sub">园区、楼宇、楼层、房源档案</text>
+    <text x="788" y="965" class="card-sub">面积、图片及出租 / 空置状态</text>
+    <text x="788" y="989" class="small">支撑房源检索、匹配与租赁状态联动</text>
+
+    <rect x="1110" y="866" width="310" height="140" rx="10" fill="#fffdf8" stroke="#b6c6bb"/>
+    <circle cx="1147" cy="901" r="20" fill="#e2eee5"/>
+    <ellipse cx="1147" cy="894" rx="11" ry="4" fill="#d3e5d8" stroke="#5d806b"/>
+    <path d="M1136 894v14c0 3 5 5 11 5s11-2 11-5v-14M1136 901c0 3 5 5 11 5s11-2 11-5" fill="none" stroke="#5d806b" stroke-width="1.5"/>
+    <text x="1180" y="906" class="card-title">合同履约库</text>
+    <text x="1133" y="941" class="card-sub">合同主档、续签、变更、退租</text>
+    <text x="1133" y="965" class="card-sub">缴费计划、到账确认、逾期记录</text>
+    <text x="1133" y="989" class="small">沉淀合同全周期及履约过程数据</text>
+
+    <rect x="1455" y="866" width="310" height="140" rx="10" fill="#fffdf8" stroke="#b6c6bb"/>
+    <circle cx="1492" cy="901" r="20" fill="#e2eee5"/>
+    <ellipse cx="1492" cy="894" rx="11" ry="4" fill="#d3e5d8" stroke="#5d806b"/>
+    <path d="M1481 894v14c0 3 5 5 11 5s11-2 11-5v-14M1481 901c0 3 5 5 11 5s11-2 11-5" fill="none" stroke="#5d806b" stroke-width="1.5"/>
+    <text x="1525" y="906" class="card-title">服务工单库</text>
+    <text x="1478" y="941" class="card-sub">物业申请、报修工单、车位申请</text>
+    <text x="1478" y="965" class="card-sub">商户、广告及增值服务数据</text>
+    <text x="1478" y="989" class="small">支撑服务受理、处理、反馈与评价</text>
+  </g>
+
+  <text x="40" y="1100" class="footer">企业服务平台 · 业务架构与数据底座</text>
+  <text x="1800" y="1100" text-anchor="end" class="footer">全生命周期 · 线上审批 · 数据沉淀 · 业务可追溯</text>
+</svg>

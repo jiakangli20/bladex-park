@@ -14,17 +14,12 @@
           <el-form-item>
             <el-button type="primary" icon="el-icon-search" @click="searchChange">搜索</el-button>
             <el-button icon="el-icon-delete" @click="searchReset">清空</el-button>
+            <el-button type="primary" icon="el-icon-plus" @click="handleAdd">新增</el-button>
+            <el-tooltip content="刷新" placement="top">
+              <el-button icon="el-icon-refresh" circle @click="onLoad" />
+            </el-tooltip>
           </el-form-item>
         </el-form>
-      </section>
-
-      <section class="expiring-toolbar">
-        <div class="toolbar-left">
-          <el-button type="primary" icon="el-icon-plus" @click="handleAdd">新增</el-button>
-        </div>
-        <el-tooltip content="刷新" placement="top">
-          <el-button icon="el-icon-refresh" circle @click="onLoad" />
-        </el-tooltip>
       </section>
 
       <el-table
@@ -322,8 +317,7 @@ export default {
   gap: 14px;
 }
 
-.expiring-search,
-.expiring-toolbar {
+.expiring-search {
   border-radius: 10px;
 }
 
@@ -340,21 +334,6 @@ export default {
 
 .expiring-search :deep(.el-input) {
   width: 190px;
-}
-
-.expiring-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-}
-
-.toolbar-left {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
 }
 
 .expiring-table {

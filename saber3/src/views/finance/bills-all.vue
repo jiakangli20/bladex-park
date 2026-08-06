@@ -59,7 +59,7 @@
               <el-button type="primary" icon="el-icon-search" @click="searchChange">搜索</el-button>
               <el-button icon="el-icon-download" @click="handleExport">导出</el-button>
               <el-button
-                v-if="canConfirmPayment"
+                v-if="!isPayable && canConfirmPayment"
                 type="warning"
                 plain
                 @click="openUtilitySubmissionDialog"
