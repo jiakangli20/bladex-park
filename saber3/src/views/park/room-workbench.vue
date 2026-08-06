@@ -6,7 +6,12 @@
           <div class="room-profile-section">
             <h3>基础信息</h3>
             <div class="room-info-grid">
-              <div v-for="item in basicItems" :key="item.label" class="room-info-item" :class="{ 'is-wide': item.wide }">
+              <div
+                v-for="item in basicItems"
+                :key="item.label"
+                class="room-info-item"
+                :class="{ 'is-wide': item.wide }"
+              >
                 <span>{{ item.label }}</span>
                 <strong>{{ item.value }}</strong>
               </div>
@@ -16,7 +21,12 @@
           <div class="room-profile-section">
             <h3>招商信息</h3>
             <div class="room-info-grid">
-              <div v-for="item in leasingItems" :key="item.label" class="room-info-item" :class="{ 'is-wide': item.wide }">
+              <div
+                v-for="item in leasingItems"
+                :key="item.label"
+                class="room-info-item"
+                :class="{ 'is-wide': item.wide }"
+              >
                 <span>{{ item.label }}</span>
                 <strong>{{ item.value }}</strong>
               </div>
@@ -42,10 +52,34 @@
 
       <el-tab-pane label="租客账单" name="bills">
         <section class="room-data-panel">
-          <el-table v-loading="billLoading" :data="bills" border row-key="paymentId" empty-text="暂无关联账单">
-            <el-table-column prop="contractNo" label="合同编号" min-width="150" align="center" show-overflow-tooltip />
-            <el-table-column prop="customerName" label="租客名称" min-width="160" align="center" show-overflow-tooltip />
-            <el-table-column prop="feeName" label="费用类型" min-width="130" align="center" show-overflow-tooltip />
+          <el-table
+            v-loading="billLoading"
+            :data="bills"
+            border
+            row-key="paymentId"
+            empty-text="暂无关联账单"
+          >
+            <el-table-column
+              prop="contractNo"
+              label="合同编号"
+              min-width="150"
+              align="center"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              prop="customerName"
+              label="租客名称"
+              min-width="160"
+              align="center"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              prop="feeName"
+              label="费用类型"
+              min-width="130"
+              align="center"
+              show-overflow-tooltip
+            />
             <el-table-column label="应收/应付金额" width="140" align="center">
               <template #default="{ row }">{{ formatMoney(row.amountDue) }}</template>
             </el-table-column>
@@ -76,10 +110,34 @@
 
       <el-tab-pane label="租客合同" name="contracts">
         <section class="room-data-panel">
-          <el-table v-loading="contractLoading" :data="contracts" border row-key="contractId" empty-text="暂无关联合同">
-            <el-table-column prop="contractNo" label="合同编号" min-width="160" align="center" show-overflow-tooltip />
-            <el-table-column prop="contractName" label="合同名称" min-width="180" align="center" show-overflow-tooltip />
-            <el-table-column prop="customerName" label="租客名称" min-width="160" align="center" show-overflow-tooltip />
+          <el-table
+            v-loading="contractLoading"
+            :data="contracts"
+            border
+            row-key="contractId"
+            empty-text="暂无关联合同"
+          >
+            <el-table-column
+              prop="contractNo"
+              label="合同编号"
+              min-width="160"
+              align="center"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              prop="contractName"
+              label="合同名称"
+              min-width="180"
+              align="center"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              prop="customerName"
+              label="租客名称"
+              min-width="160"
+              align="center"
+              show-overflow-tooltip
+            />
             <el-table-column prop="startDate" label="开始日期" width="120" align="center" />
             <el-table-column prop="endDate" label="结束日期" width="120" align="center" />
             <el-table-column label="月租金" width="130" align="center">
@@ -116,25 +174,77 @@
       </el-tab-pane>
 
       <el-tab-pane v-if="permission.rent_control_asset_list" label="资产记录" name="assets" lazy>
-        <AssetLedger :park-id="parkId" :building-id="buildingId" :floor-no="floorNo" :room-id="roomId" />
+        <AssetLedger
+          :park-id="parkId"
+          :building-id="buildingId"
+          :floor-no="floorNo"
+          :room-id="roomId"
+        />
       </el-tab-pane>
 
       <el-tab-pane v-if="permission.rent_control_device_list" label="智能硬件" name="devices" lazy>
-        <SmartDeviceLedger :park-id="parkId" :building-id="buildingId" :floor-no="floorNo" :room-id="roomId" />
+        <SmartDeviceLedger
+          :park-id="parkId"
+          :building-id="buildingId"
+          :floor-no="floorNo"
+          :room-id="roomId"
+        />
       </el-tab-pane>
 
-      <el-tab-pane v-if="permission.rent_control_utility_list" label="水电记录" name="utilities" lazy>
+      <el-tab-pane
+        v-if="permission.rent_control_utility_list"
+        label="水电记录"
+        name="utilities"
+        lazy
+      >
         <section class="room-data-panel">
           <div class="room-panel-toolbar">
             <strong>水电记录（{{ utilityPage.total }}）</strong>
-            <el-button v-if="permission.rent_control_utility_add" type="primary" :icon="Plus" @click="openUtilityDialog">新增</el-button>
+            <div class="room-panel-actions">
+              <el-button
+                v-if="permission.rent_control_utility_add"
+                type="success"
+                :disabled="utilitySelection.length !== 2"
+                @click="openBillingDialog"
+                >生成企业账单</el-button
+              >
+              <el-button
+                v-if="permission.rent_control_utility_add"
+                type="primary"
+                :icon="Plus"
+                @click="openUtilityDialog"
+                >新增</el-button
+              >
+            </div>
           </div>
-          <el-table v-loading="utilityLoading" :data="utilityRecords" border row-key="recordId" empty-text="暂无水电抄表记录">
+          <el-alert type="info" :closable="false" show-icon class="utility-billing-tip">
+            <template #title
+              >选择同一水表或电表的两条抄表记录，可按实际用量生成并发布企业水电账单。</template
+            >
+          </el-alert>
+          <el-table
+            ref="utilityTableRef"
+            v-loading="utilityLoading"
+            :data="utilityRecords"
+            border
+            row-key="recordId"
+            empty-text="暂无水电抄表记录"
+            @selection-change="utilitySelectionChange"
+          >
+            <el-table-column type="selection" width="44" align="center" />
             <el-table-column prop="readingTime" label="抄表时间" width="170" align="center" />
             <el-table-column prop="recordType" label="类型" width="90" align="center">
-              <template #default="{ row }">{{ row.recordType === 'water' ? '水表' : '电表' }}</template>
+              <template #default="{ row }">{{
+                row.recordType === 'water' ? '水表' : '电表'
+              }}</template>
             </el-table-column>
-            <el-table-column prop="deviceName" label="设备名称" min-width="150" align="center" show-overflow-tooltip />
+            <el-table-column
+              prop="deviceName"
+              label="设备名称"
+              min-width="150"
+              align="center"
+              show-overflow-tooltip
+            />
             <el-table-column prop="previousReading" label="上次读数" width="110" align="center" />
             <el-table-column prop="currentReading" label="本次读数" width="110" align="center" />
             <el-table-column prop="usageAmount" label="本期用量" width="110" align="center" />
@@ -142,7 +252,12 @@
               <template #default="{ row }">{{ formatMoney(row.amount) }}</template>
             </el-table-column>
             <el-table-column prop="operatorName" label="抄表人" width="110" align="center" />
-            <el-table-column v-if="permission.rent_control_utility_delete" label="操作" width="96" align="center">
+            <el-table-column
+              v-if="permission.rent_control_utility_delete"
+              label="操作"
+              width="96"
+              align="center"
+            >
               <template #default="{ row }">
                 <el-button text type="danger" @click="deleteUtility(row)">删除</el-button>
               </template>
@@ -152,22 +267,41 @@
             <el-pagination
               background
               :current-page="utilityPage.currentPage"
+              :page-sizes="[10, 20, 30, 40, 50, 100]"
               :page-size="utilityPage.pageSize"
-              layout="total, prev, pager, next"
+              layout="total, sizes, prev, pager, next, jumper"
               :total="utilityPage.total"
+              @size-change="changeUtilityPageSize"
               @current-change="changeUtilityPage"
             />
           </div>
         </section>
       </el-tab-pane>
 
-      <el-tab-pane v-if="permission.rent_control_vehicle_list" label="绑定车辆" name="vehicles" lazy>
+      <el-tab-pane
+        v-if="permission.rent_control_vehicle_list"
+        label="绑定车辆"
+        name="vehicles"
+        lazy
+      >
         <section class="room-data-panel">
           <div class="room-panel-toolbar">
             <strong>绑定车辆（{{ vehiclePage.total }}）</strong>
-            <el-button v-if="permission.rent_control_vehicle_add" type="primary" :icon="Plus" @click="openVehicleDialog">新增</el-button>
+            <el-button
+              v-if="permission.rent_control_vehicle_add"
+              type="primary"
+              :icon="Plus"
+              @click="openVehicleDialog"
+              >新增</el-button
+            >
           </div>
-          <el-table v-loading="vehicleLoading" :data="vehicles" border row-key="vehicleId" empty-text="暂无绑定车辆">
+          <el-table
+            v-loading="vehicleLoading"
+            :data="vehicles"
+            border
+            row-key="vehicleId"
+            empty-text="暂无绑定车辆"
+          >
             <el-table-column prop="plateNo" label="车牌号" min-width="130" align="center" />
             <el-table-column prop="vehicleType" label="车辆类型" width="110" align="center">
               <template #default="{ row }">{{ vehicleTypeText(row.vehicleType) }}</template>
@@ -183,7 +317,12 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column v-if="permission.rent_control_vehicle_delete" label="操作" width="96" align="center">
+            <el-table-column
+              v-if="permission.rent_control_vehicle_delete"
+              label="操作"
+              width="96"
+              align="center"
+            >
               <template #default="{ row }">
                 <el-button text type="danger" @click="deleteVehicle(row)">删除</el-button>
               </template>
@@ -201,13 +340,24 @@
           </div>
         </section>
       </el-tab-pane>
-
     </el-tabs>
 
-    <el-dialog v-model="utilityDialogVisible" title="新增水电记录" width="620px" append-to-body destroy-on-close class="room-extension-dialog">
+    <el-dialog
+      v-model="utilityDialogVisible"
+      title="新增水电记录"
+      width="620px"
+      append-to-body
+      destroy-on-close
+      class="room-extension-dialog"
+    >
       <el-form ref="utilityFormRef" :model="utilityForm" :rules="utilityRules" label-width="100px">
         <el-form-item label="水电表" prop="deviceId">
-          <el-select v-model="utilityForm.deviceId" filterable placeholder="请选择当前房源下的水表或电表" @change="handleUtilityDeviceChange">
+          <el-select
+            v-model="utilityForm.deviceId"
+            filterable
+            placeholder="请选择当前房源下的水表或电表"
+            @change="handleUtilityDeviceChange"
+          >
             <el-option
               v-for="item in meterOptions"
               :key="item.deviceId"
@@ -217,22 +367,53 @@
           </el-select>
         </el-form-item>
         <el-form-item label="抄表时间" prop="readingTime">
-          <el-date-picker v-model="utilityForm.readingTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择抄表时间" />
+          <el-date-picker
+            v-model="utilityForm.readingTime"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="请选择抄表时间"
+          />
         </el-form-item>
         <el-form-item label="上次读数" prop="previousReading">
-          <el-input-number v-model="utilityForm.previousReading" :min="0" :precision="2" controls-position="right" disabled />
+          <el-input-number
+            v-model="utilityForm.previousReading"
+            :min="0"
+            :precision="2"
+            controls-position="right"
+            disabled
+          />
         </el-form-item>
         <el-form-item label="本次读数" prop="currentReading">
-          <el-input-number v-model="utilityForm.currentReading" :min="0" :precision="2" controls-position="right" />
+          <el-input-number
+            v-model="utilityForm.currentReading"
+            :min="0"
+            :precision="2"
+            controls-position="right"
+          />
         </el-form-item>
         <el-form-item label="本期金额">
-          <el-input-number v-model="utilityForm.amount" :min="0" :precision="2" controls-position="right" />
+          <el-input-number
+            v-model="utilityForm.amount"
+            :min="0"
+            :precision="2"
+            controls-position="right"
+          />
         </el-form-item>
         <el-form-item label="抄表人">
-          <el-input v-model="utilityForm.operatorName" maxlength="100" placeholder="默认当前登录用户" />
+          <el-input
+            v-model="utilityForm.operatorName"
+            maxlength="100"
+            placeholder="默认当前登录用户"
+          />
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="utilityForm.remark" type="textarea" :rows="3" maxlength="500" show-word-limit />
+          <el-input
+            v-model="utilityForm.remark"
+            type="textarea"
+            :rows="3"
+            maxlength="500"
+            show-word-limit
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -241,7 +422,93 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="vehicleDialogVisible" title="新增绑定车辆" width="620px" append-to-body destroy-on-close class="room-extension-dialog">
+    <el-dialog
+      v-model="billingDialogVisible"
+      title="生成并发布水电账单"
+      width="680px"
+      append-to-body
+      destroy-on-close
+      class="room-extension-dialog"
+    >
+      <el-form ref="billingFormRef" :model="billingForm" :rules="billingRules" label-width="112px">
+        <el-form-item label="计费类型">
+          <el-tag effect="plain">{{ billingTypeText }}</el-tag>
+        </el-form-item>
+        <el-form-item label="抄表区间">
+          <span>{{ billingRangeText }}</span>
+        </el-form-item>
+        <el-form-item label="计费单价" prop="unitPrice">
+          <el-input-number
+            v-model="billingForm.unitPrice"
+            :min="0.000001"
+            :precision="6"
+            controls-position="right"
+          />
+          <span class="billing-form-unit">元/度（吨）</span>
+        </el-form-item>
+        <el-form-item label="缴费截止" prop="payDeadline">
+          <el-date-picker
+            v-model="billingForm.payDeadline"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择缴费截止日期"
+          />
+        </el-form-item>
+        <el-form-item label="账单备注">
+          <el-input
+            v-model="billingForm.remark"
+            type="textarea"
+            :rows="2"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <el-descriptions v-if="billingPreview.valid" :column="2" border class="billing-preview">
+        <el-descriptions-item label="起始读数">{{
+          billingPreview.detail.previousReading
+        }}</el-descriptions-item>
+        <el-descriptions-item label="截止读数">{{
+          billingPreview.detail.currentReading
+        }}</el-descriptions-item>
+        <el-descriptions-item label="实际用量">{{
+          billingPreview.detail.usageAmount
+        }}</el-descriptions-item>
+        <el-descriptions-item label="应缴金额">{{
+          formatMoney(billingPreview.detail.amount)
+        }}</el-descriptions-item>
+        <el-descriptions-item label="企业" :span="2">{{
+          billingPreview.detail.customerName || '-'
+        }}</el-descriptions-item>
+      </el-descriptions>
+      <el-alert
+        v-else-if="billingPreview.message"
+        type="error"
+        :closable="false"
+        show-icon
+        :title="billingPreview.message"
+      />
+      <template #footer>
+        <el-button @click="billingDialogVisible = false">取消</el-button>
+        <el-button :loading="billingPreviewLoading" @click="previewBilling">预览计费</el-button>
+        <el-button
+          type="primary"
+          :loading="billingSaving"
+          :disabled="!billingPreview.valid"
+          @click="generateAndPublishBill"
+          >确认生成并发布</el-button
+        >
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="vehicleDialogVisible"
+      title="新增绑定车辆"
+      width="620px"
+      append-to-body
+      destroy-on-close
+      class="room-extension-dialog"
+    >
       <el-form ref="vehicleFormRef" :model="vehicleForm" :rules="vehicleRules" label-width="100px">
         <el-form-item label="车牌号" prop="plateNo">
           <el-input v-model="vehicleForm.plateNo" maxlength="32" placeholder="请输入车牌号" />
@@ -277,7 +544,13 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="vehicleForm.remark" type="textarea" :rows="3" maxlength="500" show-word-limit />
+          <el-input
+            v-model="vehicleForm.remark"
+            type="textarea"
+            :rows="3"
+            maxlength="500"
+            show-word-limit
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -293,6 +566,11 @@ import { mapGetters } from 'vuex';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import { getDevicePage } from '@/api/park/smart-device';
+import {
+  generateUtilityBill,
+  previewUtilityBill,
+  publishUtilityBill,
+} from '@/api/ics/utility-billing';
 import {
   getRoomContractPage,
   getRoomDetail,
@@ -330,6 +608,12 @@ const emptyVehicleForm = roomId => ({
   remark: '',
 });
 
+const emptyBillingForm = () => ({
+  unitPrice: null,
+  payDeadline: '',
+  remark: '',
+});
+
 export default {
   name: 'RoomWorkbench',
   components: { AssetLedger, EnterprisePropertyWorkorder, SmartDeviceLedger },
@@ -353,6 +637,7 @@ export default {
       contracts: [],
       bills: [],
       utilityRecords: [],
+      utilitySelection: [],
       vehicles: [],
       meterOptions: [],
       contractPage: { currentPage: 1, pageSize: 10, total: 0 },
@@ -362,8 +647,13 @@ export default {
       utilityLoading: false,
       vehicleLoading: false,
       utilityDialogVisible: false,
+      billingDialogVisible: false,
       vehicleDialogVisible: false,
       utilitySaving: false,
+      billingPreviewLoading: false,
+      billingSaving: false,
+      billingPreview: { valid: false, message: '', detail: {} },
+      billingForm: emptyBillingForm(),
       vehicleSaving: false,
       utilityForm: emptyUtilityForm(this.roomId),
       vehicleForm: emptyVehicleForm(this.roomId),
@@ -372,6 +662,10 @@ export default {
         readingTime: [{ required: true, message: '请选择抄表时间', trigger: 'change' }],
         previousReading: [{ required: true, message: '请输入上次读数', trigger: 'change' }],
         currentReading: [{ required: true, message: '请输入本次读数', trigger: 'change' }],
+      },
+      billingRules: {
+        unitPrice: [{ required: true, message: '请输入计费单价', trigger: 'blur' }],
+        payDeadline: [{ required: true, message: '请选择缴费截止日期', trigger: 'change' }],
       },
       vehicleRules: {
         plateNo: [{ required: true, message: '请输入车牌号', trigger: 'blur' }],
@@ -383,7 +677,12 @@ export default {
   computed: {
     ...mapGetters(['permission']),
     roomContextText() {
-      return [this.parkName, this.buildingName, this.floorNo ? `${this.floorNo}层` : '', this.room.name]
+      return [
+        this.parkName,
+        this.buildingName,
+        this.floorNo ? `${this.floorNo}层` : '',
+        this.room.name,
+      ]
         .filter(Boolean)
         .join(' / ');
     },
@@ -392,7 +691,11 @@ export default {
         { label: '房源名称', value: this.value(this.room.name) },
         { label: '所属楼宇', value: this.value(this.room.buildingName || this.buildingName) },
         { label: '所在楼层', value: this.measure(this.room.floor || this.floorNo, '层') },
-        { label: '房源地址', value: this.value(this.room.address || this.roomContextText), wide: true },
+        {
+          label: '房源地址',
+          value: this.value(this.room.address || this.roomContextText),
+          wide: true,
+        },
         { label: '建筑面积', value: this.measure(this.room.area, '㎡') },
         { label: '户型', value: this.value(this.room.houseType) },
         { label: '朝向', value: this.value(this.room.orientation) },
@@ -414,6 +717,19 @@ export default {
     roomImages() {
       return this.parseImages(this.room.sceneImages);
     },
+    billingRecords() {
+      return [...this.utilitySelection].sort(
+        (a, b) => new Date(a.readingTime).getTime() - new Date(b.readingTime).getTime()
+      );
+    },
+    billingTypeText() {
+      const type = (this.billingRecords[0] || {}).recordType;
+      return type === 'water' ? '水费' : type === 'electric' ? '电费' : '-';
+    },
+    billingRangeText() {
+      if (this.billingRecords.length !== 2) return '-';
+      return `${this.billingRecords[0].readingTime} 至 ${this.billingRecords[1].readingTime}`;
+    },
   },
   watch: {
     roomId: {
@@ -423,6 +739,7 @@ export default {
         this.contractPage.currentPage = 1;
         this.billPage.currentPage = 1;
         this.utilityPage.currentPage = 1;
+        this.utilitySelection = [];
         this.vehiclePage.currentPage = 1;
         this.loadAll();
       },
@@ -524,6 +841,88 @@ export default {
       this.utilityPage.currentPage = current;
       this.loadUtilityRecords();
     },
+    changeUtilityPageSize(size) {
+      this.utilityPage.pageSize = size;
+      this.utilityPage.currentPage = 1;
+      this.loadUtilityRecords();
+    },
+    utilitySelectionChange(rows) {
+      this.utilitySelection = rows || [];
+    },
+    openBillingDialog() {
+      if (this.utilitySelection.length !== 2) {
+        ElMessage.warning('请选择两条起止抄表记录');
+        return;
+      }
+      const [start, end] = this.billingRecords;
+      if (String(start.deviceId) !== String(end.deviceId) || start.recordType !== end.recordType) {
+        ElMessage.warning('请选择同一水表或电表的两条记录');
+        return;
+      }
+      this.billingForm = emptyBillingForm();
+      this.billingPreview = { valid: false, message: '', detail: {} };
+      this.billingDialogVisible = true;
+    },
+    billingRequest() {
+      const [start, end] = this.billingRecords;
+      return {
+        startRecordId: start && start.recordId,
+        endRecordId: end && end.recordId,
+        unitPrice: this.billingForm.unitPrice,
+        payDeadline: this.billingForm.payDeadline,
+        remark: this.billingForm.remark,
+      };
+    },
+    async previewBilling() {
+      try {
+        await this.$refs.billingFormRef.validate();
+        this.billingPreviewLoading = true;
+        const res = await previewUtilityBill(this.billingRequest());
+        this.billingPreview = this.payload(res) || {
+          valid: false,
+          message: '计费预览失败',
+          detail: {},
+        };
+      } catch (error) {
+        if (error && error.message) ElMessage.error(error.message);
+      } finally {
+        this.billingPreviewLoading = false;
+      }
+    },
+    async generateAndPublishBill() {
+      try {
+        await this.$refs.billingFormRef.validate();
+        this.billingSaving = true;
+        const previewRes = await previewUtilityBill(this.billingRequest());
+        this.billingPreview = this.payload(previewRes) || {
+          valid: false,
+          message: '计费预览失败',
+          detail: {},
+        };
+        if (!this.billingPreview.valid) return;
+        await ElMessageBox.confirm(
+          `确认生成并发布${this.billingTypeText}账单，应缴金额 ${this.formatMoney(
+            this.billingPreview.detail.amount
+          )}？发布后企业小程序立即可见。`,
+          '发布水电账单',
+          { type: 'warning' }
+        );
+        const generateRes = await generateUtilityBill(this.billingRequest());
+        const detail = this.payload(generateRes) || {};
+        await publishUtilityBill(detail.id);
+        ElMessage.success('水电账单已生成并发布');
+        this.billingDialogVisible = false;
+        this.utilitySelection = [];
+        if (this.$refs.utilityTableRef) this.$refs.utilityTableRef.clearSelection();
+        this.loadUtilityRecords();
+        this.loadBills();
+      } catch (error) {
+        if (error !== 'cancel' && error !== 'close' && error && error.message)
+          ElMessage.error(error.message);
+      } finally {
+        this.billingSaving = false;
+      }
+    },
     changeVehiclePage(current) {
       this.vehiclePage.currentPage = current;
       this.loadVehicles();
@@ -541,7 +940,9 @@ export default {
     submitUtility() {
       this.$refs.utilityFormRef.validate(valid => {
         if (!valid) return;
-        if (Number(this.utilityForm.currentReading) < Number(this.utilityForm.previousReading || 0)) {
+        if (
+          Number(this.utilityForm.currentReading) < Number(this.utilityForm.previousReading || 0)
+        ) {
           ElMessage.warning('本次读数不能小于上次读数');
           return;
         }
@@ -607,7 +1008,9 @@ export default {
     },
     formatDateTime(date) {
       const pad = value => String(value).padStart(2, '0');
-      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
+        date.getHours()
+      )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
     },
     value(value) {
       return value === null || value === undefined || value === '' ? '-' : value;
@@ -617,10 +1020,24 @@ export default {
       return `${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}${unit}`;
     },
     formatMoney(value) {
-      return `￥${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      return `￥${Number(value || 0).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`;
     },
     roomStatusText(value) {
-      return { 0: '空置', 1: '待清退/短租', 2: '预留', 3: '待退出', 4: '90天内到期', 5: '30天内到期', 6: '已到期', 7: '已出租' }[String(value)] || '-';
+      return (
+        {
+          0: '空置',
+          1: '待清退/短租',
+          2: '预留',
+          3: '待退出',
+          4: '90天内到期',
+          5: '30天内到期',
+          6: '已到期',
+          7: '已出租',
+        }[String(value)] || '-'
+      );
     },
     paymentStatusText(value) {
       return { 0: '待缴费', 1: '已缴费', 2: '已逾期', 3: '部分缴费' }[String(value)] || '待缴费';
@@ -629,19 +1046,48 @@ export default {
       return { 0: 'primary', 1: 'success', 2: 'danger', 3: 'warning' }[String(value)] || 'info';
     },
     paymentDisplayStatus(row) {
-      if (String(row.payStatus) === '1' || String(row.payStatus) === '3') return String(row.payStatus);
-      if (row.payDeadline && new Date(`${row.payDeadline}T23:59:59`).getTime() < Date.now()) return '2';
+      if (String(row.payStatus) === '1' || String(row.payStatus) === '3')
+        return String(row.payStatus);
+      if (row.payDeadline && new Date(`${row.payDeadline}T23:59:59`).getTime() < Date.now())
+        return '2';
       return String(row.payStatus || '0');
     },
     contractStatusText(value) {
-      return { 0: '待审批', 1: '生效', 2: '已到期', 3: '已续签', 4: '已退租', 5: '待盖章', 6: '退租中', 7: '退租交接中', 8: '房屋验收中' }[String(value)] || '-';
+      return (
+        {
+          0: '待审批',
+          1: '生效',
+          2: '已到期',
+          3: '已续签',
+          4: '已退租',
+          5: '待盖章',
+          6: '退租中',
+          7: '退租交接中',
+          8: '房屋验收中',
+        }[String(value)] || '-'
+      );
     },
     contractStatusType(value) {
-      return { 0: 'primary', 1: 'success', 2: 'warning', 3: 'success', 4: 'info', 5: 'warning', 6: 'warning', 7: 'warning', 8: 'warning' }[String(value)] || 'info';
+      return (
+        {
+          0: 'primary',
+          1: 'success',
+          2: 'warning',
+          3: 'success',
+          4: 'info',
+          5: 'warning',
+          6: 'warning',
+          7: 'warning',
+          8: 'warning',
+        }[String(value)] || 'info'
+      );
     },
     parseImages(value) {
       if (!value) return [];
-      if (Array.isArray(value)) return value.map(item => (typeof item === 'string' ? item : item.url || item.link || '')).filter(Boolean);
+      if (Array.isArray(value))
+        return value
+          .map(item => (typeof item === 'string' ? item : item.url || item.link || ''))
+          .filter(Boolean);
       const text = String(value).trim();
       if (!text) return [];
       if (text.startsWith('[')) {
@@ -651,7 +1097,10 @@ export default {
           return [];
         }
       }
-      return text.split(',').map(item => item.trim()).filter(Boolean);
+      return text
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean);
     },
   },
 };
@@ -752,6 +1201,25 @@ export default {
   color: #303133;
   font-size: 15px;
   font-weight: 600;
+}
+
+.room-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.utility-billing-tip {
+  margin: 0 16px 14px;
+}
+
+.billing-form-unit {
+  margin-left: 10px;
+  color: #909399;
+}
+
+.billing-preview {
+  margin-top: 14px;
 }
 
 :global(.room-extension-dialog .el-select),

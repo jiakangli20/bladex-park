@@ -4,7 +4,7 @@
     <image class="detail-hero-image" src="/assets/images/service-detail.jpg" mode="aspectFill"></image>
     <view class="detail-hero-mask"></view>
     <view class="detail-nav">
-      <view class="detail-back" bindtap="goBack">‹</view>
+      <view class="detail-back" catchtap="goBack">‹</view>
       <view class="detail-tools">
         <view class="tool-share" bindtap="shareService"></view>
         <view class="tool-heart" bindtap="favoriteService"></view>

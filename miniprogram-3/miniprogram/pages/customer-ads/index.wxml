@@ -1,0 +1,30 @@
+<view class="sub-page ad-list-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="sub-content {{canCreate ? 'has-action' : ''}}">
+      <view class="blue-header plain-header">
+        <view class="nav-row"><view class="nav-action" bindtap="goBack">‹</view><view class="nav-title">广告推送</view><view class="nav-action"></view></view>
+        <view class="intro-title">企业首页广告</view>
+        <view class="intro-sub">提交广告素材，由园区管理员审核后上架小程序首页</view>
+      </view>
+
+      <view class="notice-card">广告提交不接审批流，园区管理员将在后台直接审核并记录意见。</view>
+      <view wx:if="{{loading}}" class="state-card">广告加载中...</view>
+      <view wx:elif="{{error}}" class="state-card"><view>{{error}}</view><view class="retry-button" bindtap="retry">重新加载</view></view>
+      <view wx:elif="{{!ads.length}}" class="state-card">暂无企业广告{{canCreate ? '，点击下方按钮新建' : ''}}</view>
+
+      <view wx:else class="ad-list">
+        <block wx:for="{{ads}}" wx:key="id">
+          <view class="ad-card" data-id="{{item.id}}" bindtap="openDetail">
+            <image class="ad-cover" src="{{item.image}}" mode="aspectFill"></image>
+            <view class="ad-body">
+              <view class="ad-head"><view class="ad-title">{{item.title}}</view><view class="status-pill status-{{item.tone}}">{{item.auditStatusText}}</view></view>
+              <view class="ad-time">展示期：{{item.rangeText}}</view>
+              <view class="ad-foot"><text>{{item.onlineText}}</text><text>查看进度 〉</text></view>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </scroll-view>
+  <view wx:if="{{canCreate}}" class="fixed-action"><view class="primary-button full-button" bindtap="createAd">新建广告</view></view>
+</view>

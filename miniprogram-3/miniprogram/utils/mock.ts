@@ -14,7 +14,6 @@ export type HouseItem = {
   propertyFee: string
   status: string
   availableDate: string
-  vrUrl: string
   intro: string
   facilities: string[]
 }
@@ -203,7 +202,6 @@ export const houses: HouseItem[] = [
     propertyFee: '0.8元/m²/天',
     status: '可租',
     availableDate: '随时可租',
-    vrUrl: 'https://example.com/vr/A1201',
     intro: '适合研发、运营、轻咨询团队使用，公共区域已完成基础装修，采光和通风条件良好，可快速入驻办公。',
     facilities: ['中央空调', '高速网络', '独立茶水间', '会议室', '地下停车'],
   },
@@ -223,7 +221,6 @@ export const houses: HouseItem[] = [
     propertyFee: '0.9元/m²/天',
     status: '可租',
     availableDate: '2026-08-01',
-    vrUrl: 'https://example.com/vr/C2001',
     intro: '整层可独立规划前台、开放办公区、管理办公室与路演空间，适合总部型企业或成长型团队整合办公。',
     facilities: ['独立前厅', '专属电梯厅', '政策申报', '企业展厅', '访客接待'],
   },

@@ -1,58 +1,47 @@
-import { valueServices } from '../../utils/mock'
+import { customerApi, publicApi } from '../../services/miniapp'
+import { navigateBackOr } from '../../utils/navigation'
+import { getSession, requireLogin } from '../../utils/session'
 
 Page({
   data: {
-    service: valueServices[0],
-    form: {
-      contact: '',
-      phone: '',
-      companyName: '上海科技有限公司',
-      budget: '',
-      needTime: '',
-      content: '',
-    },
+    service: {} as Record<string, any>,
+    form: { contact: '', phone: '', companyName: '', budget: '', needTime: '', content: '' },
   },
 
-  onLoad(options: Record<string, string | undefined>) {
-    const service = valueServices.find((item) => item.id === options.id)
-    if (service) {
-      this.setData({ service })
-    }
-  },
-
-  goBack() {
-    wx.navigateBack()
-  },
-
-  handleInput(event: WechatMiniprogram.Input) {
-    const field = event.currentTarget.dataset.field as string | undefined
-    if (!field) {
-      return
-    }
+  async onLoad(options: Record<string, string | undefined>) {
+    if (!requireLogin(`/pages/value-intent/index?id=${options.id || ''}`) || !options.id) return
+    const service = await publicApi.valueService(options.id)
     this.setData({
-      [`form.${field}`]: event.detail.value,
+      service,
+      'form.companyName': getSession()?.profile?.enterpriseName || '',
+      'form.phone': getSession()?.profile?.mobile || '',
     })
   },
 
-  submitForm() {
-    const { contact, phone, companyName } = this.data.form
-    if (!contact || !phone || !companyName) {
-      wx.showToast({
-        title: '请补充联系人、手机号和企业名称',
-        icon: 'none',
-      })
+  goBack() { navigateBackOr('/pages/services/index?tab=value') },
+  handleInput(event: WechatMiniprogram.Input) {
+    const field = event.currentTarget.dataset.field as string | undefined
+    if (field) this.setData({ [`form.${field}`]: event.detail.value })
+  },
+
+  async submitForm() {
+    const { contact, phone, companyName, budget, needTime, content } = this.data.form
+    if (!contact || !/^1\d{10}$/.test(phone) || !companyName || !content) {
+      wx.showToast({ title: '请填写联系人、正确手机号、企业和需求', icon: 'none' })
       return
     }
+    await customerApi.createValueOrder({
+      merchantId: this.data.service.id,
+      serviceType: this.data.service.category,
+      contactName: contact,
+      contactPhone: phone,
+      serviceScope: this.data.service.desc,
+      demandDesc: `${content}${budget ? `；预算：${budget}` : ''}${needTime ? `；期望时间：${needTime}` : ''}`,
+    })
     wx.showModal({
-      title: '提交成功',
-      content: '增值服务意向已提交，管理员受理后会更新服务进度。',
-      confirmText: '查看工单',
-      cancelText: '留在本页',
-      success(result) {
-        if (result.confirm) {
-          wx.navigateTo({ url: '/pages/work-orders/index?tab=value' })
-        }
-      },
+      title: '提交成功', content: '增值服务意向已提交，管理员受理后会更新服务进度。',
+      confirmText: '查看工单', cancelText: '留在本页',
+      success: result => result.confirm && wx.navigateTo({ url: '/pages/work-orders/index?tab=value' }),
     })
   },
 })

@@ -1,61 +1,28 @@
-import { AdminNotification, adminNotifications } from '../../utils/mock'
+import { adminApi } from '../../services/miniapp'
+import { hasCapability, requireLogin } from '../../utils/session'
 
-type DisplayNotification = AdminNotification & {
-  tone: string
-}
-
-const getTone = (type: string) => {
-  if (type === '逾期缴费' || type === '工单超时') {
-    return 'red'
-  }
-  if (type === '增值服务申请') {
-    return 'orange'
-  }
-  if (type === '客户入驻申请') {
-    return 'green'
-  }
-  return 'blue'
-}
-
-const notifications: DisplayNotification[] = adminNotifications.map((item) => ({
-  ...item,
-  tone: getTone(item.type),
-}))
+const tone = (type: string) => type.includes('OVERDUE') ? 'red' : type.includes('VALUE') ? 'orange' : type.includes('SETTLEMENT') ? 'green' : 'blue'
 
 Page({
-  data: {
-    notifications,
+  data: { notifications: [] as Record<string, any>[] },
+  onShow() {
+    if (!requireLogin('/pages/notifications/index') || !hasCapability('admin.notification.view')) return
+    adminApi.notifications().then(items => this.setData({ notifications: items.map(item => ({ ...item, tone: tone(item.type), status: item.status === 'unread' ? '未读' : '已读' })) }))
   },
-
-  goBack() {
-    wx.navigateBack()
-  },
-
-  openNotification(event: WechatMiniprogram.TouchEvent) {
-    const id = event.currentTarget.dataset.id
-    const notice = adminNotifications.find((item) => item.id === id)
-    if (!notice) {
-      return
-    }
+  goBack() { wx.navigateBack() },
+  async openNotification(event: WechatMiniprogram.TouchEvent) {
+    const notice = this.data.notifications.find(item => String(item.id) === String(event.currentTarget.dataset.id))
+    if (!notice) return
+    await adminApi.readNotification(String(notice.id))
     wx.showModal({
-      title: notice.title,
-      content: `${notice.type}\n${notice.content}\n${notice.time}`,
-      confirmText: '去处理',
-      cancelText: '关闭',
-      success(result) {
-        if (!result.confirm) {
-          return
+      title: notice.title, content: `${notice.content || ''}\n${notice.time || ''}`,
+      confirmText: '去处理', cancelText: '关闭',
+      success: result => {
+        if (result.confirm && ['property', 'value', 'appointment', 'settlement'].includes(notice.target)) {
+          wx.navigateTo({ url: `/pages/work-order-detail/index?id=${notice.targetId}&type=${notice.target}&role=admin` })
         }
-        if (notice.target === 'property-order' || notice.target === 'value-order') {
-          wx.navigateTo({ url: `/pages/work-order-detail/index?id=${notice.targetId}&role=admin` })
-          return
-        }
-        if (notice.target === 'settlement') {
-          wx.navigateTo({ url: `/pages/tenant-detail/index?id=${notice.targetId}` })
-          return
-        }
-        wx.navigateTo({ url: '/pages/profile-section/index?type=payments' })
       },
     })
+    this.onShow()
   },
 })

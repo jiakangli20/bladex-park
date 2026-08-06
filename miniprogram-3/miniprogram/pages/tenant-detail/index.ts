@@ -1,20 +1,12 @@
-import { bills, contracts, overviewTenants } from '../../utils/mock'
+import { adminApi } from '../../services/miniapp'
+import { hasCapability, requireLogin } from '../../utils/session'
 
 Page({
-  data: {
-    tenant: overviewTenants[0],
-    contracts,
-    bills,
+  data: { tenant: {} as Record<string, any>, contracts: [] as Record<string, any>[], bills: [] as Record<string, any>[] },
+  async onLoad(options: Record<string, string | undefined>) {
+    if (!requireLogin('/pages/overview/index') || !hasCapability('admin.tenant.view') || !options.id) return
+    const tenant = await adminApi.tenant(options.id)
+    this.setData({ tenant: { ...tenant, industry: tenant.industry || '-', room: '-', area: '-', leasePeriod: '-', rentStatus: tenant.status || '正常', contractStatus: '-' }, contracts: (tenant.contracts || []).map((item: Record<string, any>) => ({ ...item, period: `${item.periodStart || '-'} 至 ${item.periodEnd || '-'}` })) })
   },
-
-  onLoad(options: Record<string, string | undefined>) {
-    const tenant = overviewTenants.find((item) => item.id === options.id)
-    if (tenant) {
-      this.setData({ tenant })
-    }
-  },
-
-  goBack() {
-    wx.navigateBack()
-  },
+  goBack() { wx.navigateBack() },
 })

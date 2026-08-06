@@ -3,7 +3,7 @@
     <view class="sub-content has-action">
       <view class="blue-header plain-header">
         <view class="nav-row">
-          <view class="nav-action" bindtap="goBack">‹</view>
+          <view class="nav-action" catchtap="goBack">‹</view>
           <view class="nav-title">{{service.title}}</view>
           <view class="nav-action"></view>
         </view>

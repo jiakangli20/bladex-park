@@ -1,0 +1,104 @@
+.login-page {
+  min-height: 100vh;
+  background: #f3f6fb;
+}
+
+.login-hero {
+  position: relative;
+  height: 600rpx;
+  padding-top: calc(env(safe-area-inset-top) + 106rpx);
+  overflow: hidden;
+  text-align: center;
+  color: #ffffff;
+  background: linear-gradient(145deg, #0d4fb9 0%, #1f63f5 58%, #56a2ff 100%);
+}
+
+.hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.orb-one { width: 420rpx; height: 420rpx; right: -180rpx; top: -120rpx; }
+.orb-two { width: 300rpx; height: 300rpx; left: -150rpx; bottom: -80rpx; }
+
+.park-mark {
+  width: 156rpx;
+  height: 142rpx;
+  margin: 0 auto 34rpx;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 10rpx;
+}
+
+.mark-building {
+  position: relative;
+  width: 38rpx;
+  border: 5rpx solid rgba(255, 255, 255, 0.92);
+  border-bottom-width: 10rpx;
+  border-radius: 8rpx 8rpx 3rpx 3rpx;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.mark-building::after {
+  content: "";
+  position: absolute;
+  left: 9rpx;
+  top: 16rpx;
+  width: 10rpx;
+  height: 52rpx;
+  border-top: 8rpx dotted #ffffff;
+  border-bottom: 8rpx dotted #ffffff;
+}
+
+.mark-left { height: 92rpx; }
+.mark-center { height: 134rpx; }
+.mark-right { height: 108rpx; }
+.hero-title { font-size: 54rpx; font-weight: 650; letter-spacing: 8rpx; }
+.hero-sub { margin-top: 18rpx; color: rgba(255, 255, 255, 0.78); font-size: 26rpx; }
+
+.login-panel {
+  position: relative;
+  z-index: 2;
+  margin: -64rpx 30rpx 0;
+  padding: 48rpx 40rpx 42rpx;
+  border-radius: 28rpx;
+  background: #ffffff;
+  box-shadow: 0 18rpx 50rpx rgba(20, 59, 118, 0.15);
+}
+
+.panel-title { color: #172033; font-size: 40rpx; font-weight: 650; }
+.panel-sub { margin-top: 14rpx; color: #7c8798; font-size: 26rpx; line-height: 1.6; }
+.invite-field { margin-top: 34rpx; }
+.field-label { display: block; margin-bottom: 14rpx; color: #5f6b7c; font-size: 25rpx; }
+.invite-field input { height: 84rpx; padding: 0 22rpx; border: 1rpx solid #dfe5ee; border-radius: 14rpx; background: #f8faff; font-size: 28rpx; }
+
+.agreement-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin: 34rpx 0 26rpx;
+  color: #7d8796;
+  font-size: 23rpx;
+}
+
+.agreement-check {
+  width: 32rpx;
+  height: 32rpx;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx solid #bdc7d6;
+  border-radius: 7rpx;
+  color: #ffffff;
+  font-size: 22rpx;
+}
+
+.agreement-check.checked { border-color: #1f63f5; background: #1f63f5; }
+.wechat-button, .browse-button { width: 100%; height: 92rpx; border-radius: 16rpx; font-size: 30rpx; line-height: 92rpx; }
+.wechat-button { color: #ffffff; background: #1f63f5; box-shadow: 0 10rpx 20rpx rgba(31, 99, 245, 0.24); }
+.wechat-button::after, .browse-button::after { border: 0; }
+.browse-button { margin-top: 18rpx; color: #56708f; background: #f2f6fb; }
+.security-tip { margin-top: 26rpx; text-align: center; color: #a1aaba; font-size: 22rpx; line-height: 1.5; }

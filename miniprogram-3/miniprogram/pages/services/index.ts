@@ -1,127 +1,89 @@
-import { ValueService, propertyServices, serviceCategories, valueServices } from '../../utils/mock'
+import { publicApi } from '../../services/miniapp'
+import { requireLogin } from '../../utils/session'
 
-type PropertyServiceCard = {
-  key: string
-  title: string
-  tone: string
-  desc: string
-  badge: string
-  eta: string
-}
-
-type ValueServiceCard = ValueService & {
-  category: string
-}
-
-const propertyCopy: Record<string, { desc: string; badge: string; eta: string }> = {
-  repair: {
-    desc: '空调、照明、门禁、给排水等现场问题快速登记',
-    badge: '发起报修',
-    eta: '2小时响应',
-  },
-  parking: {
-    desc: '企业车辆备案、固定车位和临停需求统一申请',
-    badge: '申请车位',
-    eta: '当天受理',
-  },
-  utility: {
-    desc: '水费、电费、能耗账单登记，后续可接线上支付',
-    badge: '去缴费',
-    eta: '账单核验',
-  },
-  complaint: {
-    desc: '服务、环境、安全等问题反馈，运营专员跟进闭环',
-    badge: '提交反馈',
-    eta: '专人跟进',
-  },
-  meeting: {
-    desc: '会议室、路演厅、培训空间预约和使用确认',
-    badge: '预约场地',
-    eta: '资源确认',
-  },
-}
-
-const valueCategoryMap: Record<string, string> = {
-  register: '工商服务',
-  trademark: '知识产权',
-}
-
-const buildPropertyCards = (): PropertyServiceCard[] =>
-  propertyServices.map((item) => ({
-    ...item,
-    ...(propertyCopy[item.key] || {
-      desc: '提交服务需求，园区运营人员会跟进处理',
-      badge: '立即办理',
-      eta: '待受理',
-    }),
-  }))
-
-const buildValueCards = (category: string): ValueServiceCard[] =>
-  valueServices
-    .map((item) => ({
-      ...item,
-      category: valueCategoryMap[item.id] || '企业服务',
-    }))
-    .filter((item) => category === '全部' || item.category === category)
+const tones = ['green', 'orange', 'blue', 'cyan', 'purple']
 
 Page({
   data: {
     activeTab: 'property',
     activeCategory: '全部',
     serviceStats: [
-      { value: '5', label: '物业事项' },
-      { value: '2', label: '增值服务' },
-      { value: '3', label: '进行中' },
+      { value: '0', label: '物业事项' },
+      { value: '0', label: '增值服务' },
+      { value: '-', label: '申请进度' },
     ],
     processSteps: ['提交申请', '管理员受理', '进度反馈'],
-    propertyCards: buildPropertyCards(),
-    serviceCategories,
-    valueCards: buildValueCards('全部'),
+    propertyCards: [] as Record<string, any>[],
+    serviceCategories: ['全部'] as string[],
+    allValueCards: [] as Record<string, any>[],
+    valueCards: [] as Record<string, any>[],
   },
 
   onLoad(options: Record<string, string | undefined>) {
-    if (options.tab === 'value') {
-      this.setData({ activeTab: 'value' })
-    }
+    if (options.tab === 'value') this.setData({ activeTab: 'value' })
+    this.loadServices()
   },
 
-  goBack() {
-    wx.redirectTo({ url: '/pages/index/index' })
+  async loadServices() {
+    const [properties, values] = await Promise.all([publicApi.propertyServices(), publicApi.valueServices()])
+    const propertyCards = properties.map((item, index) => ({
+      ...item,
+      key: item.type || String(item.id),
+      tone: tones[index % tones.length],
+      badge: item.type?.includes('停车') ? '提交停车申请' : '立即办理',
+      eta: '待受理',
+    }))
+    const valueCards: Record<string, any>[] = values.map(item => ({
+      ...item,
+      image: '/assets/images/service-business.jpg',
+      providerType: '园区服务商',
+      providerTone: 'blue',
+      tags: item.serviceArea ? [item.serviceArea] : [],
+      rating: '-',
+      applied: '-',
+    }))
+    const categories = ['全部', ...Array.from(new Set(valueCards.map(item => item.category).filter(Boolean)))]
+    this.setData({
+      propertyCards,
+      allValueCards: valueCards,
+      valueCards,
+      serviceCategories: categories,
+      serviceStats: [
+        { value: String(propertyCards.length), label: '物业事项' },
+        { value: String(valueCards.length), label: '增值服务' },
+        { value: '-', label: '申请进度' },
+      ],
+    })
   },
+
+  goBack() { wx.redirectTo({ url: '/pages/index/index' }) },
 
   switchTab(event: WechatMiniprogram.TouchEvent) {
     const tab = event.currentTarget.dataset.tab
-    if (tab === this.data.activeTab) {
-      return
-    }
-    this.setData({ activeTab: tab })
+    if (tab !== this.data.activeTab) this.setData({ activeTab: tab })
   },
 
   selectCategory(event: WechatMiniprogram.TouchEvent) {
     const category = String(event.currentTarget.dataset.category || '全部')
     this.setData({
       activeCategory: category,
-      valueCards: buildValueCards(category),
+      valueCards: category === '全部' ? this.data.allValueCards : this.data.allValueCards.filter(item => item.category === category),
     })
   },
 
   openPropertyService(event: WechatMiniprogram.TouchEvent) {
-    const key = event.currentTarget.dataset.key
-    wx.navigateTo({
-      url: `/pages/property-form/index?type=${key}`,
-    })
+    if (!requireLogin('/pages/services/index?tab=property')) return
+    const id = event.currentTarget.dataset.id
+    const type = event.currentTarget.dataset.key
+    wx.navigateTo({ url: `/pages/property-form/index?id=${id}&type=${encodeURIComponent(type)}` })
   },
 
   openServiceDetail(event: WechatMiniprogram.TouchEvent) {
-    const id = event.currentTarget.dataset.id
-    wx.navigateTo({
-      url: `/pages/service-detail/index?id=${id}`,
-    })
+    wx.navigateTo({ url: `/pages/service-detail/index?id=${event.currentTarget.dataset.id}` })
   },
 
   openWorkOrders() {
-    wx.navigateTo({
-      url: `/pages/work-orders/index?tab=${this.data.activeTab}`,
-    })
+    if (!requireLogin(`/pages/work-orders/index?tab=${this.data.activeTab}`)) return
+    wx.navigateTo({ url: `/pages/work-orders/index?tab=${this.data.activeTab}` })
   },
 })

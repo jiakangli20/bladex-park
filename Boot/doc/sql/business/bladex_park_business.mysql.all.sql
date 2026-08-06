@@ -86,6 +86,12 @@ SOURCE Boot/doc/sql/business/21_policy_service_module.mysql.sql
 SELECT 'business/22_migrate_home_to_desk.mysql.sql' AS executing_script;
 SOURCE Boot/doc/sql/business/22_migrate_home_to_desk.mysql.sql
 
+SELECT 'business/51_miniapp_business_module.mysql.sql' AS executing_script;
+SOURCE Boot/doc/sql/business/51_miniapp_business_module.mysql.sql
+
+SELECT 'business/52_miniapp_utility_ad.mysql.sql' AS executing_script;
+SOURCE Boot/doc/sql/business/52_miniapp_utility_ad.mysql.sql
+
 SELECT 'contract/bladex_contract_base_menu.mysql.sql' AS executing_script;
 SOURCE Boot/doc/sql/contract/bladex_contract_base_menu.mysql.sql
 

@@ -1,0 +1,53 @@
+<view class="sub-page utility-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="sub-content">
+      <view class="blue-header plain-header">
+        <view class="nav-row">
+          <view class="nav-action" bindtap="goBack">‹</view>
+          <view class="nav-title">水电缴纳</view>
+          <view class="nav-action"></view>
+        </view>
+        <view class="intro-title">企业水电账单</view>
+        <view class="intro-sub">查看抄表计费依据，线下付款后上传凭证</view>
+      </view>
+
+      <view class="bill-tabs">
+        <block wx:for="{{tabs}}" wx:key="key">
+          <view class="bill-tab {{activeTab === item.key ? 'is-active' : ''}}" data-tab="{{item.key}}" bindtap="switchTab">{{item.label}}</view>
+        </block>
+      </view>
+
+      <view wx:if="{{loading}}" class="state-card">账单加载中...</view>
+      <view wx:elif="{{error}}" class="state-card">
+        <view>{{error}}</view>
+        <view class="retry-button" bindtap="retry">重新加载</view>
+      </view>
+      <view wx:elif="{{!bills.length}}" class="state-card">暂无水电账单</view>
+
+      <view wx:else class="bill-list">
+        <block wx:for="{{bills}}" wx:key="id">
+          <view class="bill-card" data-id="{{item.id}}" bindtap="openDetail">
+            <view class="bill-head">
+              <view class="bill-icon bill-icon-{{item.type}}">{{item.type === 'water' ? '水' : '电'}}</view>
+              <view class="bill-title-wrap">
+                <view class="bill-title">{{item.typeText}}</view>
+                <view class="bill-room">{{item.room || '企业租赁房源'}}</view>
+              </view>
+              <view class="status-pill status-{{item.tone}}">{{item.statusText}}</view>
+            </view>
+            <view class="bill-period">账期 {{item.periodText}}</view>
+            <view class="amount-row">
+              <view><text>应缴</text><strong>¥{{item.amountText}}</strong></view>
+              <view><text>已缴</text><strong>¥{{item.paidText}}</strong></view>
+              <view><text>待缴</text><strong class="is-danger">¥{{item.remainingText}}</strong></view>
+            </view>
+            <view class="bill-foot">
+              <text>缴费截止：{{item.dueDate || '-'}}</text>
+              <text>查看详情 〉</text>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </scroll-view>
+</view>

@@ -82,6 +82,19 @@ export const changeAdStatus = (adId, status) => {
   });
 };
 
+export const auditAd = (adId, data) =>
+  request({
+    url: `/blade-ics/merchant-ad/${adId}/audit`,
+    method: 'post',
+    data,
+  });
+
+export const getAdAuditLogs = adId =>
+  request({
+    url: `/blade-ics/merchant-ad/${adId}/audit-logs`,
+    method: 'get',
+  });
+
 export const getMiniAppAdList = (params = {}) => {
   return request({
     url: '/blade-ics/merchant-ad/miniapp/list',

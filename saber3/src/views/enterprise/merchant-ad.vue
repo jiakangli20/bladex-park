@@ -6,20 +6,50 @@
       <section class="contract-search">
         <el-form :inline="true" :model="query">
           <el-form-item label="广告标题">
-            <el-input v-model="query.adTitle" clearable placeholder="请输入广告标题" @keyup.enter="searchChange" />
+            <el-input
+              v-model="query.adTitle"
+              clearable
+              placeholder="请输入广告标题"
+              @keyup.enter="searchChange"
+            />
           </el-form-item>
           <el-form-item label="广告位置">
             <el-select v-model="query.adPosition" clearable placeholder="全部位置">
-              <el-option v-for="item in positionOptions" :key="item.value" :label="item.label" :value="item.value" />
+              <el-option
+                v-for="item in positionOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
             </el-select>
           </el-form-item>
           <el-form-item label="展示状态">
             <el-select v-model="query.status" clearable placeholder="全部状态">
-              <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
+              <el-option
+                v-for="item in statusOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="审核状态">
+            <el-select v-model="query.auditStatus" clearable placeholder="全部审核状态">
+              <el-option
+                v-for="item in auditStatusOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
             </el-select>
           </el-form-item>
           <el-form-item label="关联商户">
-            <el-input v-model="query.merchantName" clearable placeholder="请输入商户名称" @keyup.enter="searchChange" />
+            <el-input
+              v-model="query.merchantName"
+              clearable
+              placeholder="请输入商户名称"
+              @keyup.enter="searchChange"
+            />
           </el-form-item>
           <el-form-item>
             <el-button type="primary" icon="el-icon-search" @click="searchChange">搜索</el-button>
@@ -31,7 +61,13 @@
       <section class="merchant-ad-table-card">
         <div class="contract-toolbar">
           <div class="toolbar-left">
-            <el-button v-if="permissionList.addBtn" type="primary" icon="el-icon-plus" @click="openAdd">新增广告</el-button>
+            <el-button
+              v-if="permissionList.addBtn"
+              type="primary"
+              icon="el-icon-plus"
+              @click="openAdd"
+              >新增广告</el-button
+            >
             <el-button
               v-if="permissionList.delBtn"
               type="danger"
@@ -58,57 +94,118 @@
           class="contract-table"
           @selection-change="selectionChange"
         >
-        <el-table-column type="selection" width="44" align="center" />
-        <el-table-column prop="adTitle" label="广告标题" min-width="170" align="center" show-overflow-tooltip />
-        <el-table-column prop="adPosition" label="广告位置" width="130" align="center">
-          <template #default="{ row }">{{ positionText(row.adPosition) }}</template>
-        </el-table-column>
-        <el-table-column prop="coverUrl" label="封面图" width="112" align="center">
-          <template #default="{ row }">
-            <el-image
-              v-if="row.coverUrl"
-              :src="row.coverUrl"
-              :preview-src-list="[row.coverUrl]"
-              fit="cover"
-              class="ad-cover"
-              preview-teleported
-            />
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="linkType" label="跳转类型" width="110" align="center">
-          <template #default="{ row }">{{ linkTypeText(row.linkType) }}</template>
-        </el-table-column>
-        <el-table-column label="跳转内容" min-width="180" align="center" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.merchantName || row.linkUrl || '-' }}</template>
-        </el-table-column>
-        <el-table-column prop="sortOrder" label="排序" width="76" align="center" />
-          <el-table-column prop="startTime" label="展示时间" width="320" align="center">
-            <template #default="{ row }"><span class="single-line-cell">{{ formatRange(row.startTime, row.endTime) }}</span></template>
+          <el-table-column type="selection" width="44" align="center" />
+          <el-table-column
+            prop="adTitle"
+            label="广告标题"
+            min-width="170"
+            align="center"
+            show-overflow-tooltip
+          />
+          <el-table-column
+            prop="customerName"
+            label="提交企业"
+            min-width="150"
+            align="center"
+            show-overflow-tooltip
+          >
+            <template #default="{ row }">{{
+              row.customerName || (row.customerId ? `企业${row.customerId}` : '园区后台')
+            }}</template>
           </el-table-column>
-        <el-table-column prop="status" label="小程序状态" width="116" align="center">
-          <template #default="{ row }">
-            <el-tag :type="statusTagType(row.status)" effect="plain">{{ statusText(row.status) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="210" fixed="right" align="center">
-          <template #default="{ row }">
-            <div class="table-actions">
-              <el-button v-if="permissionList.viewBtn" type="primary" text @click="openView(row)">查看</el-button>
-              <el-button v-if="permissionList.editBtn" type="primary" text @click="openEdit(row)">编辑</el-button>
-              <el-dropdown v-if="permissionList.statusBtn || permissionList.delBtn" trigger="click">
-                <el-button type="primary" text>更多</el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '0'" @click="changeStatus(row, '0')">上架</el-dropdown-item>
-                    <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '1'" @click="changeStatus(row, '1')">下架</el-dropdown-item>
-                    <el-dropdown-item v-if="permissionList.delBtn" divided @click="removeRow(row)">删除</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </template>
-        </el-table-column>
+          <el-table-column prop="adPosition" label="广告位置" width="130" align="center">
+            <template #default="{ row }">{{ positionText(row.adPosition) }}</template>
+          </el-table-column>
+          <el-table-column prop="coverUrl" label="封面图" width="112" align="center">
+            <template #default="{ row }">
+              <el-image
+                v-if="row.coverUrl"
+                :src="row.coverUrl"
+                :preview-src-list="[row.coverUrl]"
+                fit="cover"
+                class="ad-cover"
+                preview-teleported
+              />
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="linkType" label="跳转类型" width="110" align="center">
+            <template #default="{ row }">{{ linkTypeText(row.linkType) }}</template>
+          </el-table-column>
+          <el-table-column label="跳转内容" min-width="180" align="center" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.merchantName || row.linkUrl || '-' }}</template>
+          </el-table-column>
+          <el-table-column prop="sortOrder" label="排序" width="76" align="center" />
+          <el-table-column prop="startTime" label="展示时间" width="320" align="center">
+            <template #default="{ row }"
+              ><span class="single-line-cell">{{
+                formatRange(row.startTime, row.endTime)
+              }}</span></template
+            >
+          </el-table-column>
+          <el-table-column prop="status" label="小程序状态" width="116" align="center">
+            <template #default="{ row }">
+              <el-tag :type="statusTagType(row.status)" effect="plain">{{
+                statusText(row.status)
+              }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="auditStatus" label="审核状态" width="110" align="center">
+            <template #default="{ row }"
+              ><el-tag :type="auditStatusTag(row.auditStatus)" effect="plain">{{
+                auditStatusText(row.auditStatus)
+              }}</el-tag></template
+            >
+          </el-table-column>
+          <el-table-column label="操作" width="210" fixed="right" align="center">
+            <template #default="{ row }">
+              <div class="table-actions">
+                <el-button v-if="permissionList.viewBtn" type="primary" text @click="openView(row)"
+                  >查看</el-button
+                >
+                <el-button
+                  v-if="permissionList.editBtn && row.auditStatus === 'PENDING'"
+                  type="warning"
+                  text
+                  @click="openAudit(row)"
+                  >审核</el-button
+                >
+                <el-button
+                  v-else-if="permissionList.editBtn"
+                  type="primary"
+                  text
+                  @click="openEdit(row)"
+                  >编辑</el-button
+                >
+                <el-dropdown
+                  v-if="permissionList.statusBtn || permissionList.delBtn || permissionList.viewBtn"
+                  trigger="click"
+                >
+                  <el-button type="primary" text>更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item
+                        v-if="permissionList.statusBtn && row.status !== '0'"
+                        @click="changeStatus(row, '0')"
+                        >上架</el-dropdown-item
+                      >
+                      <el-dropdown-item
+                        v-if="permissionList.statusBtn && row.status !== '1'"
+                        @click="changeStatus(row, '1')"
+                        >下架</el-dropdown-item
+                      >
+                      <el-dropdown-item v-if="permissionList.viewBtn" @click="openAuditLogs(row)"
+                        >操作记录</el-dropdown-item
+                      >
+                      <el-dropdown-item v-if="permissionList.delBtn" divided @click="removeRow(row)"
+                        >删除</el-dropdown-item
+                      >
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </template>
+          </el-table-column>
         </el-table>
 
         <div class="contract-pagination">
@@ -137,13 +234,23 @@
         <el-row :gutter="18">
           <el-col :span="12">
             <el-form-item label="广告标题" prop="adTitle">
-              <el-input v-model="form.adTitle" maxlength="200" show-word-limit placeholder="请输入广告标题" />
+              <el-input
+                v-model="form.adTitle"
+                maxlength="200"
+                show-word-limit
+                placeholder="请输入广告标题"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="广告位置" prop="adPosition">
               <el-select v-model="form.adPosition" placeholder="请选择广告位置" style="width: 100%">
-                <el-option v-for="item in positionOptions" :key="item.value" :label="item.label" :value="item.value" />
+                <el-option
+                  v-for="item in positionOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
               </el-select>
             </el-form-item>
           </el-col>
@@ -151,12 +258,24 @@
         <el-row :gutter="18">
           <el-col :span="12">
             <el-form-item label="园区ID">
-              <el-input-number v-model="form.parkId" :min="1" :precision="0" controls-position="right" style="width: 100%" />
+              <el-input-number
+                v-model="form.parkId"
+                :min="1"
+                :precision="0"
+                controls-position="right"
+                style="width: 100%"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="排序">
-              <el-input-number v-model="form.sortOrder" :min="0" :precision="0" controls-position="right" style="width: 100%" />
+              <el-input-number
+                v-model="form.sortOrder"
+                :min="0"
+                :precision="0"
+                controls-position="right"
+                style="width: 100%"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -169,57 +288,187 @@
               :on-success="handleCoverSuccess"
               :disabled="viewMode"
             >
-              <el-image v-if="form.coverUrl" :src="form.coverUrl" fit="cover" class="cover-preview" />
+              <el-image
+                v-if="form.coverUrl"
+                :src="form.coverUrl"
+                fit="cover"
+                class="cover-preview"
+              />
               <el-button v-else icon="el-icon-upload">上传封面</el-button>
             </el-upload>
-            <el-input v-model="form.coverUrl" maxlength="500" placeholder="也可以直接填写图片地址" />
+            <el-input
+              v-model="form.coverUrl"
+              maxlength="500"
+              placeholder="也可以直接填写图片地址"
+            />
           </div>
         </el-form-item>
         <el-row :gutter="18">
           <el-col :span="12">
             <el-form-item label="跳转类型" prop="linkType">
               <el-select v-model="form.linkType" placeholder="请选择跳转类型" style="width: 100%">
-                <el-option v-for="item in linkTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+                <el-option
+                  v-for="item in linkTypeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="状态" prop="status">
               <el-select v-model="form.status" placeholder="请选择状态" style="width: 100%">
-                <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
+                <el-option
+                  v-for="item in statusOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
         <el-form-item v-if="form.linkType === 'merchant'" label="关联商户" prop="merchantId">
-          <el-select v-model="form.merchantId" filterable clearable placeholder="请选择关联商户" style="width: 100%">
-            <el-option v-for="item in merchantOptions" :key="item.merchantId" :label="item.merchantName" :value="item.merchantId" />
+          <el-select
+            v-model="form.merchantId"
+            filterable
+            clearable
+            placeholder="请选择关联商户"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="item in merchantOptions"
+              :key="item.merchantId"
+              :label="item.merchantName"
+              :value="item.merchantId"
+            />
           </el-select>
         </el-form-item>
         <el-form-item v-if="form.linkType === 'url'" label="跳转链接" prop="linkUrl">
-          <el-input v-model="form.linkUrl" maxlength="500" placeholder="请输入小程序或 H5 跳转地址" />
+          <el-input
+            v-model="form.linkUrl"
+            maxlength="500"
+            placeholder="请输入小程序或 H5 跳转地址"
+          />
         </el-form-item>
         <el-row :gutter="18">
           <el-col :span="12">
             <el-form-item label="开始时间">
-              <el-date-picker v-model="form.startTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择开始时间" style="width: 100%" />
+              <el-date-picker
+                v-model="form.startTime"
+                type="datetime"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                placeholder="请选择开始时间"
+                style="width: 100%"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="结束时间">
-              <el-date-picker v-model="form.endTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择结束时间" style="width: 100%" />
+              <el-date-picker
+                v-model="form.endTime"
+                type="datetime"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                placeholder="请选择结束时间"
+                style="width: 100%"
+              />
             </el-form-item>
           </el-col>
         </el-row>
         <el-form-item label="备注">
-          <el-input v-model="form.remark" type="textarea" :rows="3" maxlength="500" show-word-limit placeholder="请输入备注" />
+          <el-input
+            v-model="form.remark"
+            type="textarea"
+            :rows="3"
+            maxlength="500"
+            show-word-limit
+            placeholder="请输入备注"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button icon="el-icon-circle-close" @click="closeForm">取消</el-button>
-        <el-button v-if="!viewMode" type="primary" icon="el-icon-circle-check" :loading="submitLoading" @click="submitForm">提交</el-button>
+        <el-button
+          v-if="!viewMode"
+          type="primary"
+          icon="el-icon-circle-check"
+          :loading="submitLoading"
+          @click="submitForm"
+          >提交</el-button
+        >
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="auditVisible"
+      title="审核企业广告"
+      width="620px"
+      append-to-body
+      destroy-on-close
+    >
+      <el-descriptions :column="1" border>
+        <el-descriptions-item label="广告标题">{{ auditRow.adTitle || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="提交企业">{{
+          auditRow.customerName || '-'
+        }}</el-descriptions-item>
+        <el-descriptions-item label="展示时间">{{
+          formatRange(auditRow.startTime, auditRow.endTime)
+        }}</el-descriptions-item>
+      </el-descriptions>
+      <el-form :model="auditForm" label-width="92px" class="ad-audit-form">
+        <el-form-item label="审核结果" required>
+          <el-radio-group v-model="auditForm.auditStatus">
+            <el-radio-button label="APPROVED">审核通过</el-radio-button>
+            <el-radio-button label="REJECTED">驳回</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="审核意见" :required="auditForm.auditStatus === 'REJECTED'">
+          <el-input
+            v-model="auditForm.opinion"
+            type="textarea"
+            :rows="3"
+            maxlength="500"
+            show-word-limit
+            placeholder="驳回时必须填写原因"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="auditVisible = false">取消</el-button>
+        <el-button type="primary" :loading="auditSaving" @click="submitAudit">确认审核</el-button>
+      </template>
+    </el-dialog>
+
+    <el-drawer v-model="auditLogsVisible" title="广告操作记录" size="680px" append-to-body>
+      <el-table
+        v-loading="auditLogsLoading"
+        :data="auditLogs"
+        border
+        row-key="id"
+        empty-text="暂无操作记录"
+      >
+        <el-table-column prop="actionType" label="操作" width="120" align="center">
+          <template #default="{ row }">{{ auditActionText(row.actionType) }}</template>
+        </el-table-column>
+        <el-table-column prop="afterAuditStatus" label="审核状态" width="110" align="center">
+          <template #default="{ row }"
+            ><el-tag :type="auditStatusTag(row.afterAuditStatus)" effect="plain">{{
+              auditStatusText(row.afterAuditStatus)
+            }}</el-tag></template
+          >
+        </el-table-column>
+        <el-table-column prop="operatorName" label="操作人" width="120" align="center" />
+        <el-table-column
+          prop="opinion"
+          label="意见"
+          min-width="160"
+          align="center"
+          show-overflow-tooltip
+        />
+        <el-table-column prop="operateTime" label="操作时间" width="170" align="center" />
+      </el-table>
+    </el-drawer>
   </basic-container>
 </template>
 
@@ -229,7 +478,9 @@ import { getToken } from '@/utils/auth';
 import { getMerchantList } from '@/api/business/merchant';
 import {
   addAd,
+  auditAd,
   changeAdStatus,
+  getAdAuditLogs,
   getAdDetail,
   getAdPage,
   getAdStatistics,
@@ -252,6 +503,13 @@ const linkTypeOptions = [
 const statusOptions = [
   { value: '0', label: '已上架', type: 'success' },
   { value: '1', label: '已下架', type: 'info' },
+];
+
+const auditStatusOptions = [
+  { value: 'DRAFT', label: '草稿', type: 'info' },
+  { value: 'PENDING', label: '待审核', type: 'primary' },
+  { value: 'APPROVED', label: '已通过', type: 'success' },
+  { value: 'REJECTED', label: '已驳回', type: 'danger' },
 ];
 
 const defaultForm = () => ({
@@ -307,10 +565,18 @@ export default {
       positionOptions,
       linkTypeOptions,
       statusOptions,
+      auditStatusOptions,
       merchantOptions: [],
       formVisible: false,
       viewMode: false,
       form: defaultForm(),
+      auditVisible: false,
+      auditSaving: false,
+      auditRow: {},
+      auditForm: { auditStatus: 'APPROVED', opinion: '' },
+      auditLogsVisible: false,
+      auditLogsLoading: false,
+      auditLogs: [],
       uploadHeaders: {
         'Blade-Auth': `bearer ${getToken()}`,
         'Blade-Requested-With': 'BladeHttpRequest',
@@ -364,6 +630,33 @@ export default {
     statusTagType(value) {
       const item = this.statusOptions.find(option => option.value === value);
       return item ? item.type : '';
+    },
+    auditStatusText(value) {
+      const item = this.auditStatusOptions.find(option => option.value === value);
+      return item ? item.label : value || '-';
+    },
+    auditStatusTag(value) {
+      const item = this.auditStatusOptions.find(option => option.value === value);
+      return item ? item.type : 'info';
+    },
+    auditActionText(value) {
+      return (
+        {
+          ADMIN_CREATE: '后台创建',
+          ADMIN_UPDATE: '后台修改',
+          CREATE_DRAFT: '创建草稿',
+          UPDATE_DRAFT: '修改草稿',
+          SUBMIT: '提交审核',
+          WITHDRAW: '撤回审核',
+          APPROVE: '审核通过',
+          REJECT: '审核驳回',
+          ONLINE: '上架',
+          OFFLINE: '下架',
+          DELETE: '删除',
+        }[value] ||
+        value ||
+        '-'
+      );
     },
     formatRange(start, end) {
       if (!start && !end) return '长期展示';
@@ -445,6 +738,41 @@ export default {
     openView(row) {
       this.viewMode = true;
       this.loadDetail(row.adId);
+    },
+    openAudit(row) {
+      this.auditRow = row || {};
+      this.auditForm = { auditStatus: 'APPROVED', opinion: '' };
+      this.auditVisible = true;
+    },
+    submitAudit() {
+      if (this.auditForm.auditStatus === 'REJECTED' && !this.auditForm.opinion.trim()) {
+        this.$message.warning('驳回时请填写审核意见');
+        return;
+      }
+      this.auditSaving = true;
+      auditAd(this.auditRow.adId, this.auditForm)
+        .then(() => {
+          this.$message.success(
+            this.auditForm.auditStatus === 'APPROVED' ? '审核通过，请按需上架' : '广告已驳回'
+          );
+          this.auditVisible = false;
+          this.reload();
+        })
+        .finally(() => {
+          this.auditSaving = false;
+        });
+    },
+    openAuditLogs(row) {
+      this.auditLogsVisible = true;
+      this.auditLogsLoading = true;
+      this.auditLogs = [];
+      getAdAuditLogs(row.adId)
+        .then(res => {
+          this.auditLogs = res.data.data || [];
+        })
+        .finally(() => {
+          this.auditLogsLoading = false;
+        });
     },
     loadDetail(adId) {
       getAdDetail(adId).then(res => {
@@ -566,6 +894,10 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
+}
+
+.ad-audit-form {
+  margin-top: 18px;
 }
 
 .merchant-ad-table-card {

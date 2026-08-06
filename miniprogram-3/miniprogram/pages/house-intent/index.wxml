@@ -44,6 +44,10 @@
         </view>
         <block wx:else>
           <view class="form-row">
+            <view class="form-label">信用代码</view>
+            <input class="form-input" placeholder="统一社会信用代码" data-field="creditCode" value="{{form.creditCode}}" bindinput="handleInput" />
+          </view>
+          <view class="form-row">
             <view class="form-label">意向面积</view>
             <input class="form-input" placeholder="例如 300m²" data-field="intentArea" value="{{form.intentArea}}" bindinput="handleInput" />
           </view>

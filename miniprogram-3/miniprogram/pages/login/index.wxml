@@ -1,0 +1,38 @@
+<view class="login-page">
+  <view class="login-hero">
+    <view class="hero-orb orb-one"></view>
+    <view class="hero-orb orb-two"></view>
+    <view class="park-mark">
+      <view class="mark-building mark-left"></view>
+      <view class="mark-building mark-center"></view>
+      <view class="mark-building mark-right"></view>
+    </view>
+    <view class="hero-title">智慧园区</view>
+    <view class="hero-sub">企业服务与园区运营移动工作台</view>
+  </view>
+
+  <view class="login-panel">
+    <view class="panel-title">{{needBind ? '绑定园区身份' : '欢迎登录'}}</view>
+    <view class="panel-sub">{{needBind ? '授权微信手机号，自动匹配企业或管理员账号' : '使用微信身份安全登录园区小程序'}}</view>
+
+    <view wx:if="{{needBind}}" class="invite-field">
+      <text class="field-label">企业邀请码（无法自动匹配时必填）</text>
+      <input value="{{inviteCode}}" maxlength="32" placeholder="请输入企业邀请码" bindinput="onInviteInput" />
+    </view>
+
+    <view class="agreement-row" bindtap="toggleAgreement">
+      <view class="agreement-check {{agreed ? 'checked' : ''}}">{{agreed ? '✓' : ''}}</view>
+      <text>我已阅读并同意《用户协议》和《隐私保护指引》</text>
+    </view>
+
+    <button wx:if="{{!needBind}}" class="wechat-button" loading="{{loading}}" disabled="{{loading}}" bindtap="startLogin">
+      微信一键登录
+    </button>
+    <button wx:else class="wechat-button" loading="{{loading}}" disabled="{{loading || !agreed}}" open-type="getPhoneNumber" bindgetphonenumber="getPhoneNumber">
+      授权手机号并绑定
+    </button>
+    <button class="browse-button" disabled="{{loading}}" bindtap="browseFirst">先浏览</button>
+
+    <view class="security-tip">登录后仅展示与当前企业及园区授权范围相关的数据</view>
+  </view>
+</view>

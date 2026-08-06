@@ -1,11 +1,42 @@
-import { homeActivities, homePolicies, homeServiceCards, quickActions } from '../../utils/mock'
+import { publicApi } from '../../services/miniapp'
+import { hasCapability, requireLogin } from '../../utils/session'
+
+const baseActions = [
+  { key: 'house', label: '我要看房', tone: 'blue' },
+  { key: 'property', label: '物业服务', tone: 'green' },
+  { key: 'value', label: '增值服务', tone: 'orange' },
+  { key: 'orders', label: '我的工单', tone: 'red' },
+  { key: 'settle', label: '入驻申请', tone: 'sky' },
+  { key: 'parking-pay', label: '停车缴费', tone: 'amber' },
+  { key: 'utility', label: '水电缴纳', tone: 'cyan' },
+  { key: 'ad-push', label: '广告推送', tone: 'purple' },
+]
+
+const serviceCards = [
+  { key: 'repair', title: '在线报修', desc: '报修便捷高效', tone: 'purple' },
+  { key: 'venue', title: '场地预约', desc: '合理规划使用', tone: 'orange' },
+  { key: 'declare', title: '申报服务', desc: '业务快捷申报', tone: 'cyan' },
+  { key: 'ip', title: '知产服务', desc: '权益保障服务', tone: 'pink' },
+]
 
 Page({
   data: {
-    quickActions,
-    homeServiceCards,
-    homePolicies,
-    homeActivities,
+    quickActions: baseActions,
+    homeServiceCards: serviceCards,
+    homePolicies: [] as Record<string, any>[],
+    homeActivities: [] as Record<string, any>[],
+    noticeCount: 0,
+  },
+
+  onShow() {
+    const adminActions = hasCapability('admin.overview.view')
+      ? [{ key: 'overview', label: '园区概览', tone: 'blue' }, { key: 'more', label: '管理', tone: 'gray' }]
+      : []
+    this.setData({ quickActions: [...baseActions, ...adminActions] })
+    publicApi.home().then(data => this.setData({
+      homePolicies: data.policies || [],
+      homeActivities: data.activities || [],
+    })).catch(() => undefined)
   },
 
   handleQuickAction(event: WechatMiniprogram.TouchEvent) {
@@ -23,22 +54,37 @@ Page({
       return
     }
     if (key === 'overview') {
+      if (!requireLogin('/pages/overview/index')) return
       wx.navigateTo({ url: '/pages/overview/index' })
       return
     }
     if (key === 'orders') {
+      if (!requireLogin('/pages/work-orders/index')) return
       wx.navigateTo({ url: '/pages/work-orders/index' })
       return
     }
     if (key === 'settle') {
+      if (!requireLogin('/pages/house-intent/index?mode=settlement')) return
       wx.navigateTo({ url: '/pages/house-intent/index?mode=settlement' })
       return
     }
     if (key === 'parking-pay') {
+      if (!requireLogin('/pages/property-form/index?type=parking-pay')) return
       wx.navigateTo({ url: '/pages/property-form/index?type=parking-pay' })
       return
     }
+    if (key === 'utility') {
+      if (!requireLogin('/pages/utility-bills/index')) return
+      wx.navigateTo({ url: '/pages/utility-bills/index' })
+      return
+    }
+    if (key === 'ad-push') {
+      if (!requireLogin('/pages/customer-ads/index')) return
+      wx.navigateTo({ url: '/pages/customer-ads/index' })
+      return
+    }
     if (key === 'more') {
+      if (!requireLogin('/pages/notifications/index')) return
       wx.showActionSheet({
         itemList: ['通知中心', '物业工单处理', '增值服务工单处理'],
         success(result) {
@@ -57,10 +103,12 @@ Page({
   },
 
   showNotice() {
+    if (!requireLogin('/pages/notifications/index')) return
     wx.navigateTo({ url: '/pages/notifications/index' })
   },
 
   goOverview() {
+    if (!requireLogin('/pages/overview/index')) return
     wx.navigateTo({ url: '/pages/overview/index' })
   },
 

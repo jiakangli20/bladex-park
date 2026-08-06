@@ -64,7 +64,7 @@
 
         <view class="property-board">
           <block wx:for="{{propertyCards}}" wx:key="key">
-            <view class="property-tile tile-{{item.tone}}" data-key="{{item.key}}" bindtap="openPropertyService">
+            <view class="property-tile tile-{{item.tone}}" data-id="{{item.id}}" data-key="{{item.key}}" bindtap="openPropertyService">
               <view class="tile-top">
                 <view class="property-icon property-{{item.tone}}">
                   <view class="property-mask property-mask-{{item.key}}"></view>

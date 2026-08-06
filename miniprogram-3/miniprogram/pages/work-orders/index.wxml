@@ -19,7 +19,7 @@
 
       <view class="order-list">
         <block wx:for="{{orders}}" wx:key="id">
-          <view class="section-card order-card" data-id="{{item.id}}" bindtap="openDetail">
+          <view class="section-card order-card" data-id="{{item.id}}" data-type="{{item.kind}}" bindtap="openDetail">
             <view class="order-head">
               <view>
                 <view class="card-title">{{item.title}}</view>
@@ -44,6 +44,7 @@
           </view>
         </block>
       </view>
+      <view wx:if="{{!loading && !orders.length}}" class="section-card">暂无工单记录</view>
     </view>
   </scroll-view>
 </view>

@@ -48,6 +48,10 @@ public class BusinessOpportunity implements Serializable {
 	private Long parkId;
 
 	@JsonSerialize(using = ToStringSerializer.class)
+	@Schema(description = "小程序来源房源ID")
+	private Long sourceRoomId;
+
+	@JsonSerialize(using = ToStringSerializer.class)
 	@Schema(description = "客户ID")
 	private Long customerId;
 
@@ -75,6 +79,9 @@ public class BusinessOpportunity implements Serializable {
 
 	@Schema(description = "行业类型")
 	private String industryType;
+
+	@Schema(description = "企业规模")
+	private String enterpriseScale;
 
 	@Schema(description = "经营范围")
 	private String businessScope;
@@ -111,6 +118,11 @@ public class BusinessOpportunity implements Serializable {
 
 	@Schema(description = "意向面积")
 	private BigDecimal intentArea;
+
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
+	@Schema(description = "预计入驻日期")
+	private Date expectedEntryDate;
 
 	@Schema(description = "使用用途")
 	private String usagePurpose;

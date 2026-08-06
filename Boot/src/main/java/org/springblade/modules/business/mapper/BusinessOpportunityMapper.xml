@@ -7,6 +7,7 @@
 	<resultMap id="BusinessOpportunityResult" type="org.springblade.modules.business.pojo.entity.BusinessOpportunity">
 		<id property="opportunityId" column="opportunity_id"/>
 		<result property="parkId" column="park_id"/>
+		<result property="sourceRoomId" column="source_room_id"/>
 		<result property="customerId" column="customer_id"/>
 		<result property="opportunityNo" column="opportunity_no"/>
 		<result property="enterpriseName" column="enterprise_name"/>
@@ -15,6 +16,7 @@
 		<result property="registeredCapital" column="registered_capital"/>
 		<result property="enterpriseType" column="enterprise_type"/>
 		<result property="industryType" column="industry_type"/>
+		<result property="enterpriseScale" column="enterprise_scale"/>
 		<result property="businessScope" column="business_scope"/>
 		<result property="registeredAddress" column="registered_address"/>
 		<result property="equityStructure" column="equity_structure"/>
@@ -27,6 +29,7 @@
 		<result property="industryPenaltyFlag" column="industry_penalty_flag"/>
 		<result property="carrierTypes" column="carrier_types"/>
 		<result property="intentArea" column="intent_area"/>
+		<result property="expectedEntryDate" column="expected_entry_date"/>
 		<result property="usagePurpose" column="usage_purpose"/>
 		<result property="leaseTermYears" column="lease_term_years"/>
 		<result property="leaseTermLabel" column="lease_term_label"/>
@@ -90,6 +93,7 @@
 	<sql id="selectOpportunityColumns">
 		select opportunity_id,
 			   park_id,
+			   source_room_id,
 			   customer_id,
 			   opportunity_no,
 			   enterprise_name,
@@ -98,6 +102,7 @@
 			   registered_capital,
 			   enterprise_type,
 			   industry_type,
+			   enterprise_scale,
 			   business_scope,
 			   registered_address,
 			   equity_structure,
@@ -110,6 +115,7 @@
 			   industry_penalty_flag,
 			   carrier_types,
 			   intent_area,
+			   expected_entry_date,
 			   usage_purpose,
 			   lease_term_years,
 			   lease_term_label,
@@ -248,19 +254,19 @@
 
 	<insert id="insertBusinessOpportunity" parameterType="org.springblade.modules.business.pojo.entity.BusinessOpportunity" useGeneratedKeys="true" keyProperty="opportunityId">
 		insert into biz_business_opportunity (
-			park_id, customer_id, opportunity_no, enterprise_name, credit_code, establish_date, registered_capital,
-			enterprise_type, industry_type, business_scope, registered_address, equity_structure, organization_structure,
+			park_id, source_room_id, customer_id, opportunity_no, enterprise_name, credit_code, establish_date, registered_capital,
+			enterprise_type, industry_type, enterprise_scale, business_scope, registered_address, equity_structure, organization_structure,
 			main_business, last_year_revenue, major_clients, major_illegal_flag, dishonest_flag, industry_penalty_flag,
-			carrier_types, intent_area, usage_purpose, lease_term_years, lease_term_label, decoration_requirement,
+			carrier_types, intent_area, expected_entry_date, usage_purpose, lease_term_years, lease_term_label, decoration_requirement,
 			supporting_needs, contact_name, contact_phone, contact_email, contact_address, id_card_files, contact_position, channel,
 			third_party_channel_name, follow_user, follow_user_id, opportunity_status, remark, approval_project_id, submitted_audit_flag,
 			tenant_entry_process_ins_id, tenant_entry_status, tenant_entry_current_node, tenant_entry_approval_pdf_url, tenant_entry_approval_time,
 			last_follow_time, next_follow_time, del_flag, create_by, create_time, update_by, update_time
 		) values (
-			#{parkId}, #{customerId}, #{opportunityNo}, #{enterpriseName}, #{creditCode}, #{establishDate}, #{registeredCapital},
-			#{enterpriseType}, #{industryType}, #{businessScope}, #{registeredAddress}, #{equityStructure}, #{organizationStructure},
+			#{parkId}, #{sourceRoomId}, #{customerId}, #{opportunityNo}, #{enterpriseName}, #{creditCode}, #{establishDate}, #{registeredCapital},
+			#{enterpriseType}, #{industryType}, #{enterpriseScale}, #{businessScope}, #{registeredAddress}, #{equityStructure}, #{organizationStructure},
 			#{mainBusiness}, #{lastYearRevenue}, #{majorClients}, #{majorIllegalFlag}, #{dishonestFlag}, #{industryPenaltyFlag},
-			#{carrierTypes}, #{intentArea}, #{usagePurpose}, #{leaseTermYears}, #{leaseTermLabel}, #{decorationRequirement},
+			#{carrierTypes}, #{intentArea}, #{expectedEntryDate}, #{usagePurpose}, #{leaseTermYears}, #{leaseTermLabel}, #{decorationRequirement},
 			#{supportingNeeds}, #{contactName}, #{contactPhone}, #{contactEmail}, #{contactAddress}, #{idCardFiles}, #{contactPosition}, #{channel},
 			#{thirdPartyChannelName}, #{followUser}, #{followUserId}, #{opportunityStatus}, #{remark}, #{approvalProjectId}, #{submittedAuditFlag},
 			#{tenantEntryProcessInsId}, #{tenantEntryStatus}, #{tenantEntryCurrentNode}, #{tenantEntryApprovalPdfUrl}, #{tenantEntryApprovalTime},
@@ -272,6 +278,7 @@
 		update biz_business_opportunity
 		<set>
 			<if test="parkId != null">park_id = #{parkId},</if>
+			<if test="sourceRoomId != null">source_room_id = #{sourceRoomId},</if>
 			<if test="customerId != null">customer_id = #{customerId},</if>
 			<if test="enterpriseName != null">enterprise_name = #{enterpriseName},</if>
 			<if test="creditCode != null">credit_code = #{creditCode},</if>
@@ -279,6 +286,7 @@
 			<if test="registeredCapital != null">registered_capital = #{registeredCapital},</if>
 			<if test="enterpriseType != null">enterprise_type = #{enterpriseType},</if>
 			<if test="industryType != null">industry_type = #{industryType},</if>
+			<if test="enterpriseScale != null">enterprise_scale = #{enterpriseScale},</if>
 			<if test="businessScope != null">business_scope = #{businessScope},</if>
 			<if test="registeredAddress != null">registered_address = #{registeredAddress},</if>
 			<if test="equityStructure != null">equity_structure = #{equityStructure},</if>
@@ -291,6 +299,7 @@
 			<if test="industryPenaltyFlag != null">industry_penalty_flag = #{industryPenaltyFlag},</if>
 			<if test="carrierTypes != null">carrier_types = #{carrierTypes},</if>
 			<if test="intentArea != null">intent_area = #{intentArea},</if>
+			<if test="expectedEntryDate != null">expected_entry_date = #{expectedEntryDate},</if>
 			<if test="usagePurpose != null">usage_purpose = #{usagePurpose},</if>
 			<if test="leaseTermYears != null">lease_term_years = #{leaseTermYears},</if>
 			<if test="leaseTermLabel != null">lease_term_label = #{leaseTermLabel},</if>

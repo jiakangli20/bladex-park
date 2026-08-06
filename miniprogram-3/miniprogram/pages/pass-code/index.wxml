@@ -22,9 +22,9 @@
           </view>
         </view>
 
-        <image class="qr-image" src="{{qrImage}}" mode="aspectFit"></image>
-        <view class="expire-time">失效时间： {{expireTime}}</view>
-        <view class="refresh-button" bindtap="refreshCode">↻ 刷新</view>
+        <view class="qr-image" style="display:flex;align-items:center;justify-content:center;color:#8a96a8;text-align:center;">暂未开通<br/>请联系园区管理员</view>
+        <view class="expire-time">真实门禁接入后开放</view>
+        <view class="refresh-button" bindtap="refreshCode">了解详情</view>
       </view>
     </view>
   </scroll-view>

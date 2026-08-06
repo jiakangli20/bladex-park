@@ -43,6 +43,14 @@ public class MerchantAd implements Serializable {
 	@Schema(description = "园区ID")
 	private Long parkId;
 
+	@JsonSerialize(using = ToStringSerializer.class)
+	@Schema(description = "企业客户ID")
+	private Long customerId;
+
+	@JsonSerialize(using = ToStringSerializer.class)
+	@Schema(description = "小程序提交成员ID")
+	private Long memberId;
+
 	@NotBlank(message = "广告标题不能为空")
 	@Schema(description = "广告标题")
 	private String adTitle;
@@ -77,6 +85,24 @@ public class MerchantAd implements Serializable {
 	@Schema(description = "结束展示时间")
 	private Date endTime;
 
+	@Schema(description = "审核状态")
+	private String auditStatus;
+
+	@JsonSerialize(using = ToStringSerializer.class)
+	@Schema(description = "审核用户ID")
+	private Long auditUserId;
+
+	@Schema(description = "审核人")
+	private String auditUserName;
+
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@Schema(description = "审核时间")
+	private Date auditTime;
+
+	@Schema(description = "审核意见")
+	private String auditOpinion;
+
 	@Schema(description = "状态")
 	private String status;
 
@@ -109,5 +135,9 @@ public class MerchantAd implements Serializable {
 	@TableField(exist = false)
 	@Schema(description = "商户名称")
 	private String merchantName;
+
+	@TableField(exist = false)
+	@Schema(description = "企业客户名称")
+	private String customerName;
 
 }

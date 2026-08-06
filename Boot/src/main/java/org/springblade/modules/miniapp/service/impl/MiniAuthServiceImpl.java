@@ -1,0 +1,400 @@
+/**
+ * BladeX Commercial License Agreement
+ * Copyright (c) 2018-2099, https://bladex.cn. All rights reserved.
+ * <p>
+ * Use of this software is governed by the Commercial License Agreement
+ * obtained after purchasing a license from BladeX.
+ * <p>
+ * 1. This software is for development use only under a valid license
+ * from BladeX.
+ * <p>
+ * 2. Redistribution of this software's source code to any third party
+ * without a commercial license is strictly prohibited.
+ * <p>
+ * 3. Licensees may copyright their own code but cannot use segments
+ * from this software for such purposes. Copyright of this software
+ * remains with BladeX.
+ * <p>
+ * Using this software signifies agreement to this License, and the software
+ * must not be used for illegal purposes.
+ * <p>
+ * THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY. The author is
+ * not liable for any claims arising from secondary or illegal development.
+ * <p>
+ * Author: Chill Zhuang (bladejava@qq.com)
+ */
+package org.springblade.modules.miniapp.service.impl;
+
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import io.jsonwebtoken.Claims;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import org.springblade.core.jwt.JwtUtil;
+import org.springblade.core.log.exception.ServiceException;
+import org.springblade.core.mp.enums.StatusType;
+import org.springblade.core.oauth2.provider.OAuth2Token;
+import org.springblade.core.redis.cache.BladeRedis;
+import org.springblade.core.secure.utils.AuthUtil;
+import org.springblade.core.tool.jackson.JsonUtil;
+import org.springblade.core.tool.utils.DigestUtil;
+import org.springblade.core.tool.utils.StringUtil;
+import org.springblade.core.tool.utils.WebUtil;
+import org.springblade.modules.auth.provider.UserType;
+import org.springblade.modules.business.pojo.entity.Customer;
+import org.springblade.modules.business.service.ICustomerService;
+import org.springblade.modules.miniapp.config.MiniAppProperties;
+import org.springblade.modules.miniapp.constant.MiniAppConstant;
+import org.springblade.modules.miniapp.mapper.MiniInviteMapper;
+import org.springblade.modules.miniapp.mapper.MiniMemberMapper;
+import org.springblade.modules.miniapp.pojo.dto.MiniBindDTO;
+import org.springblade.modules.miniapp.pojo.dto.MiniRefreshDTO;
+import org.springblade.modules.miniapp.pojo.dto.MiniWechatLoginDTO;
+import org.springblade.modules.miniapp.pojo.entity.MiniInvite;
+import org.springblade.modules.miniapp.pojo.entity.MiniMember;
+import org.springblade.modules.miniapp.pojo.vo.MiniLoginVO;
+import org.springblade.modules.miniapp.pojo.vo.MiniProfileVO;
+import org.springblade.modules.miniapp.service.IMiniAuthService;
+import org.springblade.modules.miniapp.service.MiniTokenIssuer;
+import org.springblade.modules.miniapp.service.MiniWechatClient;
+import org.springblade.modules.system.pojo.entity.User;
+import org.springblade.modules.system.pojo.entity.UserInfo;
+import org.springblade.modules.system.pojo.entity.UserOauth;
+import org.springblade.modules.system.service.IUserOauthService;
+import org.springblade.modules.system.service.IUserService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Duration;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * 小程序认证服务实现。
+ *
+ * @author Chill
+ */
+@Service
+@RequiredArgsConstructor
+public class MiniAuthServiceImpl implements IMiniAuthService {
+
+	private final MiniAppProperties properties;
+	private final MiniWechatClient wechatClient;
+	private final MiniTokenIssuer tokenIssuer;
+	private final MiniMemberMapper memberMapper;
+	private final MiniInviteMapper inviteMapper;
+	private final ICustomerService customerService;
+	private final IUserService userService;
+	private final IUserOauthService userOauthService;
+	private final BladeRedis bladeRedis;
+
+	@Override
+	public MiniLoginVO wechatLogin(MiniWechatLoginDTO request) {
+		checkRateLimit("login");
+		MiniWechatClient.WechatSession wechatSession = wechatClient.exchangeCode(request.getCode());
+		MiniMember member = memberMapper.selectOne(Wrappers.<MiniMember>lambdaQuery()
+			.eq(MiniMember::getTenantId, properties.getDefaultTenantId())
+			.eq(MiniMember::getAppId, effectiveAppId())
+			.eq(MiniMember::getOpenId, wechatSession.openId())
+			.eq(MiniMember::getIsDeleted, 0)
+			.last("limit 1"));
+		if (member == null) {
+			String ticket = UUID.randomUUID().toString().replace("-", "");
+			BindTicketPayload payload = new BindTicketPayload();
+			payload.setOpenId(wechatSession.openId());
+			payload.setUnionId(wechatSession.unionId());
+			payload.setNickname(request.getNickname());
+			bladeRedis.setEx(MiniAppConstant.BIND_TICKET_PREFIX + ticket, JsonUtil.toJson(payload),
+				Duration.ofMinutes(properties.getBindTicketMinutes()));
+			MiniLoginVO login = new MiniLoginVO();
+			login.setNeedBind(true);
+			login.setBindTicket(ticket);
+			login.setTenantId(properties.getDefaultTenantId());
+			login.setParkId(properties.getDefaultParkId());
+			return login;
+		}
+		assertMemberEnabled(member);
+		member.setLastLoginTime(new Date());
+		memberMapper.updateById(member);
+		return buildLogin(member, tokenIssuer.issue(member.getTenantId(), member.getUserId()));
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public MiniLoginVO bind(MiniBindDTO request) {
+		checkRateLimit("bind");
+		String payloadJson = bladeRedis.getAndDel(MiniAppConstant.BIND_TICKET_PREFIX + request.getBindTicket());
+		if (StringUtil.isBlank(payloadJson)) {
+			throw new ServiceException("绑定票据无效或已过期，请重新登录");
+		}
+		BindTicketPayload payload = JsonUtil.parse(payloadJson, BindTicketPayload.class);
+		String mobile = wechatClient.exchangePhone(request.getPhoneCode());
+		String tenantId = properties.getDefaultTenantId();
+		Long parkId = properties.getDefaultParkId();
+
+		List<User> users = userService.list(Wrappers.<User>lambdaQuery()
+			.eq(User::getTenantId, tenantId).eq(User::getPhone, mobile)
+			.eq(User::getStatus, StatusType.ACTIVE.getType()).eq(User::getIsDeleted, 0));
+		User matchedUser = users.size() == 1 ? users.get(0) : null;
+		boolean bladeAdmin = matchedUser != null && isBladeAdmin(matchedUser.getId());
+
+		Customer query = new Customer();
+		query.setParkId(parkId);
+		query.setContactPhone(mobile);
+		List<Customer> customers = customerService.selectCustomerList(query);
+		Customer matchedCustomer = customers.size() == 1 ? customers.get(0) : null;
+
+		String roleCode;
+		Long customerId = null;
+		MiniInvite invite = null;
+		if (bladeAdmin) {
+			roleCode = MiniAppConstant.ROLE_PARK_ADMIN;
+		} else if (matchedCustomer != null) {
+			roleCode = MiniAppConstant.ROLE_CUSTOMER_ADMIN;
+			customerId = matchedCustomer.getCustomerId();
+		} else {
+			invite = requireInvite(request.getInviteCode(), mobile, tenantId, parkId);
+			roleCode = invite.getRoleCode();
+			customerId = invite.getCustomerId();
+			matchedCustomer = customerService.selectCustomerById(customerId);
+			if (matchedCustomer == null || !Objects.equals(matchedCustomer.getParkId(), parkId)) {
+				throw new ServiceException("邀请码关联企业不存在或已移出当前园区");
+			}
+		}
+
+		if (matchedUser == null) {
+			matchedUser = createLightweightUser(tenantId, mobile,
+				StringUtil.isNotBlank(request.getNickname()) ? request.getNickname() : matchedCustomer.getContactName());
+		}
+		MiniMember duplicate = memberMapper.selectOne(Wrappers.<MiniMember>lambdaQuery()
+			.eq(MiniMember::getTenantId, tenantId).eq(MiniMember::getAppId, effectiveAppId())
+			.eq(MiniMember::getOpenId, payload.getOpenId()).eq(MiniMember::getIsDeleted, 0).last("limit 1"));
+		if (duplicate != null) {
+			throw new ServiceException("该微信已完成绑定，请直接登录");
+		}
+
+		MiniMember member = new MiniMember();
+		member.setTenantId(tenantId);
+		member.setAppId(effectiveAppId());
+		member.setOpenId(payload.getOpenId());
+		member.setUnionId(payload.getUnionId());
+		member.setUserId(matchedUser.getId());
+		member.setCustomerId(customerId);
+		member.setParkId(parkId);
+		member.setMobile(mobile);
+		member.setRoleCode(roleCode);
+		member.setNickname(StringUtil.isNotBlank(request.getNickname()) ? request.getNickname() : payload.getNickname());
+		member.setStatus(StatusType.ACTIVE.getType());
+		member.setIsDeleted(0);
+		member.setLastLoginTime(new Date());
+		memberMapper.insert(member);
+		bindOauth(member, matchedUser);
+		if (invite != null) {
+			invite.setUsedCount(invite.getUsedCount() + 1);
+			inviteMapper.updateById(invite);
+		}
+		return buildLogin(member, tokenIssuer.issue(tenantId, matchedUser.getId()));
+	}
+
+	@Override
+	public MiniLoginVO refresh(MiniRefreshDTO request) {
+		checkRateLimit("refresh");
+		Claims claims = JwtUtil.parseJWT(request.getRefreshToken());
+		if (claims == null || !"refresh_token".equals(String.valueOf(claims.get("token_type")))) {
+			throw new ServiceException("刷新令牌无效或已过期");
+		}
+		Long userId = Long.valueOf(String.valueOf(claims.get("user_id")));
+		String tenantId = String.valueOf(claims.get("tenant_id"));
+		MiniMember member = findMemberByUser(tenantId, userId);
+		assertMemberEnabled(member);
+		return buildLogin(member, tokenIssuer.refresh(request.getRefreshToken()));
+	}
+
+	@Override
+	public MiniLoginVO session() {
+		return buildLogin(currentMember(), null);
+	}
+
+	@Override
+	public void logout() {
+		// BladeX 在无状态 JWT 模式下登出由客户端清理令牌；有状态模式由框架令牌缓存控制。
+	}
+
+	@Override
+	public MiniMember currentMember() {
+		Long userId = AuthUtil.getUserId();
+		if (userId == null || userId <= 0) {
+			throw new ServiceException("登录状态无效");
+		}
+		MiniMember member = findMemberByUser(AuthUtil.getTenantId(), userId);
+		assertMemberEnabled(member);
+		return member;
+	}
+
+	@Override
+	public MiniMember requireCustomer() {
+		MiniMember member = currentMember();
+		if (member.getCustomerId() == null || !Set.of(MiniAppConstant.ROLE_CUSTOMER_MEMBER,
+			MiniAppConstant.ROLE_CUSTOMER_ADMIN).contains(member.getRoleCode())) {
+			throw new ServiceException("当前账号没有企业客户权限");
+		}
+		return member;
+	}
+
+	@Override
+	public MiniMember requireCustomerAdmin() {
+		MiniMember member = requireCustomer();
+		if (!MiniAppConstant.ROLE_CUSTOMER_ADMIN.equals(member.getRoleCode())) {
+			throw new ServiceException("当前账号没有企业管理员权限");
+		}
+		return member;
+	}
+
+	@Override
+	public MiniMember requireParkAdmin() {
+		MiniMember member = currentMember();
+		if (!MiniAppConstant.ROLE_PARK_ADMIN.equals(member.getRoleCode())) {
+			throw new ServiceException("当前账号没有园区管理员权限");
+		}
+		return member;
+	}
+
+	private MiniMember findMemberByUser(String tenantId, Long userId) {
+		return memberMapper.selectOne(Wrappers.<MiniMember>lambdaQuery()
+			.eq(MiniMember::getTenantId, tenantId).eq(MiniMember::getAppId, effectiveAppId())
+			.eq(MiniMember::getUserId, userId).eq(MiniMember::getIsDeleted, 0).last("limit 1"));
+	}
+
+	private void assertMemberEnabled(MiniMember member) {
+		if (member == null) {
+			throw new ServiceException("微信账号尚未绑定园区身份");
+		}
+		if (!Integer.valueOf(StatusType.ACTIVE.getType()).equals(member.getStatus())) {
+			throw new ServiceException("账号已停用，请联系园区管理员");
+		}
+	}
+
+	private MiniInvite requireInvite(String inviteCode, String mobile, String tenantId, Long parkId) {
+		if (StringUtil.isBlank(inviteCode)) {
+			throw new ServiceException("手机号无法唯一匹配，请填写企业邀请码");
+		}
+		MiniInvite invite = inviteMapper.selectOne(Wrappers.<MiniInvite>lambdaQuery()
+			.eq(MiniInvite::getTenantId, tenantId).eq(MiniInvite::getParkId, parkId)
+			.eq(MiniInvite::getCodeHash, DigestUtil.sha256Hex(inviteCode.trim()))
+			.eq(MiniInvite::getStatus, StatusType.ACTIVE.getType()).eq(MiniInvite::getIsDeleted, 0).last("limit 1"));
+		if (invite == null || invite.getExpireTime().before(new Date()) || invite.getUsedCount() >= invite.getMaxUses()) {
+			throw new ServiceException("企业邀请码无效、已过期或已达使用次数");
+		}
+		if (StringUtil.isNotBlank(invite.getMobile()) && !invite.getMobile().equals(mobile)) {
+			throw new ServiceException("企业邀请码与当前手机号不匹配");
+		}
+		return invite;
+	}
+
+	private boolean isBladeAdmin(Long userId) {
+		UserInfo userInfo = userService.userInfo(userId);
+		List<String> roles = userInfo == null || userInfo.getRoles() == null ? Collections.emptyList() : userInfo.getRoles();
+		return roles.stream().anyMatch(role -> "admin".equalsIgnoreCase(role) || "administrator".equalsIgnoreCase(role));
+	}
+
+	private User createLightweightUser(String tenantId, String mobile, String nickname) {
+		User user = new User();
+		user.setTenantId(tenantId);
+		user.setAccount("mini_" + mobile + "_" + UUID.randomUUID().toString().substring(0, 6));
+		user.setPassword(UUID.randomUUID().toString());
+		user.setName(StringUtil.isNotBlank(nickname) ? nickname : mobile);
+		user.setRealName(user.getName());
+		user.setPhone(mobile);
+		user.setUserType(UserType.OTHER.getCategory());
+		user.setRoleId("-1");
+		user.setDeptId("-1");
+		user.setPostId("-1");
+		user.setStatus(StatusType.ACTIVE.getType());
+		user.setIsDeleted(0);
+		if (!userService.submit(user)) {
+			throw new ServiceException("创建小程序用户失败");
+		}
+		userService.updatePlatform(user.getId(), UserType.OTHER.getCategory(), "miniapp");
+		return user;
+	}
+
+	private void bindOauth(MiniMember member, User user) {
+		Long count = userOauthService.count(Wrappers.<UserOauth>lambdaQuery()
+			.eq(UserOauth::getUuid, member.getOpenId()).eq(UserOauth::getSource, MiniAppConstant.OAUTH_SOURCE)
+			.eq(UserOauth::getIsDeleted, 0));
+		if (count > 0) {
+			throw new ServiceException("该微信身份已绑定其他账号");
+		}
+		UserOauth oauth = new UserOauth();
+		oauth.setTenantId(member.getTenantId());
+		oauth.setUuid(member.getOpenId());
+		oauth.setUserId(user.getId());
+		oauth.setUsername(user.getAccount());
+		oauth.setNickname(member.getNickname());
+		oauth.setSource(MiniAppConstant.OAUTH_SOURCE);
+		oauth.setStatus(StatusType.ACTIVE.getType());
+		oauth.setIsDeleted(0);
+		userOauthService.save(oauth);
+	}
+
+	private MiniLoginVO buildLogin(MiniMember member, OAuth2Token token) {
+		MiniLoginVO login = new MiniLoginVO();
+		login.setNeedBind(false);
+		if (token != null) {
+			login.setAccessToken(token.getAccessToken());
+			login.setRefreshToken(token.getRefreshToken());
+			login.setExpiresIn(token.getAccessTokenExpire());
+		}
+		login.setTenantId(member.getTenantId());
+		login.setParkId(member.getParkId());
+		login.setCustomerId(member.getCustomerId());
+		login.setRoleCodes(List.of(member.getRoleCode()));
+		login.setCapabilities(capabilities(member.getRoleCode()));
+		User user = userService.getById(member.getUserId());
+		MiniProfileVO profile = new MiniProfileVO();
+		profile.setUserId(member.getUserId());
+		profile.setNickname(StringUtil.isNotBlank(member.getNickname()) ? member.getNickname() : user.getName());
+		profile.setMobile(member.getMobile());
+		profile.setAvatar(user.getAvatar());
+		if (member.getCustomerId() != null) {
+			Customer customer = customerService.selectCustomerById(member.getCustomerId());
+			profile.setEnterpriseName(customer == null ? null : customer.getEnterpriseName());
+		}
+		login.setProfile(profile);
+		return login;
+	}
+
+	private List<String> capabilities(String roleCode) {
+		return switch (roleCode) {
+			case MiniAppConstant.ROLE_CUSTOMER_ADMIN -> MiniAppConstant.CUSTOMER_ADMIN_CAPABILITIES;
+			case MiniAppConstant.ROLE_CUSTOMER_MEMBER -> MiniAppConstant.CUSTOMER_CAPABILITIES;
+			case MiniAppConstant.ROLE_PARK_ADMIN -> MiniAppConstant.PARK_ADMIN_CAPABILITIES;
+			default -> Collections.emptyList();
+		};
+	}
+
+	private void checkRateLimit(String action) {
+		String key = MiniAppConstant.RATE_LIMIT_PREFIX + action + ":" + WebUtil.getIP();
+		Long count = bladeRedis.incr(key);
+		if (count != null && count == 1L) {
+			bladeRedis.expire(key, Duration.ofMinutes(1));
+		}
+		if (count != null && count > properties.getRateLimitPerMinute()) {
+			throw new ServiceException("操作过于频繁，请稍后再试");
+		}
+	}
+
+	private String effectiveAppId() {
+		return StringUtil.isNotBlank(properties.getAppId()) ? properties.getAppId() : "miniapp-dev";
+	}
+
+	@Data
+	public static class BindTicketPayload {
+		private String openId;
+		private String unionId;
+		private String nickname;
+	}
+}

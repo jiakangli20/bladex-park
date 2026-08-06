@@ -12,6 +12,18 @@ server:
     # 是否分配的直接内存
     direct-buffers: true
 
+# 园区微信小程序配置。AppSecret 与 OAuth 客户端密钥仅允许通过环境变量注入。
+miniapp:
+  app-id: ${MINIAPP_WECHAT_APP_ID:wx3feaa2327be80026}
+  app-secret: ${MINIAPP_WECHAT_APP_SECRET:}
+  default-tenant-id: ${MINIAPP_DEFAULT_TENANT_ID:000000}
+  default-park-id: ${MINIAPP_DEFAULT_PARK_ID:1}
+  oauth-client-id: ${MINIAPP_OAUTH_CLIENT_ID:saber}
+  oauth-client-secret: ${MINIAPP_OAUTH_CLIENT_SECRET:saber_secret}
+  mock-enabled: ${MINIAPP_MOCK_ENABLED:false}
+  bind-ticket-minutes: 5
+  rate-limit-per-minute: 30
+
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver

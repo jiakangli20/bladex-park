@@ -1,92 +1,60 @@
-const serviceMap: Record<string, { title: string; desc: string; submitText: string }> = {
-  repair: {
-    title: '维修申请',
-    desc: '提交维修位置、问题说明和联系方式，物业工程组会尽快受理。',
-    submitText: '提交维修工单',
-  },
-  parking: {
-    title: '车位申请',
-    desc: '用于新增长期车位、临停车位或企业车辆备案。',
-    submitText: '提交车位申请',
-  },
-  utility: {
-    title: '水电缴纳',
-    desc: '查看本期水电金额并登记缴费信息，后续接入线上支付。',
-    submitText: '提交缴费记录',
-  },
-  complaint: {
-    title: '投诉建议',
-    desc: '提交园区服务、环境、安全等问题反馈，运营人员会跟进处理。',
-    submitText: '提交反馈',
-  },
-  meeting: {
-    title: '会议室预订',
-    desc: '填写会议时间、人数和使用需求，物业会确认可用会议室。',
-    submitText: '提交预订',
-  },
-  'parking-pay': {
-    title: '停车缴费',
-    desc: '登记车牌和缴费周期，后续可接入停车系统和微信支付。',
-    submitText: '提交缴费',
-  },
-}
+import { customerApi, publicApi } from '../../services/miniapp'
+import { navigateBackOr } from '../../utils/navigation'
+import { requireLogin } from '../../utils/session'
 
 Page({
   data: {
-    serviceKey: 'repair',
-    service: serviceMap.repair,
-    form: {
-      contact: '',
-      phone: '',
-      room: 'A座12层1201-1205',
-      carNo: '',
-      useTime: '',
-      amount: '',
-      content: '',
-    },
+    serviceKey: '',
+    service: { id: '', title: '物业服务申请', desc: '提交需求后由园区管理员受理。', submitText: '提交物业申请' },
+    form: { contact: '', phone: '', room: '', carNo: '', useTime: '', amount: '', content: '' },
   },
 
-  onLoad(options: Record<string, string | undefined>) {
-    const serviceKey = options.type && serviceMap[options.type] ? options.type : 'repair'
+  async onLoad(options: Record<string, string | undefined>) {
+    if (!requireLogin(`/pages/property-form/index?id=${options.id || ''}&type=${options.type || ''}`)) return
+    const services = await publicApi.propertyServices()
+    const selected: Record<string, any> | undefined = services.find(item => String(item.id) === options.id)
+      || services.find(item => String(item.type).includes(options.type || ''))
+      || services[0]
+    if (!selected) {
+      wx.showToast({ title: '该物业服务暂未配置', icon: 'none' })
+      return
+    }
     this.setData({
-      serviceKey,
-      service: serviceMap[serviceKey],
+      serviceKey: options.type || selected.type,
+      service: {
+        id: String(selected.id),
+        title: selected.title || '物业服务申请',
+        desc: selected.desc || '提交需求后由园区管理员受理。',
+        submitText: options.type === 'parking-pay' ? '提交停车服务申请' : '提交物业申请',
+      },
     })
   },
 
-  goBack() {
-    wx.navigateBack()
-  },
-
+  goBack() { navigateBackOr('/pages/services/index?tab=property') },
   handleInput(event: WechatMiniprogram.Input) {
     const field = event.currentTarget.dataset.field as string | undefined
-    if (!field) {
-      return
-    }
-    this.setData({
-      [`form.${field}`]: event.detail.value,
-    })
+    if (field) this.setData({ [`form.${field}`]: event.detail.value })
   },
 
-  submitForm() {
-    const { contact, phone, content } = this.data.form
-    if (!contact || !phone || !content) {
-      wx.showToast({
-        title: '请补充联系人、手机号和需求说明',
-        icon: 'none',
-      })
+  async submitForm() {
+    const { contact, phone, content, room, carNo, useTime, amount } = this.data.form
+    if (!contact || !/^1\d{10}$/.test(phone) || !content) {
+      wx.showToast({ title: '请填写联系人、正确手机号和需求说明', icon: 'none' })
       return
     }
+    const extra = [carNo && `车牌：${carNo}`, useTime && `使用时间：${useTime}`, amount && `登记金额：${amount}`].filter(Boolean).join('；')
+    await customerApi.createPropertyOrder({
+      serviceId: this.data.service.id,
+      contactName: contact,
+      contactPhone: phone,
+      roomInfo: room,
+      demandDesc: extra ? `${content}；${extra}` : content,
+      priority: 'NORMAL',
+    })
     wx.showModal({
-      title: '提交成功',
-      content: '已生成物业服务申请，可在我的工单查看处理进度。',
-      confirmText: '查看工单',
-      cancelText: '留在本页',
-      success(result) {
-        if (result.confirm) {
-          wx.navigateTo({ url: '/pages/work-orders/index?tab=property' })
-        }
-      },
+      title: '提交成功', content: '已生成物业服务申请，可在我的工单查看处理进度。',
+      confirmText: '查看工单', cancelText: '留在本页',
+      success: result => result.confirm && wx.navigateTo({ url: '/pages/work-orders/index?tab=property' }),
     })
   },
 })

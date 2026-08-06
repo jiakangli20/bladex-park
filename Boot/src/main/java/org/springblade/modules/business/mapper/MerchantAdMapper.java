@@ -23,6 +23,9 @@ public interface MerchantAdMapper extends BaseMapper<MerchantAd> {
 
 	List<MerchantAd> selectAdList(@Param("ad") MerchantAd ad);
 
+	List<MerchantAd> selectPublicAdList(@Param("parkId") Long parkId,
+		@Param("adPosition") String adPosition, @Param("now") java.util.Date now);
+
 	IPage<MerchantAd> selectAdPage(IPage<MerchantAd> page, @Param("ad") MerchantAd ad);
 
 	Map<String, Object> selectAdStatistics(@Param("ad") MerchantAd ad);

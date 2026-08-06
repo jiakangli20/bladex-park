@@ -59,14 +59,14 @@
           :data="data"
           border
           row-key="rowKey"
+          scrollbar-always-on
           class="tenant-entry-table"
         >
           <el-table-column
             prop="enterpriseName"
             label="企业名称"
-            min-width="200"
+            :min-width="enterpriseNameColumnWidth"
             align="center"
-            show-overflow-tooltip
             class-name="enterprise-name-column"
           />
           <el-table-column
@@ -113,6 +113,9 @@
               </div>
             </template>
           </el-table-column>
+          <template #append>
+            <div class="table-scroll-gutter" aria-hidden="true"></div>
+          </template>
           <template #empty>
             <el-empty description="暂无入驻审核记录" />
           </template>
@@ -281,6 +284,17 @@ export default {
   },
 	computed: {
 	  ...mapGetters(['permission']),
+	  enterpriseNameColumnWidth() {
+		const longestUnits = this.data.reduce((maxUnits, row) => {
+		  const name = String(row.enterpriseName || '-');
+		  const units = Array.from(name).reduce(
+			(total, character) => total + (/^[\u0000-\u00ff]$/.test(character) ? 0.6 : 1),
+			0
+		  );
+		  return Math.max(maxUnits, units);
+		}, 0);
+		return Math.max(220, Math.ceil(longestUnits * 15 + 48));
+	  },
 	  permissionList() {
 		return {
 		  addBtn: Boolean(this.permission.settlement_project_approval_add),
@@ -796,10 +810,30 @@ export default {
 }
 
 .tenant-entry-table :deep(.enterprise-name-column .cell) {
-  overflow: hidden;
   flex-wrap: nowrap;
+  padding: 0 12px;
   white-space: nowrap;
   word-break: keep-all;
+}
+
+.tenant-entry-table :deep(.el-scrollbar__bar.is-horizontal) {
+  right: 8px;
+  bottom: 5px;
+  left: 8px;
+  height: 12px;
+  opacity: 1;
+  border-radius: 6px;
+  background: #eef1f5;
+}
+
+.tenant-entry-table :deep(.el-scrollbar__bar.is-horizontal .el-scrollbar__thumb) {
+  min-width: 96px;
+  border-radius: 6px;
+  background-color: #9aa4b2;
+}
+
+.table-scroll-gutter {
+  height: 32px;
 }
 
 .tenant-entry-pagination {

@@ -1,0 +1,19 @@
+<view class="sub-page ad-detail-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="sub-content {{canEdit || canSubmit || canWithdraw ? 'has-action' : ''}}">
+      <view class="blue-header plain-header"><view class="nav-row"><view class="nav-action" bindtap="goBack">‹</view><view class="nav-title">广告详情</view><view class="nav-action"></view></view><view class="intro-title">审核与上架进度</view><view class="intro-sub">园区后台审核留痕，不接入 Flowable</view></view>
+      <view wx:if="{{loading}}" class="state-card">广告加载中...</view>
+      <view wx:elif="{{error}}" class="state-card"><view>{{error}}</view><view class="retry-button" bindtap="retry">重新加载</view></view>
+      <block wx:else>
+        <view class="ad-card"><image src="{{ad.image}}" mode="aspectFill" bindtap="previewCover"></image><view class="ad-info"><view class="ad-head"><view class="ad-title">{{ad.title}}</view><view class="status-pill status-{{ad.tone}}">{{ad.auditStatusText}}</view></view><view class="ad-line">上架状态：{{ad.onlineText}}</view><view class="ad-line">展示时间：{{ad.startTime || '不限'}} 至 {{ad.endTime || '不限'}}</view><view wx:if="{{ad.auditOpinion}}" class="audit-opinion">审核意见：{{ad.auditOpinion}}</view></view></view>
+        <view class="section-card"><view class="section-name">广告信息</view><view class="detail-row"><text>跳转类型</text><strong>{{ad.linkType === 'url' ? '外部链接' : '不跳转'}}</strong></view><view wx:if="{{ad.linkUrl}}" class="detail-row"><text>跳转链接</text><strong>{{ad.linkUrl}}</strong></view><view class="detail-row"><text>备注</text><strong>{{ad.remark || '-'}}</strong></view></view>
+        <view class="section-card"><view class="section-name">处理时间线</view><view wx:if="{{!logs.length}}" class="empty-line">暂无处理记录</view><block wx:for="{{logs}}" wx:key="id"><view class="timeline-item"><view class="timeline-dot"></view><view class="timeline-body"><view class="timeline-head"><text>{{item.actionText}}</text><text>{{item.operateTime}}</text></view><view wx:if="{{item.operatorName}}" class="timeline-meta">操作人：{{item.operatorName}}</view><view wx:if="{{item.opinion}}" class="timeline-opinion">{{item.opinion}}</view></view></view></block></view>
+      </block>
+    </view>
+  </scroll-view>
+  <view wx:if="{{canEdit || canSubmit || canWithdraw}}" class="fixed-action action-row">
+    <view wx:if="{{canEdit}}" class="secondary-button" bindtap="editAd">修改</view>
+    <view wx:if="{{canSubmit}}" class="primary-button" bindtap="submitAd">{{acting ? '处理中...' : '提交审核'}}</view>
+    <view wx:if="{{canWithdraw}}" class="primary-button warning-button" bindtap="withdrawAd">{{acting ? '处理中...' : '撤回审核'}}</view>
+  </view>
+</view>

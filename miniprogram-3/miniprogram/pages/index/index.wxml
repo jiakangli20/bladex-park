@@ -6,7 +6,7 @@
           <view class="service-center">服务中心⌄</view>
           <view class="hero-notice" bindtap="showNotice">
             <view class="hero-bell"></view>
-            <view class="hero-badge">16</view>
+            <view wx:if="{{noticeCount}}" class="hero-badge">{{noticeCount}}</view>
           </view>
         </view>
         <image class="hero-park" src="/assets/images/home-hero-park.png" mode="aspectFit"></image>
@@ -27,7 +27,7 @@
         <block wx:for="{{quickActions}}" wx:key="key">
           <view class="feature-item" data-key="{{item.key}}" bindtap="handleQuickAction">
             <view class="feature-icon feature-{{item.tone}}">
-              <view class="feature-mask feature-{{item.key}}"></view>
+              <image class="feature-image" src="/assets/icons/{{item.key}}.png" mode="aspectFit"></image>
             </view>
             <text>{{item.label}}</text>
           </view>

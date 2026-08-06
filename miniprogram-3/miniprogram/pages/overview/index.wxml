@@ -3,7 +3,7 @@
     <view class="overview-content">
       <view class="overview-header">
         <view class="nav-row">
-          <view class="nav-action" bindtap="goBack">‹</view>
+          <view class="nav-action nav-back" catchtap="goBack">‹</view>
           <view class="nav-title">园区概览</view>
           <view class="nav-action"></view>
         </view>

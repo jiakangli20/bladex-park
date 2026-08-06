@@ -1,0 +1,20 @@
+<view class="sub-page ad-form-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="sub-content has-action">
+      <view class="blue-header plain-header"><view class="nav-row"><view class="nav-action" bindtap="goBack">‹</view><view class="nav-title">{{title}}</view><view class="nav-action"></view></view><view class="intro-title">广告素材</view><view class="intro-sub">保存草稿后，在详情页提交园区管理员审核</view></view>
+      <view wx:if="{{loading}}" class="form-card">广告加载中...</view>
+      <view wx:else class="form-card">
+        <view class="form-label">广告标题 *</view><input class="form-input" data-field="adTitle" value="{{form.adTitle}}" maxlength="200" placeholder="请输入广告标题" bindinput="handleInput" />
+        <view class="form-label">首页封面 *</view>
+        <view wx:if="{{form.coverUrl}}" class="cover-box" bindtap="chooseCover"><image src="{{form.coverUrl}}" mode="aspectFill"></image><view>点击更换封面</view></view>
+        <view wx:else class="upload-cover" bindtap="chooseCover">{{uploading ? '上传中...' : '+ 上传广告封面'}}</view>
+        <view class="form-label">跳转类型</view><picker mode="selector" range="{{linkTypes}}" range-key="label" value="{{linkTypeIndex}}" bindchange="changeLinkType"><view class="picker-value">{{linkTypes[linkTypeIndex].label}} 〉</view></picker>
+        <block wx:if="{{form.linkType === 'url'}}"><view class="form-label">跳转链接 *</view><input class="form-input" data-field="linkUrl" value="{{form.linkUrl}}" placeholder="请输入小程序允许访问的链接" bindinput="handleInput" /></block>
+        <view class="form-label">展示开始日期</view><picker mode="date" value="{{form.startDate}}" data-field="startDate" bindchange="changeDate"><view class="picker-value">{{form.startDate || '不限'}} 〉</view></picker>
+        <view class="form-label">展示结束日期</view><picker mode="date" value="{{form.endDate}}" data-field="endDate" bindchange="changeDate"><view class="picker-value">{{form.endDate || '不限'}} 〉</view></picker>
+        <view class="form-label">备注</view><textarea class="form-textarea" data-field="remark" value="{{form.remark}}" maxlength="500" placeholder="可填写广告说明" bindinput="handleInput"></textarea>
+      </view>
+    </view>
+  </scroll-view>
+  <view class="fixed-action"><view class="primary-button full-button {{saving ? 'is-disabled' : ''}}" bindtap="saveAd">{{saving ? '保存中...' : '保存草稿'}}</view></view>
+</view>

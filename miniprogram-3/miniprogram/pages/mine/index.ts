@@ -1,19 +1,39 @@
-import { profileMenus } from '../../utils/mock'
+import { authApi } from '../../services/miniapp'
+import { clearSession, getSession, hasCapability, requireLogin } from '../../utils/session'
+
+const customerMenus = [
+  { key: 'orders', label: '我的工单', tone: 'red', badge: '' },
+  { key: 'contracts', label: '我的合同', tone: 'blue', badge: '' },
+  { key: 'payments', label: '缴费记录', tone: 'green', badge: '' },
+  { key: 'company', label: '企业信息', tone: 'purple', badge: '' },
+]
+const accountMenus = [
+  { key: 'account', label: '账号管理', tone: 'cyan' },
+  { key: 'contact', label: '联系方式', tone: 'gray' },
+]
 
 Page({
-  data: {
-    businessMenus: profileMenus.slice(0, 4),
-    accountMenus: profileMenus.slice(4),
-  },
-
-  openMenu(event: WechatMiniprogram.TouchEvent) {
-    const key = event.currentTarget.dataset.key
-    if (key === 'orders') {
-      wx.navigateTo({ url: '/pages/work-orders/index' })
-      return
-    }
-    wx.navigateTo({
-      url: `/pages/profile-section/index?type=${key}`,
+  data: { loggedIn: false, companyName: '游客', companyMeta: '登录后查看企业与园区服务', businessMenus: [] as Record<string, any>[], accountMenus: [] as Record<string, any>[] },
+  onShow() {
+    const session = getSession()
+    const adminMenus = hasCapability('admin.overview.view') ? [
+      { key: 'overview', label: '园区概览', tone: 'blue' },
+      { key: 'notifications', label: '管理通知', tone: 'orange' },
+    ] : []
+    this.setData({
+      loggedIn: Boolean(session?.accessToken), companyName: session?.profile?.enterpriseName || session?.profile?.nickname || '游客',
+      companyMeta: session?.roleCodes.join(' · ') || '登录后查看企业与园区服务',
+      businessMenus: session ? (adminMenus.length ? adminMenus : customerMenus) : [], accountMenus: session ? accountMenus : [],
     })
   },
+  openMenu(event: WechatMiniprogram.TouchEvent) {
+    if (!requireLogin('/pages/mine/index')) return
+    const key = event.currentTarget.dataset.key
+    if (key === 'orders') return void wx.navigateTo({ url: '/pages/work-orders/index' })
+    if (key === 'overview') return void wx.navigateTo({ url: '/pages/overview/index' })
+    if (key === 'notifications') return void wx.navigateTo({ url: '/pages/notifications/index' })
+    wx.navigateTo({ url: `/pages/profile-section/index?type=${key}` })
+  },
+  login() { if (!this.data.loggedIn) wx.navigateTo({ url: '/pages/login/index?redirect=%2Fpages%2Fmine%2Findex' }) },
+  async logout() { await authApi.logout().catch(() => undefined); clearSession(); this.onShow() },
 })

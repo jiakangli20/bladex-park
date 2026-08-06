@@ -28,54 +28,57 @@
             <el-tab-pane label="付款账单" name="payable" />
           </el-tabs>
           <div class="bill-tools">
-            <el-input
-              v-model="query.customerName"
-              class="bill-filter-input"
-              clearable
-              placeholder="对方名称"
-              @keyup.enter="searchChange"
-            />
-            <el-input
-              v-model="query.contractNo"
-              class="bill-filter-input"
-              clearable
-              placeholder="合同编号"
-              @keyup.enter="searchChange"
-            />
-            <el-date-picker
-              v-model="query.deadlineRange"
-              class="bill-date-picker"
-              type="daterange"
-              value-format="YYYY-MM-DD"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              range-separator="-"
-              clearable
-            />
-            <el-switch
-              v-model="query.hideFuture"
-              class="bill-hide-switch"
-              inline-prompt
-              active-text="隐藏"
-              inactive-text="显示"
-              @change="searchChange"
-            />
-            <span class="bill-hide-label">{{ hideFutureLabel }}</span>
-            <el-button icon="el-icon-refresh-left" @click="searchReset">清空</el-button>
-            <el-button type="primary" icon="el-icon-search" @click="searchChange">搜索</el-button>
-            <el-button icon="el-icon-download" @click="handleExport">导出</el-button>
-            <el-dropdown trigger="click" @command="handleCreateCommand">
-              <el-button type="primary" icon="el-icon-plus">
-                创建账单
-                <i class="el-icon-arrow-down el-icon--right"></i>
+            <div class="bill-filters">
+              <el-input
+                v-model="query.customerName"
+                class="bill-filter-input"
+                clearable
+                placeholder="对方名称"
+                @keyup.enter="searchChange"
+              />
+              <el-input
+                v-model="query.contractNo"
+                class="bill-filter-input"
+                clearable
+                placeholder="合同编号"
+                @keyup.enter="searchChange"
+              />
+              <el-date-picker
+                v-model="query.deadlineRange"
+                class="bill-date-picker"
+                type="daterange"
+                value-format="YYYY-MM-DD"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                range-separator="-"
+                clearable
+              />
+            </div>
+            <div class="bill-actions">
+              <el-button icon="el-icon-refresh-left" @click="searchReset">清空</el-button>
+              <el-button type="primary" icon="el-icon-search" @click="searchChange">搜索</el-button>
+              <el-button icon="el-icon-download" @click="handleExport">导出</el-button>
+              <el-button
+                v-if="canConfirmPayment"
+                type="warning"
+                plain
+                @click="openUtilitySubmissionDialog"
+              >
+                小程序付款凭证
               </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item command="receivable">添加收款账单</el-dropdown-item>
-                  <el-dropdown-item command="payable">添加付款账单</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+              <el-dropdown trigger="click" @command="handleCreateCommand">
+                <el-button type="primary" icon="el-icon-plus">
+                  创建账单
+                  <i class="el-icon-arrow-down el-icon--right"></i>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="receivable">添加收款账单</el-dropdown-item>
+                    <el-dropdown-item command="payable">添加付款账单</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </div>
         </div>
 
@@ -84,6 +87,7 @@
           :data="data"
           border
           row-key="paymentId"
+          scrollbar-always-on
           class="bill-table"
           @selection-change="selectionChange"
         >
@@ -91,9 +95,9 @@
           <el-table-column
             prop="customerName"
             label="对方名称"
-            min-width="150"
+            :min-width="customerNameColumnWidth"
             align="center"
-            show-overflow-tooltip
+            class-name="bill-customer-column"
           >
             <template #default="{ row }">
               <el-button text type="primary" class="bill-link" @click="openBillDetail(row)">
@@ -104,11 +108,11 @@
           <el-table-column
             prop="buildingName"
             label="楼宇名称"
-            width="130"
+            width="116"
             align="center"
             show-overflow-tooltip
           />
-          <el-table-column prop="payStatus" label="账单状态" width="110" align="center">
+          <el-table-column prop="payStatus" label="账单状态" width="100" align="center">
             <template #default="{ row }">
               <el-tag :type="payStatusType(row.payStatus)" effect="plain">{{
                 payStatusText(row.payStatus)
@@ -118,22 +122,22 @@
           <el-table-column
             prop="feeName"
             label="费用类型"
-            min-width="130"
+            width="100"
             align="center"
             show-overflow-tooltip
           />
-          <el-table-column :label="amountDueLabel" prop="amountDue" width="130" align="center">
+          <el-table-column :label="amountDueLabel" prop="amountDue" width="116" align="center">
             <template #default="{ row }">{{ formatMoney(row.amountDue) }}</template>
           </el-table-column>
-          <el-table-column :label="amountPaidLabel" prop="amountPaid" width="130" align="center">
+          <el-table-column :label="amountPaidLabel" prop="amountPaid" width="116" align="center">
             <template #default="{ row }">{{ formatMoney(row.amountPaid) }}</template>
           </el-table-column>
-          <el-table-column :label="amountPendingLabel" width="130" align="center">
+          <el-table-column :label="amountPendingLabel" width="116" align="center">
             <template #default="{ row }">{{ formatMoney(pendingAmount(row)) }}</template>
           </el-table-column>
-          <el-table-column prop="periodStart" label="开始日期" width="130" align="center" />
-          <el-table-column prop="periodEnd" label="结束时间" width="130" align="center" />
-          <el-table-column prop="payDeadline" :label="deadlineLabel" width="130" align="center" />
+          <el-table-column prop="periodStart" label="开始日期" width="116" align="center" />
+          <el-table-column prop="periodEnd" label="结束时间" width="116" align="center" />
+          <el-table-column prop="payDeadline" :label="deadlineLabel" width="116" align="center" />
         </el-table>
 
         <div class="bill-pagination">
@@ -514,6 +518,105 @@
         :preview-error="noticePreview.previewError"
         @download="downloadNoticePreviewFile"
       />
+
+      <el-dialog
+        v-model="utilitySubmissionVisible"
+        title="小程序水电付款凭证"
+        width="1080px"
+        append-to-body
+        destroy-on-close
+      >
+        <div class="utility-submission-toolbar">
+          <el-select
+            v-model="utilitySubmissionQuery.submitStatus"
+            clearable
+            placeholder="全部状态"
+            @change="searchUtilitySubmissions"
+          >
+            <el-option label="待确认" value="PENDING" />
+            <el-option label="已确认" value="CONFIRMED" />
+            <el-option label="已驳回" value="REJECTED" />
+          </el-select>
+          <el-button icon="el-icon-refresh" @click="loadUtilitySubmissions">刷新</el-button>
+        </div>
+        <el-table
+          v-loading="utilitySubmissionLoading"
+          :data="utilitySubmissions"
+          border
+          row-key="id"
+          empty-text="暂无付款凭证"
+        >
+          <el-table-column
+            prop="customerName"
+            label="企业"
+            min-width="150"
+            align="center"
+            show-overflow-tooltip
+          />
+          <el-table-column prop="feeName" label="费用" width="90" align="center" />
+          <el-table-column
+            prop="roomName"
+            label="房源"
+            min-width="130"
+            align="center"
+            show-overflow-tooltip
+          />
+          <el-table-column label="申报金额" width="120" align="center">
+            <template #default="{ row }">{{ formatMoney(row.submitAmount) }}</template>
+          </el-table-column>
+          <el-table-column
+            prop="voucherName"
+            label="付款凭证"
+            min-width="150"
+            align="center"
+            show-overflow-tooltip
+          >
+            <template #default="{ row }"
+              ><el-link type="primary" :href="row.voucherUrl" target="_blank">{{
+                row.voucherName || '查看凭证'
+              }}</el-link></template
+            >
+          </el-table-column>
+          <el-table-column prop="createTime" label="提交时间" width="170" align="center" />
+          <el-table-column prop="submitStatus" label="状态" width="100" align="center">
+            <template #default="{ row }"
+              ><el-tag :type="utilitySubmissionTag(row.submitStatus)" effect="plain">{{
+                utilitySubmissionStatusText(row.submitStatus)
+              }}</el-tag></template
+            >
+          </el-table-column>
+          <el-table-column
+            prop="auditOpinion"
+            label="审核意见"
+            min-width="150"
+            align="center"
+            show-overflow-tooltip
+          />
+          <el-table-column label="操作" width="156" fixed="right" align="center">
+            <template #default="{ row }">
+              <div class="table-actions" v-if="row.submitStatus === 'PENDING'">
+                <el-button type="success" text @click="confirmUtilitySubmission(row)"
+                  >确认</el-button
+                >
+                <el-button type="danger" text @click="rejectUtilitySubmission(row)">驳回</el-button>
+              </div>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div class="bill-pagination">
+          <el-pagination
+            background
+            :current-page="utilitySubmissionPage.currentPage"
+            :page-sizes="[10, 20, 30, 40, 50, 100]"
+            :page-size="utilitySubmissionPage.pageSize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="utilitySubmissionPage.total"
+            @size-change="changeUtilitySubmissionSize"
+            @current-change="changeUtilitySubmissionPage"
+          />
+        </div>
+      </el-dialog>
     </div>
   </basic-container>
 </template>
@@ -533,6 +636,11 @@ import {
   getPaymentSummary,
   updatePaymentDeadline,
 } from '@/api/ics/payment';
+import {
+  confirmUtilityPaymentSubmission,
+  getUtilityPaymentSubmissions,
+  rejectUtilityPaymentSubmission,
+} from '@/api/ics/utility-billing';
 import { payStatusDic } from '@/option/finance/payment';
 import {
   createNoticePreviewState,
@@ -561,7 +669,6 @@ export default {
         customerName: '',
         contractNo: '',
         deadlineRange: [],
-        hideFuture: false,
       },
       loading: false,
       detailLoading: false,
@@ -590,6 +697,11 @@ export default {
         remark: '',
       },
       paymentVoucherFileList: [],
+      utilitySubmissionVisible: false,
+      utilitySubmissionLoading: false,
+      utilitySubmissions: [],
+      utilitySubmissionQuery: { submitStatus: 'PENDING' },
+      utilitySubmissionPage: { currentPage: 1, pageSize: 10, total: 0 },
       voucherDeletingId: '',
       uploadHeaders: {
         'Blade-Auth': `bearer ${getToken()}`,
@@ -620,6 +732,17 @@ export default {
     ...mapGetters(['userInfo', 'permission']),
     canConfirmPayment() {
       return this.validData(this.permission.finance_payment_confirm, false);
+    },
+    customerNameColumnWidth() {
+      const longestUnits = this.data.reduce((maxUnits, row) => {
+        const name = String(row.customerName || '-');
+        const units = Array.from(name).reduce(
+          (total, character) => total + (/^[\u0000-\u00ff]$/.test(character) ? 0.6 : 1),
+          0
+        );
+        return Math.max(maxUnits, units);
+      }, 0);
+      return Math.max(180, Math.ceil(longestUnits * 15 + 48));
     },
     isPayable() {
       return this.direction === 'payable';
@@ -679,9 +802,6 @@ export default {
     },
     payerTitle() {
       return this.isPayable ? '收款方' : '付款方';
-    },
-    hideFutureLabel() {
-      return `已隐藏未到${this.isPayable ? '应付' : '应收'}期账单`;
     },
     pendingCount() {
       const total = Number(this.summary.totalCount || 0);
@@ -857,13 +977,82 @@ export default {
     },
   },
   methods: {
+    openUtilitySubmissionDialog() {
+      this.utilitySubmissionVisible = true;
+      this.utilitySubmissionPage.currentPage = 1;
+      this.loadUtilitySubmissions();
+    },
+    loadUtilitySubmissions() {
+      this.utilitySubmissionLoading = true;
+      getUtilityPaymentSubmissions(
+        this.utilitySubmissionPage.currentPage,
+        this.utilitySubmissionPage.pageSize,
+        this.utilitySubmissionQuery
+      )
+        .then(res => {
+          const data = res.data.data || {};
+          this.utilitySubmissions = data.records || [];
+          this.utilitySubmissionPage.total = Number(data.total || 0);
+        })
+        .finally(() => {
+          this.utilitySubmissionLoading = false;
+        });
+    },
+    searchUtilitySubmissions() {
+      this.utilitySubmissionPage.currentPage = 1;
+      this.loadUtilitySubmissions();
+    },
+    changeUtilitySubmissionPage(current) {
+      this.utilitySubmissionPage.currentPage = current;
+      this.loadUtilitySubmissions();
+    },
+    changeUtilitySubmissionSize(size) {
+      this.utilitySubmissionPage.pageSize = size;
+      this.utilitySubmissionPage.currentPage = 1;
+      this.loadUtilitySubmissions();
+    },
+    confirmUtilitySubmission(row) {
+      this.$confirm(
+        `确认收到企业付款 ${this.formatMoney(row.submitAmount)} 吗？确认后将更新账单实收金额。`,
+        '确认到账',
+        { type: 'warning' }
+      )
+        .then(() =>
+          confirmUtilityPaymentSubmission(row.id, {
+            payTime: this.formatDateTime(new Date()),
+            opinion: '付款凭证核验通过',
+          })
+        )
+        .then(() => {
+          this.$message.success('已确认到账');
+          this.loadUtilitySubmissions();
+          this.reload();
+        });
+    },
+    rejectUtilitySubmission(row) {
+      this.$prompt('请输入驳回原因', '驳回付款凭证', {
+        confirmButtonText: '确认驳回',
+        cancelButtonText: '取消',
+        inputValidator: value => (value && value.trim() ? true : '请输入驳回原因'),
+      })
+        .then(({ value }) => rejectUtilityPaymentSubmission(row.id, { opinion: value.trim() }))
+        .then(() => {
+          this.$message.success('付款凭证已驳回');
+          this.loadUtilitySubmissions();
+        });
+    },
+    utilitySubmissionStatusText(status) {
+      return { PENDING: '待确认', CONFIRMED: '已确认', REJECTED: '已驳回' }[status] || '-';
+    },
+    utilitySubmissionTag(status) {
+      return { PENDING: 'primary', CONFIRMED: 'success', REJECTED: 'danger' }[status] || 'info';
+    },
     applyRouteQuery() {
       const routeQuery = this.$route.query || {};
       const nextQuery = {
         customerName: routeQuery.customerName || '',
         contractNo: routeQuery.contractNo || '',
         deadlineRange: [],
-        hideFuture: routeQuery.hideFuture === true || routeQuery.hideFuture === 'true',
         settleStatus: routeQuery.settleStatus || '',
       };
       if (routeQuery.direction === 'payable' || routeQuery.direction === 'receivable') {
@@ -906,7 +1095,6 @@ export default {
         direction: this.direction,
         customerName: this.query.customerName,
         contractNo: this.query.contractNo,
-        hideFuture: this.query.hideFuture,
         settleStatus: this.query.settleStatus,
       };
       if (Array.isArray(this.query.deadlineRange) && this.query.deadlineRange.length === 2) {
@@ -952,7 +1140,6 @@ export default {
         customerName: '',
         contractNo: '',
         deadlineRange: [],
-        hideFuture: false,
         settleStatus: '',
       };
       this.page.currentPage = 1;
@@ -1325,9 +1512,7 @@ export default {
       const selectedProcess =
         this.workflowProcessOptions.find(item => item.key === this.workflowForm.processDefKey) ||
         {};
-      const invoiceAmountParams = this.workflowIsPayable
-        ? {}
-        : this.buildInvoiceAmountParams(row);
+      const invoiceAmountParams = this.workflowIsPayable ? {} : this.buildInvoiceAmountParams(row);
       const payload = {
         processDefKey: this.workflowForm.processDefKey,
         params: {
@@ -1547,15 +1732,34 @@ export default {
 }
 
 .bill-tools {
+  flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 14px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
-.bill-tools :deep(.el-button + .el-button) {
+.bill-filters,
+.bill-actions {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bill-filters {
+  flex: 1 1 620px;
+}
+
+.bill-actions {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+.bill-actions :deep(.el-button + .el-button) {
   margin-left: 0;
 }
 
@@ -1567,16 +1771,6 @@ export default {
   width: 250px;
 }
 
-.bill-hide-switch {
-  flex: 0 0 auto;
-}
-
-.bill-hide-label {
-  color: #606266;
-  font-size: 13px;
-  white-space: nowrap;
-}
-
 .bill-table {
   width: 100%;
 }
@@ -1585,12 +1779,24 @@ export default {
   text-align: center;
 }
 
+.bill-table :deep(.bill-customer-column .cell) {
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
 .bill-link {
-  max-width: 100%;
+  min-width: 0;
+  max-width: none;
   padding: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
   vertical-align: middle;
+}
+
+.bill-link :deep(span) {
+  white-space: nowrap;
 }
 
 .bill-pagination {
@@ -1953,6 +2159,61 @@ export default {
   height: 32px;
   line-height: 32px;
   white-space: nowrap;
+}
+
+.utility-submission-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.utility-submission-toolbar :deep(.el-select) {
+  width: 160px;
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+@media (max-width: 1560px) {
+  .bill-toolbar {
+    padding: 10px 16px 14px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .bill-tabs {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .bill-tools,
+  .bill-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 900px) {
+  .bill-filter-input {
+    width: calc(50% - 5px);
+    min-width: 180px;
+    flex: 1 1 180px;
+  }
+
+  .bill-date-picker {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .bill-actions {
+    width: 100%;
+  }
 }
 
 @media (max-width: 1100px) {

@@ -1,0 +1,67 @@
+<view class="sub-page detail-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="sub-content {{canSubmit ? 'has-action' : ''}}">
+      <view class="blue-header plain-header">
+        <view class="nav-row">
+          <view class="nav-action" bindtap="goBack">‹</view>
+          <view class="nav-title">水电账单详情</view>
+          <view class="nav-action"></view>
+        </view>
+        <view class="intro-title">{{bill.typeText || '水电账单'}}</view>
+        <view class="intro-sub">{{bill.periodStart || '-'}} 至 {{bill.periodEnd || '-'}}</view>
+      </view>
+
+      <view wx:if="{{loading}}" class="state-card">账单加载中...</view>
+      <view wx:elif="{{error}}" class="state-card"><view>{{error}}</view><view class="retry-button" bindtap="retry">重新加载</view></view>
+      <block wx:else>
+        <view class="summary-card">
+          <view class="summary-head"><text>本期应缴</text><view class="status-pill status-{{bill.tone}}">{{bill.statusText}}</view></view>
+          <view class="summary-amount">¥{{bill.amountText}}</view>
+          <view class="summary-progress"><text>已缴 ¥{{bill.paidText}}</text><text>待缴 ¥{{bill.remainingText}}</text></view>
+          <view class="summary-deadline">缴费截止：{{bill.dueDate || '-'}}</view>
+        </view>
+
+        <view class="section-card">
+          <view class="section-name">计费依据</view>
+          <view class="detail-grid">
+            <view><text>房源</text><strong>{{bill.room || '-'}}</strong></view>
+            <view><text>实际用量</text><strong>{{bill.usageText}}</strong></view>
+            <view><text>起始读数</text><strong>{{bill.previousReading}}</strong></view>
+            <view><text>截止读数</text><strong>{{bill.currentReading}}</strong></view>
+            <view><text>计费单价</text><strong>¥{{bill.unitPriceText}}</strong></view>
+            <view><text>账单金额</text><strong>¥{{bill.amountText}}</strong></view>
+          </view>
+        </view>
+
+        <view wx:if="{{canSubmit}}" class="section-card voucher-form">
+          <view class="section-name">上传线下付款凭证</view>
+          <view class="form-label">本次付款金额</view>
+          <view class="amount-input"><text>¥</text><input type="digit" value="{{form.submitAmount}}" bindinput="handleAmount" /></view>
+          <view class="form-label">付款凭证</view>
+          <view wx:if="{{form.voucherUrl}}" class="voucher-preview" data-url="{{form.voucherUrl}}" bindtap="previewVoucher">
+            <image src="{{form.voucherUrl}}" mode="aspectFill"></image><text>{{form.voucherName}}</text>
+          </view>
+          <view wx:else class="upload-box" bindtap="chooseVoucher">{{uploading ? '上传中...' : '+ 拍照或从相册选择凭证'}}</view>
+          <view class="form-tip">仅作为园区财务核验依据，提交不代表已到账。</view>
+        </view>
+
+        <view class="section-card">
+          <view class="section-name">凭证记录</view>
+          <view wx:if="{{!submissions.length}}" class="empty-line">暂无付款凭证</view>
+          <block wx:for="{{submissions}}" wx:key="id">
+            <view class="submission-item">
+              <view class="submission-head"><text>¥{{item.amountText}}</text><view class="status-pill status-{{item.tone}}">{{item.statusText}}</view></view>
+              <view class="submission-time">提交时间：{{item.createTime || '-'}}</view>
+              <view class="submission-link" data-url="{{item.voucherUrl}}" bindtap="previewVoucher">查看付款凭证 〉</view>
+              <view wx:if="{{item.auditOpinion}}" class="audit-opinion">审核意见：{{item.auditOpinion}}</view>
+            </view>
+          </block>
+        </view>
+      </block>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{canSubmit}}" class="fixed-action">
+    <view class="primary-button full-button {{submitting ? 'is-disabled' : ''}}" bindtap="submitVoucher">{{submitting ? '提交中...' : '提交付款凭证'}}</view>
+  </view>
+</view>

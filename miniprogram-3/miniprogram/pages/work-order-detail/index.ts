@@ -1,53 +1,49 @@
-import { WorkOrder, workOrders } from '../../utils/mock'
+import { adminApi, customerApi } from '../../services/miniapp'
+import { requireLogin } from '../../utils/session'
 
-type DisplayWorkOrder = WorkOrder & {
-  tone: string
+const statusText = (kind: string, status: string): string => {
+  const property: Record<string, string> = { '0': '待受理', '1': '处理中', '2': '待评价', '3': '已完成', '4': '已关闭' }
+  const value: Record<string, string> = { '0': '待受理', '1': '沟通中', '2': '已完成', '3': '已关闭' }
+  return (kind === 'property' ? property : value)[status] || status || '待受理'
 }
-
-const getTone = (status: string) => {
-  if (status === '已完成') {
-    return 'green'
-  }
-  if (status === '待受理') {
-    return 'orange'
-  }
-  if (status === '已驳回' || status === '已关闭') {
-    return 'red'
-  }
-  return 'blue'
-}
-
-const toDisplayOrder = (order: WorkOrder): DisplayWorkOrder => ({
-  ...order,
-  tone: getTone(order.status),
-})
 
 Page({
-  data: {
-    role: 'user',
-    isAdmin: false,
-    order: toDisplayOrder(workOrders[0]),
+  data: { role: 'user', isAdmin: false, type: 'property', id: '', order: {} as Record<string, any> },
+
+  async onLoad(options: Record<string, string | undefined>) {
+    if (!requireLogin('/pages/work-orders/index') || !options.id) return
+    const isAdmin = options.role === 'admin'
+    const type = options.type || 'property'
+    this.setData({ role: isAdmin ? 'admin' : 'user', isAdmin, type, id: options.id })
+    await this.loadOrder()
   },
 
-  onLoad(options: Record<string, string | undefined>) {
-    const order = workOrders.find((item) => item.id === options.id)
-    const role = options.role === 'admin' ? 'admin' : 'user'
-    this.setData({
-      role,
-      isAdmin: role === 'admin',
-      order: toDisplayOrder(order || workOrders[0]),
-    })
+  async loadOrder() {
+    const raw = this.data.isAdmin
+      ? await adminApi.workOrder(this.data.type, this.data.id)
+      : await customerApi.workOrder(this.data.type, this.data.id)
+    const status = statusText(raw.kind, raw.status)
+    const steps = (raw.steps || []).map((step: Record<string, any>) => ({
+      title: step.actionType || step.title || '进度更新',
+      time: step.createTime || step.time,
+      desc: step.actionContent || step.content || step.desc,
+      done: true,
+    }))
+    this.setData({ order: { ...raw, status, type: raw.kind === 'property' ? '物业服务' : '增值服务', tone: status === '已完成' ? 'green' : status === '待受理' ? 'orange' : status === '已关闭' ? 'red' : 'blue', steps } })
   },
 
-  goBack() {
-    wx.navigateBack()
-  },
+  goBack() { wx.navigateBack() },
 
-  handleAction(event: WechatMiniprogram.TouchEvent) {
-    const action = event.currentTarget.dataset.action
-    wx.showToast({
-      title: `${action}操作已记录`,
-      icon: 'none',
-    })
+  async handleAction(event: WechatMiniprogram.TouchEvent) {
+    const label = String(event.currentTarget.dataset.action || '')
+    if (this.data.isAdmin) {
+      const action = label === '驳回' ? 'REJECT' : label === '完成' ? 'COMPLETE' : 'ASSIGN'
+      await adminApi.action(this.data.type, this.data.id, { action, content: label === '完成' ? '管理员已完成处理' : '', reason: label === '驳回' ? '管理员驳回' : '' })
+    } else {
+      const action = label === '评价' ? 'rate' : 'cancel'
+      await customerApi.workOrderAction(this.data.type, this.data.id, { action, rating: 5, content: '确认完成', reason: '用户取消' })
+    }
+    wx.showToast({ title: '操作成功', icon: 'success' })
+    await this.loadOrder()
   },
 })

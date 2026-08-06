@@ -1,4 +1,5 @@
-import { houses } from '../../utils/mock'
+import { publicApi } from '../../services/miniapp'
+import { requireLogin } from '../../utils/session'
 
 const filterOptions: Record<string, string[]> = {
   园区: ['全部园区', '智慧园区一期', '金融科技园', '研发总部园'],
@@ -9,8 +10,26 @@ const filterOptions: Record<string, string[]> = {
 
 Page({
   data: {
-    houses,
+    houses: [] as Record<string, any>[],
     filters: ['园区', '租金', '楼层', '更多'],
+    loading: true,
+    error: '',
+  },
+
+  onLoad() {
+    this.loadHouses()
+  },
+
+  async loadHouses() {
+    this.setData({ loading: true, error: '' })
+    try {
+      const houses = await publicApi.houses()
+      this.setData({ houses })
+    } catch (error) {
+      this.setData({ error: '房源加载失败，请稍后重试' })
+    } finally {
+      this.setData({ loading: false })
+    }
   },
 
   goBack() {
@@ -40,6 +59,7 @@ Page({
 
   bookHouse(event: WechatMiniprogram.TouchEvent) {
     const id = event.currentTarget.dataset.id
+    if (!requireLogin(`/pages/house-intent/index?mode=appointment&id=${id}`)) return
     wx.navigateTo({
       url: `/pages/house-intent/index?mode=appointment&id=${id}`,
     })

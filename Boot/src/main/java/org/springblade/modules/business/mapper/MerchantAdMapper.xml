@@ -7,6 +7,8 @@
 	<resultMap id="MerchantAdResult" type="org.springblade.modules.business.pojo.entity.MerchantAd">
 		<id property="adId" column="ad_id"/>
 		<result property="parkId" column="park_id"/>
+		<result property="customerId" column="customer_id"/>
+		<result property="memberId" column="member_id"/>
 		<result property="adTitle" column="ad_title"/>
 		<result property="adPosition" column="ad_position"/>
 		<result property="coverUrl" column="cover_url"/>
@@ -16,6 +18,11 @@
 		<result property="sortOrder" column="sort_order"/>
 		<result property="startTime" column="start_time"/>
 		<result property="endTime" column="end_time"/>
+		<result property="auditStatus" column="audit_status"/>
+		<result property="auditUserId" column="audit_user_id"/>
+		<result property="auditUserName" column="audit_user_name"/>
+		<result property="auditTime" column="audit_time"/>
+		<result property="auditOpinion" column="audit_opinion"/>
 		<result property="status" column="status"/>
 		<result property="remark" column="remark"/>
 		<result property="delFlag" column="del_flag"/>
@@ -25,11 +32,14 @@
 		<result property="updateTime" column="update_time"/>
 		<result property="parkName" column="park_name"/>
 		<result property="merchantName" column="merchant_name"/>
+		<result property="customerName" column="customer_name"/>
 	</resultMap>
 
 	<sql id="selectAdColumns">
 		select a.ad_id,
 			   a.park_id,
+			   a.customer_id,
+			   a.member_id,
 			   a.ad_title,
 			   a.ad_position,
 			   a.cover_url,
@@ -39,6 +49,11 @@
 			   a.sort_order,
 			   a.start_time,
 			   a.end_time,
+			   a.audit_status,
+			   a.audit_user_id,
+			   a.audit_user_name,
+			   a.audit_time,
+			   a.audit_opinion,
 			   a.status,
 			   a.remark,
 			   a.del_flag,
@@ -47,10 +62,12 @@
 			   a.update_by,
 			   a.update_time,
 			   p.name as park_name,
-			   m.merchant_name
+			   m.merchant_name,
+			   c.enterprise_name as customer_name
 		from biz_merchant_ad a
 		left join ics_park p on a.park_id = p.id
 		left join biz_merchant m on a.merchant_id = m.merchant_id
+		left join biz_customer c on a.customer_id = c.customer_id
 	</sql>
 
 	<sql id="adWhere">
@@ -58,10 +75,12 @@
 			a.del_flag = '0'
 			<if test="ad != null">
 				<if test="ad.parkId != null and ad.parkId != 0">and a.park_id = #{ad.parkId}</if>
+				<if test="ad.customerId != null and ad.customerId != 0">and a.customer_id = #{ad.customerId}</if>
 				<if test="ad.adTitle != null and ad.adTitle != ''">and a.ad_title like concat('%', #{ad.adTitle}, '%')</if>
 				<if test="ad.adPosition != null and ad.adPosition != ''">and a.ad_position = #{ad.adPosition}</if>
 				<if test="ad.linkType != null and ad.linkType != ''">and a.link_type = #{ad.linkType}</if>
 				<if test="ad.status != null and ad.status != ''">and a.status = #{ad.status}</if>
+				<if test="ad.auditStatus != null and ad.auditStatus != ''">and a.audit_status = #{ad.auditStatus}</if>
 				<if test="ad.merchantName != null and ad.merchantName != ''">and m.merchant_name like concat('%', #{ad.merchantName}, '%')</if>
 			</if>
 		</where>
@@ -75,6 +94,20 @@
 	<select id="selectAdList" resultMap="MerchantAdResult">
 		<include refid="selectAdColumns"/>
 		<include refid="adWhere"/>
+		order by a.sort_order asc, a.create_time desc, a.ad_id desc
+	</select>
+
+	<select id="selectPublicAdList" resultMap="MerchantAdResult">
+		<include refid="selectAdColumns"/>
+		where a.del_flag = '0'
+		  and a.park_id = #{parkId}
+		  and a.audit_status = 'APPROVED'
+		  and a.status = '0'
+		  and (a.start_time is null or a.start_time &lt;= #{now})
+		  and (a.end_time is null or a.end_time &gt;= #{now})
+		<if test="adPosition != null and adPosition != ''">
+		  and a.ad_position = #{adPosition}
+		</if>
 		order by a.sort_order asc, a.create_time desc, a.ad_id desc
 	</select>
 
@@ -96,13 +129,13 @@
 
 	<insert id="insertAd" parameterType="org.springblade.modules.business.pojo.entity.MerchantAd" useGeneratedKeys="true" keyProperty="adId">
 		insert into biz_merchant_ad (
-			park_id, ad_title, ad_position, cover_url, link_type, link_url, merchant_id,
-			sort_order, start_time, end_time, status, remark, del_flag, create_by,
-			create_time, update_by, update_time
+			park_id, customer_id, member_id, ad_title, ad_position, cover_url, link_type, link_url, merchant_id,
+			sort_order, start_time, end_time, audit_status, audit_user_id, audit_user_name, audit_time,
+			audit_opinion, status, remark, del_flag, create_by, create_time, update_by, update_time
 		) values (
-			#{parkId}, #{adTitle}, #{adPosition}, #{coverUrl}, #{linkType}, #{linkUrl}, #{merchantId},
-			#{sortOrder}, #{startTime}, #{endTime}, #{status}, #{remark}, #{delFlag}, #{createBy},
-			#{createTime}, #{updateBy}, #{updateTime}
+			#{parkId}, #{customerId}, #{memberId}, #{adTitle}, #{adPosition}, #{coverUrl}, #{linkType}, #{linkUrl}, #{merchantId},
+			#{sortOrder}, #{startTime}, #{endTime}, #{auditStatus}, #{auditUserId}, #{auditUserName}, #{auditTime},
+			#{auditOpinion}, #{status}, #{remark}, #{delFlag}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime}
 		)
 	</insert>
 
@@ -110,6 +143,8 @@
 		update biz_merchant_ad
 		<set>
 			<if test="parkId != null">park_id = #{parkId},</if>
+			<if test="customerId != null">customer_id = #{customerId},</if>
+			<if test="memberId != null">member_id = #{memberId},</if>
 			<if test="adTitle != null">ad_title = #{adTitle},</if>
 			<if test="adPosition != null">ad_position = #{adPosition},</if>
 			<if test="coverUrl != null">cover_url = #{coverUrl},</if>
@@ -121,6 +156,11 @@
 			<if test="sortOrder != null">sort_order = #{sortOrder},</if>
 			<if test="startTime != null">start_time = #{startTime},</if>
 			<if test="endTime != null">end_time = #{endTime},</if>
+			<if test="auditStatus != null">audit_status = #{auditStatus},</if>
+			<if test="auditUserId != null">audit_user_id = #{auditUserId},</if>
+			<if test="auditUserName != null">audit_user_name = #{auditUserName},</if>
+			<if test="auditTime != null">audit_time = #{auditTime},</if>
+			<if test="auditOpinion != null">audit_opinion = #{auditOpinion},</if>
 			<if test="status != null">status = #{status},</if>
 			<if test="remark != null">remark = #{remark},</if>
 			<if test="updateBy != null">update_by = #{updateBy},</if>

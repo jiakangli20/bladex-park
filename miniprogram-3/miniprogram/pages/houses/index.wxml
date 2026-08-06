@@ -26,6 +26,9 @@
       </view>
 
       <view class="house-list">
+        <view wx:if="{{loading}}" class="section-card">房源加载中...</view>
+        <view wx:elif="{{error}}" class="section-card" bindtap="loadHouses">{{error}}，点击重试</view>
+        <view wx:elif="{{!houses.length}}" class="section-card">暂无公开可租房源</view>
         <block wx:for="{{houses}}" wx:key="id">
           <view class="house-card card" data-id="{{item.id}}" bindtap="openHouseDetail">
             <image class="house-image" src="{{item.image}}" mode="aspectFill"></image>
@@ -40,7 +43,7 @@
                 <text>{{item.floor}}</text>
               </view>
               <view class="tag-row">
-                <block wx:for="{{item.tags}}" wx:key="*this">
+                <block wx:for="{{item.facilities}}" wx:key="*this">
                   <text class="tag">{{item}}</text>
                 </block>
               </view>

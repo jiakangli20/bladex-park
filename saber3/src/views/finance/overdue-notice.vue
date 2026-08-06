@@ -33,7 +33,14 @@
       </section>
 
       <section class="notice-table-wrap">
-        <el-table v-loading="loading" :data="data" border row-key="recordKey" class="notice-table">
+        <el-table
+          v-loading="loading"
+          :data="data"
+          border
+          row-key="recordKey"
+          scrollbar-always-on
+          class="notice-table"
+        >
           <el-table-column label="记录类型" width="100" align="center">
             <template #default="{ row }">
               <el-tag :type="row.recordType === 'reminder' ? 'success' : 'warning'" effect="plain">
@@ -42,13 +49,25 @@
             </template>
           </el-table-column>
           <el-table-column prop="noticeTitle" label="记录标题" min-width="170" align="center" show-overflow-tooltip />
-          <el-table-column prop="customerName" label="租客名称" min-width="150" align="center" show-overflow-tooltip />
+          <el-table-column
+            prop="customerName"
+            label="租客名称"
+            :min-width="customerNameColumnWidth"
+            align="center"
+            class-name="notice-customer-column"
+          >
+            <template #default="{ row }">
+              <el-button text type="primary" class="customer-link" @click="openNotice(row)">
+                {{ row.customerName || '-' }}
+              </el-button>
+            </template>
+          </el-table-column>
           <el-table-column prop="contractNo" label="合同编号" min-width="150" align="center" show-overflow-tooltip />
           <el-table-column label="房源信息" min-width="150" align="center" show-overflow-tooltip>
             <template #default="{ row }">{{ row.roomName || row.buildingName || '-' }}</template>
           </el-table-column>
-          <el-table-column prop="feeName" label="费用类型" width="110" align="center" />
-          <el-table-column label="未缴金额" width="120" align="center">
+          <el-table-column prop="feeName" label="费用类型" width="100" align="center" />
+          <el-table-column label="未缴金额" width="116" align="center">
             <template #default="{ row }">{{ formatMoney(unpaidAmount(row)) }}</template>
           </el-table-column>
           <el-table-column prop="payDeadline" label="应缴日期" width="116" align="center" />
@@ -71,6 +90,9 @@
               </div>
             </template>
           </el-table-column>
+          <template #append>
+            <div class="table-scroll-gutter" aria-hidden="true"></div>
+          </template>
         </el-table>
         <div class="notice-pagination">
           <el-pagination
@@ -164,6 +186,17 @@ export default {
       return {
         disposeBtn: hasMenuCode(this.menuAll),
       };
+    },
+    customerNameColumnWidth() {
+      const longestUnits = this.data.reduce((maxUnits, row) => {
+        const name = String(row.customerName || '-');
+        const units = Array.from(name).reduce(
+          (total, character) => total + (/^[\u0000-\u00ff]$/.test(character) ? 0.6 : 1),
+          0
+        );
+        return Math.max(maxUnits, units);
+      }, 0);
+      return Math.max(180, Math.ceil(longestUnits * 15 + 48));
     },
     summaryCards() {
       return [
@@ -394,6 +427,50 @@ export default {
 
 .notice-table {
   width: 100%;
+}
+
+.notice-table :deep(.el-table__header th),
+.notice-table :deep(.el-table__cell),
+.notice-table :deep(.cell) {
+  text-align: center;
+}
+
+.notice-table :deep(.notice-customer-column .cell) {
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.notice-table :deep(.el-scrollbar__bar.is-horizontal) {
+  right: 8px;
+  bottom: 5px;
+  left: 8px;
+  height: 12px;
+  opacity: 1;
+  border-radius: 6px;
+  background: #eef1f5;
+}
+
+.notice-table :deep(.el-scrollbar__bar.is-horizontal .el-scrollbar__thumb) {
+  min-width: 96px;
+  border-radius: 6px;
+  background-color: #9aa4b2;
+}
+
+.table-scroll-gutter {
+  height: 32px;
+}
+
+.customer-link {
+  min-width: 0;
+  max-width: none;
+  padding: 0;
+  overflow: visible;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.customer-link :deep(span) {
+  white-space: nowrap;
 }
 
 .notice-actions {

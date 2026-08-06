@@ -19,6 +19,11 @@
   color: #ffffff;
 }
 
+.nav-back {
+  position: relative;
+  z-index: 2;
+}
+
 .overview-title {
   margin-top: 28rpx;
   font-size: 40rpx;

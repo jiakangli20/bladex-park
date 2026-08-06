@@ -18,7 +18,10 @@ import org.springblade.core.tenant.annotation.NonDS;
 import org.springblade.core.tool.api.R;
 import org.springblade.core.tool.support.Kv;
 import org.springblade.modules.business.pojo.entity.MerchantAd;
+import org.springblade.modules.business.pojo.dto.MerchantAdAuditDTO;
 import org.springblade.modules.business.service.IMerchantAdService;
+import org.springblade.modules.miniapp.pojo.entity.MerchantAdAuditLog;
+import org.springblade.modules.miniapp.service.AdminParkScopeService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,13 +40,16 @@ import java.util.List;
 public class MerchantAdController extends BladeController {
 
 	private final IMerchantAdService merchantAdService;
+	private final AdminParkScopeService adminParkScopeService;
 
 	@GetMapping("/detail")
 	@PreAuth(menu = "merchant_service_ad_view")
 	@ApiOperationSupport(order = 1)
 	@Operation(summary = "详情", description = "传入adId")
 	public R<MerchantAd> detail(@Parameter(description = "广告ID") @RequestParam Long adId) {
-		return R.data(merchantAdService.selectAdById(adId));
+		MerchantAd ad = merchantAdService.selectAdById(adId);
+		adminParkScopeService.assertAccess(ad.getParkId());
+		return R.data(ad);
 	}
 
 	@GetMapping("/page")
@@ -110,13 +116,29 @@ public class MerchantAdController extends BladeController {
 		return R.status(merchantAdService.changeStatus(adId, status));
 	}
 
+	@PostMapping("/{adId}/audit")
+	@PreAuth(menu = "merchant_service_ad_edit")
+	@ApiOperationSupport(order = 10)
+	@Operation(summary = "审核广告", description = "园区管理员审核企业小程序提交的广告")
+	public R audit(@PathVariable Long adId, @Valid @RequestBody MerchantAdAuditDTO request) {
+		return R.status(merchantAdService.audit(adId, request.getAuditStatus(), request.getOpinion()));
+	}
+
+	@GetMapping("/{adId}/audit-logs")
+	@PreAuth(menu = "merchant_service_ad_view")
+	@ApiOperationSupport(order = 11)
+	@Operation(summary = "广告审核日志")
+	public R<List<MerchantAdAuditLog>> auditLogs(@PathVariable Long adId) {
+		adminParkScopeService.assertAccess(merchantAdService.selectAdById(adId).getParkId());
+		return R.data(merchantAdService.auditLogs(adId));
+	}
+
 	@GetMapping("/miniapp/list")
 	@PreAuth(menu = "merchant_service_ad_miniapp_list")
 	@ApiOperationSupport(order = 20)
 	@Operation(summary = "小程序广告列表接口", description = "待小程序鉴权接入后开放，当前仅后台联调使用")
 	public R<List<MerchantAd>> miniAppList(MerchantAd ad) {
-		ad.setStatus("0");
-		return R.data(merchantAdService.selectAdList(ad));
+		return R.data(merchantAdService.selectPublicAdList(ad.getParkId(), ad.getAdPosition()));
 	}
 
 	@GetMapping("/miniapp/detail")

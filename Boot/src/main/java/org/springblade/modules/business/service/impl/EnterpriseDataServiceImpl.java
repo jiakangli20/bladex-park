@@ -39,7 +39,7 @@ public class EnterpriseDataServiceImpl implements IEnterpriseDataService {
 
 	@Override
 	public Kv overview(Long parkId) {
-		Long scopedParkId = null;
+		Long scopedParkId = parkId;
 		Map<String, Object> finance = mapOrEmpty(enterpriseDataMapper.selectFinanceOverview(scopedParkId));
 		Map<String, Object> contract = mapOrEmpty(enterpriseDataMapper.selectContractExecution(scopedParkId));
 		Map<String, Object> room = mapOrEmpty(enterpriseDataMapper.selectRoomSummary(scopedParkId));

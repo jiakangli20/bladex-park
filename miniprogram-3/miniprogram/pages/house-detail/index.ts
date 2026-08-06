@@ -1,14 +1,18 @@
-import { houses } from '../../utils/mock'
+import { publicApi } from '../../services/miniapp'
+import { requireLogin } from '../../utils/session'
 
 Page({
   data: {
-    house: houses[0],
+    house: {} as Record<string, any>,
+    loading: true,
   },
 
-  onLoad(options: Record<string, string | undefined>) {
-    const house = houses.find((item) => item.id === options.id)
-    if (house) {
-      this.setData({ house })
+  async onLoad(options: Record<string, string | undefined>) {
+    if (!options.id) return
+    try {
+      this.setData({ house: await publicApi.house(options.id) })
+    } finally {
+      this.setData({ loading: false })
     }
   },
 
@@ -16,22 +20,15 @@ Page({
     wx.navigateBack()
   },
 
-  openVr() {
-    wx.showModal({
-      title: '在线看房',
-      content: `后续接入三方 VR / 视频链接：${this.data.house.vrUrl}`,
-      confirmText: '知道了',
-      showCancel: false,
-    })
-  },
-
   bookHouse() {
+    if (!requireLogin(`/pages/house-intent/index?mode=appointment&id=${this.data.house.id}`)) return
     wx.navigateTo({
       url: `/pages/house-intent/index?mode=appointment&id=${this.data.house.id}`,
     })
   },
 
   applySettle() {
+    if (!requireLogin(`/pages/house-intent/index?mode=settlement&id=${this.data.house.id}`)) return
     wx.navigateTo({
       url: `/pages/house-intent/index?mode=settlement&id=${this.data.house.id}`,
     })

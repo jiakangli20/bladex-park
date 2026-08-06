@@ -54,7 +54,7 @@
         <view class="card-title">房源介绍</view>
         <view class="card-sub">{{house.intro}}</view>
         <view class="tag-row detail-tags">
-          <block wx:for="{{house.tags}}" wx:key="*this">
+          <block wx:for="{{house.facilities}}" wx:key="*this">
             <text class="tag">{{item}}</text>
           </block>
         </view>
@@ -72,7 +72,6 @@
   </scroll-view>
 
   <view class="fixed-action">
-    <view class="secondary-button" bindtap="openVr">在线看房</view>
     <view class="primary-button" bindtap="bookHouse">预约看房</view>
     <view class="primary-button settle-button" bindtap="applySettle">入驻意向</view>
   </view>
