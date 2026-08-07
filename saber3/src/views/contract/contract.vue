@@ -1916,7 +1916,7 @@ export default {
     summaryCards() {
       return [
         { key: 'total', label: '合同总数', value: this.stats.totalCount || 0 },
-        { key: 'active', label: '生效', value: this.stats.activeCount || 0 },
+        { key: 'active', label: '履行中', value: this.stats.activeCount || 0 },
         { key: 'pending', label: '待审批', value: this.stats.pendingCount || 0 },
         { key: 'rent', label: '月租金合计', value: this.formatMoney(this.stats.monthlyRentTotal) },
       ];

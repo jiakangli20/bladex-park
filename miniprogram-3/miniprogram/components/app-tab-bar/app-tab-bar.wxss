@@ -35,6 +35,10 @@
   display: block;
 }
 
+.tabbar-item:not(.is-active) .tabbar-icon-houses {
+  opacity: 0.48;
+}
+
 .tabbar-label {
   font-size: 22rpx;
   line-height: 1;

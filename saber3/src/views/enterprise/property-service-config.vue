@@ -1,7 +1,12 @@
 <template>
   <basic-container>
     <div class="property-service-config-page">
-      <stat-cards :items="serviceSummaryCards" />
+      <section class="summary-grid">
+        <div v-for="item in serviceSummaryCards" :key="item.key" class="summary-card">
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+        </div>
+      </section>
 
       <section class="contract-search">
         <el-form :inline="true" :model="serviceQuery">
@@ -327,6 +332,35 @@ export default {
   min-width: 0;
 }
 
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.summary-card {
+  min-height: 76px;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.summary-card span {
+  color: #606266;
+  font-size: 13px;
+}
+
+.summary-card strong {
+  margin-top: 5px;
+  color: #1f2937;
+  font-size: 22px;
+  font-weight: 600;
+}
+
 .contract-search {
   border-radius: 10px;
 }
@@ -398,6 +432,10 @@ export default {
 }
 
 @media (max-width: 1180px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .toolbar-left {
     justify-content: flex-end;
     flex-wrap: wrap;
@@ -405,6 +443,10 @@ export default {
 }
 
 @media (max-width: 760px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
   .form-grid {
     grid-template-columns: 1fr;
   }

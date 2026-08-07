@@ -32,4 +32,8 @@ public interface EnterpriseDataMapper {
 
 	List<Map<String, Object>> selectOpportunityReminderList(@Param("parkId") Long parkId);
 
+	List<Map<String, Object>> selectOpportunityStatusSummary(@Param("parkId") Long parkId);
+
+	List<Map<String, Object>> selectRunningApprovalProjectList(@Param("parkId") Long parkId);
+
 }

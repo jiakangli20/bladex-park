@@ -27,10 +27,6 @@
     </block>
   </view>
 
-  <view wx:if="{{loggedIn}}" class="menu-card account-card">
-    <view class="menu-row" bindtap="logout"><text class="menu-label">退出登录</text><text class="menu-arrow">›</text></view>
-  </view>
-
   <view class="menu-card account-card">
     <block wx:for="{{accountMenus}}" wx:key="key">
       <view class="menu-row" data-key="{{item.key}}" bindtap="openMenu">
@@ -41,6 +37,10 @@
         <text class="menu-arrow">›</text>
       </view>
     </block>
+  </view>
+
+  <view wx:if="{{loggedIn}}" class="logout-card" bindtap="logout">
+    <text>退出登录</text>
   </view>
 
   <app-tab-bar active="mine"></app-tab-bar>

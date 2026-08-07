@@ -117,7 +117,7 @@
                 </div>
               </button>
             </div>
-            <el-empty v-else description="暂无物业工单待处理" :image-size="92" />
+            <el-empty v-else description="暂无待办提醒" :image-size="92" />
           </section>
         </aside>
       </section>
@@ -632,8 +632,9 @@ export default {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  height: 100%;
+  min-height: 0;
   gap: 16px;
+  align-self: stretch;
 }
 
 .hero-section {
@@ -678,7 +679,7 @@ export default {
 .common-panel {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 0;
   min-height: 354px;
 }
 
@@ -734,7 +735,7 @@ export default {
 .todo-panel {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 0;
   min-height: 354px;
 }
 
@@ -744,6 +745,10 @@ export default {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+}
+
+.todo-panel :deep(.el-empty) {
+  flex: 1;
 }
 
 .todo-item:last-child {

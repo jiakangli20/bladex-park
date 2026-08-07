@@ -147,37 +147,41 @@
   display: flex;
   flex-wrap: wrap;
   margin: 20rpx 18rpx 0;
-  padding: 24rpx 16rpx 8rpx;
-  border-radius: 14rpx;
+  padding: 30rpx 14rpx 22rpx;
+  border: 1rpx solid #edf1f7;
+  border-radius: 18rpx;
   background: #ffffff;
+  box-shadow: 0 8rpx 18rpx rgba(35, 55, 85, 0.05);
 }
 
 .feature-item {
   width: 25%;
   min-width: 0;
-  margin-bottom: 26rpx;
+  min-height: 122rpx;
+  margin-bottom: 12rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12rpx;
+  justify-content: flex-start;
+  gap: 15rpx;
   color: #2f3745;
-  font-size: 22rpx;
-  line-height: 1;
+  font-size: 23rpx;
+  line-height: 1.2;
   white-space: nowrap;
 }
 
 .feature-icon {
-  width: 64rpx;
-  height: 64rpx;
+  width: 72rpx;
+  height: 72rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 16rpx;
+  border-radius: 20rpx;
 }
 
 .feature-image {
-  width: 36rpx;
-  height: 36rpx;
+  width: 40rpx;
+  height: 40rpx;
 }
 
 .feature-blue {

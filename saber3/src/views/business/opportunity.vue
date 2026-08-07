@@ -37,17 +37,12 @@
               />
             </el-select>
           </el-form-item>
-          <el-form-item label="所属园区">
-            <el-select v-model="query.parkId" clearable filterable placeholder="全部园区">
-              <el-option v-for="park in parkList" :key="park.id" :label="park.name" :value="park.id" />
-            </el-select>
-          </el-form-item>
           <el-form-item label="招商渠道">
             <el-select v-model="query.channel" clearable placeholder="全部渠道">
               <el-option v-for="item in channelOptions" :key="item" :label="item" :value="item" />
             </el-select>
           </el-form-item>
-          <el-form-item>
+          <el-form-item class="search-actions">
             <el-button type="primary" icon="el-icon-search" @click="searchChange">搜索</el-button>
             <el-button icon="el-icon-delete" @click="searchReset">清空</el-button>
           </el-form-item>
@@ -1504,6 +1499,10 @@ export default {
   height: 36px;
   line-height: 36px;
   color: #303133;
+}
+
+.opportunity-search :deep(.search-actions) {
+  margin-right: 0;
 }
 
 .opportunity-search :deep(.el-input),

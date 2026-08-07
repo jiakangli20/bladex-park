@@ -1,6 +1,11 @@
 <template>
   <div class="workorder-panel">
-    <stat-cards v-if="showStatistics" :items="statItems" />
+    <section v-if="showStatistics" class="summary-grid">
+      <div v-for="item in statItems" :key="item.key" class="summary-card">
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+      </div>
+    </section>
 
     <section v-if="showSearch" class="contract-search">
       <el-form :inline="true" :model="query">
@@ -137,8 +142,6 @@ export default {
         { key: 'pending', label: '待受理', value: this.statistics.pendingCount || 0 },
         { key: 'processing', label: '处理中', value: this.statistics.processingCount || 0 },
         { key: 'finished', label: '已完成', value: this.statistics.finishedCount || 0 },
-        { key: 'rated', label: '已评价', value: this.statistics.ratedCount || 0 },
-        { key: 'closed', label: '已关闭', value: this.statistics.closedCount || 0 },
       );
       return items;
     },
@@ -233,9 +236,19 @@ export default {
   border-radius: 6px;
 }
 
+.summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.summary-card { min-height: 76px; padding: 14px 16px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; display: flex; flex-direction: column; justify-content: center; }
+.summary-card span { color: #606266; font-size: 13px; }
+.summary-card strong { margin-top: 5px; color: #1f2937; font-size: 22px; font-weight: 600; }
+
 @media (max-width: 1180px) {
+  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .toolbar-right {
     flex-wrap: wrap;
   }
+}
+
+@media (max-width: 760px) {
+  .summary-grid { grid-template-columns: 1fr; }
 }
 </style>

@@ -53,8 +53,9 @@ public class EnterpriseDataServiceImpl implements IEnterpriseDataService {
 			.set("vacancyWarning", enterpriseDataMapper.selectVacancyWarning(scopedParkId))
 			.set("rentalTrend", enterpriseDataMapper.selectRentalTrend(scopedParkId))
 			.set("contractDealTrend", enterpriseDataMapper.selectContractDealTrend(scopedParkId))
-			.set("approvalList", flowableTodoList())
+			.set("approvalList", runningApprovalList(scopedParkId))
 			.set("noticeTenantList", enterpriseDataMapper.selectNoticeTenantList(scopedParkId))
+			.set("opportunityStatusSummary", enterpriseDataMapper.selectOpportunityStatusSummary(scopedParkId))
 			.set("opportunityReminderList", enterpriseDataMapper.selectOpportunityReminderList(scopedParkId));
 	}
 
@@ -139,20 +140,49 @@ public class EnterpriseDataServiceImpl implements IEnterpriseDataService {
 			.orElse(Map.of());
 	}
 
-	private List<Kv> flowableTodoList() {
+	private List<Kv> runningApprovalList(Long parkId) {
+		List<Kv> result = new ArrayList<>();
+		enterpriseDataMapper.selectRunningApprovalProjectList(parkId).forEach(item -> result.add(Kv.create()
+			.set("id", value(item, "id"))
+			.set("title", value(item, "title"))
+			.set("currentNode", value(item, "currentNode"))
+			.set("flowType", value(item, "flowType"))
+			.set("applicant", value(item, "applicant"))
+			.set("statusText", value(item, "statusText"))
+			.set("createTime", value(item, "createTime"))));
+
 		WfProcess process = new WfProcess();
-		process.setStatus(WfProcessConstant.STATUS_TODO);
-		Query query = new Query().setCurrent(1).setSize(3);
-		IPage<WfProcess> page = wfProcessService.selectTaskPage(process, query);
-		return page.getRecords().stream().map(item -> Kv.create()
-			.set("id", item.getTaskId())
-			.set("taskId", item.getTaskId())
-			.set("processInstanceId", item.getProcessInstanceId())
-			.set("title", StringUtil.isBlank(item.getProcessDefinitionName()) ? "待办审批" : item.getProcessDefinitionName())
-			.set("flowType", StringUtil.isBlank(item.getCategoryName()) ? "Flowable流程" : item.getCategoryName())
-			.set("statusText", StringUtil.isBlank(item.getTaskName()) ? "待处理" : item.getTaskName())
-			.set("createTime", item.getCreateTime()))
+		process.setProcessIsFinished(WfProcessConstant.STATUS_UNFINISHED);
+		IPage<WfProcess> page = wfProcessService.selectProcessPage(process, new Query().setCurrent(1).setSize(8));
+		page.getRecords().forEach(item -> {
+			Map<String, Object> variables = item.getVariables();
+			String businessName = firstVariable(variables, "enterpriseName", "customerName", "tenantName", "companyName");
+			result.add(Kv.create()
+				.set("id", item.getProcessInstanceId())
+				.set("taskId", item.getTaskId())
+				.set("processInstanceId", item.getProcessInstanceId())
+				.set("title", StringUtil.isBlank(businessName)
+					? (StringUtil.isBlank(item.getProcessDefinitionName()) ? "审批项目" : item.getProcessDefinitionName())
+					: businessName)
+				.set("currentNode", StringUtil.isBlank(item.getTaskName()) ? "审批中" : item.getTaskName())
+				.set("flowType", StringUtil.isBlank(item.getProcessDefinitionName()) ? "流程审批" : item.getProcessDefinitionName())
+				.set("applicant", item.getStartUsername())
+				.set("statusText", "审批中")
+				.set("createTime", item.getCreateTime()));
+		});
+		return result.stream()
+			.sorted((left, right) -> String.valueOf(right.get("createTime")).compareTo(String.valueOf(left.get("createTime"))))
+			.limit(8)
 			.toList();
+	}
+
+	private String firstVariable(Map<String, Object> variables, String... keys) {
+		if (variables == null || variables.isEmpty()) return null;
+		for (String key : keys) {
+			Object value = variables.get(key);
+			if (value != null && StringUtil.isNotBlank(String.valueOf(value))) return String.valueOf(value);
+		}
+		return null;
 	}
 
 	private Map<String, Object> mapOrEmpty(Map<String, Object> map) {

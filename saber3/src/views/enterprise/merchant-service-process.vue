@@ -1,44 +1,41 @@
 <template>
   <basic-container>
     <div class="merchant-service-process-page">
-      <stat-cards :items="summaryCards" />
+      <section class="summary-grid">
+        <div v-for="item in summaryCards" :key="item.key" class="summary-card">
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+        </div>
+      </section>
 
-      <section class="contract-search">
-        <el-form :inline="true" :model="query">
-          <el-form-item label="服务单号">
-            <el-input v-model="query.orderNo" clearable placeholder="请输入服务单号" @keyup.enter="searchChange" />
-          </el-form-item>
-          <el-form-item label="服务商">
-            <el-input v-model="query.merchantName" clearable placeholder="请输入服务商名称" @keyup.enter="searchChange" />
-          </el-form-item>
-          <el-form-item label="客户名称">
-            <el-input v-model="query.customerName" clearable placeholder="请输入客户名称" @keyup.enter="searchChange" />
-          </el-form-item>
+        <section class="contract-search">
+          <el-form :inline="true" :model="query">
+            <el-form-item label="服务单号">
+              <el-input v-model="query.orderNo" clearable placeholder="请输入服务单号" @keyup.enter="searchChange" />
+            </el-form-item>
+            <el-form-item label="服务商">
+              <el-input v-model="query.merchantName" clearable placeholder="请输入服务商名称" @keyup.enter="searchChange" />
+            </el-form-item>
           <el-form-item label="处理状态">
             <el-select v-model="query.orderStatus" clearable placeholder="全部状态">
               <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
-          <el-form-item label="优先级">
-            <el-select v-model="query.priority" clearable placeholder="全部优先级">
-              <el-option v-for="item in priorityOptions" :key="item.value" :label="item.label" :value="item.value" />
-            </el-select>
-          </el-form-item>
-          <el-form-item>
+          <el-form-item class="search-actions">
             <el-button type="primary" icon="el-icon-search" @click="searchChange">搜索</el-button>
             <el-button icon="el-icon-delete" @click="searchReset">清空</el-button>
           </el-form-item>
-        </el-form>
-      </section>
+          </el-form>
+        </section>
 
-      <section class="service-table-card">
-        <div class="contract-toolbar">
-          <div class="toolbar-left">
+        <section class="service-table-card">
+          <div class="contract-toolbar">
+          <div class="toolbar-right">
+            <el-tooltip content="刷新" placement="top">
+              <el-button icon="el-icon-refresh" circle @click="reload" />
+            </el-tooltip>
             <el-button v-if="permissionList.addBtn" type="primary" icon="el-icon-plus" @click="openCreate">录入服务申请</el-button>
           </div>
-          <el-tooltip content="刷新" placement="top">
-            <el-button icon="el-icon-refresh" circle @click="reload" />
-          </el-tooltip>
         </div>
 
         <el-table
@@ -367,7 +364,6 @@ export default {
         { key: 'pendingCount', label: '待受理', value: 0 },
         { key: 'processingCount', label: '跟进中', value: 0 },
         { key: 'dealCount', label: '已成交', value: 0 },
-        { key: 'closedCount', label: '已关闭', value: 0 },
       ],
       businessTypeOptions,
       statusOptions,
@@ -712,6 +708,10 @@ export default {
   width: 190px;
 }
 
+.contract-search :deep(.search-actions) {
+  margin-right: 0;
+}
+
 .contract-toolbar {
   display: flex;
   align-items: center;
@@ -725,8 +725,10 @@ export default {
   background: #fff;
 }
 
-.toolbar-left {
+.toolbar-right {
   display: flex;
+  margin-left: auto;
+  justify-content: flex-end;
   gap: 10px;
 }
 
@@ -789,9 +791,19 @@ export default {
   border-radius: 6px;
 }
 
+.summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.summary-card { min-height: 76px; padding: 14px 16px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; display: flex; flex-direction: column; justify-content: center; }
+.summary-card span { color: #606266; font-size: 13px; }
+.summary-card strong { margin-top: 5px; color: #1f2937; font-size: 22px; font-weight: 600; }
+
 @media (max-width: 1180px) {
-  .toolbar-left {
+  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .toolbar-right {
     flex-wrap: wrap;
   }
+}
+
+@media (max-width: 760px) {
+  .summary-grid { grid-template-columns: 1fr; }
 }
 </style>

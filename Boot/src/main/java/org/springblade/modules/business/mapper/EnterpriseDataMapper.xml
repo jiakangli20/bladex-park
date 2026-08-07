@@ -276,4 +276,32 @@
 		LIMIT 8
 	</select>
 
+	<select id="selectOpportunityStatusSummary" resultType="java.util.HashMap">
+		SELECT opportunity_status AS status, COUNT(*) AS count
+		FROM biz_business_opportunity
+		WHERE del_flag = '0'
+		<include refid="parkFilter"/>
+		GROUP BY opportunity_status
+		ORDER BY COUNT(*) DESC
+	</select>
+
+	<select id="selectRunningApprovalProjectList" resultType="java.util.HashMap">
+		SELECT
+			p.project_id AS id,
+			COALESCE(NULLIF(p.project_name, ''), NULLIF(p.enterprise_name, ''), '审批项目') AS title,
+			COALESCE(NULLIF(p.current_node_name, ''), NULLIF(p.current_node, ''), '审批中') AS currentNode,
+			'入驻审批' AS flowType,
+			p.applicant AS applicant,
+			p.create_time AS createTime,
+			'审批中' AS statusText
+		FROM biz_approval_project p
+		WHERE COALESCE(p.del_flag, '0') = '0'
+		  AND p.process_status = '1'
+		<if test="parkId != null">
+			AND p.park_id = #{parkId}
+		</if>
+		ORDER BY p.create_time DESC, p.project_id DESC
+		LIMIT 8
+	</select>
+
 </mapper>

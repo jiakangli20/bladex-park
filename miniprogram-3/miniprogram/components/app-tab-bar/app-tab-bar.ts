@@ -23,11 +23,11 @@ Component({
         activeIcon: '/assets/tabbar/home-active.png',
       },
       {
-        key: 'services',
-        label: '服务',
-        url: '/pages/services/index',
-        icon: '/assets/tabbar/service.png',
-        activeIcon: '/assets/tabbar/service-active.png',
+        key: 'houses',
+        label: '看房',
+        url: '/pages/houses/index',
+        icon: '/assets/icons/house.png',
+        activeIcon: '/assets/icons/house.png',
       },
       {
         key: 'scan',

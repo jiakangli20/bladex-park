@@ -74,6 +74,24 @@
   margin-top: 24rpx;
 }
 
+.logout-card {
+  height: 96rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 32rpx 30rpx 24rpx;
+  border: 1rpx solid #f3d9dc;
+  border-radius: 22rpx;
+  background: #ffffff;
+  box-shadow: 0 8rpx 18rpx rgba(35, 55, 85, 0.04);
+  color: #e45161;
+  font-size: 29rpx;
+}
+
+.logout-card:active {
+  background: #fff6f7;
+}
+
 .menu-row {
   min-height: 126rpx;
   display: flex;

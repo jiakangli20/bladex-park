@@ -459,7 +459,8 @@ public class RentControlServiceImpl implements IRentControlService {
 		overview.put("totalRoomCount", roomList.size());
 		overview.put("managementArea", managementArea);
 		overview.put("buildingArea", managementArea);
-		overview.put("floorArea", managementArea);
+		overview.put("floorArea", floorArea);
+		overview.put("roomArea", roomArea);
 		overview.put("avgRentPrice", avgRentPrice);
 		overview.put("rentedArea", rentedArea);
 		overview.put("vacantArea", vacantArea);

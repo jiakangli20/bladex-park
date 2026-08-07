@@ -158,7 +158,7 @@
               <div class="metric-item">
                 <span>管理面积</span>
                 <strong>{{ formatNumber(overview.managementArea) }}㎡</strong>
-                <em>楼层面积 {{ formatNumber(overview.floorArea || overview.buildingArea) }}㎡</em>
+                <em>房源面积 {{ formatNumber(overview.roomArea || overview.floorArea || overview.buildingArea) }}㎡</em>
               </div>
               <div class="metric-item">
                 <span>在租实时均价</span>

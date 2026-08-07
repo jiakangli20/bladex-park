@@ -7,7 +7,7 @@
       bindtap="handleTap"
     >
       <image
-        class="tabbar-icon"
+        class="tabbar-icon tabbar-icon-{{item.key}}"
         src="{{active === item.key ? item.activeIcon : item.icon}}"
         mode="aspectFit"
       ></image>

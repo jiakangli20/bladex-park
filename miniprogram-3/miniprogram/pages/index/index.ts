@@ -8,7 +8,7 @@ const baseActions = [
   { key: 'orders', label: '我的工单', tone: 'red' },
   { key: 'settle', label: '入驻申请', tone: 'sky' },
   { key: 'parking-pay', label: '停车缴费', tone: 'amber' },
-  { key: 'utility', label: '水电缴纳', tone: 'cyan' },
+  { key: 'service-desk', label: '服务台', tone: 'cyan', icon: 'value' },
   { key: 'ad-push', label: '广告推送', tone: 'purple' },
 ]
 
@@ -73,9 +73,8 @@ Page({
       wx.navigateTo({ url: '/pages/property-form/index?type=parking-pay' })
       return
     }
-    if (key === 'utility') {
-      if (!requireLogin('/pages/utility-bills/index')) return
-      wx.navigateTo({ url: '/pages/utility-bills/index' })
+    if (key === 'service-desk') {
+      wx.redirectTo({ url: '/pages/services/index?tab=property' })
       return
     }
     if (key === 'ad-push') {

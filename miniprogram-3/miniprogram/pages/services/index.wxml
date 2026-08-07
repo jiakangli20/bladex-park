@@ -4,13 +4,13 @@
       <view class="service-hero">
         <view class="nav-row hero-nav">
           <view class="nav-action" bindtap="goBack">‹</view>
-          <view class="nav-title">企业服务</view>
+          <view class="nav-title">服务台</view>
           <view class="nav-action" bindtap="openWorkOrders">
             <view class="nav-order-icon"></view>
           </view>
         </view>
 
-        <view class="hero-kicker">园区办事台</view>
+        <view class="hero-kicker">园区服务台</view>
         <view class="hero-title">物业与企业服务统一办理</view>
         <view class="hero-sub">从报修、缴费、车位到工商、知产服务，申请状态都能在工单里查看。</view>
 
@@ -140,5 +140,5 @@
     </view>
   </scroll-view>
 
-  <app-tab-bar active="services"></app-tab-bar>
+  <app-tab-bar active="service-desk"></app-tab-bar>
 </view>

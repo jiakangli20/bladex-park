@@ -173,8 +173,11 @@
               <span class="approval-icon"><i class="el-icon-document-copy" /></span>
               <div>
                 <strong>{{ item.title || '-' }}</strong>
-                <p>流程类型 <em>{{ item.flowType || '-' }}</em></p>
-                <time>{{ item.createTime || '-' }}</time>
+                <p>
+                  {{ item.flowType || '审批流程' }}
+                  <em v-if="item.currentNode">· {{ item.currentNode }}</em>
+                </p>
+                <time>{{ formatApprovalTime(item.createTime) }}</time>
               </div>
               <el-tag type="primary" effect="plain">{{ item.statusText || '审批中' }}</el-tag>
             </div>
@@ -193,7 +196,7 @@
           <ul class="tenant-list">
             <li v-for="item in noticeTenantList" :key="item.id">
               <span></span>
-              <strong>{{ item.tenantName || '-' }}</strong>
+              <strong :title="item.tenantName || ''">{{ item.tenantName || '-' }}</strong>
               <em>{{ formatMoneyLike(item.amount) }}</em>
             </li>
           </ul>
@@ -206,16 +209,16 @@
               <span class="title-icon"><i class="el-icon-s-shop" /></span>
               <strong>商机提醒</strong>
             </div>
-            <el-button text type="primary" @click="go('/business/opportunity')">更多</el-button>
-          </div>
-          <ul class="opportunity-list">
+            <el-button text type="primary" @click="go('/settlement/opportunity')">更多</el-button>
+            </div>
+            <div ref="opportunityStatusChart" class="chart chart--opportunity-status"></div>
+            <ul class="opportunity-list">
             <li v-for="item in opportunityReminderList" :key="item.id">
               <strong>{{ item.name || '-' }}</strong>
               <el-tag size="small" type="warning" effect="plain">接触</el-tag>
               <time>{{ item.remindTime || '-' }}</time>
             </li>
           </ul>
-          <div v-if="opportunityReminderList.length === 0" class="empty-block">暂无数据</div>
         </section>
       </div>
     </div>
@@ -248,6 +251,7 @@ export default {
       approvalList: [],
       noticeTenantList: [],
       opportunityReminderList: [],
+      opportunityStatusSummary: [],
     };
   },
   computed: {
@@ -305,6 +309,7 @@ export default {
           this.approvalList = data.approvalList || [];
           this.noticeTenantList = data.noticeTenantList || [];
           this.opportunityReminderList = data.opportunityReminderList || [];
+          this.opportunityStatusSummary = data.opportunityStatusSummary || [];
           this.$nextTick(this.renderCharts);
         })
         .finally(() => {
@@ -315,6 +320,7 @@ export default {
       this.renderRoomChart();
       this.renderVacancyChart();
       this.renderTrendChart();
+      this.renderOpportunityStatusChart();
     },
     renderRoomChart() {
       const chart = this.getChart('roomChart');
@@ -430,6 +436,23 @@ export default {
         ],
       });
     },
+    renderOpportunityStatusChart() {
+      const chart = this.getChart('opportunityStatusChart');
+      const statusMap = {
+        DRAFT: '初步沟通', AUDIT: '初步沟通', LEAD: '潜在线索', INITIAL: '初步沟通', DEEP: '深入洽谈', DEAL: '达成意向', LOST: '流失',
+      };
+      const counts = this.opportunityStatusSummary.reduce((result, item) => {
+        const label = statusMap[item.status] || '其他';
+        result[label] = (result[label] || 0) + (Number(item.count) || 0);
+        return result;
+      }, {});
+      chart.setOption({
+        color: ['#2f8dfd', '#12a594', '#ffaf34', '#7c6ff6', '#ff5b66', '#a0a8b8'],
+        tooltip: { trigger: 'item' },
+        legend: { bottom: 0, type: 'scroll', textStyle: { color: '#8a94a6', fontSize: 11 } },
+        series: [{ type: 'pie', radius: ['48%', '76%'], center: ['50%', '43%'], label: { show: false }, data: Object.keys(counts).map(name => ({ name, value: counts[name] })) }],
+      });
+    },
     getChart(refName) {
       if (!this.charts[refName]) {
         this.charts[refName] = echarts.init(this.$refs[refName]);
@@ -450,6 +473,13 @@ export default {
     formatMoneyLike(value) {
       const num = Number(value || 0);
       return Number.isInteger(num) ? String(num) : num.toFixed(2);
+    },
+    formatApprovalTime(value) {
+      if (!value) return '-';
+      const normalized = String(value).replace('T', ' ');
+      const parts = normalized.trim().split(/\s+/, 2);
+      if (parts.length < 2) return parts[0] || '-';
+      return `${parts[0]}\n${parts[1]}`;
     },
     openOverviewDetail(item) {
       if (!item || !item.key) return;
@@ -886,6 +916,7 @@ export default {
 
 .chart--donut {
   height: 272px;
+  transform: translateY(-18px);
 }
 
 .chart--bar {
@@ -1014,7 +1045,24 @@ export default {
   max-height: 334px;
   flex-direction: column;
   gap: 16px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-color: #cbd7e8 transparent;
+  scrollbar-width: thin;
+}
+
+.approval-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.approval-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.approval-list::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  background: #cbd7e8;
 }
 
 .approval-item {
@@ -1062,11 +1110,15 @@ export default {
 
 .approval-item time {
   display: block;
+  min-width: 106px;
+  box-sizing: border-box;
   padding: 8px 12px;
   border-radius: 4px;
   background: #fff;
   color: #8a94a6;
   font-size: 13px;
+  line-height: 1.35;
+  white-space: pre-line;
 }
 
 .tenant-list,
@@ -1076,6 +1128,11 @@ export default {
   padding: 0;
   overflow: hidden;
   list-style: none;
+}
+
+.chart--opportunity-status {
+  height: 220px;
+  margin: -4px 0 6px;
 }
 
 .tenant-list li,
@@ -1088,8 +1145,8 @@ export default {
 }
 
 .tenant-list li {
-  grid-template-columns: 18px minmax(0, 1fr) 92px;
-  gap: 12px;
+  grid-template-columns: 14px minmax(0, 1fr) 72px;
+  gap: 6px;
 }
 
 .tenant-list span {
@@ -1106,6 +1163,18 @@ export default {
   font-weight: 400;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.tenant-list strong {
+  overflow: visible;
+  min-width: 0;
+  color: #7b8aa5;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: break-all;
+  line-height: 1.4;
 }
 
 .tenant-list em {

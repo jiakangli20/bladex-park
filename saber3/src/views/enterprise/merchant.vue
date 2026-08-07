@@ -1,7 +1,12 @@
 <template>
   <basic-container>
     <div class="merchant-page">
-      <stat-cards :items="summaryCards" />
+      <section class="summary-grid">
+        <div v-for="item in summaryCards" :key="item.key" class="summary-card">
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+        </div>
+      </section>
 
       <section class="contract-search">
         <el-form :inline="true" :model="query">
@@ -610,9 +615,19 @@ export default {
   border-radius: 6px;
 }
 
+.summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.summary-card { min-height: 76px; padding: 14px 16px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; display: flex; flex-direction: column; justify-content: center; }
+.summary-card span { color: #606266; font-size: 13px; }
+.summary-card strong { margin-top: 5px; color: #1f2937; font-size: 22px; font-weight: 600; }
+
 @media (max-width: 960px) {
+  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .toolbar-left {
     flex-wrap: wrap;
   }
+}
+
+@media (max-width: 640px) {
+  .summary-grid { grid-template-columns: 1fr; }
 }
 </style>

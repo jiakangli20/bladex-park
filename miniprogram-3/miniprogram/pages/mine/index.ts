@@ -35,5 +35,19 @@ Page({
     wx.navigateTo({ url: `/pages/profile-section/index?type=${key}` })
   },
   login() { if (!this.data.loggedIn) wx.navigateTo({ url: '/pages/login/index?redirect=%2Fpages%2Fmine%2Findex' }) },
-  async logout() { await authApi.logout().catch(() => undefined); clearSession(); this.onShow() },
+  logout() {
+    wx.showModal({
+      title: '退出登录',
+      content: '退出后仍可以浏览园区公开内容，确定退出当前账号吗？',
+      confirmText: '退出',
+      confirmColor: '#e45161',
+      success: async result => {
+        if (!result.confirm) return
+        await authApi.logout().catch(() => undefined)
+        clearSession()
+        this.onShow()
+        wx.showToast({ title: '已退出登录', icon: 'none' })
+      },
+    })
+  },
 })

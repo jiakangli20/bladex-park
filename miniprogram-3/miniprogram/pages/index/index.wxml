@@ -27,7 +27,7 @@
         <block wx:for="{{quickActions}}" wx:key="key">
           <view class="feature-item" data-key="{{item.key}}" bindtap="handleQuickAction">
             <view class="feature-icon feature-{{item.tone}}">
-              <image class="feature-image" src="/assets/icons/{{item.key}}.png" mode="aspectFit"></image>
+              <image class="feature-image" src="/assets/icons/{{item.icon || item.key}}.png" mode="aspectFit"></image>
             </view>
             <text>{{item.label}}</text>
           </view>
@@ -35,7 +35,7 @@
       </view>
 
       <view class="service-section">
-        <view class="section-title">企业服务</view>
+        <view class="section-title">服务台</view>
         <view class="service-grid">
           <block wx:for="{{homeServiceCards}}" wx:key="key">
             <view class="service-card service-{{item.tone}}" data-key="{{item.key}}" bindtap="openServiceCard">
