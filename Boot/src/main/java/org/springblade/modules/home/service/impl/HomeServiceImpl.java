@@ -8,12 +8,14 @@ import lombok.RequiredArgsConstructor;
 import org.springblade.core.mp.support.Query;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.utils.StringUtil;
+import org.springblade.modules.business.pojo.entity.ServiceWorkorder;
 import org.springblade.modules.business.pojo.entity.PolicyService;
 import org.springblade.modules.business.service.IPolicyServiceService;
 import org.springblade.modules.home.mapper.HomeMapper;
 import org.springblade.modules.home.pojo.vo.HomeMissingApiVO;
 import org.springblade.modules.home.pojo.vo.HomeOverviewVO;
 import org.springblade.modules.home.pojo.vo.HomePolicyNoticeVO;
+import org.springblade.modules.home.pojo.vo.HomeTodoItemVO;
 import org.springblade.modules.home.pojo.vo.HomeTodoVO;
 import org.springblade.modules.home.pojo.vo.HomeWorkbenchVO;
 import org.springblade.modules.home.service.IHomeService;
@@ -53,6 +55,9 @@ public class HomeServiceImpl implements IHomeService {
 		Long approvalTodoCount = countWorkflowTodos();
 		Long workorderTodoCount = zeroIfNull(homeMapper.countWorkorderTodos(parkId, currentUser, admin));
 		Long overdueNoticeCount = zeroIfNull(paymentService.unreadOverdueNoticeCount());
+		List<HomeTodoItemVO> workorderItems = homeMapper.selectWorkorderTodos(parkId, currentUser, admin).stream()
+			.map(this::toTodoItem)
+			.toList();
 
 		HomeOverviewVO overview = new HomeOverviewVO();
 		overview.setRoomCount(roomCount);
@@ -66,6 +71,7 @@ public class HomeServiceImpl implements IHomeService {
 		todos.setExpiringContractCount(expiringContractCount);
 		todos.setWorkorderTodoCount(workorderTodoCount);
 		todos.setOverdueNoticeCount(overdueNoticeCount);
+		todos.setItems(workorderItems);
 
 		HomeWorkbenchVO workbench = new HomeWorkbenchVO();
 		workbench.setOverview(overview);
@@ -119,6 +125,55 @@ public class HomeServiceImpl implements IHomeService {
 
 	private Long zeroIfNull(Long value) {
 		return value == null ? 0L : value;
+	}
+
+	private HomeTodoItemVO toTodoItem(ServiceWorkorder workorder) {
+		HomeTodoItemVO item = new HomeTodoItemVO();
+		String title = StringUtil.isNotBlank(workorder.getCustomerName()) ? workorder.getCustomerName() : workorder.getOrderNo();
+		item.setTitle(StringUtil.isNotBlank(title) ? title : "待处理工单");
+		item.setDesc(buildWorkorderDesc(workorder));
+		item.setPath("/enterprise/property-workorder?orderNo=" + safeQueryValue(workorder.getOrderNo()));
+		item.setIcon("Tools");
+		item.setTone(priorityTone(workorder.getPriority()));
+		return item;
+	}
+
+	private String buildWorkorderDesc(ServiceWorkorder workorder) {
+		List<String> parts = new ArrayList<>();
+		if (StringUtil.isNotBlank(workorder.getOrderNo())) {
+			parts.add("工单号 " + workorder.getOrderNo());
+		}
+		if (StringUtil.isNotBlank(workorder.getServiceName())) {
+			parts.add(workorder.getServiceName());
+		}
+		if (StringUtil.isNotBlank(workorder.getRoomInfo())) {
+			parts.add(workorder.getRoomInfo());
+		}
+		if (StringUtil.isNotBlank(workorder.getDemandDesc())) {
+			parts.add(truncate(workorder.getDemandDesc(), 24));
+		}
+		return parts.isEmpty() ? "待处理物业工单" : String.join(" · ", parts);
+	}
+
+	private String priorityTone(String priority) {
+		if ("0".equals(priority)) {
+			return "red";
+		}
+		if ("2".equals(priority)) {
+			return "blue";
+		}
+		return "orange";
+	}
+
+	private String safeQueryValue(String value) {
+		return StringUtil.isBlank(value) ? "" : value.trim();
+	}
+
+	private String truncate(String value, int maxLength) {
+		if (StringUtil.isBlank(value) || value.length() <= maxLength) {
+			return value;
+		}
+		return value.substring(0, Math.max(0, maxLength - 1)) + "…";
 	}
 
 }

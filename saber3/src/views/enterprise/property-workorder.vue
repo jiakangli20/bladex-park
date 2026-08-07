@@ -325,6 +325,7 @@ export default {
     },
   },
   created() {
+    this.processQuery = this.applyRouteFilters(this.processQuery);
     this.loadServiceOptions();
     this.loadProcessPage();
     this.loadUserOptions();
@@ -529,6 +530,14 @@ export default {
       else delete next.parkId;
       if (this.embedded && this.filterRoomIds) next.filterRoomIds = this.filterRoomIds;
       else delete next.filterRoomIds;
+      return next;
+    },
+    applyRouteFilters(query) {
+      const next = { ...(query || {}) };
+      const { orderNo } = this.$route.query || {};
+      if (orderNo) {
+        next.orderNo = orderNo;
+      }
       return next;
     },
   },

@@ -60,6 +60,40 @@
 		</if>
 	</select>
 
+	<select id="selectWorkorderTodos" resultType="org.springblade.modules.business.pojo.entity.ServiceWorkorder">
+		SELECT
+			w.order_id AS orderId,
+			w.order_no AS orderNo,
+			w.park_id AS parkId,
+			w.service_id AS serviceId,
+			w.customer_id AS customerId,
+			w.customer_name AS customerName,
+			w.contact_name AS contactName,
+			w.contact_phone AS contactPhone,
+			w.room_ids AS roomIds,
+			w.room_info AS roomInfo,
+			w.demand_desc AS demandDesc,
+			w.order_status AS orderStatus,
+			w.priority AS priority,
+			w.assign_to AS assignTo,
+			w.create_time AS createTime,
+			s.service_name AS serviceName,
+			p.name AS parkName
+		FROM biz_service_workorder w
+		LEFT JOIN biz_property_service s ON w.service_id = s.service_id
+		LEFT JOIN ics_park p ON w.park_id = p.id
+		WHERE COALESCE(w.del_flag, '0') = '0'
+		  AND w.order_status = '0'
+		<if test="parkId != null">
+			AND w.park_id = #{parkId}
+		</if>
+		<if test="admin == null or admin == false">
+			AND (w.create_by = #{currentUser} OR w.assign_to = #{currentUser})
+		</if>
+		ORDER BY w.create_time DESC, w.order_id DESC
+		LIMIT 20
+	</select>
+
 	<select id="selectEnterprises" resultType="org.springblade.modules.home.pojo.vo.HomeEnterpriseVO">
 		SELECT
 			c.customer_id AS customerId,

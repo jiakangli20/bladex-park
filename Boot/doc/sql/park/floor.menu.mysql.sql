@@ -1,6 +1,6 @@
--- 园区管理 / 楼层管理菜单与按钮权限
+-- 园区管理 / 房源管理菜单与按钮权限
 -- 执行库：bladex_boot
--- 说明：仅新增楼层管理菜单与超级管理员授权，不改动 ics_park / ics_building / ics_floor / ics_room 表结构。
+-- 说明：仅新增房源管理菜单与超级管理员授权，不改动 ics_park / ics_building / ics_floor / ics_room 表结构。
 
 DELETE FROM `blade_role_menu`
 WHERE `menu_id` IN (
@@ -26,7 +26,7 @@ WHERE `id` IN (
 
 INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `sort`, `category`, `action`, `is_open`, `component`, `remark`, `is_deleted`)
 VALUES
-  (1963598815738675701, 1963598815738675401, 'floor', '楼层管理', 'menu', '/park/floor', 'iconfont icon-caidanguanli', 4, 1, 0, 1, '', NULL, 0),
+  (1963598815738675701, 1963598815738675401, 'floor', '房源管理', 'menu', '/park/floor', 'iconfont icon-caidanguanli', 4, 1, 0, 1, '', NULL, 0),
   (1963598815738675702, 1963598815738675701, 'floor_view', '查看', 'view', '/api/blade-park/floor/detail', 'file-text', 1, 2, 2, 1, '', NULL, 0),
   (1963598815738675703, 1963598815738675701, 'floor_add', '新增', 'add', '/api/blade-park/floor/submit', 'plus', 2, 2, 1, 1, '', NULL, 0),
   (1963598815738675704, 1963598815738675701, 'floor_edit', '修改', 'edit', '/api/blade-park/floor/submit', 'form', 3, 2, 2, 1, '', NULL, 0),

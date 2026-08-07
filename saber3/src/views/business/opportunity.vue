@@ -917,7 +917,7 @@ export default {
       summaryCards: [
         { key: 'totalCount', label: '商机总数', value: 0 },
         { key: 'followCount', label: '跟进中', value: 0 },
-        { key: 'dealCount', label: '已成交', value: 0 },
+        { key: 'dealCount', label: '已达成意向', value: 0 },
         { key: 'lostCount', label: '已流失', value: 0 },
       ],
       formDrawerVisible: false,
@@ -942,7 +942,7 @@ export default {
         { value: 'LEAD', label: '潜在线索' },
         { value: 'INITIAL', label: '初步沟通' },
         { value: 'DEEP', label: '深入洽谈' },
-        { value: 'DEAL', label: '成交' },
+        { value: 'DEAL', label: '达成意向' },
         { value: 'LOST', label: '流失' },
       ],
       statusTextMap: {
@@ -951,7 +951,7 @@ export default {
         LEAD: '潜在线索',
         INITIAL: '初步沟通',
         DEEP: '深入洽谈',
-        DEAL: '成交',
+        DEAL: '达成意向',
         LOST: '流失',
       },
       statusTypeMap: {

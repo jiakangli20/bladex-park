@@ -883,6 +883,35 @@ export default {
         this.form.customerId = query.customerId;
         this.prefillCustomer(query.customerId);
       }
+      if (query.mode === 'create') {
+        this.applyRoomPrefill(query);
+      }
+    },
+    applyRoomPrefill(query = {}) {
+      const value = key => {
+        const current = query[key];
+        return Array.isArray(current) ? current[0] : current;
+      };
+      const roomId = value('roomId');
+      if (!roomId) return;
+
+      Object.assign(this.form, {
+        parkId: value('parkId') || this.form.parkId,
+        parkName: value('parkName') || this.form.parkName,
+        buildingId: value('buildingId') || this.form.buildingId,
+        buildingName: value('buildingName') || this.form.buildingName,
+        roomId,
+        roomName: value('roomName') || this.form.roomName,
+        rentArea: this.toNumber(value('rentArea'), this.form.rentArea),
+        rentPrice: this.toNumber(value('rentPrice'), this.form.rentPrice),
+        propertyFee: this.toNumber(value('propertyFee'), this.form.propertyFee),
+      });
+      this.roomQuery.parkId = this.form.parkId || '';
+      this.roomQuery.buildingId = this.form.buildingId || '';
+      getRoomDetail(roomId).then(res => {
+        this.applyRoom(res.data.data || {});
+        this.ensureSelectedRoomOption();
+      });
     },
     loadEditSource(contractId) {
       getContractDetail(contractId).then(res => {

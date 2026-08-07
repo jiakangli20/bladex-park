@@ -709,24 +709,24 @@ export default {
 }
 
 .meter-header {
-  min-height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  min-height: 60px;
+  padding: 14px 16px;
   border-bottom: 1px solid #e7eaf0;
 }
 
 .meter-header h3 {
   margin: 0;
   color: #303133;
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .meter-header__actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
 .meter-table :deep(.el-table__header th) {

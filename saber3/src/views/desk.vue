@@ -15,7 +15,7 @@
           </span>
           <span class="metric-copy">
             <span>{{ item.label }}</span>
-            <strong>{{ item.value }}</strong>
+            <strong>{{ item.value }}<small>{{ item.unit }}</small></strong>
           </span>
           <em>详情&gt;</em>
         </button>
@@ -31,85 +31,31 @@
             <div class="hero-visual" :style="heroStyle"></div>
           </section>
 
-          <section class="panel investment-panel">
+          <section class="panel common-panel">
             <div class="panel-head">
               <div>
-                <h2>招商闭环入口</h2>
-                <p>从商机到审核、风险、客户和收缴的关键业务入口</p>
+                <h2>快捷入口</h2>
+                <p>常用业务快速进入</p>
               </div>
-              <el-button text type="primary" @click="go('/settlement/opportunity')">商机管理</el-button>
             </div>
-            <div class="entrance-grid">
+            <div class="shortcut-grid">
               <button
-                v-for="item in lifecycleEntrances"
+                v-for="item in shortcuts"
                 :key="item.title"
                 type="button"
-                class="entrance-item"
-                :class="`entrance-item--${item.tone}`"
-                @click="go(item.path)"
+                class="shortcut-item"
+                :class="{ disabled: item.disabled }"
+                @click="go(item.path, item.disabled)"
               >
-                <span>
+                <span :class="`shortcut-icon shortcut-icon--${item.tone}`">
                   <el-icon><component :is="item.icon" /></el-icon>
                 </span>
-                <strong>{{ item.title }}</strong>
-                <em>{{ item.desc }}</em>
-                <i class="entry-arrow el-icon-arrow-right"></i>
+                <span class="shortcut-copy">
+                  <strong>{{ item.title }}</strong>
+                  <em>{{ item.desc }}</em>
+                </span>
               </button>
             </div>
-          </section>
-
-          <section class="home-dual-row">
-            <section class="panel policy-panel">
-              <div class="panel-head">
-                <div>
-                  <h2>园区政策通知</h2>
-                  <p>最新政策、服务通知与业务公告</p>
-                </div>
-                <el-button text type="primary" @click="go('/enterprise/policy-service')">政策</el-button>
-              </div>
-              <div class="policy-list">
-                <button
-                  v-for="item in policies"
-                  :key="item.title"
-                  type="button"
-                  class="policy-item"
-                  @click="go(item.path)"
-                >
-                  <span class="policy-icon">
-                    <el-icon><Bell /></el-icon>
-                  </span>
-                  <span>
-                    <strong>{{ item.title }}</strong>
-                    <em>{{ item.date }}</em>
-                  </span>
-                  <b>查看</b>
-                </button>
-              </div>
-            </section>
-
-            <section class="panel quick-panel">
-              <div class="panel-head">
-                <div>
-                  <h2>快捷入口</h2>
-                  <p>常用业务快速进入</p>
-                </div>
-              </div>
-              <div class="shortcut-grid">
-                <button
-                  v-for="item in shortcuts"
-                  :key="item.title"
-                  type="button"
-                  class="shortcut-item"
-                  :class="{ disabled: item.disabled }"
-                  @click="go(item.path, item.disabled)"
-                >
-                  <span :class="`shortcut-icon shortcut-icon--${item.tone}`">
-                    <el-icon><component :is="item.icon" /></el-icon>
-                  </span>
-                  <strong>{{ item.title }}</strong>
-                </button>
-              </div>
-            </section>
           </section>
 
         </main>
@@ -148,15 +94,15 @@
               <div>
                 <h2>
                   <el-icon><Tickets /></el-icon>
-                  待办任务
+                  通知提醒
                 </h2>
               </div>
-              <el-button text type="primary" @click="go('/plugin/workflow/pages/process/todo')">更多</el-button>
+              <el-button text type="primary" @click="go('/enterprise/property-workorder')">更多</el-button>
             </div>
-            <div class="todo-list">
+            <div class="todo-list" v-if="todos.length">
               <button
-                v-for="item in todos"
-                :key="item.title"
+                v-for="(item, index) in todos"
+                :key="`${item.title}-${index}`"
                 type="button"
                 class="todo-item"
                 :class="`todo-item--${item.tone}`"
@@ -171,6 +117,7 @@
                 </div>
               </button>
             </div>
+            <el-empty v-else description="暂无物业工单待处理" :image-size="92" />
           </section>
         </aside>
       </section>
@@ -199,8 +146,9 @@ export default {
       },
       metrics: [
         {
-          label: '楼层管理',
+          label: '房源管理',
           value: 0,
+          unit: '间',
           path: '/park/floor',
           icon: 'OfficeBuilding',
           tone: 'blue',
@@ -208,6 +156,7 @@ export default {
         {
           label: '客户管理',
           value: 0,
+          unit: '家',
           path: '/settlement/customer',
           icon: 'User',
           tone: 'cyan',
@@ -215,6 +164,7 @@ export default {
         {
           label: '合同即将到期',
           value: 0,
+          unit: '份',
           path: '/contract/expiry-notice',
           icon: 'DocumentChecked',
           tone: 'orange',
@@ -222,91 +172,135 @@ export default {
         {
           label: '审批待处理',
           value: 0,
+          unit: '项',
           path: '/plugin/workflow/pages/process/todo',
           icon: 'Finished',
           tone: 'purple',
         },
         {
-          label: '待办任务',
+          label: '待办工单',
           value: 0,
+          unit: '条',
           path: '/enterprise/property-workorder',
           icon: 'Calendar',
           tone: 'green',
         },
       ],
-      lifecycleEntrances: [
+      shortcuts: [
         {
-          title: '租金收缴',
-          desc: '账单、催缴、流水闭环',
-          path: '/finance/bills-all',
-          icon: 'Money',
+          title: '新增客户',
+          desc: '录入企业客户档案',
+          path: '/settlement/customer',
+          icon: 'UserFilled',
+          tone: 'blue',
+        },
+        {
+          title: '商机管理',
+          desc: '线索跟进与转化',
+          path: '/settlement/opportunity',
+          icon: 'Promotion',
           tone: 'orange',
         },
         {
-          title: '企业风险',
-          desc: '高风险客户与背景排查',
-          path: '/settlement/customer?riskLevel=3',
-          icon: 'Warning',
-          tone: 'red',
+          title: '背景调查',
+          desc: '企业准入与风险核验',
+          path: '/settlement/background-investigation',
+          icon: 'Search',
+          tone: 'green',
         },
         {
-          title: '入驻审核',
-          desc: '入驻申请发起与审批记录',
+          title: '项目审批',
+          desc: '入驻审批流程',
           path: '/settlement/project-approval',
-          icon: 'Tickets',
-          tone: 'purple',
-        },
-        {
-          title: '客户管理',
-          desc: '客户档案、合同与账单',
-          path: '/settlement/customer',
-          icon: 'User',
-          tone: 'cyan',
-        },
-      ],
-      shortcuts: [
-        { title: '新增客户', path: '/settlement/customer', icon: 'UserFilled', tone: 'blue' },
-        { title: '楼层管理', path: '/park/floor', icon: 'OfficeBuilding', tone: 'cyan' },
-        { title: '新建合同', path: '/contract/archive', icon: 'DocumentAdd', tone: 'orange' },
-        { title: '我的审批', path: '/plugin/workflow/pages/process/my-done', icon: 'Finished', tone: 'purple' },
-        { title: '物业工单', path: '/enterprise/property-workorder', icon: 'Tools', tone: 'green' },
-        { title: '租控管理', path: '/park/rent-control', icon: 'Tickets', tone: 'indigo' },
-      ],
-      todos: [
-        {
-          title: '审批待处理提醒',
-          count: 0,
-          desc: '暂无待处理审批',
-          path: '/plugin/workflow/pages/process/todo',
           icon: 'Finished',
           tone: 'purple',
         },
         {
-          title: '合同到期提醒',
-          count: 0,
-          desc: '暂无合同即将到期',
-          path: '/contract/expiry-notice',
-          icon: 'DocumentChecked',
+          title: '租控管理',
+          desc: '房态与面积管理',
+          path: '/park/rent-control',
+          icon: 'Tickets',
+          tone: 'indigo',
+        },
+        {
+          title: '房源管理',
+          desc: '维护楼宇与楼层',
+          path: '/park/floor',
+          icon: 'OfficeBuilding',
+          tone: 'cyan',
+        },
+        {
+          title: '合同列表',
+          desc: '合同台账与履约',
+          path: '/contract/contract',
+          icon: 'Document',
           tone: 'orange',
         },
         {
-          title: '物业工单提醒',
-          count: 0,
-          desc: '暂无物业工单待处理',
-          path: '/enterprise/property-workorder',
-          icon: 'Tools',
+          title: '合同归档',
+          desc: '归档文件管理',
+          path: '/contract/archive',
+          icon: 'FolderChecked',
           tone: 'blue',
         },
         {
+          title: '收款通知',
+          desc: '开票与收款提醒',
+          path: '/contract/payment-notice',
+          icon: 'Postcard',
+          tone: 'green',
+        },
+        {
+          title: '所有账单',
+          desc: '收付款账单管理',
+          path: '/finance/bills-all',
+          icon: 'Money',
+          tone: 'purple',
+        },
+        {
           title: '逾期通知',
-          count: 0,
-          desc: '暂无未读逾期通知',
+          desc: '逾期处置闭环',
           path: '/finance/overdue-notice',
           icon: 'Bell',
-          tone: 'red',
+          tone: 'orange',
+        },
+        {
+          title: '物业工单',
+          desc: '企业诉求处理',
+          path: '/enterprise/property-workorder',
+          icon: 'Tools',
+          tone: 'green',
+        },
+        {
+          title: '物业服务',
+          desc: '服务事项配置',
+          path: '/enterprise/property-service',
+          icon: 'SetUp',
+          tone: 'blue',
+        },
+        {
+          title: '商户管理',
+          desc: '合作商户档案',
+          path: '/enterprise/merchant',
+          icon: 'Shop',
+          tone: 'cyan',
+        },
+        {
+          title: '智能硬件',
+          desc: '设备台账与接入',
+          path: '/park/smart-device',
+          icon: 'Monitor',
+          tone: 'purple',
+        },
+        {
+          title: '我的审批',
+          desc: '审批办理记录',
+          path: '/plugin/workflow/pages/process/my-done',
+          icon: 'Checked',
+          tone: 'indigo',
         },
       ],
-      policies: [],
+      todos: [],
       calendarWeeks: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
       today: this.buildToday(),
       missingApis: [],
@@ -387,60 +381,18 @@ export default {
         ...item,
         value: this.metricValue(item.label, overview),
       }));
-      this.todos = this.todos.map(item => ({
-        ...item,
-        count: this.todoValue(item.title, todos),
-        desc: this.todoDesc(item.title, this.todoValue(item.title, todos)),
-      }));
-      this.policies = this.normalizePolicies(data.policyNotices);
+      this.todos = Array.isArray(todos.items) ? todos.items : [];
       this.missingApis = data.missingApis || [];
     },
     metricValue(label, overview) {
       const map = {
-        楼层管理: 'roomCount',
+        房源管理: 'roomCount',
         客户管理: 'customerCount',
         合同即将到期: 'expiringContractCount',
         审批待处理: 'approvalTodoCount',
-        待办任务: 'workorderTodoCount',
+        待办工单: 'workorderTodoCount',
       };
       return Number(overview[map[label]]) || 0;
-    },
-    todoValue(title, todos) {
-      const map = {
-        审批待处理提醒: 'approvalTodoCount',
-        合同到期提醒: 'expiringContractCount',
-        物业工单提醒: 'workorderTodoCount',
-        逾期通知: 'overdueNoticeCount',
-      };
-      return Number(todos[map[title]]) || 0;
-    },
-    todoDesc(title, count) {
-      if (!count) {
-        const emptyMap = {
-          审批待处理提醒: '暂无待处理审批',
-          合同到期提醒: '暂无合同即将到期',
-          物业工单提醒: '暂无物业工单待处理',
-          逾期通知: '暂无未读逾期通知',
-        };
-        return emptyMap[title] || '暂无待办任务';
-      }
-      const unitMap = {
-        审批待处理提醒: `${count} 个审批待处理`,
-        合同到期提醒: `${count} 个合同即将到期`,
-        物业工单提醒: `${count} 条物业工单待处理`,
-        逾期通知: `${count} 条逾期通知未读`,
-      };
-      return unitMap[title] || `${count} 条待办任务`;
-    },
-    normalizePolicies(list = []) {
-      if (!Array.isArray(list) || list.length === 0) {
-        return [];
-      }
-      return list.slice(0, 4).map(item => ({
-        title: item.title || '未命名政策',
-        date: item.publishTime || '待发布',
-        path: item.linkUrl || '/enterprise/policy-service',
-      }));
     },
     buildToday() {
       const now = new Date();
@@ -568,7 +520,7 @@ export default {
   min-height: 86px;
   padding: 16px 58px 16px 16px;
   border: none;
-  border-radius: 0;
+  border-radius: 10px;
   background: #fff;
   box-shadow: 0 4px 16px rgba(30, 64, 120, 0.06);
   color: inherit;
@@ -583,9 +535,7 @@ export default {
 }
 
 .metric-icon,
-.entrance-item span,
 .shortcut-icon,
-.policy-icon,
 .todo-item > span {
   display: inline-flex;
   align-items: center;
@@ -618,6 +568,13 @@ export default {
   line-height: 1;
 }
 
+.metric-copy strong small {
+  margin-left: 4px;
+  color: #6f7b8a;
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .metric-card em {
   position: absolute;
   right: 16px;
@@ -634,20 +591,17 @@ export default {
 }
 
 .metric-card--cyan .metric-icon,
-.entrance-item--cyan span,
 .shortcut-icon--cyan {
   background: #26c4bf;
 }
 
 .metric-card--orange .metric-icon,
-.entrance-item--orange span,
 .shortcut-icon--orange,
 .todo-item--orange > span {
   background: #ff8e23;
 }
 
 .metric-card--purple .metric-icon,
-.entrance-item--purple span,
 .shortcut-icon--purple,
 .todo-item--purple > span {
   background: #8c54df;
@@ -658,7 +612,6 @@ export default {
   background: #52c41a;
 }
 
-.entrance-item--red span,
 .todo-item--red > span {
   background: #ff4757;
 }
@@ -669,25 +622,27 @@ export default {
 
 .home-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 448px;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr);
   gap: 16px;
   align-items: stretch;
 }
 
 .home-main,
 .home-side {
-  display: contents;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  gap: 16px;
 }
 
 .hero-section {
-  grid-column: 1;
-  grid-row: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 36%;
-  min-height: 198px;
+  min-height: 182px;
+  height: 182px;
   overflow: hidden;
-  border-radius: 0;
+  border-radius: 10px;
   background: linear-gradient(110deg, #1167e8 0%, #1f7cff 58%, #d8e8ff 100%);
 }
 
@@ -715,19 +670,22 @@ export default {
 }
 
 .hero-visual {
-  min-height: 198px;
+  min-height: 182px;
   background-position: center;
   background-size: cover;
 }
 
-.investment-panel {
-  grid-column: 1;
-  grid-row: 2;
+.common-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 354px;
 }
 
 .panel {
+  box-sizing: border-box;
   padding: 20px;
-  border-radius: 0;
+  border-radius: 10px;
   background: #fff;
   box-shadow: 0 4px 16px rgba(30, 64, 120, 0.06);
 }
@@ -756,33 +714,7 @@ export default {
   font-size: 12px;
 }
 
-.entrance-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
-  gap: 12px;
-}
-
-.entrance-item {
-  position: relative;
-  min-height: 68px;
-  padding: 14px 40px 14px 62px;
-  border: 1px solid #e6edf6;
-  border-radius: 0;
-  background: #fff;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.entrance-item span {
-  position: absolute;
-  top: 16px;
-  left: 14px;
-}
-
-.entrance-item strong,
 .shortcut-item strong,
-.policy-item strong,
 .todo-item strong {
   display: block;
   color: #172033;
@@ -790,8 +722,6 @@ export default {
   font-weight: 700;
 }
 
-.entrance-item em,
-.policy-item em,
 .todo-item em {
   display: block;
   margin-top: 4px;
@@ -801,74 +731,29 @@ export default {
   line-height: 1.45;
 }
 
-.entry-arrow {
-  position: absolute;
-  top: 26px;
-  right: 14px;
-  color: #b6c0ce;
-  font-size: 16px;
-}
-
-.home-dual-row {
-  grid-column: 1;
-  grid-row: 3;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
-  flex: 1;
-  align-items: stretch;
-}
-
-.policy-panel,
-.quick-panel,
 .todo-panel {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 354px;
 }
 
-.policy-list,
 .todo-list {
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
-.policy-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  min-height: 74px;
-  padding: 12px 62px 12px 0;
-  border: none;
-  border-bottom: 1px solid #edf1f6;
-  background: #fff;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.policy-item:last-child,
 .todo-item:last-child {
   border-bottom: none;
 }
 
-.policy-icon {
-  margin-right: 14px;
-  background: #1c73f4;
-}
-
-.policy-item b {
-  position: absolute;
-  right: 0;
-  color: #1c73f4;
-  font-size: 13px;
-  font-weight: 500;
-}
-
 .shortcut-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px 12px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
   flex: 1;
   align-content: start;
 }
@@ -879,7 +764,7 @@ export default {
   min-height: 58px;
   padding: 10px;
   border: 1px solid #e6edf6;
-  border-radius: 0;
+  border-radius: 8px;
   background: #fff;
   color: inherit;
   text-align: left;
@@ -887,8 +772,24 @@ export default {
 }
 
 .shortcut-item strong {
-  margin-left: 10px;
   font-weight: 500;
+}
+
+.shortcut-copy {
+  min-width: 0;
+  margin-left: 10px;
+}
+
+.shortcut-item em {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: #8b98aa;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .shortcut-item.disabled {
@@ -897,34 +798,29 @@ export default {
 }
 
 .calendar-panel {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  min-height: 334px;
-}
-
-.todo-panel {
-  grid-column: 2;
-  grid-row: 3;
+  min-height: 314px;
 }
 
 .calendar-toolbar {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 6px;
   padding-bottom: 10px;
   border-bottom: 1px solid #e5eaf2;
   color: #667085;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .calendar-toolbar span,
 .calendar-toolbar strong {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 24px;
-  min-width: 58px;
-  padding: 0 8px;
+  height: 22px;
+  min-width: 42px;
+  padding: 0 5px;
   border: 1px solid #d9deea;
   background: #fff;
   font-weight: 400;
@@ -947,7 +843,7 @@ export default {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 36px;
+  height: 28px;
   color: #667085;
   font-size: 13px;
 }
@@ -1001,50 +897,56 @@ export default {
 
 @media (max-width: 1500px) {
   .home-layout {
-    grid-template-columns: minmax(0, 1fr) 390px;
+    grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr);
   }
 }
 
 @media (max-width: 1280px) {
   .metric-grid {
-    grid-template-columns: repeat(3, minmax(160px, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
-  .home-layout,
-  .home-dual-row {
-    grid-template-columns: 1fr;
+  .metric-card {
+    min-height: 78px;
+    padding: 12px;
+  }
+
+  .metric-card em {
+    display: none;
+  }
+
+  .metric-copy span {
+    white-space: nowrap;
+  }
+
+  .shortcut-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .home-layout {
-    grid-template-rows: none;
+    grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr);
+  }
+}
+
+@media (max-width: 1100px) {
+  .metric-grid {
+    grid-template-columns: repeat(3, minmax(160px, 1fr));
   }
 
-  .home-main,
-  .home-side {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    height: auto;
-  }
-
-  .hero-section,
-  .investment-panel,
-  .home-dual-row,
-  .calendar-panel,
-  .todo-panel {
-    grid-column: auto;
-    grid-row: auto;
+  .home-layout {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 900px) {
   .metric-grid,
-  .entrance-grid {
+  .shortcut-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .hero-section {
     grid-template-columns: 1fr;
+    height: auto;
   }
 
   .hero-visual {
@@ -1054,7 +956,6 @@ export default {
 
 @media (max-width: 640px) {
   .metric-grid,
-  .entrance-grid,
   .shortcut-grid {
     grid-template-columns: 1fr;
   }

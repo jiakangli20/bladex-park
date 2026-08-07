@@ -34,12 +34,14 @@
 
     <section class="workorder-table-card">
       <div class="contract-toolbar">
-        <div class="toolbar-left">
-          <el-button v-if="permissionList.workorderAddBtn" type="primary" icon="el-icon-plus" @click="$emit('create')">{{ createLabel }}</el-button>
+        <div class="toolbar-right">
+          <el-tooltip v-if="showReload" content="刷新" placement="top">
+            <el-button icon="el-icon-refresh" circle @click="$emit('reload')" />
+          </el-tooltip>
+          <el-button v-if="permissionList.workorderAddBtn" type="primary" :icon="Plus" @click="$emit('create')">
+            {{ createLabel }}
+          </el-button>
         </div>
-        <el-tooltip v-if="showReload" content="刷新" placement="top">
-          <el-button icon="el-icon-refresh" circle @click="$emit('reload')" />
-        </el-tooltip>
       </div>
 
       <el-table v-loading="loading" :data="data" border row-key="orderId" class="contract-table">
@@ -96,6 +98,8 @@
 </template>
 
 <script>
+import { Plus } from '@element-plus/icons-vue';
+
 export default {
   name: 'WorkorderPanel',
   props: {
@@ -118,6 +122,11 @@ export default {
     showSearch: { type: Boolean, default: true },
   },
   emits: ['search', 'reset', 'reload', 'size-change', 'current-change', 'create', 'view', 'dispose', 'rate', 'remove'],
+  data() {
+    return {
+      Plus,
+    };
+  },
   computed: {
     statItems() {
       const items = [];
@@ -200,8 +209,10 @@ export default {
   padding: 14px 16px;
 }
 
-.toolbar-left {
+.toolbar-right {
   display: flex;
+  margin-left: auto;
+  justify-content: flex-end;
   gap: 10px;
 }
 
@@ -223,7 +234,7 @@ export default {
 }
 
 @media (max-width: 1180px) {
-  .toolbar-left {
+  .toolbar-right {
     flex-wrap: wrap;
   }
 }

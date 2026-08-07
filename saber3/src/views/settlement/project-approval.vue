@@ -59,7 +59,6 @@
           :data="data"
           border
           row-key="rowKey"
-          scrollbar-always-on
           class="tenant-entry-table"
         >
           <el-table-column
@@ -113,9 +112,6 @@
               </div>
             </template>
           </el-table-column>
-          <template #append>
-            <div class="table-scroll-gutter" aria-hidden="true"></div>
-          </template>
           <template #empty>
             <el-empty description="暂无入驻审核记录" />
           </template>
@@ -814,26 +810,6 @@ export default {
   padding: 0 12px;
   white-space: nowrap;
   word-break: keep-all;
-}
-
-.tenant-entry-table :deep(.el-scrollbar__bar.is-horizontal) {
-  right: 8px;
-  bottom: 5px;
-  left: 8px;
-  height: 12px;
-  opacity: 1;
-  border-radius: 6px;
-  background: #eef1f5;
-}
-
-.tenant-entry-table :deep(.el-scrollbar__bar.is-horizontal .el-scrollbar__thumb) {
-  min-width: 96px;
-  border-radius: 6px;
-  background-color: #9aa4b2;
-}
-
-.table-scroll-gutter {
-  height: 32px;
 }
 
 .tenant-entry-pagination {

@@ -46,7 +46,7 @@
       <section class="floor-toolbar">
         <div class="floor-toolbar-left">
           <el-button v-if="permission.floor_add" type="primary" :icon="Plus" @click="openCreate">
-            新增楼层
+            新增房源
           </el-button>
           <el-button
             v-if="permission.floor_delete"
@@ -131,11 +131,11 @@
             <el-tag :type="row.status === '1' ? 'info' : 'success'">{{ floorStatusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="area" label="楼层面积(㎡)" width="130" align="center">
+        <el-table-column prop="area" label="房源面积(㎡)" width="130" align="center">
           <template #default="{ row }">{{ formatNumber(row.area) }}</template>
         </el-table-column>
-        <el-table-column prop="usedArea" label="已用面积(㎡)" width="130" align="center">
-          <template #default="{ row }">{{ formatNumber(row.usedArea) }}</template>
+        <el-table-column prop="rentedArea" label="已租面积(㎡)" width="130" align="center">
+          <template #default="{ row }">{{ formatNumber(row.rentedArea) }}</template>
         </el-table-column>
         <el-table-column prop="totalCount" label="房间数" width="95" align="center" />
         <el-table-column prop="occupancyRate" label="出租率" width="100" align="center">
@@ -220,7 +220,7 @@
             controls-position="right"
           />
         </el-form-item>
-        <el-form-item label="楼层面积" prop="area">
+        <el-form-item label="房源面积" prop="area">
           <el-input-number v-model="form.area" :min="0" :precision="2" controls-position="right" />
         </el-form-item>
         <el-form-item label="状态" prop="status">
@@ -468,9 +468,9 @@ export default {
     },
     drawerTitle() {
       if (this.formMode === 'view') {
-        return '查看楼层';
+        return '查看房源';
       }
-      return this.form.id ? '编辑楼层' : '新增楼层';
+      return this.form.id ? '编辑房源' : '新增房源';
     },
     formReadonly() {
       return this.formMode === 'view';
@@ -488,7 +488,7 @@ export default {
         },
         {
           key: 'totalArea',
-          label: '楼层面积',
+          label: '房源面积',
           value: `${this.formatNumber(this.statistics.totalArea)} ㎡`,
         },
         {
@@ -606,7 +606,7 @@ export default {
     },
     openRoomCreate(floor = this.form) {
       if (!floor || !floor.id || !floor.buildingId || !floor.floorNo) {
-        ElMessage.warning('请先保存楼层信息后再新增房间');
+        ElMessage.warning('请先保存房源信息后再新增房间');
         return;
       }
       this.activeRoomFloorId = floor.id;
@@ -695,7 +695,7 @@ export default {
       });
     },
     handleDelete(row) {
-      ElMessageBox.confirm('确定删除该楼层?', {
+      ElMessageBox.confirm('确定删除该房源?', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
@@ -711,7 +711,7 @@ export default {
         ElMessage.warning('请选择至少一条数据');
         return;
       }
-      ElMessageBox.confirm('确定删除选中的楼层?', {
+      ElMessageBox.confirm('确定删除选中的房源?', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',

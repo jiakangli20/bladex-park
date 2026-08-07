@@ -9,6 +9,8 @@ import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 首页待办提醒.
@@ -33,5 +35,8 @@ public class HomeTodoVO implements Serializable {
 
 	@Schema(description = "逾期内部通知未读数量")
 	private Long overdueNoticeCount = 0L;
+
+	@Schema(description = "待办提醒条目")
+	private List<HomeTodoItemVO> items = new ArrayList<>();
 
 }

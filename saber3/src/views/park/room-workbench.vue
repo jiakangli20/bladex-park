@@ -110,6 +110,16 @@
 
       <el-tab-pane label="租客合同" name="contracts">
         <section class="room-data-panel">
+          <div class="room-panel-toolbar">
+            <strong>租客合同（{{ contractPage.total }}）</strong>
+            <el-button
+              v-if="permission.contract_contract_add"
+              type="primary"
+              :icon="Plus"
+              @click="createContract"
+              >创建合同</el-button
+            >
+          </div>
           <el-table
             v-loading="contractLoading"
             :data="contracts"
@@ -191,12 +201,7 @@
         />
       </el-tab-pane>
 
-      <el-tab-pane
-        v-if="permission.rent_control_utility_list"
-        label="水电记录"
-        name="utilities"
-        lazy
-      >
+      <el-tab-pane v-if="showUtilityTab && permission.rent_control_utility_list" label="水电记录" name="utilities" lazy>
         <section class="room-data-panel">
           <div class="room-panel-toolbar">
             <strong>水电记录（{{ utilityPage.total }}）</strong>
@@ -646,6 +651,7 @@ export default {
       vehiclePage: { currentPage: 1, pageSize: 10, total: 0 },
       utilityLoading: false,
       vehicleLoading: false,
+      showUtilityTab: false,
       utilityDialogVisible: false,
       billingDialogVisible: false,
       vehicleDialogVisible: false,
@@ -753,10 +759,10 @@ export default {
       this.loadRoom();
       this.loadContracts();
       this.loadBills();
-      if (this.permission.rent_control_utility_list) {
+      if (this.showUtilityTab && this.permission.rent_control_utility_list) {
         this.loadUtilityRecords();
       }
-      if (this.permission.rent_control_utility_add) {
+      if (this.showUtilityTab && this.permission.rent_control_utility_add) {
         this.loadMeterOptions();
       }
       if (this.permission.rent_control_vehicle_list) {
@@ -832,6 +838,27 @@ export default {
     changeContractPage(current) {
       this.contractPage.currentPage = current;
       this.loadContracts();
+    },
+    createContract() {
+      const room = this.room || {};
+      const query = {
+        mode: 'create',
+        parkId: room.parkId || this.parkId,
+        parkName: room.parkName || this.parkName,
+        buildingId: room.buildingId || this.buildingId,
+        buildingName: room.buildingName || this.buildingName,
+        roomId: room.id || this.roomId,
+        roomName: room.name,
+        rentArea: room.area,
+        rentPrice: room.rentPrice,
+        propertyFee: room.propertyFee,
+      };
+      Object.keys(query).forEach(key => {
+        if (query[key] === undefined || query[key] === null || query[key] === '') {
+          delete query[key];
+        }
+      });
+      this.$router.push({ path: '/contract/create-template', query });
     },
     changeBillPage(current) {
       this.billPage.currentPage = current;
