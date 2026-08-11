@@ -1,0 +1,42 @@
+<view class="mall-page">
+  <scroll-view class="mall-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="mall-content">
+      <view class="mall-hero">
+        <view class="mall-orbit mall-orbit-one"></view>
+        <view class="mall-orbit mall-orbit-two"></view>
+        <view class="nav-row">
+          <view class="nav-action mall-back" bindtap="goBack">‹</view>
+          <view class="nav-title">园区商场</view>
+          <view class="nav-action mall-more">···</view>
+        </view>
+        <view class="mall-kicker">PARK MALL</view>
+        <view class="mall-title">园区生活与企业服务</view>
+        <view class="mall-subtitle">周边配套、园区商户和专属优惠，后续将在这里集中展示。</view>
+      </view>
+
+      <view class="mall-status-card">
+        <view class="mall-status-icon">✦</view>
+        <view class="mall-status-copy">
+          <view class="mall-status-title">园区商场正在建设中</view>
+          <view class="mall-status-desc">商户入驻和商品服务即将上线，敬请期待。</view>
+        </view>
+        <view class="mall-status-tag">即将上线</view>
+      </view>
+
+      <view class="mall-section">
+        <view class="mall-section-kicker">COMING SOON</view>
+        <view class="mall-section-title">即将上线</view>
+        <view class="mall-feature-grid">
+          <block wx:for="{{features}}" wx:key="title">
+            <view class="mall-feature mall-feature-{{item.tone}}">
+              <view class="mall-feature-icon">{{item.icon}}</view>
+              <view class="mall-feature-title">{{item.title}}</view>
+              <view class="mall-feature-desc">{{item.desc}}</view>
+            </view>
+          </block>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+  <app-tab-bar active="home"></app-tab-bar>
+</view>

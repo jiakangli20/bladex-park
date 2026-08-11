@@ -97,4 +97,12 @@ public interface IRoomService extends IService<Room> {
 	 */
 	boolean syncMini(Long id);
 
+	/**
+	 * 下架小程序房源
+	 *
+	 * @param id 房源ID
+	 * @return 是否成功
+	 */
+	boolean unsyncMini(Long id);
+
 }

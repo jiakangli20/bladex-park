@@ -16,8 +16,8 @@ export const authApi = {
 
 export const publicApi = {
   home: () => request<JsonMap>('/blade-miniapp/public/home', { auth: false }),
-  houses: (keyword = '') => request<JsonMap[]>(`/blade-miniapp/public/houses?keyword=${encodeURIComponent(keyword)}`, { auth: false }),
-  house: (id: string) => request<JsonMap>(`/blade-miniapp/public/houses/${id}`, { auth: false }),
+  houses: (keyword = '') => request<JsonMap[]>(`/blade-miniapp/public/houses?keyword=${encodeURIComponent(keyword)}`, { auth: false, real: true }),
+  house: (id: string) => request<JsonMap>(`/blade-miniapp/public/houses/${id}`, { auth: false, real: true }),
   propertyServices: () => request<JsonMap[]>('/blade-miniapp/public/property-services', { auth: false }),
   valueServices: (keyword = '') => request<JsonMap[]>(`/blade-miniapp/public/value-services?keyword=${encodeURIComponent(keyword)}`, { auth: false }),
   valueService: (id: string) => request<JsonMap>(`/blade-miniapp/public/value-services/${id}`, { auth: false }),

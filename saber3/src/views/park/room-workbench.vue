@@ -47,6 +47,16 @@
             </div>
             <el-empty v-else description="暂无房源图片" :image-size="70" />
           </div>
+
+          <div v-if="permission.rent_control_room_sync" class="room-profile-actions">
+            <el-button
+              :type="room.syncStatus === '1' ? 'danger' : 'primary'"
+              :loading="syncingMini"
+              @click="handleToggleMini"
+            >
+              {{ room.syncStatus === '1' ? '下架小程序' : '同步小程序' }}
+            </el-button>
+          </div>
         </section>
       </el-tab-pane>
 
@@ -201,7 +211,12 @@
         />
       </el-tab-pane>
 
-      <el-tab-pane v-if="showUtilityTab && permission.rent_control_utility_list" label="水电记录" name="utilities" lazy>
+      <el-tab-pane
+        v-if="showUtilityTab && permission.rent_control_utility_list"
+        label="水电记录"
+        name="utilities"
+        lazy
+      >
         <section class="room-data-panel">
           <div class="room-panel-toolbar">
             <strong>水电记录（{{ utilityPage.total }}）</strong>
@@ -586,6 +601,8 @@ import {
   removeRoomVehicle,
   submitRoomUtility,
   submitRoomVehicle,
+  syncRoomMini,
+  unsyncRoomMini,
 } from '@/api/park/rent-control';
 import EnterprisePropertyWorkorder from '@/views/enterprise/property-workorder.vue';
 import AssetLedger from './asset-ledger.vue';
@@ -636,6 +653,7 @@ export default {
       Plus,
       activeTab: 'info',
       roomLoading: false,
+      syncingMini: false,
       contractLoading: false,
       billLoading: false,
       room: {},
@@ -779,6 +797,30 @@ export default {
         })
         .finally(() => {
           this.roomLoading = false;
+        });
+    },
+    async handleToggleMini() {
+      if (!this.roomId) return;
+      if (this.room.syncStatus === '1') {
+        try {
+          await ElMessageBox.confirm(
+            '下架后企业小程序将不再显示该房源，确定下架吗？',
+            '下架小程序房源',
+            { type: 'warning', confirmButtonText: '确定下架', cancelButtonText: '取消' }
+          );
+        } catch (error) {
+          return;
+        }
+      }
+      this.syncingMini = true;
+      const action = this.room.syncStatus === '1' ? unsyncRoomMini : syncRoomMini;
+      action(this.roomId)
+        .then(() => {
+          ElMessage.success(this.room.syncStatus === '1' ? '已从小程序下架' : '已同步到小程序');
+          this.loadRoom();
+        })
+        .finally(() => {
+          this.syncingMini = false;
         });
     },
     loadContracts() {
@@ -1210,6 +1252,14 @@ export default {
   border: 1px solid #ebeef5;
   border-radius: 6px;
   background: #f5f7fa;
+}
+
+.room-profile-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid #ebeef5;
 }
 
 .room-data-panel {

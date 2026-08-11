@@ -2,15 +2,26 @@ import { publicApi } from '../../services/miniapp'
 import { hasCapability, requireLogin } from '../../utils/session'
 
 const baseActions = [
+  { key: 'notice', label: '公告', tone: 'blue', icon: 'notice' },
   { key: 'house', label: '我要看房', tone: 'blue' },
   { key: 'property', label: '物业服务', tone: 'green' },
   { key: 'value', label: '增值服务', tone: 'orange' },
   { key: 'orders', label: '我的工单', tone: 'red' },
   { key: 'settle', label: '入驻申请', tone: 'sky' },
   { key: 'parking-pay', label: '停车缴费', tone: 'amber' },
-  { key: 'service-desk', label: '服务台', tone: 'cyan', icon: 'value' },
+  { key: 'service-desk', label: '园区商场', tone: 'cyan', icon: 'mall' },
   { key: 'ad-push', label: '广告推送', tone: 'purple' },
 ]
+
+const complaintAction = { key: 'complaint', label: '投诉建议', tone: 'purple', icon: 'complaint' }
+
+const splitActionRows = (actions: Record<string, any>[]) => {
+  const rows: Record<string, any>[][] = []
+  for (let index = 0; index < actions.length; index += 5) {
+    rows.push(actions.slice(index, index + 5))
+  }
+  return rows
+}
 
 const serviceCards = [
   { key: 'repair', title: '在线报修', desc: '报修便捷高效', tone: 'purple' },
@@ -21,7 +32,8 @@ const serviceCards = [
 
 Page({
   data: {
-    quickActions: baseActions,
+    quickActions: [...baseActions, complaintAction],
+    quickActionRows: splitActionRows([...baseActions, complaintAction]),
     homeServiceCards: serviceCards,
     homePolicies: [] as Record<string, any>[],
     homeActivities: [] as Record<string, any>[],
@@ -32,7 +44,8 @@ Page({
     const adminActions = hasCapability('admin.overview.view')
       ? [{ key: 'overview', label: '园区概览', tone: 'blue' }, { key: 'more', label: '管理', tone: 'gray' }]
       : []
-    this.setData({ quickActions: [...baseActions, ...adminActions] })
+    const quickActions = [...baseActions, ...adminActions, complaintAction]
+    this.setData({ quickActions, quickActionRows: splitActionRows(quickActions) })
     publicApi.home().then(data => this.setData({
       homePolicies: data.policies || [],
       homeActivities: data.activities || [],
@@ -41,6 +54,10 @@ Page({
 
   handleQuickAction(event: WechatMiniprogram.TouchEvent) {
     const key = event.currentTarget.dataset.key
+    if (key === 'notice') {
+      this.showNotice()
+      return
+    }
     if (key === 'house') {
       wx.redirectTo({ url: '/pages/houses/index' })
       return
@@ -74,7 +91,12 @@ Page({
       return
     }
     if (key === 'service-desk') {
-      wx.redirectTo({ url: '/pages/services/index?tab=property' })
+      wx.redirectTo({ url: '/pages/park-mall/index' })
+      return
+    }
+    if (key === 'complaint') {
+      if (!requireLogin('/pages/property-form/index?type=complaint')) return
+      wx.navigateTo({ url: '/pages/property-form/index?type=complaint' })
       return
     }
     if (key === 'ad-push') {

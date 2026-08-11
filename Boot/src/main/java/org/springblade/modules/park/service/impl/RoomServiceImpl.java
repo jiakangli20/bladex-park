@@ -157,6 +157,15 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements IR
 		return baseMapper.markSyncMini(id, AuthUtil.getUserName()) > 0;
 	}
 
+	@Override
+	public boolean unsyncMini(Long id) {
+		RoomVO room = selectRoomById(id);
+		if (room == null) {
+			throw new ServiceException("房源不存在");
+		}
+		return baseMapper.unmarkSyncMini(id, AuthUtil.getUserName()) > 0;
+	}
+
 	private void validateRoom(Room room) {
 		if (room.getBuildingId() == null) {
 			throw new ServiceException("请选择所属建筑");

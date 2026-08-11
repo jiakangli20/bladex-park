@@ -8,6 +8,7 @@
     "pages/overview/index",
     "pages/tenant-detail/index",
     "pages/pass-code/index",
+    "pages/park-mall/index",
     "pages/services/index",
     "pages/service-detail/index",
     "pages/property-form/index",

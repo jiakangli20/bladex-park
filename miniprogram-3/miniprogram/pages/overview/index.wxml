@@ -29,7 +29,7 @@
         <block wx:for="{{metrics}}" wx:key="label">
           <view class="metric-card metric-{{item.tone}}">
             <view class="metric-top"><view class="metric-icon">{{item.icon}}</view><view class="metric-trend" wx:if="{{item.trend}}">{{item.trend}}</view></view>
-            <view class="metric-value">{{item.value}}<text>{{item.unit}}</text></view>
+            <view class="metric-value"><text class="metric-number">{{item.value}}</text><text class="metric-unit">{{item.unit}}</text></view>
             <view class="metric-label">{{item.label}}</view>
           </view>
         </block>
@@ -63,10 +63,22 @@
       </view>
 
       <view class="section-block tenant-section">
-        <view class="section-heading"><view><view class="section-kicker">TENANT PORTFOLIO</view><view class="section-title">租客企业</view></view><view class="section-link" bindtap="openTenants">全部 {{tenantCount}}</view></view>
+        <view class="section-heading tenant-heading"><view><view class="section-kicker">TENANT PORTFOLIO</view><view class="section-title">租客企业</view></view><view class="tenant-heading-search">
+          <view class="search-box is-white">
+            <view class="search-icon"></view>
+            <input
+              class="tenant-search-input"
+              value="{{tenantKeyword}}"
+              placeholder="搜索企业名称、行业或房间..."
+              confirm-type="search"
+              bindinput="handleTenantSearchInput"
+            />
+            <text wx:if="{{tenantKeyword}}" class="tenant-search-clear" catchtap="clearTenantSearch">×</text>
+          </view>
+        </view></view>
         <view class="tenant-summary"><view><text>重点行业</text><view>{{topIndustry}}</view></view><view><text>正常履约</text><view>{{normalTenantCount}} 家</view></view><view><text>需关注</text><view class="warn-text">{{warningTenantCount}} 家</view></view></view>
         <block wx:for="{{tenants}}" wx:key="id"><view class="tenant-card" data-id="{{item.id}}" bindtap="openTenant"><view class="tenant-avatar tenant-avatar-{{item.tone}}">{{item.shortName}}</view><view class="tenant-main"><view class="tenant-name">{{item.companyName}}</view><view class="tenant-meta">{{item.industry}} <text>·</text> {{item.room}}</view><view class="tenant-meter"><view class="tenant-meter-fill" style="width: {{item.occupancy}}%;"></view></view><view class="tenant-meter-label">租赁面积 {{item.area}} <text>·</text> 合同至 {{item.leaseEnd}}</view></view><view class="tenant-side"><view class="tenant-status {{item.rentStatus === '正常' ? 'is-normal' : 'is-warn'}}">{{item.rentStatus}}</view><view class="tenant-arrow">›</view></view></view></block>
-        <view class="empty-state" wx:if="{{!tenants.length}}"><view class="empty-icon">⌂</view><view>暂无租客数据</view><text>接入园区数据后将在这里展示</text></view>
+        <view class="empty-state" wx:if="{{!tenants.length}}"><view class="empty-icon">⌂</view><view>{{tenantKeyword ? '未找到匹配企业' : '暂无租客数据'}}</view><text>{{tenantKeyword ? '请更换企业名称或关键词' : '接入园区数据后将在这里展示'}}</text></view>
       </view>
       <view class="page-foot">园区运营数据中心 · {{lastUpdated}}</view>
     </view>

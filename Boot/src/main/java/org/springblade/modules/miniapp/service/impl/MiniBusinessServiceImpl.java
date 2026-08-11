@@ -47,6 +47,8 @@ import org.springblade.modules.miniapp.service.IMiniAuthService;
 import org.springblade.modules.miniapp.service.IMiniBusinessService;
 import org.springblade.modules.park.pojo.entity.Room;
 import org.springblade.modules.park.pojo.vo.RoomVO;
+import org.springblade.modules.park.pojo.entity.Park;
+import org.springblade.modules.park.service.IParkService;
 import org.springblade.modules.park.service.IRoomService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,6 +71,7 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 	private final MiniAppProperties properties;
 	private final IMiniAuthService authService;
 	private final IRoomService roomService;
+	private final IParkService parkService;
 	private final IMerchantAdService merchantAdService;
 	private final IPolicyServiceService policyService;
 	private final IPropertyServiceService propertyService;
@@ -109,23 +112,36 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 
 	@Override
 	public List<Map<String, Object>> houses(String keyword) {
+		List<Long> publicParkIds = publicParkIds();
+		if (publicParkIds.isEmpty()) return List.of();
 		Room query = new Room();
-		query.setParkId(properties.getDefaultParkId());
 		query.setStatus("0");
 		query.setSyncStatus("1");
 		return roomService.selectRoomList(query).stream()
+			.filter(room -> publicParkIds.contains(room.getParkId()))
 			.filter(room -> StringUtil.isBlank(keyword) || contains(room.getName(), keyword) || contains(room.getBuildingName(), keyword))
+			.sorted(Comparator.comparing(Room::getFloor, Comparator.nullsLast(Comparator.reverseOrder()))
+				.thenComparing(room -> roomNumber(room.getName()), Comparator.nullsLast(Comparator.naturalOrder()))
+				.thenComparing(Room::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
 			.map(this::houseMap).toList();
 	}
 
 	@Override
 	public Map<String, Object> house(Long id) {
 		RoomVO room = roomService.selectRoomById(id);
-		if (room == null || !Objects.equals(room.getParkId(), properties.getDefaultParkId())
+		if (room == null || !publicParkIds().contains(room.getParkId())
 			|| !"0".equals(room.getStatus()) || !"1".equals(room.getSyncStatus())) {
 			throw new ServiceException("公开房源不存在或已下架");
 		}
 		return houseMap(room);
+	}
+
+	/** 小程序公开全部启用园区，避免把第二个园区硬编码进配置。 */
+	private List<Long> publicParkIds() {
+		return parkService.list(Wrappers.<Park>lambdaQuery()
+			.eq(Park::getStatus, "0")
+			.select(Park::getId))
+			.stream().map(Park::getId).filter(Objects::nonNull).toList();
 	}
 
 	@Override
@@ -832,11 +848,23 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 
 	private Map<String, Object> houseMap(Room room) {
 		return Kv.create().set("id", room.getId()).set("title", room.getBuildingName() + " " + room.getName())
+			.set("parkId", room.getParkId()).set("parkName", room.getParkName())
 			.set("image", firstImage(room.getSceneImages())).set("building", room.getBuildingName()).set("room", room.getName())
 			.set("area", room.getArea()).set("floor", room.getFloor()).set("layout", room.getHouseType())
 			.set("orientation", room.getOrientation()).set("price", room.getRentPrice()).set("propertyFee", room.getPropertyFee())
 			.set("status", "可租").set("availableDate", room.getVacantSince()).set("intro", room.getHighlights())
 			.set("facilities", split(room.getFacilities())).set("images", split(room.getSceneImages()));
+	}
+
+	private Integer roomNumber(String roomName) {
+		if (StringUtil.isBlank(roomName)) return null;
+		String digits = roomName.replaceAll("[^0-9]", "");
+		if (digits.isEmpty()) return null;
+		try {
+			return Integer.valueOf(digits);
+		} catch (NumberFormatException ignored) {
+			return null;
+		}
 	}
 
 	private Map<String, Object> adMap(MerchantAd item) { return Kv.create().set("id", item.getAdId()).set("title", item.getAdTitle()).set("image", item.getCoverUrl()).set("linkType", item.getLinkType()).set("linkUrl", item.getLinkUrl()); }

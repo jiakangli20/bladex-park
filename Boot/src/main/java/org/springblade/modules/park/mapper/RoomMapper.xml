@@ -40,6 +40,7 @@
             WHEN IFNULL(contract_room_status.has_expiring30, 0) = 1 THEN '5'
             WHEN IFNULL(contract_room_status.has_expiring90, 0) = 1 THEN '4'
             WHEN IFNULL(contract_room_status.has_active, 0) = 1 THEN '7'
+            WHEN IFNULL(contract_room_status.has_reserved, 0) = 1 THEN '2'
             WHEN IFNULL(contract_room_status.has_expired, 0) = 1 THEN '6'
             ELSE r.status
         END
@@ -62,7 +63,8 @@
                    MAX(CASE WHEN contract_status = '2' OR (contract_status = '1' AND end_date &lt; CURDATE()) THEN 1 ELSE 0 END) AS has_expired,
                    MAX(CASE WHEN contract_status = '1' AND end_date &gt;= CURDATE() AND end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) AS has_expiring30,
                    MAX(CASE WHEN contract_status = '1' AND end_date &gt; DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 90 DAY) THEN 1 ELSE 0 END) AS has_expiring90,
-                   MAX(CASE WHEN contract_status = '1' THEN 1 ELSE 0 END) AS has_active
+                   MAX(CASE WHEN contract_status = '1' THEN 1 ELSE 0 END) AS has_active,
+                   MAX(CASE WHEN contract_status IN ('0', '5') THEN 1 ELSE 0 END) AS has_reserved
             FROM (
                 SELECT c.room_id AS room_id, c.contract_status, c.end_date
                 FROM biz_contract c
@@ -94,6 +96,7 @@
             <if test="room.buildingId != null">AND r.building_id = #{room.buildingId}</if>
             <if test="room.name != null and room.name != ''">AND r.name LIKE CONCAT('%', #{room.name}, '%')</if>
             <if test="room.floor != null">AND r.floor = #{room.floor}</if>
+            <if test="room.syncStatus != null and room.syncStatus != ''">AND r.sync_status = #{room.syncStatus}</if>
             <if test="room.status != null and room.status != ''">
                 AND <include refid="roomDisplayStatus"/> = #{room.status}
             </if>
@@ -189,6 +192,15 @@
         UPDATE ics_room
         SET sync_status = '1',
             sync_time = NOW(),
+            update_by = #{updateBy},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="unmarkSyncMini">
+        UPDATE ics_room
+        SET sync_status = '0',
+            sync_time = NULL,
             update_by = #{updateBy},
             update_time = NOW()
         WHERE id = #{id}

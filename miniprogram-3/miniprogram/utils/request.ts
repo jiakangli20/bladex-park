@@ -14,6 +14,8 @@ export type RequestOptions = {
   method?: WechatMiniprogram.RequestOption['method']
   data?: WechatMiniprogram.RequestOption['data']
   auth?: boolean
+  /** 在开发环境中跳过 mock，联调公开真实接口。 */
+  real?: boolean
   requestId?: string
   retry?: boolean
   silent?: boolean
@@ -81,7 +83,7 @@ const refreshSession = (): Promise<MiniSession> => {
 }
 
 export const request = async <T>(path: string, options: RequestOptions = {}): Promise<T> => {
-  if (env().mockEnabled) return mockRequest<T>(path, options)
+  if (env().mockEnabled && options.real !== true) return mockRequest<T>(path, options)
   try {
     return await rawRequest<T>(path, options)
   } catch (error) {

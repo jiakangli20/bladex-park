@@ -12,7 +12,14 @@
       <view class="house-search-wrap">
         <view class="search-box">
           <view class="search-icon"></view>
-          <text>搜索房源名称、面积...</text>
+          <input
+            class="house-search-input"
+            value="{{searchKeyword}}"
+            placeholder="搜索房源名称、面积..."
+            confirm-type="search"
+            bindinput="handleSearchInput"
+          />
+          <text wx:if="{{searchKeyword}}" class="search-clear" catchtap="clearSearch">×</text>
         </view>
       </view>
 
@@ -38,6 +45,7 @@
                 <text class="status-tag">{{item.status}}</text>
               </view>
               <view class="house-meta">
+                <text wx:if="{{item.parkName}}">{{item.parkName}}</text>
                 <text>{{item.area}}</text>
                 <text>{{item.layout}}</text>
                 <text>{{item.floor}}</text>

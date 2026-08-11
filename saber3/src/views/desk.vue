@@ -503,14 +503,14 @@ export default {
 .home-workbench {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   color: #1f2d3d;
 }
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(160px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
 }
 
 .metric-card {
@@ -623,7 +623,7 @@ export default {
 .home-layout {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr);
-  gap: 16px;
+  gap: 12px;
   align-items: stretch;
 }
 
@@ -633,7 +633,7 @@ export default {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  gap: 16px;
+  gap: 12px;
   align-self: stretch;
 }
 
@@ -685,7 +685,7 @@ export default {
 
 .panel {
   box-sizing: border-box;
-  padding: 20px;
+  padding: 16px;
   border-radius: 10px;
   background: #fff;
   box-shadow: 0 4px 16px rgba(30, 64, 120, 0.06);
@@ -696,7 +696,7 @@ export default {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .panel-head h2 {
@@ -758,7 +758,7 @@ export default {
 .shortcut-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
   flex: 1;
   align-content: start;
 }
@@ -908,7 +908,7 @@ export default {
 
 @media (max-width: 1280px) {
   .metric-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   }
 
   .metric-card {
@@ -935,7 +935,7 @@ export default {
 
 @media (max-width: 1100px) {
   .metric-grid {
-    grid-template-columns: repeat(3, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   }
 
   .home-layout {

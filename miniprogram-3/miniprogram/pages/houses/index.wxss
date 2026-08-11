@@ -41,6 +41,25 @@
   background: #ffffff;
 }
 
+.house-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 76rpx;
+  color: #172033;
+  font-size: 28rpx;
+}
+
+.search-clear {
+  width: 38rpx;
+  height: 38rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #98a3b3;
+  font-size: 38rpx;
+  line-height: 1;
+}
+
 .filter-row {
   height: 94rpx;
   display: flex;

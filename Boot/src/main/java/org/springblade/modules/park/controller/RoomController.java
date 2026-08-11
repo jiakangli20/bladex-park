@@ -135,4 +135,15 @@ public class RoomController extends BladeController {
 		return R.status(roomService.syncMini(id));
 	}
 
+	/**
+	 * 下架小程序房源
+	 */
+	@PostMapping("/unsync-mini")
+	@PreAuth(menu = "rent_control_room_sync")
+	@ApiOperationSupport(order = 8)
+	@Operation(summary = "下架小程序房源", description = "传入id")
+	public R unsyncMini(@RequestParam Long id) {
+		return R.status(roomService.unsyncMini(id));
+	}
+
 }

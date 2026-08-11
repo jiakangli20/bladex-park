@@ -142,6 +142,11 @@ Page({
       ...item,
       shortName: item.companyName.slice(0, 1),
     })),
+    allTenants: demoTenants.map((item) => ({
+      ...item,
+      shortName: item.companyName.slice(0, 1),
+    })),
+    tenantKeyword: "",
     tenantCount: 128,
     topIndustry: "软件研发",
     normalTenantCount: 126,
@@ -221,6 +226,7 @@ Page({
           0
         ),
         tenants,
+        allTenants: tenants,
         tenantCount,
         normalTenantCount:
           tenants.filter((item) => item.rentStatus === "正常").length || 126,
@@ -238,6 +244,27 @@ Page({
     } finally {
       this.setData({ loading: false });
     }
+  },
+  applyTenantSearch() {
+    const keyword = String(this.data.tenantKeyword || "").trim().toLowerCase();
+    if (!keyword) {
+      this.setData({ tenants: this.data.allTenants });
+      return;
+    }
+    const tenants = this.data.allTenants.filter((item) =>
+      [item.companyName, item.industry, item.room, item.area]
+        .some((value) => String(value || "").toLowerCase().includes(keyword))
+    );
+    this.setData({ tenants });
+  },
+  handleTenantSearchInput(event: WechatMiniprogram.Input) {
+    this.setData(
+      { tenantKeyword: event.detail.value || "" },
+      () => this.applyTenantSearch()
+    );
+  },
+  clearTenantSearch() {
+    this.setData({ tenantKeyword: "" }, () => this.applyTenantSearch());
   },
   goBack() {
     const returnHome = () => wx.reLaunch({ url: "/pages/index/index" });

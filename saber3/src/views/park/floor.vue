@@ -112,23 +112,48 @@
                 </el-table-column>
                 <el-table-column prop="syncStatus" label="小程序同步" width="120" align="center">
                   <template #default="{ row: room }">
-                    <el-tag :type="room.syncStatus === '1' ? 'success' : 'info'">
-                      {{ room.syncStatus === '1' ? '已同步' : '待同步' }}
-                    </el-tag>
+                    <div class="room-sync-cell">
+                      <el-tag :type="room.syncStatus === '1' ? 'success' : 'info'">
+                        {{ room.syncStatus === '1' ? '已同步' : '待同步' }}
+                      </el-tag>
+                      <el-button
+                        v-if="permission.rent_control_room_sync && room.id"
+                        link
+                        :type="room.syncStatus === '1' ? 'danger' : 'primary'"
+                        :icon="Upload"
+                        @click.stop="handleSyncRoom(room)"
+                      >
+                        {{ room.syncStatus === '1' ? '下架' : '同步' }}
+                      </el-button>
+                    </div>
                   </template>
                 </el-table-column>
               </el-table>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="parkName" label="所属园区" min-width="140" align="center" show-overflow-tooltip />
-        <el-table-column prop="buildingName" label="所属建筑" min-width="140" align="center" show-overflow-tooltip />
+        <el-table-column
+          prop="parkName"
+          label="所属园区"
+          min-width="140"
+          align="center"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="buildingName"
+          label="所属建筑"
+          min-width="140"
+          align="center"
+          show-overflow-tooltip
+        />
         <el-table-column prop="floorNo" label="楼层" width="90" align="center">
           <template #default="{ row }">{{ row.floorNo }}F</template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === '1' ? 'info' : 'success'">{{ floorStatusLabel(row.status) }}</el-tag>
+            <el-tag :type="row.status === '1' ? 'info' : 'success'">{{
+              floorStatusLabel(row.status)
+            }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="area" label="房源面积(㎡)" width="130" align="center">
@@ -159,14 +184,32 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="memo" label="备注" min-width="140" align="center" show-overflow-tooltip />
+        <el-table-column
+          prop="memo"
+          label="备注"
+          min-width="140"
+          align="center"
+          show-overflow-tooltip
+        />
         <el-table-column label="操作" width="156" fixed="right" align="center">
           <template #default="{ row }">
             <div class="table-row-actions">
-              <el-button v-if="permission.floor_view" text type="primary" :icon="View" @click="openView(row)">
+              <el-button
+                v-if="permission.floor_view"
+                text
+                type="primary"
+                :icon="View"
+                @click="openView(row)"
+              >
                 查看
               </el-button>
-              <el-button v-if="permission.floor_edit" text type="primary" :icon="Edit" @click="openEdit(row)">
+              <el-button
+                v-if="permission.floor_edit"
+                text
+                type="primary"
+                :icon="Edit"
+                @click="openEdit(row)"
+              >
                 编辑
               </el-button>
             </div>
@@ -225,7 +268,12 @@
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-select v-model="form.status">
-            <el-option v-for="item in floorStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
+            <el-option
+              v-for="item in floorStatusOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="备注">
@@ -235,12 +283,7 @@
       <section v-if="form.id" class="floor-room-editor">
         <div class="drawer-section-title">
           <span>房间管理</span>
-          <el-button
-            v-if="!formReadonly"
-            type="primary"
-            :icon="Plus"
-            @click="openRoomCreate(form)"
-          >
+          <el-button v-if="!formReadonly" type="primary" :icon="Plus" @click="openRoomCreate(form)">
             新增房间
           </el-button>
         </div>
@@ -265,7 +308,9 @@
       </section>
       <template #footer>
         <el-button @click="drawerVisible = false">取消</el-button>
-        <el-button v-if="!formReadonly" type="primary" :loading="saving" @click="submitForm">保存</el-button>
+        <el-button v-if="!formReadonly" type="primary" :loading="saving" @click="submitForm"
+          >保存</el-button
+        >
       </template>
     </el-drawer>
 
@@ -276,9 +321,20 @@
       append-to-body
       @closed="resetRoomForm"
     >
-      <el-form ref="roomFormRef" :model="roomForm" :rules="roomRules" label-width="110px" class="room-form">
+      <el-form
+        ref="roomFormRef"
+        :model="roomForm"
+        :rules="roomRules"
+        label-width="110px"
+        class="room-form"
+      >
         <el-form-item label="所属建筑" prop="buildingId">
-          <el-select v-model="roomForm.buildingId" filterable placeholder="请选择建筑" @change="handleRoomBuildingChange">
+          <el-select
+            v-model="roomForm.buildingId"
+            filterable
+            placeholder="请选择建筑"
+            @change="handleRoomBuildingChange"
+          >
             <el-option
               v-for="building in buildingOptions"
               :key="building.id"
@@ -300,17 +356,33 @@
           />
         </el-form-item>
         <el-form-item label="面积(㎡)" prop="area">
-          <el-input-number v-model="roomForm.area" :min="0" :precision="2" controls-position="right" />
+          <el-input-number
+            v-model="roomForm.area"
+            :min="0"
+            :precision="2"
+            controls-position="right"
+          />
           <div v-if="currentFloorArea !== null" class="form-tip">
-            当前楼层总面积 {{ formatNumber(currentFloorArea) }}㎡，已用 {{ formatNumber(currentFloorUsedArea) }}㎡，剩余
+            当前楼层总面积 {{ formatNumber(currentFloorArea) }}㎡，已用
+            {{ formatNumber(currentFloorUsedArea) }}㎡，剩余
             {{ formatNumber(currentFloorRemainArea) }}㎡
           </div>
         </el-form-item>
         <el-form-item label="月租金(元)">
-          <el-input-number v-model="roomForm.rentPrice" :min="0" :precision="2" controls-position="right" />
+          <el-input-number
+            v-model="roomForm.rentPrice"
+            :min="0"
+            :precision="2"
+            controls-position="right"
+          />
         </el-form-item>
         <el-form-item label="物业费">
-          <el-input-number v-model="roomForm.propertyFee" :min="0" :precision="2" controls-position="right" />
+          <el-input-number
+            v-model="roomForm.propertyFee"
+            :min="0"
+            :precision="2"
+            controls-position="right"
+          />
         </el-form-item>
         <el-form-item label="户型">
           <el-input v-model="roomForm.houseType" maxlength="50" placeholder="如：开放办公" />
@@ -359,7 +431,13 @@
           <div class="form-tip">支持 jpg、png 等图片格式，最多上传 9 张，单张不超过 10MB。</div>
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="roomForm.memo" type="textarea" :rows="3" maxlength="200" show-word-limit />
+          <el-input
+            v-model="roomForm.memo"
+            type="textarea"
+            :rows="3"
+            maxlength="200"
+            show-word-limit
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -384,6 +462,8 @@ import {
   removeRoom,
   submit,
   submitRoom,
+  syncRoomMini,
+  unsyncRoomMini,
 } from '@/api/park/floor';
 import { getToken } from '@/utils/auth';
 
@@ -624,7 +704,11 @@ export default {
     handleFormBuildingChange(buildingId) {
       const building = this.findBuilding(buildingId);
       this.form.parkId = building ? building.parkId : undefined;
-      if (building && this.form.floorNo && Number(this.form.floorNo) > Number(building.floors || 0)) {
+      if (
+        building &&
+        this.form.floorNo &&
+        Number(this.form.floorNo) > Number(building.floors || 0)
+      ) {
         this.form.floorNo = undefined;
       }
       if (building && !this.form.area && building.area && building.floors) {
@@ -654,7 +738,10 @@ export default {
       const buildingId = this.roomForm.buildingId;
       const floorNo = this.roomForm.floor;
       getFloorSimpleList({ buildingId, floorNo }).then(res => {
-        if (String(this.roomForm.buildingId) !== String(buildingId) || String(this.roomForm.floor) !== String(floorNo)) {
+        if (
+          String(this.roomForm.buildingId) !== String(buildingId) ||
+          String(this.roomForm.floor) !== String(floorNo)
+        ) {
           return;
         }
         const floor = (res.data.data || [])[0];
@@ -737,6 +824,28 @@ export default {
           this.refreshFloorAfterRoomChange(floor && floor.id);
         });
     },
+    handleSyncRoom(room) {
+      if (!room || !room.id) return;
+      const synced = room.syncStatus === '1';
+      const action = synced ? unsyncRoomMini : syncRoomMini;
+      const execute = () =>
+        action(room.id).then(() => {
+          ElMessage.success(synced ? '已从小程序下架' : '已标记同步');
+          this.refreshFloorAfterRoomChange(this.activeRoomFloorId);
+          this.loadData();
+        });
+      if (!synced) {
+        execute();
+        return;
+      }
+      ElMessageBox.confirm('下架后企业小程序将不再显示该房源，确定下架吗？', '下架小程序房源', {
+        type: 'warning',
+        confirmButtonText: '确定下架',
+        cancelButtonText: '取消',
+      })
+        .then(execute)
+        .catch(() => undefined);
+    },
     submitRoomForm() {
       this.$refs.roomFormRef.validate(valid => {
         if (!valid) {
@@ -756,7 +865,9 @@ export default {
           this.roomForm.area !== undefined &&
           Number(this.roomForm.area || 0) > Number(this.currentFloorRemainArea || 0)
         ) {
-          ElMessage.warning(`房间面积不能超过当前楼层剩余面积 ${this.formatNumber(this.currentFloorRemainArea)}㎡`);
+          ElMessage.warning(
+            `房间面积不能超过当前楼层剩余面积 ${this.formatNumber(this.currentFloorRemainArea)}㎡`
+          );
           return;
         }
         this.roomSaving = true;
@@ -847,7 +958,9 @@ export default {
       return option ? option.label : '空置';
     },
     roomStatusClass(status) {
-      return `room-tag-${['0', '1', '2', '3', '4', '5', '6', '7'].includes(String(status)) ? status : '0'}`;
+      return `room-tag-${
+        ['0', '1', '2', '3', '4', '5', '6', '7'].includes(String(status)) ? status : '0'
+      }`;
     },
     visibleRoomStatusTags(row = {}) {
       return this.roomStatusOptions
@@ -870,7 +983,8 @@ export default {
       return isImage && isValidSize;
     },
     handleRoomImageUploadSuccess(response, uploadFile, uploadFiles) {
-      const success = response && (response.success || response.code === 200 || response.code === 0);
+      const success =
+        response && (response.success || response.code === 200 || response.code === 0);
       const data = response && response.data;
       const url = typeof data === 'string' ? data : (data && (data.link || data.url)) || '';
       if (!success || !url) {
@@ -900,13 +1014,21 @@ export default {
       return this.roomImageFileList.some(file => file.status && file.status !== 'success');
     },
     syncRoomImageField() {
-      this.roomForm.sceneImages = this.roomImageFileList.map(file => file.url).filter(Boolean).join(',');
+      this.roomForm.sceneImages = this.roomImageFileList
+        .map(file => file.url)
+        .filter(Boolean)
+        .join(',');
     },
     normalizeRoomImageFiles(files) {
       return (Array.isArray(files) ? files : [])
         .map((file, index) => {
           const responseData = file.response && file.response.data;
-          const url = file.url || (typeof responseData === 'string' ? responseData : responseData && (responseData.link || responseData.url)) || '';
+          const url =
+            file.url ||
+            (typeof responseData === 'string'
+              ? responseData
+              : responseData && (responseData.link || responseData.url)) ||
+            '';
           return {
             uid: file.uid || `${Date.now()}-${index}`,
             name: file.name || (url ? url.split('/').pop() : `房间照片${index + 1}`),
@@ -1019,11 +1141,17 @@ export default {
 }
 
 .room-name-cell,
+.room-sync-cell,
 .drawer-room-item {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
+}
+
+.room-sync-cell {
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .room-name-text,

@@ -1088,22 +1088,24 @@ export default {
 
 .approval-item strong {
   display: block;
-  overflow: hidden;
+  overflow: visible;
   color: #303133;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-all;
 }
 
 .approval-item p {
   margin: 10px 0;
   color: #8a94a6;
   font-size: 13px;
+  line-height: 1.5;
 }
 
 .approval-item p em {
-  margin-left: 12px;
+  margin-left: 8px;
   color: #303133;
   font-style: normal;
 }

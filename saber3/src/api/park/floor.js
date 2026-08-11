@@ -75,6 +75,22 @@ export const removeRoom = ids => {
   });
 };
 
+export const syncRoomMini = id => {
+  return request({
+    url: '/blade-park/room/sync-mini',
+    method: 'post',
+    params: { id },
+  });
+};
+
+export const unsyncRoomMini = id => {
+  return request({
+    url: '/blade-park/room/unsync-mini',
+    method: 'post',
+    params: { id },
+  });
+};
+
 export const syncBuilding = buildingId => {
   return request({
     url: `/blade-park/floor/sync/${buildingId}`,

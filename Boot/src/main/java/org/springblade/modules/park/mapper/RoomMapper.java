@@ -109,6 +109,15 @@ public interface RoomMapper extends BaseMapper<Room> {
 	int markSyncMini(@Param("id") Long id, @Param("updateBy") String updateBy);
 
 	/**
+	 * 下架小程序房源
+	 *
+	 * @param id 房源ID
+	 * @param updateBy 操作人
+	 * @return 更新数量
+	 */
+	int unmarkSyncMini(@Param("id") Long id, @Param("updateBy") String updateBy);
+
+	/**
 	 * 判断表是否存在
 	 *
 	 * @param tableName 表名
