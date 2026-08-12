@@ -1227,6 +1227,17 @@ export default {
         this.$message.warning('当前账单缺少合同信息，无法发起申请');
         return;
       }
+      if (this.isTerminationDepositRefund(row) && !this.isAddressChangeConfirmed(row)) {
+        this.$alert(
+          '请先在退租管理中登记并确认客户注册地址已变更，再发起押金退还付款申请。',
+          '付款申请前置条件',
+          {
+            confirmButtonText: '知道了',
+            type: 'warning',
+          }
+        );
+        return;
+      }
       this.workflowProcessOptions = [];
       this.workflowExistingRecord = {};
       this.workflowForm.processDefKey = '';
@@ -1488,6 +1499,10 @@ export default {
     },
     goApplicationWorkflow() {
       const row = this.workflowRow || {};
+      if (this.isTerminationDepositRefund(row) && !this.isAddressChangeConfirmed(row)) {
+        this.$message.warning('请先在退租管理中登记并确认客户注册地址已变更');
+        return;
+      }
       const existingStatus = (this.workflowExistingRecord || {}).processStatus;
       if (existingStatus === 'running') {
         this.$message.warning(
@@ -1564,6 +1579,19 @@ export default {
       const encodedParam = encodeURIComponent(Base64.encode(JSON.stringify(payload)));
       this.workflowVisible = false;
       this.$router.push(`/plugin/workflow/pages/process/form/start/${encodedParam}`);
+    },
+    isTerminationDepositRefund(row = {}) {
+      return (
+        String(row.direction || this.direction) === 'payable' &&
+        (String(row.feeType || '') === 'deposit_refund' ||
+          String(row.specialBillType || '') === 'termination_settlement')
+      );
+    },
+    isAddressChangeConfirmed(row = {}) {
+      return (
+        String(row.addressChangeStatus || '') === '1' &&
+        Boolean(String(row.addressChangeAddress || '').trim())
+      );
     },
     buildInvoiceAmountParams(row = {}) {
       const marker = `${row.feeType || ''}|${row.feeName || ''}`.toLowerCase();

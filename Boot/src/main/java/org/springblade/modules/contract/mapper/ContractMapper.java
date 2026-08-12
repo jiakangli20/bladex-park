@@ -42,6 +42,11 @@ import java.util.List;
 public interface ContractMapper extends BaseMapper<Contract> {
 
 	/**
+	 * 合同列表（用于导出）.
+	 */
+	List<Contract> selectContractList(@Param("contract") Contract contract);
+
+	/**
 	 * 合同分页列表
 	 *
 	 * @param page     分页

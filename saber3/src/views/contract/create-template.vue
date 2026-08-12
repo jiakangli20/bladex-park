@@ -1,51 +1,7 @@
 <template>
   <basic-container>
     <div class="contract-create-page">
-      <template v-if="pageMode === 'list'">
-        <section class="template-list-card">
-          <header class="list-header">
-            <div>
-              <h3>合同模板列表</h3>
-              <span>选择模板后在一个页面完成合同创建</span>
-            </div>
-            <el-button type="primary" @click="handleTemplateAdd">+ 模板</el-button>
-          </header>
-
-          <el-table :data="templates" border class="template-table" row-key="key">
-            <el-table-column
-              prop="name"
-              label="模板名称"
-              min-width="220"
-              align="center"
-              show-overflow-tooltip
-            />
-            <el-table-column
-              prop="projectName"
-              label="应用项目"
-              width="180"
-              align="center"
-              show-overflow-tooltip
-            />
-            <el-table-column prop="updateTime" label="更新时间" width="180" align="center" />
-            <el-table-column prop="expireTime" label="截止时间" width="120" align="center" />
-            <el-table-column label="状态" width="110" align="center">
-              <template #default="{ row }">
-                <el-switch v-model="row.enabled" disabled />
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="210" align="center" fixed="right">
-              <template #default="{ row }">
-                <el-button text type="primary" @click="startCreate(row)">创建合同</el-button>
-                <el-button text type="primary" @click="previewTemplate(row)">预览</el-button>
-                <el-button text type="danger" disabled>删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </section>
-      </template>
-
-      <template v-else>
-        <section class="create-step-bar">
+      <section class="create-step-bar">
           <button type="button" class="back-btn" @click="backToList">
             <el-icon><ArrowLeft /></el-icon>
           </button>
@@ -629,12 +585,11 @@
         </div>
 
         <section class="create-footer">
-          <el-button @click="backToList">{{ editMode ? '返回合同列表' : '返回模板列表' }}</el-button>
+          <el-button @click="backToList">返回合同列表</el-button>
           <el-button type="primary" :loading="submitLoading" @click="submitContract"
             >{{ editMode ? '保存修改' : '保存合同' }}</el-button
           >
         </section>
-      </template>
     </div>
   </basic-container>
 </template>
@@ -647,8 +602,6 @@ import { getList as getParkList } from '@/api/park/park';
 import { getSimpleList as getBuildingList } from '@/api/park/building';
 import { getRoomDetail, getRoomList } from '@/api/park/rent-control';
 
-const TEMPLATE_BASE = '/系统所需材料/君联合同';
-
 export default {
   name: 'ContractCreateTemplate',
   components: {
@@ -656,7 +609,6 @@ export default {
   },
   data() {
     return {
-      pageMode: 'list',
       activeAnchor: 'basic',
       currentTemplateKey: 'fixed-rent',
       renewalMode: false,
@@ -845,24 +797,11 @@ export default {
       });
       this.loadRooms();
     },
-    handleTemplateAdd() {
-      this.$router.push({ path: '/contract/print-template' });
-    },
     initFromRoute() {
       const query = this.$route.query || {};
       const templateKey = query.template;
       if (templateKey && this.templates.some(item => item.key === templateKey)) {
         this.currentTemplateKey = templateKey;
-        this.pageMode = 'create';
-      }
-      if (
-        query.mode === 'create' ||
-        query.mode === 'renew' ||
-        query.mode === 'edit' ||
-        query.customerId ||
-        query.customerName
-      ) {
-        this.pageMode = 'create';
       }
       if (query.mode === 'edit' && query.contractId) {
         this.editMode = true;
@@ -1102,28 +1041,8 @@ export default {
       this.form.stage1RentPrice = this.form.stage1RentPrice || this.form.rentPrice;
       this.form.stage1MonthlyRent = this.form.stage1MonthlyRent || this.form.monthlyRent;
     },
-    previewTemplate(row) {
-      window.open(`${TEMPLATE_BASE}/${row.previewFileName}`, '_blank');
-    },
-    startCreate(row) {
-      this.currentTemplateKey = row.key;
-      this.form = this.emptyForm();
-      this.selectedCustomer = {};
-      this.customerMode = 'existing';
-      this.pageMode = 'create';
-      this.activeAnchor = 'basic';
-      this.$nextTick(() => {
-        if (this.$refs.contractForm) {
-          this.$refs.contractForm.clearValidate();
-        }
-      });
-    },
     backToList() {
-      if (this.editMode) {
-        this.$router.push({ path: '/contract/contract' });
-        return;
-      }
-      this.pageMode = 'list';
+      this.$router.push({ path: '/contract/contract' });
     },
     handleCustomerModeChange(mode) {
       if (mode === 'manual') {
@@ -1556,7 +1475,6 @@ export default {
   gap: 14px;
 }
 
-.template-list-card,
 .create-step-bar,
 .form-section,
 .room-panel,
@@ -1565,33 +1483,6 @@ export default {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   background: #fff;
-}
-
-.list-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 64px;
-  padding: 0 20px;
-  border-bottom: 1px solid #edf0f5;
-}
-
-.list-header h3 {
-  margin: 0;
-  color: #1f2937;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.list-header span {
-  display: block;
-  margin-top: 4px;
-  color: #909399;
-  font-size: 12px;
-}
-
-.template-table {
-  width: 100%;
 }
 
 .create-step-bar {

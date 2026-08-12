@@ -351,6 +351,16 @@
 		  and del_flag = '0'
 	</update>
 
+	<update id="updateRegisteredAddress">
+		update biz_customer
+		set registered_address = #{registeredAddress},
+			address = #{registeredAddress},
+			update_by = #{updateBy},
+			update_time = now()
+		where customer_id = #{customerId}
+		  and del_flag = '0'
+	</update>
+
 	<update id="updateCustomerCheckResult" parameterType="org.springblade.modules.business.pojo.entity.Customer">
 		update biz_customer
 		<set>

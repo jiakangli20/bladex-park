@@ -80,6 +80,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	private static final String PROCESS_KEY_TENANT_ENTRY = "entry";
 	private static final String PROCESS_KEY_TENANT_ENTRY_CUSTOM_LEGACY = "tenant_entry-1";
 	private static final String TEMPLATE_TENANT_ENTRY_APPROVAL = "君联大厦招商管理办法2023/附件一：企业入驻审批表.docx";
+	private static final java.util.regex.Pattern EMAIL_PATTERN = java.util.regex.Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 	private static final Set<String> OPPORTUNITY_FILE_SUFFIXES = Set.of("doc", "docx", "xls", "xlsx", "pdf", "jpg", "jpeg", "png");
 	private static final Set<String> DANGEROUS_SUFFIXES = Set.of("exe", "com", "dll", "msi", "bat", "cmd", "sh", "js", "jar", "php", "jsp", "html", "htm", "svg", "scr");
 	private static final long MAX_OPENXML_EXPANDED_BYTES = 200L * 1024L * 1024L;
@@ -132,6 +133,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean insertBusinessOpportunity(BusinessOpportunity opportunity) {
+		validateRequiredContactMaterials(opportunity);
 		validateUniqueEnterpriseName(opportunity);
 		opportunity.setCreateBy(currentUserName());
 		opportunity.setCreateTime(DateUtil.now());
@@ -173,6 +175,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		}
 		// 园区归属不允许通过普通编辑迁移，避免背景调查、标签和后续审批形成跨园区关系。
 		opportunity.setParkId(old.getParkId());
+		validateRequiredContactMaterials(mergeForRequiredValidation(old, opportunity));
 		validateUniqueEnterpriseName(opportunity);
 		opportunity.setUpdateBy(currentUserName());
 		opportunity.setUpdateTime(DateUtil.now());
@@ -801,6 +804,22 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (Func.isNotEmpty(count) && count > 0) {
 			throw new ServiceException("企业名称已存在，请勿重复录入");
 		}
+	}
+
+	private void validateRequiredContactMaterials(BusinessOpportunity opportunity) {
+		if (StringUtil.isBlank(opportunity.getContactEmail()) || !EMAIL_PATTERN.matcher(opportunity.getContactEmail().trim()).matches()) {
+			throw new ServiceException("邮箱必须为合法邮箱地址");
+		}
+		if (StringUtil.isBlank(opportunity.getIdCardFiles()) || "[]".equals(opportunity.getIdCardFiles().trim())) {
+			throw new ServiceException("请上传身份证资料");
+		}
+	}
+
+	private BusinessOpportunity mergeForRequiredValidation(BusinessOpportunity old, BusinessOpportunity patch) {
+		BusinessOpportunity merged = new BusinessOpportunity();
+		merged.setContactEmail(firstNotBlank(patch.getContactEmail(), old.getContactEmail()));
+		merged.setIdCardFiles(firstNotBlank(patch.getIdCardFiles(), old.getIdCardFiles()));
+		return merged;
 	}
 
 	private String normalizeOpportunityStatus(String status) {

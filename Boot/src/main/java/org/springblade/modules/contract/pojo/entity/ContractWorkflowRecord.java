@@ -185,6 +185,24 @@ public class ContractWorkflowRecord implements Serializable {
 	private BigDecimal deposit;
 
 	@TableField(exist = false)
+	@Schema(description = "退租注册地址变更状态：0未确认，1已确认")
+	private String addressChangeStatus;
+
+	@TableField(exist = false)
+	@Schema(description = "退租后注册地址")
+	private String addressChangeAddress;
+
+	@TableField(exist = false)
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@Schema(description = "退租注册地址变更确认时间")
+	private Date addressChangeTime;
+
+	@TableField(exist = false)
+	@Schema(description = "退租注册地址变更确认人")
+	private String addressChangeBy;
+
+	@TableField(exist = false)
 	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
 	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
 	@Schema(description = "合同开始日期")

@@ -52,6 +52,10 @@ public interface CustomerMapper extends BaseMapper<Customer> {
 							 @Param("status") String status,
 							 @Param("updateBy") String updateBy);
 
+	int updateRegisteredAddress(@Param("customerId") Long customerId,
+								@Param("registeredAddress") String registeredAddress,
+								@Param("updateBy") String updateBy);
+
 	int updateCustomerCheckResult(Customer customer);
 
 	int updateOpportunityEnterpriseNameByCustomerId(@Param("customerId") Long customerId,

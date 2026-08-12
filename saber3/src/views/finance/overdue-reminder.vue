@@ -281,7 +281,7 @@
               <div v-for="item in drawerNoticeTypes" :key="item.value" class="document-row">
                 <div class="document-row__name">
                   <strong>{{ item.label }}</strong>
-                  <span>非审批 Word 文书</span>
+                  <span>{{ noticeTimingText(drawerRow, item) }}</span>
                 </div>
                 <div class="document-row__actions">
                   <el-button text type="primary" @click="previewNotice(drawerRow, item.value)"
@@ -656,6 +656,7 @@ export default {
         { label: '未缴金额', value: this.formatMoney(this.unpaidAmount(row)) },
         { label: '应缴日期', value: row.payDeadline || '-' },
         { label: '逾期天数', value: `${this.overdueDays(row)}天` },
+        { label: '逾期工作日', value: `${this.businessDaysOverdue(row)}个` },
         { label: '催缴状态', value: row.remindStatus === '1' ? '已催缴' : '未催缴' },
         { label: '律师函审批', value: this.approvalStatusText(row.overdueApprovalStatus) },
         { label: '退租审批', value: this.approvalStatusText(row.terminationApprovalStatus) },
@@ -663,8 +664,8 @@ export default {
     },
     drawerNoticeTypes() {
       return [
-        { label: '催款通知书', value: 'reminder-notice' },
-        { label: '逾期处理通知书', value: 'overdue-notice' },
+        { label: '催款通知书', value: 'reminder-notice', recommendedBusinessDays: 20 },
+        { label: '逾期处理通知书', value: 'overdue-notice', recommendedBusinessDays: 5 },
         { label: '限期搬离通知书', value: 'move-out-notice' },
       ];
     },
@@ -927,11 +928,28 @@ export default {
         '审批表预览'
       );
     },
-    handleGenerateNotice(row, noticeType) {
+    async handleGenerateNotice(row, noticeType) {
       if (!row || !row.paymentId) return;
       if (this.isSettled(row)) {
         this.$message.warning('该账单已结清，不能继续生成催缴文书');
         return;
+      }
+      const rule = this.noticeGenerationRule(noticeType);
+      const elapsedBusinessDays = this.businessDaysOverdue(row);
+      if (rule && elapsedBusinessDays < rule.recommendedBusinessDays) {
+        try {
+          await this.$confirm(
+            `当前逾期${elapsedBusinessDays}个工作日，尚未达到${rule.recommendedBusinessDays}个工作日的建议生成节点，是否提前生成${rule.label}？`,
+            '提前生成确认',
+            {
+              confirmButtonText: '继续生成',
+              cancelButtonText: '取消',
+              type: 'warning',
+            }
+          );
+        } catch (error) {
+          return;
+        }
       }
       const params = {
         noticeType,
@@ -1311,11 +1329,52 @@ export default {
       };
       return map[String(value || '')] || value || '-';
     },
+    noticeGenerationRule(noticeType) {
+      const rules = {
+        'overdue-notice': {
+          label: '逾期处理通知书',
+          recommendedBusinessDays: 5,
+        },
+        'reminder-notice': {
+          label: '催款通知书',
+          recommendedBusinessDays: 20,
+        },
+      };
+      return rules[noticeType] || null;
+    },
+    noticeTimingText(row, item = {}) {
+      const recommendedBusinessDays = Number(item.recommendedBusinessDays || 0);
+      if (!recommendedBusinessDays) return '非审批 Word 文书';
+      const elapsedBusinessDays = this.businessDaysOverdue(row);
+      if (elapsedBusinessDays >= recommendedBusinessDays) {
+        return `已满${recommendedBusinessDays}个工作日，可生成`;
+      }
+      return `建议满${recommendedBusinessDays}个工作日生成，当前${elapsedBusinessDays}个工作日`;
+    },
     overdueDays(row) {
       if (!row || !row.payDeadline || row.payStatus === '1') return 0;
       const deadline = new Date(row.payDeadline).getTime();
       if (Number.isNaN(deadline) || deadline >= Date.now()) return 0;
       return Math.ceil((Date.now() - deadline) / 86400000);
+    },
+    businessDaysOverdue(row) {
+      if (!row || !row.payDeadline || row.payStatus === '1') return 0;
+      const deadlineText = String(row.payDeadline).slice(0, 10);
+      const dateParts = deadlineText.split('-').map(Number);
+      if (dateParts.length !== 3 || dateParts.some(part => Number.isNaN(part))) return 0;
+      const deadline = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (Number.isNaN(deadline.getTime()) || deadline >= today) return 0;
+      let businessDays = 0;
+      const cursor = new Date(deadline);
+      cursor.setDate(cursor.getDate() + 1);
+      while (cursor <= today) {
+        const day = cursor.getDay();
+        if (day !== 0 && day !== 6) businessDays += 1;
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      return businessDays;
     },
     isSettled(row) {
       return String((row && row.payStatus) || '') === '1';

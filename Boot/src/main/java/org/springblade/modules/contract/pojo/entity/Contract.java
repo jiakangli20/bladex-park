@@ -168,6 +168,20 @@ public class Contract implements Serializable {
 	@Schema(description = "合同附件URL")
 	private String contractFileUrl;
 
+	@Schema(description = "退租注册地址变更状态：0未确认，1已确认")
+	private String addressChangeStatus;
+
+	@Schema(description = "退租后注册地址")
+	private String addressChangeAddress;
+
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@Schema(description = "退租注册地址变更确认时间")
+	private Date addressChangeTime;
+
+	@Schema(description = "退租注册地址变更确认人")
+	private String addressChangeBy;
+
 	@Schema(description = "备注")
 	private String remark;
 

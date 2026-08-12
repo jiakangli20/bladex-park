@@ -39,6 +39,10 @@
         <result column="contract_status_name" property="contractStatusName"/>
         <result column="monthly_rent" property="monthlyRent"/>
         <result column="deposit" property="deposit"/>
+		<result column="address_change_status" property="addressChangeStatus"/>
+		<result column="address_change_address" property="addressChangeAddress"/>
+		<result column="address_change_time" property="addressChangeTime"/>
+		<result column="address_change_by" property="addressChangeBy"/>
         <result column="start_date" property="startDate"/>
         <result column="end_date" property="endDate"/>
     </resultMap>
@@ -122,6 +126,10 @@
                END AS contract_status_name,
                c.monthly_rent,
                c.deposit,
+			   c.address_change_status,
+			   c.address_change_address,
+			   c.address_change_time,
+			   c.address_change_by,
                c.start_date,
                c.end_date
         FROM biz_contract_workflow_record cwr

@@ -27,6 +27,7 @@ package org.springblade.modules.contract.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
+import org.springblade.modules.contract.excel.ContractExcel;
 import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractChange;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
@@ -42,6 +43,21 @@ import java.util.List;
  * @author Chill
  */
 public interface IContractService extends IService<Contract> {
+
+	/**
+	 * 导出合同数据.
+	 *
+	 * @param contract 查询条件
+	 * @return 导出数据
+	 */
+	List<ContractExcel> exportContract(Contract contract);
+
+	/**
+	 * 导入合同数据.
+	 *
+	 * @param data Excel 数据
+	 */
+	void importContract(List<ContractExcel> data);
 
 	/**
 	 * 合同分页
@@ -175,6 +191,22 @@ public interface IContractService extends IService<Contract> {
 	 * @return 押金退还付款单
 	 */
 	ContractPayment ensureDepositRefundPayment(Long contractId);
+
+	/**
+	 * 登记退租客户注册地址变更.
+	 *
+	 * @param contractId        合同ID
+	 * @param registeredAddress 变更后的注册地址
+	 * @return 合同信息
+	 */
+	Contract confirmTerminationAddressChange(Long contractId, String registeredAddress);
+
+	/**
+	 * 校验退租押金付款申请前置条件，供所有付款申请入口复用.
+	 *
+	 * @param contractId 合同ID
+	 */
+	void validateDepositRefundApplication(Long contractId);
 
 	/**
 	 * 完成房屋验收后的退租收口，包含状态、账单和房源处理.

@@ -162,6 +162,9 @@
               <el-button type="primary" plain @click="handleStartRoomReview(detailRecord)">
                 房屋验收审批
               </el-button>
+              <el-button type="primary" plain @click="openAddressChange(detailRecord)">
+                登记地址变更
+              </el-button>
               <el-button type="primary" plain @click="handleStartDepositRefund(detailRecord)">
                 付款申请
               </el-button>
@@ -266,6 +269,58 @@
       </el-dialog>
 
       <el-dialog
+        v-model="addressChangeVisible"
+        title="登记客户注册地址变更"
+        width="620px"
+        append-to-body
+        class="address-change-dialog"
+      >
+        <div class="address-change-content">
+          <div class="address-change-summary">
+            <div class="address-change-summary__row">
+              <span>企业名称</span>
+              <strong>{{ detailRecord.customerName || '-' }}</strong>
+            </div>
+            <div class="address-change-summary__row">
+              <span>当前注册地址</span>
+              <strong>{{ addressChangeForm.currentAddress || '暂无登记地址' }}</strong>
+            </div>
+          </div>
+          <el-form
+            :model="addressChangeForm"
+            label-position="top"
+            class="address-change-form"
+          >
+            <el-form-item required>
+              <template #label>
+                <span class="address-change-label">变更后注册地址</span>
+              </template>
+              <el-input
+                v-model="addressChangeForm.registeredAddress"
+                type="textarea"
+                :rows="4"
+                resize="none"
+                maxlength="500"
+                show-word-limit
+                placeholder="请输入客户变更后的完整注册地址"
+              />
+            </el-form-item>
+          </el-form>
+          <div class="address-change-tip">
+            确认后将同步更新客户档案，并作为退租押金付款申请的前置条件。
+          </div>
+        </div>
+        <template #footer>
+          <div class="address-change-footer">
+            <el-button @click="addressChangeVisible = false">取消</el-button>
+            <el-button type="primary" :loading="addressChangeSaving" @click="submitAddressChange">
+              确认已变更
+            </el-button>
+          </div>
+        </template>
+      </el-dialog>
+
+      <el-dialog
         v-model="materialUploadVisible"
         title="上传退租资料"
         width="560px"
@@ -330,24 +385,32 @@
       <el-dialog
         v-model="workflowVisible"
         :title="workflowDialogTitle"
-        width="720px"
+        width="760px"
         append-to-body
+        class="workflow-application-dialog"
         @close="resetWorkflowDialog"
       >
         <div class="workflow-dialog">
-          <section class="detail-section">
-            <div class="detail-section-title">{{ workflowSummaryTitle }}</div>
-            <div class="field-grid">
-              <div v-for="item in workflowSummaryItems" :key="item.label" class="field-item">
+          <section class="workflow-summary-panel">
+            <div class="workflow-panel-title">{{ workflowSummaryTitle }}</div>
+            <div class="workflow-summary-grid">
+              <div
+                v-for="item in workflowSummaryItems"
+                :key="item.label"
+                class="workflow-summary-item"
+              >
                 <span>{{ item.label }}</span>
                 <strong>{{ item.value }}</strong>
               </div>
             </div>
           </section>
-          <section class="detail-section">
-            <div class="detail-section-title">审批配置</div>
-            <el-form :model="workflowForm" label-width="108px">
-              <el-form-item label="审批流程" required>
+          <section class="workflow-config-panel">
+            <div class="workflow-panel-title">审批配置</div>
+            <el-form :model="workflowForm" label-position="top" class="workflow-config-form">
+              <el-form-item required>
+                <template #label>
+                  <span class="workflow-form-label">审批流程</span>
+                </template>
                 <el-select
                   v-model="workflowForm.processDefKey"
                   filterable
@@ -373,16 +436,19 @@
               </el-form-item>
             </el-form>
           </section>
+          <div class="workflow-dialog-tip">{{ workflowDialogTip }}</div>
         </div>
         <template #footer>
-          <el-button @click="workflowVisible = false">取消</el-button>
-          <el-button
-            type="primary"
-            :disabled="!workflowForm.processDefKey || workflowLoading"
-            @click="goWorkflow"
-          >
-            下一步
-          </el-button>
+          <div class="workflow-dialog-footer">
+            <el-button @click="workflowVisible = false">取消</el-button>
+            <el-button
+              type="primary"
+              :disabled="!workflowForm.processDefKey || workflowLoading"
+              @click="goWorkflow"
+            >
+              下一步
+            </el-button>
+          </div>
         </template>
       </el-dialog>
 
@@ -407,6 +473,7 @@
 <script>
 import { Base64 } from 'js-base64';
 import {
+  confirmTerminationAddressChange,
   ensureDepositRefundPayment,
   getDepositRefundPayment,
   getLatestWorkflowRecord,
@@ -533,6 +600,12 @@ export default {
       precheckVisible: false,
       precheckTitle: '',
       precheckItems: [],
+      addressChangeVisible: false,
+      addressChangeSaving: false,
+      addressChangeForm: {
+        currentAddress: '',
+        registeredAddress: '',
+      },
       noticePreview: createNoticePreviewState(),
     };
   },
@@ -796,6 +869,13 @@ export default {
         { label: '退租阶段', value: this.terminationStageText(row) },
         { label: '当前节点', value: row.currentNode || '-' },
         { label: '合同状态', value: row.contractStatusName || this.statusText(row.contractStatus) },
+        {
+          label: '注册地址变更',
+          value:
+            String(row.addressChangeStatus || '') === '1'
+              ? `已确认${row.addressChangeTime ? `（${row.addressChangeTime}）` : ''}`
+              : '未确认',
+        },
         { label: '保证金', value: this.formatMoney(row.deposit) },
         { label: '发起时间', value: row.createTime || '-' },
         { label: '完成时间', value: row.approvalTime || '-' },
@@ -812,6 +892,11 @@ export default {
     },
     workflowProcessPlaceholder() {
       return this.workflowConfig.placeholder;
+    },
+    workflowDialogTip() {
+      return this.workflowType === PAYMENT_BUSINESS_TYPE
+        ? '提交后将进入付款审批流程，审批通过后由财务在所有账单中确认付款。'
+        : '提交后将进入房屋验收审批流程，审批完成后才能继续退租结算。';
     },
     workflowSummaryItems() {
       const row = this.workflowRecord || {};
@@ -987,6 +1072,58 @@ export default {
     openTerminationDetail(row) {
       this.detailRecord = { ...(row || {}) };
       this.detailVisible = true;
+    },
+    async openAddressChange(row) {
+      if (!row || !row.contractId || !row.customerId) {
+        this.$message.warning('当前退租合同未关联客户档案');
+        return;
+      }
+      if (!['7', '8', '4'].includes(String(row.contractStatus || ''))) {
+        this.$message.warning('退租审批完成并进入交接阶段后才可以登记地址变更');
+        return;
+      }
+      let currentAddress = row.addressChangeAddress || '';
+      try {
+        const res = await getCustomerDetail(row.customerId);
+        const customer = res.data.data || {};
+        currentAddress = customer.registeredAddress || customer.address || currentAddress;
+      } catch (error) {
+        // 客户详情读取失败时仍允许根据退租记录中的地址继续登记。
+      }
+      this.addressChangeForm = {
+        currentAddress,
+        registeredAddress: row.addressChangeAddress || currentAddress || '',
+      };
+      this.addressChangeVisible = true;
+    },
+    submitAddressChange() {
+      const registeredAddress = String(this.addressChangeForm.registeredAddress || '').trim();
+      if (!registeredAddress) {
+        this.$message.warning('请输入变更后的注册地址');
+        return;
+      }
+      this.addressChangeSaving = true;
+      confirmTerminationAddressChange(this.detailRecord.contractId, registeredAddress)
+        .then(res => {
+          const contract = res.data.data || {};
+          const patch = {
+            addressChangeStatus: contract.addressChangeStatus || '1',
+            addressChangeAddress: contract.addressChangeAddress || registeredAddress,
+            addressChangeTime: contract.addressChangeTime || '',
+            addressChangeBy: contract.addressChangeBy || '',
+          };
+          this.detailRecord = { ...this.detailRecord, ...patch };
+          this.data = this.data.map(item =>
+            String(item.contractId) === String(this.detailRecord.contractId)
+              ? { ...item, ...patch }
+              : item
+          );
+          this.addressChangeVisible = false;
+          this.$message.success('客户注册地址变更已登记');
+        })
+        .finally(() => {
+          this.addressChangeSaving = false;
+        });
     },
     parseAttachment(row = {}) {
       return this.parseAttachmentJson(row.attachmentJson);
@@ -1432,6 +1569,14 @@ export default {
       return [
         ...this.basicRecordPrerequisites(row, { requireTerminated: true }),
         {
+          label: '客户注册地址已变更',
+          done:
+            String(row?.addressChangeStatus || '') === '1' &&
+            Boolean(String(row?.addressChangeAddress || '').trim()),
+          doneText: '已登记变更',
+          pendingText: '请先登记客户注册地址变更',
+        },
+        {
           label: '合同保证金已配置',
           done: Number(row?.deposit || 0) > 0,
           pendingText: '该合同未配置可退保证金',
@@ -1809,7 +1954,128 @@ export default {
 .workflow-dialog {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 18px;
+}
+
+:global(.workflow-application-dialog .el-dialog__header) {
+  margin-right: 0;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+:global(.workflow-application-dialog .el-dialog__title) {
+  color: #303133;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+:global(.workflow-application-dialog .el-dialog__body) {
+  padding: 20px 24px 18px;
+}
+
+:global(.workflow-application-dialog .el-dialog__footer) {
+  padding: 14px 24px 18px;
+  border-top: 1px solid #ebeef5;
+}
+
+.workflow-summary-panel,
+.workflow-config-panel {
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.workflow-summary-panel {
+  padding: 0 16px 4px;
+  background: #f8fafc;
+}
+
+.workflow-config-panel {
+  padding: 16px;
+}
+
+.workflow-panel-title {
+  padding: 14px 0 12px;
+  color: #303133;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.workflow-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid #ebeef5;
+}
+
+.workflow-summary-item {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 10px;
+  min-height: 48px;
+  align-items: center;
+  padding-right: 16px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.workflow-summary-item:nth-child(even) {
+  padding-right: 0;
+  padding-left: 16px;
+  border-left: 1px solid #ebeef5;
+}
+
+.workflow-summary-item span {
+  color: #909399;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.workflow-summary-item strong {
+  min-width: 0;
+  color: #303133;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.workflow-config-form :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.workflow-config-form :deep(.el-form-item__label) {
+  padding-bottom: 8px;
+  line-height: 22px;
+}
+
+.workflow-form-label {
+  color: #303133;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.workflow-config-form :deep(.el-select__wrapper) {
+  min-height: 40px;
+}
+
+.workflow-dialog-tip {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #ecf5ff;
+  color: #606266;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.workflow-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.workflow-dialog-footer :deep(.el-button) {
+  min-width: 88px;
+  margin-left: 0;
 }
 
 .detail-section {
@@ -1944,6 +2210,109 @@ export default {
 .precheck-item.is-done {
   border-color: #b3e19d;
   background: #f0f9eb;
+}
+
+:global(.address-change-dialog .el-dialog__header) {
+  margin-right: 0;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+:global(.address-change-dialog .el-dialog__title) {
+  color: #303133;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+:global(.address-change-dialog .el-dialog__body) {
+  padding: 20px 24px 18px;
+}
+
+:global(.address-change-dialog .el-dialog__footer) {
+  padding: 14px 24px 18px;
+  border-top: 1px solid #ebeef5;
+}
+
+.address-change-content {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.address-change-summary {
+  padding: 4px 16px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.address-change-summary__row {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 16px;
+  min-height: 48px;
+  align-items: center;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.address-change-summary__row:last-child {
+  border-bottom: 0;
+}
+
+.address-change-summary__row span {
+  color: #909399;
+  font-size: 13px;
+}
+
+.address-change-summary__row strong {
+  min-width: 0;
+  color: #303133;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.address-change-form :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.address-change-form :deep(.el-form-item__label) {
+  padding-bottom: 8px;
+  line-height: 22px;
+}
+
+.address-change-label {
+  color: #303133;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.address-change-form :deep(.el-textarea__inner) {
+  min-height: 108px !important;
+  padding: 10px 12px;
+  line-height: 22px;
+}
+
+.address-change-tip {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #ecf5ff;
+  color: #606266;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.address-change-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.address-change-footer :deep(.el-button) {
+  min-width: 88px;
+  margin-left: 0;
 }
 
 .detail-section-title-row {

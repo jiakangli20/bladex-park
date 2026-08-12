@@ -289,6 +289,9 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			return;
 		}
 		WfNotice.Type type = notice.getType();
+		if (START == type) {
+			validatePaymentApplicationPrerequisites(record);
+		}
 		if (isDuplicateNotice(record, type)) {
 			return;
 		}
@@ -302,6 +305,23 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		saveRecord(record, notice);
 		updateBusinessState(record, type);
 		addWorkflowLog(record, type, notice);
+	}
+
+	private void validatePaymentApplicationPrerequisites(ContractWorkflowRecord record) {
+		if (record == null || !BUSINESS_TYPE_CONTRACT_PAYMENT.equals(record.getBusinessType())
+			|| Func.isEmpty(record.getPaymentId())) {
+			return;
+		}
+		ContractPayment payment = contractPaymentMapper.selectById(record.getPaymentId());
+		if (payment == null) {
+			throw new ServiceException("流程关联账单不存在");
+		}
+		boolean depositRefund = PAYMENT_DIRECTION_PAYABLE.equals(payment.getDirection())
+			&& (FEE_TYPE_DEPOSIT_REFUND.equals(payment.getFeeType())
+			|| "termination_settlement".equals(payment.getSpecialBillType()));
+		if (depositRefund) {
+			contractService.validateDepositRefundApplication(record.getContractId());
+		}
 	}
 
 	private ContractWorkflowRecord resolveRecord(WfNoticeDTO notice) {

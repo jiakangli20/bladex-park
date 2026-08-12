@@ -1,6 +1,19 @@
 <template>
   <basic-container>
     <div v-loading="loading" class="enterprise-data-page">
+      <header class="dashboard-header">
+        <div class="dashboard-header__title">
+          <strong>在园企业数据</strong>
+          <span>园区经营、合同、房源与设备运行概览</span>
+        </div>
+        <div class="dashboard-header__actions">
+          <el-tag type="primary" effect="plain">全部园区</el-tag>
+          <el-button circle plain title="刷新数据" :loading="loading" @click="loadData">
+            <i v-if="!loading" class="el-icon-refresh" />
+          </el-button>
+        </div>
+      </header>
+
       <div class="dashboard-row dashboard-row--top">
         <section class="dashboard-card overview-card">
           <div class="card-title">
@@ -8,19 +21,23 @@
               <span class="title-icon"><i class="el-icon-menu" /></span>
               <strong>数字概览</strong>
             </div>
+            <span class="card-note">关键经营指标</span>
           </div>
           <div class="overview-grid">
             <button
-              v-for="item in digitalOverview"
+              v-for="item in overviewCards"
               :key="item.key"
               type="button"
               class="overview-item"
               :class="`overview-item--${item.tone || 'blue'}`"
               @click="openOverviewDetail(item)"
             >
-              <span>{{ item.label }}</span>
-              <strong>{{ formatMoneyLike(item.value) }}</strong>
-              <em>详情&gt;</em>
+              <span class="overview-item__icon"><i :class="item.icon" /></span>
+              <span class="overview-item__content">
+                <em>{{ item.label }}</em>
+                <strong>{{ formatMoneyLike(item.value) }}</strong>
+              </span>
+              <i class="el-icon-arrow-right overview-item__arrow" />
             </button>
           </div>
         </section>
@@ -32,55 +49,22 @@
                 <span class="title-icon"><i class="el-icon-document" /></span>
                 <strong>合同执行</strong>
               </div>
-              <el-button text type="primary" @click="go('/contract/contract')">更多</el-button>
+              <div class="card-actions">
+                <span>{{ contractExecution.activeCount || 0 }} 份执行中</span>
+                <el-button text type="primary" @click="go('/contract/contract')">更多</el-button>
+              </div>
             </div>
             <div class="contract-execution">
               <div v-for="item in contractItems" :key="item.key" class="execution-item">
                 <span class="execution-icon" :class="`execution-icon--${item.tone}`">
                   <i :class="item.icon" />
                 </span>
-                <p>{{ item.label }}<strong>{{ item.value }}</strong><em>个</em></p>
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}<em>份</em></strong>
               </div>
             </div>
           </section>
 
-          <section class="dashboard-card mini-card">
-            <div class="card-title">
-              <div>
-                <span class="title-icon"><i class="el-icon-cpu" /></span>
-                <strong>智能设备</strong>
-              </div>
-              <el-button
-                text
-                type="primary"
-                @click="go({ path: '/park/rent-control', query: { tab: 'meters' } })"
-              >
-                更多
-              </el-button>
-            </div>
-            <el-tabs v-model="deviceTab" class="device-tabs">
-              <el-tab-pane
-                v-for="item in deviceSummary"
-                :key="item.key"
-                :label="item.label"
-                :name="item.key"
-              />
-            </el-tabs>
-            <div class="device-summary">
-              <div class="device-metric">
-                <span class="metric-icon metric-icon--blue"><i class="el-icon-set-up" /></span>
-                <p>数量<strong>{{ currentDevice.total || 0 }}</strong><em>个</em></p>
-              </div>
-              <div class="device-metric">
-                <span class="metric-icon metric-icon--green"><i class="el-icon-connection" /></span>
-                <p>在线<strong>{{ currentDevice.online || 0 }}</strong><em>个</em></p>
-              </div>
-              <div class="device-metric">
-                <span class="metric-icon metric-icon--red"><i class="el-icon-close" /></span>
-                <p>离线<strong>{{ currentDevice.offline || 0 }}</strong><em>个</em></p>
-              </div>
-            </div>
-          </section>
         </div>
       </div>
 
@@ -89,13 +73,16 @@
           <div class="card-title">
             <div>
               <span class="title-icon"><i class="el-icon-tickets" /></span>
-              <strong>房源概括</strong>
+              <strong>房源概况</strong>
             </div>
+            <span class="card-note">共 {{ roomSummary.totalRooms || 0 }} 间</span>
           </div>
           <div ref="roomChart" class="chart chart--donut"></div>
           <div class="room-legend">
             <span v-for="item in roomLegend" :key="item.key">
-              <i :style="{ backgroundColor: item.color }"></i>{{ item.label }}
+              <i :style="{ backgroundColor: item.color }"></i>
+              <em>{{ item.label }}</em>
+              <strong>{{ item.value }}</strong>
             </span>
           </div>
         </section>
@@ -104,12 +91,13 @@
           <div class="card-title">
             <div>
               <span class="title-icon"><i class="el-icon-data-line" /></span>
-              <strong>利率/均价</strong>
+              <strong>租赁指标</strong>
             </div>
           </div>
           <div class="avg-rent">
+            <span>在租实时均价</span>
             <strong>{{ rentMetrics.averageRent || 0 }}</strong>
-            <span>在租实时均价(m²·月)</span>
+            <em>元 / m²·月</em>
           </div>
           <div class="rate-list">
             <div v-for="item in rateItems" :key="item.key" class="rate-item">
@@ -118,6 +106,7 @@
                 :percentage="safePercent(item.value)"
                 :stroke-width="14"
                 :show-text="false"
+                :color="item.color"
               />
               <em>{{ item.value || 0 }}%</em>
             </div>
@@ -130,43 +119,64 @@
               <span class="title-icon"><i class="el-icon-warning-outline" /></span>
               <strong>空置预警</strong>
             </div>
-            <span class="legend-dot"><i></i>空置房间</span>
+            <span class="card-note">当前空置 {{ roomSummary.vacantRooms || 0 }} 间</span>
           </div>
           <div ref="vacancyChart" class="chart chart--bar"></div>
         </section>
       </div>
 
-      <div class="dashboard-row dashboard-row--bottom">
+      <div class="dashboard-row dashboard-row--trends">
         <section class="dashboard-card trend-card">
-          <div class="card-title card-title--tabs">
+          <div class="card-title">
             <div>
               <span class="title-icon"><i class="el-icon-s-data" /></span>
-              <button
-                type="button"
-                :class="{ active: trendType === 'rent' }"
-                @click="switchTrend('rent')"
-              >
-                近半年出租率走势
-              </button>
-              <button
-                type="button"
-                :class="{ active: trendType === 'contract' }"
-                @click="switchTrend('contract')"
-              >
-                近半年合同成交走势
-              </button>
+              <strong>合同趋势</strong>
+            </div>
+            <span class="card-note">近6个月</span>
+          </div>
+          <div class="trend-summary">
+            <div v-for="item in contractTrendSummary" :key="item.label" class="trend-metric">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+              <em v-if="item.caption" :class="item.tone ? `is-${item.tone}` : ''">
+                {{ item.caption }}
+              </em>
             </div>
           </div>
-          <div ref="trendChart" class="chart chart--line"></div>
+          <div ref="contractTrendChart" class="chart chart--trend"></div>
         </section>
 
+        <section class="dashboard-card trend-card">
+          <div class="card-title">
+            <div>
+              <span class="title-icon title-icon--green"
+                ><i class="el-icon-office-building"
+              /></span>
+              <strong>房源趋势</strong>
+            </div>
+            <span class="card-note">近6个月</span>
+          </div>
+          <div class="trend-summary">
+            <div v-for="item in roomTrendSummary" :key="item.label" class="trend-metric">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+              <em v-if="item.caption">{{ item.caption }}</em>
+            </div>
+          </div>
+          <div ref="roomTrendChart" class="chart chart--trend"></div>
+        </section>
+      </div>
+
+      <div class="dashboard-row dashboard-row--bottom">
         <section class="dashboard-card list-card approval-card">
           <div class="card-title">
             <div>
               <span class="title-icon"><i class="el-icon-s-check" /></span>
               <strong>进行中的审批</strong>
             </div>
-            <el-button text type="primary" @click="go('/plugin/workflow/pages/process/todo')">更多</el-button>
+            <el-button text type="primary" @click="go('/plugin/workflow/pages/process/todo')"
+              >更多</el-button
+            >
           </div>
           <div class="approval-list">
             <div v-for="item in approvalList" :key="item.id" class="approval-item">
@@ -210,15 +220,25 @@
               <strong>商机提醒</strong>
             </div>
             <el-button text type="primary" @click="go('/settlement/opportunity')">更多</el-button>
-            </div>
-            <div ref="opportunityStatusChart" class="chart chart--opportunity-status"></div>
-            <ul class="opportunity-list">
+          </div>
+          <div
+            ref="opportunityStatusChart"
+            class="chart chart--opportunity-status"
+            :class="{ 'chart--opportunity-status-empty': opportunityReminderList.length === 0 }"
+          ></div>
+          <ul v-if="opportunityReminderList.length" class="opportunity-list">
             <li v-for="item in opportunityReminderList" :key="item.id">
               <strong>{{ item.name || '-' }}</strong>
               <el-tag size="small" type="warning" effect="plain">接触</el-tag>
               <time>{{ item.remindTime || '-' }}</time>
             </li>
           </ul>
+          <div v-else class="opportunity-summary">
+            <div v-for="item in opportunityMetrics" :key="item.label">
+              <strong>{{ item.value }}</strong>
+              <span>{{ item.label }}</span>
+            </div>
+          </div>
         </section>
       </div>
     </div>
@@ -238,7 +258,6 @@ export default {
     return {
       loading: false,
       deviceTab: 'electric',
-      trendType: 'rent',
       charts: {},
       digitalOverview: [],
       contractExecution: {},
@@ -255,31 +274,162 @@ export default {
     };
   },
   computed: {
+    overviewCards() {
+      const iconMap = {
+        dueReceivableAmount: 'el-icon-download',
+        duePayableAmount: 'el-icon-upload2',
+        next30ReceivableAmount: 'el-icon-date',
+        next30PayableAmount: 'el-icon-timer',
+        overdueTenantDebtAmount: 'el-icon-warning-outline',
+        dueTenantCount: 'el-icon-user',
+        todayOtherReceivableAmount: 'el-icon-wallet',
+        todayOtherPayableAmount: 'el-icon-bank-card',
+      };
+      return this.digitalOverview.map(item => ({
+        ...item,
+        icon: iconMap[item.key] || 'el-icon-data-analysis',
+      }));
+    },
     contractItems() {
       return [
-        { key: 'totalCount', label: '数量', value: this.contractExecution.totalCount || 0, tone: 'blue', icon: 'el-icon-collection' },
-        { key: 'activeCount', label: '执行中', value: this.contractExecution.activeCount || 0, tone: 'cyan', icon: 'el-icon-document' },
-        { key: 'terminatedCount', label: '已退租', value: this.contractExecution.terminatedCount || 0, tone: 'orange', icon: 'el-icon-folder-delete' },
-        { key: 'expiredCount', label: '已到期', value: this.contractExecution.expiredCount || 0, tone: 'purple', icon: 'el-icon-files' },
+        {
+          key: 'totalCount',
+          label: '合同总数',
+          value: this.contractExecution.totalCount || 0,
+          tone: 'blue',
+          icon: 'el-icon-collection',
+        },
+        {
+          key: 'activeCount',
+          label: '执行中',
+          value: this.contractExecution.activeCount || 0,
+          tone: 'cyan',
+          icon: 'el-icon-document',
+        },
+        {
+          key: 'terminatedCount',
+          label: '已退租',
+          value: this.contractExecution.terminatedCount || 0,
+          tone: 'orange',
+          icon: 'el-icon-folder-delete',
+        },
+        {
+          key: 'expiredCount',
+          label: '已到期',
+          value: this.contractExecution.expiredCount || 0,
+          tone: 'purple',
+          icon: 'el-icon-files',
+        },
       ];
     },
     currentDevice() {
       return this.deviceSummary.find(item => item.key === this.deviceTab) || {};
     },
+    currentDeviceOnlineRate() {
+      const total = Number(this.currentDevice.total) || 0;
+      const online = Number(this.currentDevice.online) || 0;
+      return total > 0 ? ((online * 100) / total).toFixed(0) : 0;
+    },
     roomLegend() {
       return [
-        { key: 'vacantRooms', label: '空置', value: this.roomSummary.vacantRooms || 0, color: ROOM_COLORS[0] },
-        { key: 'reservedRooms', label: '预留', value: this.roomSummary.reservedRooms || 0, color: ROOM_COLORS[1] },
-        { key: 'pendingRooms', label: '待清退/待退出', value: this.roomSummary.pendingRooms || 0, color: ROOM_COLORS[2] },
-        { key: 'expiringRooms', label: '到期预警', value: this.roomSummary.expiringRooms || 0, color: ROOM_COLORS[3] },
-        { key: 'rentedRooms', label: '已出租', value: this.roomSummary.rentedRooms || 0, color: ROOM_COLORS[4] },
+        {
+          key: 'vacantRooms',
+          label: '空置',
+          value: this.roomSummary.vacantRooms || 0,
+          color: ROOM_COLORS[0],
+        },
+        {
+          key: 'reservedRooms',
+          label: '预留',
+          value: this.roomSummary.reservedRooms || 0,
+          color: ROOM_COLORS[1],
+        },
+        {
+          key: 'pendingRooms',
+          label: '待清退/待退出',
+          value: this.roomSummary.pendingRooms || 0,
+          color: ROOM_COLORS[2],
+        },
+        {
+          key: 'expiringRooms',
+          label: '到期预警',
+          value: this.roomSummary.expiringRooms || 0,
+          color: ROOM_COLORS[3],
+        },
+        {
+          key: 'rentedRooms',
+          label: '已出租',
+          value: this.roomSummary.rentedRooms || 0,
+          color: ROOM_COLORS[4],
+        },
       ];
     },
     rateItems() {
       return [
-        { key: 'rentRate', label: '出租率', value: this.rentMetrics.rentRate || 0 },
-        { key: 'vacancyRate', label: '空置率', value: this.rentMetrics.vacancyRate || 0 },
-        { key: 'billingRate', label: '计租率', value: this.rentMetrics.billingRate || 0 },
+        {
+          key: 'rentRate',
+          label: '出租率',
+          value: this.rentMetrics.rentRate || 0,
+          color: '#2f75ff',
+        },
+        {
+          key: 'vacancyRate',
+          label: '空置率',
+          value: this.rentMetrics.vacancyRate || 0,
+          color: '#ff8f3d',
+        },
+        {
+          key: 'billingRate',
+          label: '计租率',
+          value: this.rentMetrics.billingRate || 0,
+          color: '#12a594',
+        },
+      ];
+    },
+    contractTrendSummary() {
+      const current = this.trendNumber(this.contractDealTrend, 'dealCount');
+      const previous = this.trendNumber(this.contractDealTrend, 'dealCount', 1);
+      const total = this.contractDealTrend.reduce(
+        (sum, item) => sum + (Number(item.dealCount) || 0),
+        0
+      );
+      const delta = current - previous;
+      return [
+        { label: '本月成交', value: `${current}份` },
+        { label: '近半年成交', value: `${total}份` },
+        {
+          label: '较上月',
+          value: `${delta > 0 ? '+' : ''}${delta}份`,
+          caption: delta === 0 ? '持平' : delta > 0 ? '增长' : '回落',
+          tone: delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat',
+        },
+      ];
+    },
+    roomTrendSummary() {
+      const currentRate = this.trendNumber(this.rentalTrend, 'rentRate');
+      const currentNewRent = this.trendNumber(this.rentalTrend, 'newRentCount');
+      const averageRate = this.rentalTrend.length
+        ? this.rentalTrend.reduce((sum, item) => sum + (Number(item.rentRate) || 0), 0) /
+          this.rentalTrend.length
+        : 0;
+      return [
+        { label: '当前出租率', value: `${currentRate.toFixed(1)}%` },
+        { label: '近半年平均', value: `${averageRate.toFixed(1)}%`, caption: '出租率' },
+        { label: '本月新增出租', value: `${currentNewRent}间` },
+      ];
+    },
+    opportunityMetrics() {
+      const summary = this.opportunityStatusSummary.reduce((result, item) => {
+        result[item.status] = Number(item.count) || 0;
+        return result;
+      }, {});
+      const total = Object.values(summary).reduce((sum, count) => sum + count, 0);
+      const completed = summary.DEAL || 0;
+      const lost = summary.LOST || 0;
+      return [
+        { label: '商机总数', value: total },
+        { label: '跟进中', value: Math.max(total - completed - lost, 0) },
+        { label: '达成意向', value: completed },
       ];
     },
   },
@@ -319,7 +469,8 @@ export default {
     renderCharts() {
       this.renderRoomChart();
       this.renderVacancyChart();
-      this.renderTrendChart();
+      this.renderContractTrendChart();
+      this.renderRoomTrendChart();
       this.renderOpportunityStatusChart();
     },
     renderRoomChart() {
@@ -340,10 +491,11 @@ export default {
             label: {
               show: true,
               position: 'center',
-              formatter: `总房间数\n${this.roomSummary.totalRooms || 0}`,
-              color: '#303133',
-              lineHeight: 22,
-              fontSize: 14,
+              formatter: `{label|房源总数}\n{value|${this.roomSummary.totalRooms || 0}间}`,
+              rich: {
+                label: { color: '#909399', fontSize: 12, lineHeight: 22 },
+                value: { color: '#303133', fontSize: 22, fontWeight: 700, lineHeight: 30 },
+              },
             },
             labelLine: { show: false },
             data,
@@ -357,7 +509,7 @@ export default {
       const values = this.vacancyWarning.map(item => Number(item.value) || 0);
       chart.setOption({
         color: ['#2f75ff'],
-        grid: { left: 38, right: 18, top: 30, bottom: 28 },
+        grid: { left: 38, right: 18, top: 44, bottom: 28 },
         tooltip: { trigger: 'axis' },
         xAxis: {
           type: 'category',
@@ -378,30 +530,32 @@ export default {
           {
             name: '空置房间',
             type: 'bar',
-            barWidth: 20,
+            barMaxWidth: 26,
+            label: {
+              show: true,
+              position: 'top',
+              color: '#606266',
+              fontSize: 12,
+            },
             data: values,
             itemStyle: {
-              borderRadius: [12, 12, 0, 0],
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: '#2f75ff' },
-                { offset: 1, color: 'rgba(47,117,255,0.08)' },
-              ]),
+              borderRadius: [4, 4, 0, 0],
+              color: '#2f75ff',
             },
           },
         ],
       });
     },
-    renderTrendChart() {
-      const chart = this.getChart('trendChart');
-      const source = this.trendType === 'rent' ? this.rentalTrend : this.contractDealTrend;
-      const labels = source.map(item => item.month);
-      const values = source.map(item => Number(this.trendType === 'rent' ? item.rentRate : item.dealCount) || 0);
+    renderContractTrendChart() {
+      const chart = this.getChart('contractTrendChart');
+      const labels = this.contractDealTrend.map(item => item.month);
+      const values = this.contractDealTrend.map(item => Number(item.dealCount) || 0);
       chart.setOption({
-        color: ['#5b6fd6'],
-        grid: { left: 36, right: 18, top: 34, bottom: 30 },
+        color: ['#2f75ff'],
+        grid: { left: 42, right: 18, top: 34, bottom: 30 },
         tooltip: {
           trigger: 'axis',
-          valueFormatter: value => (this.trendType === 'rent' ? `${value}%` : `${value}个`),
+          valueFormatter: value => `${value}份`,
         },
         xAxis: {
           type: 'category',
@@ -413,22 +567,25 @@ export default {
         },
         yAxis: {
           type: 'value',
-          minInterval: this.trendType === 'rent' ? 0 : 1,
-          name: this.trendType === 'rent' ? '单位/%' : '单位/份',
+          minInterval: 1,
+          name: '单位/份',
           nameTextStyle: { color: '#8a94a6', align: 'left' },
           splitLine: { lineStyle: { type: 'dashed', color: '#e8edf3' } },
           axisLabel: { color: '#8a94a6' },
         },
         series: [
           {
-            name: this.trendType === 'rent' ? '出租率' : '成交合同',
+            name: '成交合同',
             type: 'line',
             smooth: true,
-            symbolSize: 6,
+            symbol: 'circle',
+            symbolSize: 7,
+            lineStyle: { width: 3 },
+            itemStyle: { borderWidth: 2, borderColor: '#fff' },
             areaStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: 'rgba(91,111,214,0.28)' },
-                { offset: 1, color: 'rgba(91,111,214,0)' },
+                { offset: 0, color: 'rgba(47,117,255,0.22)' },
+                { offset: 1, color: 'rgba(47,117,255,0.02)' },
               ]),
             },
             data: values,
@@ -436,21 +593,109 @@ export default {
         ],
       });
     },
+    renderRoomTrendChart() {
+      const chart = this.getChart('roomTrendChart');
+      const labels = this.rentalTrend.map(item => item.month);
+      const rentRates = this.rentalTrend.map(item => Number(item.rentRate) || 0);
+      const newRentCounts = this.rentalTrend.map(item => Number(item.newRentCount) || 0);
+      chart.setOption({
+        color: ['#12a594', '#ffaf34'],
+        grid: { left: 42, right: 46, top: 48, bottom: 30 },
+        tooltip: { trigger: 'axis' },
+        legend: {
+          top: 0,
+          right: 8,
+          itemWidth: 14,
+          itemHeight: 8,
+          textStyle: { color: '#606266', fontSize: 12 },
+        },
+        xAxis: {
+          type: 'category',
+          data: labels,
+          axisTick: { show: false },
+          axisLine: { lineStyle: { color: '#d7dce5' } },
+          axisLabel: { color: '#8a94a6' },
+        },
+        yAxis: [
+          {
+            type: 'value',
+            min: 0,
+            max: 100,
+            name: '出租率/%',
+            nameTextStyle: { color: '#8a94a6', align: 'left' },
+            splitLine: { lineStyle: { type: 'dashed', color: '#e8edf3' } },
+            axisLabel: { color: '#8a94a6', formatter: '{value}%' },
+          },
+          {
+            type: 'value',
+            minInterval: 1,
+            name: '新增/间',
+            nameTextStyle: { color: '#8a94a6', align: 'right' },
+            splitLine: { show: false },
+            axisLabel: { color: '#8a94a6' },
+          },
+        ],
+        series: [
+          {
+            name: '出租率',
+            type: 'line',
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 7,
+            lineStyle: { width: 3 },
+            itemStyle: { borderWidth: 2, borderColor: '#fff' },
+            data: rentRates,
+          },
+          {
+            name: '新增出租',
+            type: 'bar',
+            yAxisIndex: 1,
+            barMaxWidth: 22,
+            itemStyle: { borderRadius: [4, 4, 0, 0] },
+            data: newRentCounts,
+          },
+        ],
+      });
+    },
     renderOpportunityStatusChart() {
       const chart = this.getChart('opportunityStatusChart');
       const statusMap = {
-        DRAFT: '初步沟通', AUDIT: '初步沟通', LEAD: '潜在线索', INITIAL: '初步沟通', DEEP: '深入洽谈', DEAL: '达成意向', LOST: '流失',
+        DRAFT: '初步沟通',
+        AUDIT: '初步沟通',
+        LEAD: '潜在线索',
+        INITIAL: '初步沟通',
+        DEEP: '深入洽谈',
+        DEAL: '达成意向',
+        LOST: '流失',
       };
       const counts = this.opportunityStatusSummary.reduce((result, item) => {
         const label = statusMap[item.status] || '其他';
         result[label] = (result[label] || 0) + (Number(item.count) || 0);
         return result;
       }, {});
+      const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
       chart.setOption({
         color: ['#2f8dfd', '#12a594', '#ffaf34', '#7c6ff6', '#ff5b66', '#a0a8b8'],
         tooltip: { trigger: 'item' },
         legend: { bottom: 0, type: 'scroll', textStyle: { color: '#8a94a6', fontSize: 11 } },
-        series: [{ type: 'pie', radius: ['48%', '76%'], center: ['50%', '43%'], label: { show: false }, data: Object.keys(counts).map(name => ({ name, value: counts[name] })) }],
+        series: [
+          {
+            type: 'pie',
+            radius: ['50%', '76%'],
+            center: ['50%', '43%'],
+            label: {
+              show: true,
+              position: 'center',
+              formatter: `{label|商机总数}\n{value|${total}}`,
+              rich: {
+                label: { color: '#909399', fontSize: 12, lineHeight: 20 },
+                value: { color: '#303133', fontSize: 22, fontWeight: 700, lineHeight: 28 },
+              },
+            },
+            labelLine: { show: false },
+            data: Object.keys(counts).map(name => ({ name, value: counts[name] })),
+          },
+        ],
       });
     },
     getChart(refName) {
@@ -459,16 +704,16 @@ export default {
       }
       return this.charts[refName];
     },
-    switchTrend(type) {
-      this.trendType = type;
-      this.$nextTick(this.renderTrendChart);
-    },
     resizeCharts() {
       Object.values(this.charts).forEach(chart => chart && chart.resize());
     },
     safePercent(value) {
       const percent = Number(value) || 0;
       return Math.max(0, Math.min(100, percent));
+    },
+    trendNumber(source, key, offset = 0) {
+      if (!Array.isArray(source) || source.length <= offset) return 0;
+      return Number(source[source.length - 1 - offset]?.[key]) || 0;
     },
     formatMoneyLike(value) {
       const num = Number(value || 0);
@@ -568,28 +813,75 @@ export default {
   gap: 16px;
 }
 
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+  box-sizing: border-box;
+  padding: 14px 18px;
+  border: 1px solid #e8edf3;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.dashboard-header__title strong,
+.dashboard-header__title span {
+  display: block;
+  letter-spacing: 0;
+}
+
+.dashboard-header__title strong {
+  color: #303133;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.dashboard-header__title span {
+  margin-top: 3px;
+  color: #909399;
+  font-size: 12px;
+}
+
+.dashboard-header__actions,
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-actions > span {
+  color: #909399;
+  font-size: 12px;
+}
+
 .dashboard-row {
   display: grid;
   gap: 16px;
 }
 
 .dashboard-row--top {
-  grid-template-columns: minmax(0, 1.55fr) minmax(420px, 0.95fr);
+  grid-template-columns: minmax(0, 1.8fr) minmax(380px, 0.8fr);
 }
 
 .dashboard-row--middle {
-  grid-template-columns: minmax(300px, 0.75fr) minmax(420px, 1fr) minmax(420px, 1fr);
+  grid-template-columns: minmax(300px, 0.8fr) minmax(320px, 0.9fr) minmax(480px, 1.4fr);
+}
+
+.dashboard-row--trends {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .dashboard-row--bottom {
-  grid-template-columns: minmax(400px, 1.2fr) minmax(300px, 0.8fr) minmax(300px, 0.9fr) minmax(300px, 0.9fr);
+  grid-template-columns: repeat(3, minmax(300px, 1fr));
 }
 
 .dashboard-card {
   min-width: 0;
+  border: 1px solid #e8edf3;
   border-radius: 10px;
   background: #fff;
-  box-shadow: 0 4px 16px rgba(30, 64, 120, 0.04);
+  box-shadow: 0 2px 10px rgba(30, 64, 120, 0.03);
 }
 
 .overview-card,
@@ -601,13 +893,23 @@ export default {
 }
 
 .side-stack {
-  display: grid;
-  grid-template-rows: 1fr 1fr;
-  gap: 16px;
+  min-width: 0;
 }
 
 .mini-card {
+  display: flex;
+  height: 100%;
+  box-sizing: border-box;
+  flex-direction: column;
   padding: 18px 20px;
+}
+
+.overview-card {
+  padding: 16px;
+}
+
+.overview-card .card-title {
+  margin-bottom: 12px;
 }
 
 .card-title {
@@ -637,152 +939,122 @@ export default {
   width: 30px;
   height: 30px;
   margin-right: 10px;
-  border-radius: 9px;
+  border-radius: 8px;
   background: #409eff;
   color: #fff;
   font-size: 16px;
 }
 
+.title-icon--green {
+  background: #12a594;
+}
+
+.card-note {
+  color: #909399;
+  font-size: 12px;
+}
+
 .overview-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  gap: 8px;
 }
 
 .overview-item {
-  position: relative;
-  min-height: 130px;
-  overflow: hidden;
-  padding: 16px;
-  border: 0;
-  border-radius: 10px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 8px;
+  min-height: 76px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #edf1f6;
+  border-radius: 6px;
+  background: #fff;
   text-align: left;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .overview-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(27, 64, 116, 0.08);
+  border-color: #c9dcff;
+  box-shadow: 0 6px 14px rgba(47, 117, 255, 0.08);
 }
 
-.overview-item::before,
-.overview-item::after {
-  position: absolute;
-  right: -4px;
-  bottom: 0;
-  display: block;
-  width: 54px;
-  height: 54px;
-  border-radius: 12px 0 10px 0;
-  content: '';
-  opacity: 0.72;
-}
-
-.overview-item::after {
-  right: 24px;
-  width: 30px;
-  height: 30px;
-  opacity: 0.45;
-}
-
-.overview-item span,
-.overview-item strong,
-.overview-item em {
-  position: relative;
-  z-index: 1;
-  display: block;
-}
-
-.overview-item span {
-  color: #303133;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.overview-item strong {
-  margin-top: 28px;
-  color: #303133;
-  font-size: 19px;
-  font-weight: 700;
-}
-
-.overview-item em {
-  margin-top: 22px;
+.overview-item__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #eaf2ff;
   color: #2f75ff;
+  font-size: 16px;
+}
+
+.overview-item--green .overview-item__icon,
+.overview-item--cyan .overview-item__icon {
+  background: #e8f8f2;
+  color: #12a594;
+}
+
+.overview-item--orange .overview-item__icon,
+.overview-item--amber .overview-item__icon {
+  background: #fff3e5;
+  color: #e8892f;
+}
+
+.overview-item--red .overview-item__icon {
+  background: #fff0ef;
+  color: #f56c6c;
+}
+
+.overview-item--purple .overview-item__icon {
+  background: #f2efff;
+  color: #7c6ff6;
+}
+
+.overview-item__content {
+  min-width: 0;
+}
+
+.overview-item__content em,
+.overview-item__content strong {
+  display: block;
+  letter-spacing: 0;
+}
+
+.overview-item__content em {
+  overflow: hidden;
+  color: #606266;
   font-size: 12px;
   font-style: normal;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.overview-item--blue {
-  background: #e8f3ff;
+.overview-item__content strong {
+  margin-top: 4px;
+  overflow: hidden;
+  color: #303133;
+  font-size: 17px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.overview-item--blue::before,
-.overview-item--blue::after {
-  background: #409eff;
-}
-
-.overview-item--green {
-  background: #e4f8ed;
-}
-
-.overview-item--green::before,
-.overview-item--green::after {
-  background: #30c78d;
-}
-
-.overview-item--orange,
-.overview-item--amber {
-  background: #fff3e7;
-}
-
-.overview-item--orange::before,
-.overview-item--orange::after,
-.overview-item--amber::before,
-.overview-item--amber::after {
-  background: #ffb45b;
-}
-
-.overview-item--red {
-  background: #ffe9e8;
-}
-
-.overview-item--red::before,
-.overview-item--red::after {
-  background: #ff6f67;
-}
-
-.overview-item--purple {
-  background: #f4eefc;
-}
-
-.overview-item--purple::before,
-.overview-item--purple::after {
-  background: #a579ef;
-}
-
-.overview-item--sky {
-  background: #e7f3ff;
-}
-
-.overview-item--sky::before,
-.overview-item--sky::after {
-  background: #5ca8ff;
-}
-
-.overview-item--cyan {
-  background: #e6f8ef;
-}
-
-.overview-item--cyan::before,
-.overview-item--cyan::after {
-  background: #24c6d8;
+.overview-item__arrow {
+  color: #c0c4cc;
+  font-size: 13px;
 }
 
 .contract-execution {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+  flex: 1;
   gap: 14px;
   padding-top: 4px;
 }
@@ -837,25 +1109,28 @@ export default {
   color: #ff766b;
 }
 
-.execution-item p,
-.device-metric p {
-  margin: 0;
-  color: #606266;
-  font-size: 13px;
+.execution-item > span:not(.execution-icon),
+.device-metric > span:not(.metric-icon) {
+  color: #909399;
+  font-size: 12px;
+  letter-spacing: 0;
 }
 
-.execution-item strong,
-.device-metric strong {
-  margin-left: 4px;
-  color: #2f75ff;
-  font-size: 18px;
+.execution-item > strong,
+.device-metric > strong {
+  color: #303133;
+  font-size: 20px;
   font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0;
 }
 
 .execution-item em,
 .device-metric em {
-  margin-left: 2px;
+  margin-left: 3px;
   color: #909399;
+  font-size: 12px;
+  font-weight: 400;
   font-style: normal;
 }
 
@@ -875,7 +1150,8 @@ export default {
 }
 
 .device-tabs :deep(.el-tabs__nav-wrap::after) {
-  display: none;
+  height: 1px;
+  background: #ebeef5;
 }
 
 .device-tabs :deep(.el-tabs__header) {
@@ -883,22 +1159,24 @@ export default {
 }
 
 .device-tabs :deep(.el-tabs__item) {
-  height: 30px;
+  height: 32px;
   justify-content: center;
   padding: 0;
-  border-radius: 16px;
-  color: #303133;
-  line-height: 30px;
+  color: #606266;
+  font-size: 13px;
+  line-height: 32px;
   text-align: center;
+  letter-spacing: 0;
 }
 
 .device-tabs :deep(.el-tabs__active-bar) {
-  display: none;
+  height: 2px;
+  background: #2f75ff;
 }
 
 .device-tabs :deep(.el-tabs__item.is-active) {
-  background: #2f75ff;
-  color: #fff;
+  color: #2f75ff;
+  font-weight: 600;
 }
 
 .device-summary {
@@ -915,51 +1193,57 @@ export default {
 }
 
 .chart--donut {
-  height: 272px;
-  transform: translateY(-18px);
+  height: 244px;
 }
 
 .chart--bar {
   height: 278px;
 }
 
-.chart--line {
-  height: 334px;
+.chart--trend {
+  height: 286px;
 }
 
 .room-legend {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  padding-top: 4px;
 }
 
 .room-legend span {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
   align-items: center;
-  color: #606266;
-  font-size: 13px;
+  gap: 7px;
+  min-width: 0;
+  padding: 7px 9px;
+  border-radius: 4px;
+  background: #f7f9fc;
 }
 
-.room-legend i,
-.legend-dot i {
+.room-legend i {
   display: inline-block;
-  width: 12px;
-  height: 12px;
-  margin-right: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
 }
 
-.legend-dot {
-  display: inline-flex;
-  align-items: center;
+.room-legend em {
+  overflow: hidden;
   color: #606266;
-  font-size: 13px;
+  font-size: 12px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0;
 }
 
-.legend-dot i {
-  border-radius: 0;
-  background: #2f75ff;
+.room-legend strong {
+  color: #303133;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .metrics-card {
@@ -972,29 +1256,34 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 148px;
-  margin-bottom: 20px;
+  min-height: 126px;
+  margin-bottom: 24px;
+  border: 1px solid #edf1f6;
   border-radius: 4px;
-  background: #f5f8ff;
+  background: #f8faff;
 }
 
 .avg-rent strong {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 94px;
-  height: 94px;
-  border: 10px solid #2f75ff;
-  border-radius: 50%;
+  margin-top: 10px;
   color: #2f75ff;
-  font-size: 16px;
+  font-size: 28px;
   font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0;
 }
 
 .avg-rent span {
-  margin-top: 10px;
-  color: #303133;
-  font-size: 14px;
+  color: #606266;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.avg-rent em {
+  margin-top: 5px;
+  color: #909399;
+  font-size: 12px;
+  font-style: normal;
+  letter-spacing: 0;
 }
 
 .rate-list {
@@ -1021,19 +1310,73 @@ export default {
   text-align: right;
 }
 
-.card-title--tabs button {
-  margin-right: 20px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #606266;
-  font-size: 15px;
-  cursor: pointer;
+.trend-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 0 14px;
+  padding: 12px 0;
+  border-top: 1px solid #ebeef5;
+  border-bottom: 1px solid #ebeef5;
 }
 
-.card-title--tabs button.active {
-  color: #2f75ff;
-  font-weight: 600;
+.trend-metric {
+  min-width: 0;
+  padding: 0 18px;
+}
+
+.trend-metric:first-child {
+  padding-left: 0;
+}
+
+.trend-metric:last-child {
+  padding-right: 0;
+}
+
+.trend-metric + .trend-metric {
+  border-left: 1px solid #ebeef5;
+}
+
+.trend-metric span,
+.trend-metric strong,
+.trend-metric em {
+  display: block;
+  letter-spacing: 0;
+}
+
+.trend-metric span {
+  overflow: hidden;
+  color: #909399;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trend-metric strong {
+  margin-top: 7px;
+  color: #303133;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.trend-metric em {
+  min-height: 18px;
+  margin-top: 5px;
+  color: #909399;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.trend-metric em.is-up {
+  color: #12a594;
+}
+
+.trend-metric em.is-down {
+  color: #f56c6c;
+}
+
+.trend-metric em.is-flat {
+  color: #909399;
 }
 
 .list-card {
@@ -1137,6 +1480,45 @@ export default {
   margin: -4px 0 6px;
 }
 
+.chart--opportunity-status-empty {
+  height: 270px;
+  margin-bottom: 0;
+}
+
+.opportunity-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-top: 14px;
+  border-top: 1px solid #ebeef5;
+}
+
+.opportunity-summary > div {
+  min-width: 0;
+  text-align: center;
+}
+
+.opportunity-summary > div + div {
+  border-left: 1px solid #ebeef5;
+}
+
+.opportunity-summary strong,
+.opportunity-summary span {
+  display: block;
+  letter-spacing: 0;
+}
+
+.opportunity-summary strong {
+  color: #303133;
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.opportunity-summary span {
+  margin-top: 5px;
+  color: #909399;
+  font-size: 12px;
+}
+
 .tenant-list li,
 .opportunity-list li {
   display: grid;
@@ -1206,22 +1588,49 @@ export default {
 @media (max-width: 1500px) {
   .dashboard-row--top,
   .dashboard-row--middle,
+  .dashboard-row--trends,
   .dashboard-row--bottom {
     grid-template-columns: 1fr;
   }
 
-  .side-stack {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto;
+  .overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 960px) {
-  .overview-grid,
-  .contract-execution,
-  .device-summary,
-  .side-stack {
+  .dashboard-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .dashboard-header__actions {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .overview-grid {
     grid-template-columns: 1fr;
+  }
+
+  .contract-execution {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .device-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .room-legend {
+    grid-template-columns: 1fr;
+  }
+
+  .trend-metric {
+    padding: 0 12px;
   }
 
   .opportunity-list li {
@@ -1231,6 +1640,47 @@ export default {
   .opportunity-list time {
     grid-column: 1 / -1;
     text-align: left;
+  }
+}
+
+@media (max-width: 560px) {
+  .contract-execution,
+  .device-summary,
+  .trend-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .execution-item,
+  .device-metric {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    justify-items: start;
+    text-align: left;
+  }
+
+  .execution-item > strong,
+  .device-metric > strong {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .execution-item > span:not(.execution-icon),
+  .device-metric > span:not(.metric-icon) {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .trend-metric,
+  .trend-metric:first-child,
+  .trend-metric:last-child {
+    padding: 10px 0;
+  }
+
+  .trend-metric + .trend-metric {
+    border-top: 1px solid #ebeef5;
+    border-left: 0;
   }
 }
 </style>

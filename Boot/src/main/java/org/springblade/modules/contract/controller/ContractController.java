@@ -32,12 +32,16 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import org.springblade.core.boot.ctrl.BladeController;
+import org.springblade.core.excel.util.ExcelUtil;
 import org.springblade.core.mp.support.Condition;
 import org.springblade.core.mp.support.Query;
 import org.springblade.core.secure.annotation.PreAuth;
 import org.springblade.core.tenant.annotation.NonDS;
 import org.springblade.core.tenant.annotation.TenantIgnore;
 import org.springblade.core.tool.api.R;
+import org.springblade.core.tool.utils.DateUtil;
+import org.springblade.modules.contract.excel.ContractExcel;
+import org.springblade.modules.contract.excel.ContractImporter;
 import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractChange;
 import org.springblade.modules.contract.pojo.entity.ContractLog;
@@ -47,8 +51,11 @@ import org.springblade.modules.contract.pojo.vo.ContractExpirySummaryVO;
 import org.springblade.modules.contract.service.IContractService;
 import org.springblade.modules.ics.service.IPaymentService;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 合同管理控制器
@@ -86,6 +93,42 @@ public class ContractController extends BladeController {
 	public R<IPage<Contract>> list(Contract contract, Query query) {
 		IPage<Contract> pages = contractService.selectContractPage(Condition.getPage(query), contract);
 		return R.data(pages);
+	}
+
+	/**
+	 * 导出合同数据.
+	 */
+	@GetMapping("/export")
+	@PreAuth(menu = "contract_contract_view")
+	@ApiOperationSupport(order = 3)
+	@Operation(summary = "导出", description = "按当前查询条件导出合同数据")
+	public void export(Contract contract, HttpServletResponse response) {
+		List<ContractExcel> list = contractService.exportContract(contract);
+		ExcelUtil.export(response, "合同数据" + DateUtil.time(), "合同数据表", list, ContractExcel.class);
+	}
+
+	/**
+	 * 导出合同导入模板.
+	 */
+	@GetMapping("/export-template")
+	@PreAuth(menu = "contract_contract_add")
+	@ApiOperationSupport(order = 4)
+	@Operation(summary = "导出模板", description = "导出合同导入模板")
+	public void exportTemplate(HttpServletResponse response) {
+		ExcelUtil.export(response, "合同数据模板", "合同数据表", List.of(), ContractExcel.class);
+	}
+
+	/**
+	 * 导入合同数据.
+	 */
+	@PostMapping("/import")
+	@PreAuth(menu = "contract_contract_add")
+	@ApiOperationSupport(order = 5)
+	@Operation(summary = "导入", description = "导入合同 Excel 数据")
+	public R importContract(MultipartFile file) {
+		ContractImporter importer = new ContractImporter(contractService);
+		ExcelUtil.save(file, importer, ContractExcel.class);
+		return R.success("操作成功");
 	}
 
 	/**
@@ -214,6 +257,17 @@ public class ContractController extends BladeController {
 	@Operation(summary = "获取或创建押金退还付款单", description = "传入contractId")
 	public R<ContractPayment> depositRefundPayment(@RequestParam Long contractId) {
 		return R.data(contractService.ensureDepositRefundPayment(contractId));
+	}
+
+	/**
+	 * 登记退租客户注册地址变更.
+	 */
+	@PostMapping("/termination/address-change")
+	@ApiOperationSupport(order = 13)
+	@Operation(summary = "登记退租注册地址变更", description = "传入contractId和变更后的registeredAddress")
+	public R<Contract> confirmTerminationAddressChange(@RequestParam Long contractId,
+													  @RequestBody Map<String, String> payload) {
+		return R.data(contractService.confirmTerminationAddressChange(contractId, payload.get("registeredAddress")));
 	}
 
 	/**

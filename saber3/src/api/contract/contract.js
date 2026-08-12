@@ -156,6 +156,15 @@ export const ensureDepositRefundPayment = contractId => {
   });
 };
 
+export const confirmTerminationAddressChange = (contractId, registeredAddress) => {
+  return request({
+    url: '/blade-contract/contract/termination/address-change',
+    method: 'post',
+    params: { contractId },
+    data: { registeredAddress },
+  });
+};
+
 export const getPaymentList = (current, size, params) => {
   return request({
     url: '/blade-contract/contract/payment/list',

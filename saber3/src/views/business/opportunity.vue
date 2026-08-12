@@ -470,7 +470,7 @@
             </el-row>
             <el-row :gutter="18">
               <el-col :span="12">
-                <el-form-item label="邮箱">
+                <el-form-item label="邮箱" prop="contactEmail">
                   <el-input v-model="form.contactEmail" />
                 </el-form-item>
               </el-col>
@@ -483,7 +483,7 @@
             <el-form-item label="联系地址">
               <el-input v-model="form.contactAddress" maxlength="500" placeholder="请输入联系地址" />
             </el-form-item>
-            <el-form-item label="上传身份证">
+            <el-form-item label="上传身份证" prop="idCardFiles">
               <el-upload
                 action="/api/blade-resource/oss/endpoint/put-file-attach"
                 :headers="uploadHeaders"
@@ -754,7 +754,7 @@
             </el-row>
             <el-row :gutter="18">
               <el-col :span="12">
-                <el-form-item label="邮箱">
+                <el-form-item label="邮箱" prop="contactEmail">
                   <el-input v-model="form.contactEmail" />
                 </el-form-item>
               </el-col>
@@ -767,7 +767,7 @@
             <el-form-item label="联系地址">
               <el-input v-model="form.contactAddress" maxlength="500" placeholder="请输入联系地址" />
             </el-form-item>
-            <el-form-item label="上传身份证">
+            <el-form-item label="上传身份证" prop="idCardFiles">
               <el-upload
                 action="/api/blade-resource/oss/endpoint/put-file-attach"
                 :headers="uploadHeaders"
@@ -969,6 +969,11 @@ export default {
         followUserId: [{ required: true, message: '请选择跟进人', trigger: 'change' }],
         contactName: [{ required: true, message: '请输入负责人姓名', trigger: 'blur' }],
         contactPhone: [{ required: true, message: '请输入联系电话', trigger: 'blur' }],
+        contactEmail: [
+          { required: true, message: '请输入邮箱', trigger: 'blur' },
+          { type: 'email', message: '请输入合法的邮箱地址', trigger: ['blur', 'change'] },
+        ],
+        idCardFiles: [{ required: true, message: '请上传身份证资料', trigger: 'change' }],
         channel: [{ required: true, message: '请选择招商渠道', trigger: 'change' }],
         opportunityStatus: [{ required: true, message: '请选择商机状态', trigger: 'change' }],
       },
@@ -1122,11 +1127,13 @@ export default {
         status: 'success',
       });
       this.syncIdCardFiles();
+      this.$nextTick(() => this.$refs.formRef && this.$refs.formRef.validateField('idCardFiles'));
       this.$message.success('上传成功');
     },
     handleIdCardUploadRemove(file) {
       this.idCardFileList = this.idCardFileList.filter(item => item.uid !== file.uid);
       this.syncIdCardFiles();
+      this.$nextTick(() => this.$refs.formRef && this.$refs.formRef.validateField('idCardFiles'));
     },
     beforeIdCardRemove() {
       return !this.view;

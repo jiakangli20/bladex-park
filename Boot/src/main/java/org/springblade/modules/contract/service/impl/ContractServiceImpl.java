@@ -43,6 +43,7 @@ import org.springblade.modules.contract.mapper.ContractMapper;
 import org.springblade.modules.contract.mapper.ContractPaymentMapper;
 import org.springblade.modules.contract.mapper.ContractPaymentRecordMapper;
 import org.springblade.modules.contract.mapper.ContractWorkflowRecordMapper;
+import org.springblade.modules.contract.excel.ContractExcel;
 import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractChange;
 import org.springblade.modules.contract.pojo.entity.ContractExpiryRule;
@@ -54,6 +55,13 @@ import org.springblade.modules.contract.pojo.vo.ContractStatsVO;
 import org.springblade.modules.contract.pojo.vo.ContractExpirySummaryVO;
 import org.springblade.modules.contract.service.IContractService;
 import org.springblade.modules.park.mapper.RoomMapper;
+import org.springblade.modules.park.mapper.BuildingMapper;
+import org.springblade.modules.park.mapper.ParkMapper;
+import org.springblade.modules.park.pojo.entity.Building;
+import org.springblade.modules.park.pojo.entity.Park;
+import org.springblade.modules.park.pojo.entity.Room;
+import org.springblade.modules.business.mapper.CustomerMapper;
+import org.springblade.modules.business.pojo.entity.Customer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -106,6 +114,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private static final String PAY_STATUS_PAID = "1";
 	private static final String PAY_STATUS_PARTIAL = "3";
 	private static final String ACCEPTANCE_RECTIFICATION = "需整改";
+	private static final String ADDRESS_CHANGE_CONFIRMED = "1";
 
 	private final ContractPaymentMapper contractPaymentMapper;
 	private final ContractPaymentRecordMapper contractPaymentRecordMapper;
@@ -114,11 +123,242 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private final ContractWorkflowRecordMapper contractWorkflowRecordMapper;
 	private final ContractExpiryRuleMapper contractExpiryRuleMapper;
 	private final RoomMapper roomMapper;
+	private final ParkMapper parkMapper;
+	private final BuildingMapper buildingMapper;
+	private final CustomerMapper customerMapper;
 	private final TaskService taskService;
 
 	@Override
 	public IPage<Contract> selectContractPage(IPage<Contract> page, Contract contract) {
 		return page.setRecords(baseMapper.selectContractPage(page, contract));
+	}
+
+	@Override
+	public List<ContractExcel> exportContract(Contract contract) {
+		return baseMapper.selectContractList(contract).stream()
+			.map(this::toContractExcel)
+			.toList();
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public void importContract(List<ContractExcel> data) {
+		if (Func.isEmpty(data)) {
+			throw new ServiceException("导入数据不能为空");
+		}
+		int imported = 0;
+		for (int index = 0; index < data.size(); index++) {
+			ContractExcel excel = data.get(index);
+			if (excel == null || isBlankImportRow(excel)) {
+				continue;
+			}
+			Contract contract = fromContractExcel(excel, index + 2);
+			if (Func.isNotBlank(contract.getContractNo())) {
+				Contract existing = getOne(Wrappers.<Contract>lambdaQuery()
+					.eq(Contract::getContractNo, contract.getContractNo())
+					.eq(Contract::getDelFlag, DEFAULT_DEL_FLAG)
+					.last("LIMIT 1"), false);
+				if (existing != null) {
+					if (!STATUS_PENDING.equals(existing.getContractStatus())) {
+						throw new ServiceException("第" + (index + 2) + "行合同编号已存在且不是待审批状态，不能覆盖");
+					}
+					contract.setContractId(existing.getContractId());
+				}
+			}
+			submitContract(contract);
+			imported++;
+		}
+		if (imported == 0) {
+			throw new ServiceException("导入数据不能为空");
+		}
+	}
+
+	private ContractExcel toContractExcel(Contract contract) {
+		ContractExcel excel = new ContractExcel();
+		excel.setContractNo(contract.getContractNo());
+		excel.setContractName(contract.getContractName());
+		excel.setCustomerName(contract.getCustomerName());
+		excel.setParkName(contract.getParkName());
+		excel.setBuildingName(contract.getBuildingName());
+		excel.setRoomName(contract.getRoomName());
+		excel.setRentArea(contract.getRentArea());
+		excel.setRentPrice(contract.getRentPrice());
+		excel.setMonthlyRent(contract.getMonthlyRent());
+		excel.setPropertyFee(contract.getPropertyFee());
+		excel.setDeposit(contract.getDeposit());
+		excel.setStartDate(contract.getStartDate());
+		excel.setEndDate(contract.getEndDate());
+		excel.setSignDate(contract.getSignDate());
+		excel.setPaymentCycleName(paymentCycleText(contract.getPaymentCycle()));
+		excel.setLateFeeRatio(contract.getLateFeeRatio());
+		excel.setLateFeeUnitName(lateFeeUnitText(contract.getLateFeeUnit()));
+		excel.setLateFeeCap(contract.getLateFeeCap());
+		excel.setRentIncreaseNode(contract.getRentIncreaseNode());
+		excel.setFollowUser(contract.getFollowUser());
+		excel.setContractStatusName(firstNotBlank(contract.getContractStatusName(), contractStatusText(contract.getContractStatus())));
+		excel.setRemark(contract.getRemark());
+		return excel;
+	}
+
+	private Contract fromContractExcel(ContractExcel excel, int rowNumber) {
+		String contractName = requiredImportText(excel.getContractName(), rowNumber, "合同名称");
+		String customerName = requiredImportText(excel.getCustomerName(), rowNumber, "租客名称");
+		String parkName = requiredImportText(excel.getParkName(), rowNumber, "所属园区");
+		String buildingName = requiredImportText(excel.getBuildingName(), rowNumber, "所属楼宇");
+		String roomName = requiredImportText(excel.getRoomName(), rowNumber, "房源名称");
+		Park park = resolveImportPark(parkName, rowNumber);
+		Building building = buildingMapper.selectBuildingByParkAndName(park.getId(), buildingName);
+		if (building == null) {
+			throw new ServiceException("第" + rowNumber + "行所属楼宇不存在或不属于所选园区：" + buildingName);
+		}
+		List<Room> rooms = roomMapper.selectList(Wrappers.<Room>lambdaQuery()
+			.eq(Room::getParkId, park.getId())
+			.eq(Room::getBuildingId, building.getId())
+			.eq(Room::getName, roomName));
+		if (rooms.isEmpty()) {
+			throw new ServiceException("第" + rowNumber + "行房源不存在或不属于所选楼宇：" + roomName);
+		}
+		if (rooms.size() > 1) {
+			throw new ServiceException("第" + rowNumber + "行房源名称重复，请先在房源管理中处理：" + roomName);
+		}
+		Room room = rooms.get(0);
+		Date startDate = requiredImportDate(excel.getStartDate(), rowNumber, "合同开始日期");
+		Date endDate = requiredImportDate(excel.getEndDate(), rowNumber, "合同结束日期");
+		if (!endDate.after(startDate)) {
+			throw new ServiceException("第" + rowNumber + "行合同结束日期必须晚于开始日期");
+		}
+		BigDecimal rentArea = positiveImportAmount(firstAmount(excel.getRentArea(), room.getArea()), rowNumber, "租赁面积");
+		BigDecimal rentPrice = positiveImportAmount(firstAmount(excel.getRentPrice(), room.getRentPrice()), rowNumber, "租金单价");
+		BigDecimal monthlyRent = firstAmount(excel.getMonthlyRent(), rentArea.multiply(rentPrice).setScale(2, RoundingMode.HALF_UP));
+		monthlyRent = positiveImportAmount(monthlyRent, rowNumber, "月租金");
+
+		Contract contract = new Contract();
+		contract.setContractNo(trimImportText(excel.getContractNo()));
+		contract.setContractName(contractName);
+		contract.setCustomerName(customerName);
+		contract.setCustomerId(customerMapper.selectCustomerIdByEnterpriseAndPark(customerName, park.getId(), null));
+		contract.setParkId(park.getId());
+		contract.setBuildingId(building.getId());
+		contract.setBuildingName(building.getName());
+		contract.setRoomId(room.getId());
+		contract.setRoomName(room.getName());
+		contract.setRentArea(rentArea);
+		contract.setRentPrice(rentPrice);
+		contract.setMonthlyRent(monthlyRent);
+		contract.setPropertyFee(nonNegativeImportAmount(firstAmount(excel.getPropertyFee(), room.getPropertyFee()), rowNumber, "物业费"));
+		contract.setDeposit(nonNegativeImportAmount(excel.getDeposit(), rowNumber, "押金"));
+		contract.setStartDate(startDate);
+		contract.setEndDate(endDate);
+		contract.setSignDate(excel.getSignDate() == null ? startDate : excel.getSignDate());
+		contract.setPaymentCycle(resolvePaymentCycle(excel.getPaymentCycleName(), rowNumber));
+		contract.setLateFeeRatio(nonNegativeImportAmount(excel.getLateFeeRatio(), rowNumber, "滞纳金比例"));
+		contract.setLateFeeUnit(resolveLateFeeUnit(excel.getLateFeeUnitName(), rowNumber));
+		contract.setLateFeeCap(nonNegativeImportAmount(excel.getLateFeeCap(), rowNumber, "滞纳金上限"));
+		contract.setRentIncreaseNode(trimImportText(excel.getRentIncreaseNode()));
+		contract.setFollowUser(trimImportText(excel.getFollowUser()));
+		contract.setRemark(trimImportText(excel.getRemark()));
+		return contract;
+	}
+
+	private Park resolveImportPark(String parkName, int rowNumber) {
+		List<Park> parks = parkMapper.selectList(Wrappers.<Park>lambdaQuery().eq(Park::getName, parkName));
+		if (parks.isEmpty()) {
+			throw new ServiceException("第" + rowNumber + "行所属园区不存在：" + parkName);
+		}
+		if (parks.size() > 1) {
+			throw new ServiceException("第" + rowNumber + "行园区名称重复，请先在园区管理中处理：" + parkName);
+		}
+		return parks.get(0);
+	}
+
+	private boolean isBlankImportRow(ContractExcel excel) {
+		return Func.isBlank(excel.getContractNo())
+			&& Func.isBlank(excel.getContractName())
+			&& Func.isBlank(excel.getCustomerName())
+			&& Func.isBlank(excel.getParkName())
+			&& Func.isBlank(excel.getBuildingName())
+			&& Func.isBlank(excel.getRoomName());
+	}
+
+	private String requiredImportText(String value, int rowNumber, String label) {
+		String text = trimImportText(value);
+		if (Func.isBlank(text)) {
+			throw new ServiceException("第" + rowNumber + "行" + label + "不能为空");
+		}
+		return text;
+	}
+
+	private Date requiredImportDate(Date value, int rowNumber, String label) {
+		if (value == null) {
+			throw new ServiceException("第" + rowNumber + "行" + label + "不能为空");
+		}
+		return value;
+	}
+
+	private BigDecimal positiveImportAmount(BigDecimal value, int rowNumber, String label) {
+		if (value == null || value.compareTo(BigDecimal.ZERO) <= 0) {
+			throw new ServiceException("第" + rowNumber + "行" + label + "必须大于0");
+		}
+		return value;
+	}
+
+	private BigDecimal nonNegativeImportAmount(BigDecimal value, int rowNumber, String label) {
+		if (value != null && value.compareTo(BigDecimal.ZERO) < 0) {
+			throw new ServiceException("第" + rowNumber + "行" + label + "不能小于0");
+		}
+		return value;
+	}
+
+	private BigDecimal firstAmount(BigDecimal first, BigDecimal fallback) {
+		return first == null ? fallback : first;
+	}
+
+	private String trimImportText(String value) {
+		return Func.toStr(value, "").trim();
+	}
+
+	private String resolvePaymentCycle(String value, int rowNumber) {
+		String text = trimImportText(value);
+		if (Func.isBlank(text) || "月付".equals(text) || "monthly".equalsIgnoreCase(text)) return "monthly";
+		if ("季付".equals(text) || "quarterly".equalsIgnoreCase(text)) return "quarterly";
+		if ("半年付".equals(text) || "halfYear".equalsIgnoreCase(text)) return "halfYear";
+		if ("年付".equals(text) || "yearly".equalsIgnoreCase(text)) return "yearly";
+		throw new ServiceException("第" + rowNumber + "行缴费周期仅支持月付、季付、半年付、年付");
+	}
+
+	private String resolveLateFeeUnit(String value, int rowNumber) {
+		String text = trimImportText(value);
+		if (Func.isBlank(text) || "%/天".equals(text) || "percent_day".equalsIgnoreCase(text)) return "percent_day";
+		if ("元/天".equals(text) || "yuan_day".equalsIgnoreCase(text)) return "yuan_day";
+		throw new ServiceException("第" + rowNumber + "行滞纳金单位仅支持%/天、元/天");
+	}
+
+	private String paymentCycleText(String value) {
+		return switch (Func.toStr(value, "")) {
+			case "quarterly" -> "季付";
+			case "halfYear" -> "半年付";
+			case "yearly" -> "年付";
+			default -> "月付";
+		};
+	}
+
+	private String lateFeeUnitText(String value) {
+		return "yuan_day".equals(value) ? "元/天" : "%/天";
+	}
+
+	private String contractStatusText(String value) {
+		return switch (Func.toStr(value, "")) {
+			case "0" -> "待审批";
+			case "1" -> "生效";
+			case "2" -> "已到期";
+			case "3" -> "已续签";
+			case "4" -> "已退租";
+			case "5" -> "待盖章";
+			case "6" -> "退租中";
+			case "7" -> "退租交接中";
+			case "8" -> "房屋验收中";
+			default -> "未知";
+		};
 	}
 
 	@Override
@@ -366,10 +606,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	@Transactional(rollbackFor = Exception.class)
 	public ContractPayment ensureDepositRefundPayment(Long contractId) {
 		Contract contract = requireContractForUpdate(contractId);
-		if (!STATUS_TERMINATED.equals(contract.getContractStatus())) {
-			throw new ServiceException("房屋验收完成后才可以发起押金退还");
-		}
-		validateDepositRefundMaterials(contractId);
+		validateDepositRefundApplication(contract);
 		ContractPayment existing = findDepositRefundPayment(contractId);
 		if (existing != null && (PAY_STATUS_PAID.equals(existing.getPayStatus())
 			|| "termination_settlement".equals(existing.getSpecialBillType()))) {
@@ -379,6 +616,64 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		return existing == null
 			? createDepositRefundPayment(contract, settlement)
 			: refreshDepositRefundPayment(existing, settlement);
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public Contract confirmTerminationAddressChange(Long contractId, String registeredAddress) {
+		Contract contract = requireContractForUpdate(contractId);
+		if (!List.of(STATUS_TERMINATION_HANDOVER, STATUS_ROOM_REVIEW_RUNNING, STATUS_TERMINATED)
+			.contains(contract.getContractStatus())) {
+			throw new ServiceException("退租审批完成并进入交接阶段后才可以登记地址变更");
+		}
+		if (Func.isEmpty(contract.getCustomerId())) {
+			throw new ServiceException("当前合同未关联客户档案，无法登记地址变更");
+		}
+		String normalizedAddress = Func.toStr(registeredAddress, "").trim();
+		if (Func.isBlank(normalizedAddress)) {
+			throw new ServiceException("变更后的注册地址不能为空");
+		}
+		if (normalizedAddress.length() > 500) {
+			throw new ServiceException("变更后的注册地址不能超过500个字符");
+		}
+		Customer customer = customerMapper.selectCustomerById(contract.getCustomerId());
+		if (customer == null) {
+			throw new ServiceException("合同关联客户不存在");
+		}
+		String operator = currentUserName();
+		if (customerMapper.updateRegisteredAddress(customer.getCustomerId(), normalizedAddress, operator) <= 0) {
+			throw new ServiceException("客户注册地址更新失败");
+		}
+		Date now = DateUtil.now();
+		Contract update = new Contract();
+		update.setContractId(contractId);
+		update.setAddressChangeStatus(ADDRESS_CHANGE_CONFIRMED);
+		update.setAddressChangeAddress(normalizedAddress);
+		update.setAddressChangeTime(now);
+		update.setAddressChangeBy(operator);
+		update.setUpdateBy(operator);
+		update.setUpdateTime(now);
+		if (baseMapper.updateById(update) <= 0) {
+			throw new ServiceException("注册地址变更状态保存失败");
+		}
+		addLog(contractId, "address_change", "确认客户注册地址已变更为：" + normalizedAddress);
+		return baseMapper.selectContractById(contractId);
+	}
+
+	@Override
+	public void validateDepositRefundApplication(Long contractId) {
+		validateDepositRefundApplication(requireContract(contractId));
+	}
+
+	private void validateDepositRefundApplication(Contract contract) {
+		if (!STATUS_TERMINATED.equals(contract.getContractStatus())) {
+			throw new ServiceException("房屋验收完成后才可以发起押金退还付款申请");
+		}
+		if (!ADDRESS_CHANGE_CONFIRMED.equals(contract.getAddressChangeStatus())
+			|| Func.isBlank(contract.getAddressChangeAddress())) {
+			throw new ServiceException("请先在退租管理中登记并确认客户注册地址已变更");
+		}
+		validateDepositRefundMaterials(contract.getContractId());
 	}
 
 	private ContractPayment createDepositRefundPayment(Contract contract, TerminationSettlement settlement) {

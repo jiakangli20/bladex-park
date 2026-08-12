@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.support.Kv;
+import org.springblade.core.tool.jackson.JsonUtil;
 import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.Func;
 import org.springblade.core.tool.utils.StringUtil;
@@ -54,6 +55,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 	private static final String AUDIT_FLAG_NO = "0";
 	private static final String AUDIT_FLAG_YES = "1";
 	private static final Pattern MOBILE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
+	private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
 	private final ITagService tagService;
 	private final BusinessOpportunityMapper businessOpportunityMapper;
@@ -268,9 +270,9 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 			applyLocalCheck(customer);
 		}
 		try {
+			normalizeCustomer(customer);
+			validateCustomer(customer, isCreate ? null : customer.getCustomerId());
 			if (isCreate) {
-				normalizeCustomer(customer);
-				validateCustomer(customer, null);
 				customer.setCreateBy(currentUserName());
 				customer.setCreateTime(DateUtil.now());
 				baseMapper.insertCustomer(customer);
@@ -324,9 +326,9 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 			applyLocalCheck(customer);
 		}
 		try {
+			normalizeCustomer(customer);
+			validateCustomer(customer, isCreate ? null : customer.getCustomerId());
 			if (isCreate) {
-				normalizeCustomer(customer);
-				validateCustomer(customer, null);
 				customer.setCreateBy(currentUserName());
 				customer.setCreateTime(DateUtil.now());
 				baseMapper.insertCustomer(customer);
@@ -377,6 +379,8 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		excel.setContactName(customer.getContactName());
 		excel.setContactPhone(customer.getContactPhone());
 		excel.setContactEmail(customer.getContactEmail());
+		excel.setIdentityFrontUrl(customer.getIdentityFrontUrl());
+		excel.setIdentityBackUrl(customer.getIdentityBackUrl());
 		excel.setContactPosition(customer.getContactPosition());
 		excel.setEstablishDate(customer.getEstablishDate());
 		excel.setRegisteredCapital(customer.getRegisteredCapital());
@@ -413,7 +417,9 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		customer.setCreditCode(trimToNull(excel.getCreditCode()));
 		customer.setContactName(required(excel.getContactName(), rowNumber, "联系人"));
 		customer.setContactPhone(required(excel.getContactPhone(), rowNumber, "联系电话"));
-		customer.setContactEmail(trimToNull(excel.getContactEmail()));
+		customer.setContactEmail(required(excel.getContactEmail(), rowNumber, "联系邮箱"));
+		customer.setIdentityFrontUrl(required(excel.getIdentityFrontUrl(), rowNumber, "身份证正面地址"));
+		customer.setIdentityBackUrl(required(excel.getIdentityBackUrl(), rowNumber, "身份证反面地址"));
 		customer.setContactPosition(trimToNull(excel.getContactPosition()));
 		customer.setEstablishDate(excel.getEstablishDate());
 		customer.setRegisteredCapital(excel.getRegisteredCapital());
@@ -481,6 +487,9 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		customer.setCreditCode(trimToNull(customer.getCreditCode()));
 		customer.setContactName(trimToNull(customer.getContactName()));
 		customer.setContactPhone(trimToNull(customer.getContactPhone()));
+		customer.setContactEmail(trimToNull(customer.getContactEmail()));
+		customer.setIdentityFrontUrl(trimToNull(customer.getIdentityFrontUrl()));
+		customer.setIdentityBackUrl(trimToNull(customer.getIdentityBackUrl()));
 		customer.setRegisteredAddress(trimToNull(customer.getRegisteredAddress()));
 		customer.setAddress(StringUtil.isBlank(customer.getAddress()) ? customer.getRegisteredAddress() : customer.getAddress().trim());
 		if (StringUtil.isBlank(customer.getMajorIllegalFlag())) {
@@ -524,6 +533,15 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		if (StringUtil.isBlank(customer.getContactPhone()) || !MOBILE_PATTERN.matcher(customer.getContactPhone()).matches()) {
 			throw new ServiceException("联系电话必须为合法手机号");
 		}
+		if (StringUtil.isBlank(customer.getContactEmail()) || !EMAIL_PATTERN.matcher(customer.getContactEmail()).matches()) {
+			throw new ServiceException("电子邮箱必须为合法邮箱地址");
+		}
+		if (StringUtil.isBlank(customer.getIdentityFrontUrl())) {
+			throw new ServiceException("身份证正面不能为空");
+		}
+		if (StringUtil.isBlank(customer.getIdentityBackUrl())) {
+			throw new ServiceException("身份证反面不能为空");
+		}
 		Long existsId = baseMapper.selectCustomerIdByEnterpriseAndPark(customer.getEnterpriseName(), customer.getParkId(), excludeCustomerId);
 		if (Func.isNotEmpty(existsId)) {
 			throw new ServiceException("同一园区下企业名称不可重复");
@@ -537,6 +555,9 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		merged.setParkId(Func.isNotEmpty(patch.getParkId()) ? patch.getParkId() : old.getParkId());
 		merged.setContactName(firstNotBlank(patch.getContactName(), old.getContactName()));
 		merged.setContactPhone(firstNotBlank(patch.getContactPhone(), old.getContactPhone()));
+		merged.setContactEmail(firstNotBlank(patch.getContactEmail(), old.getContactEmail()));
+		merged.setIdentityFrontUrl(firstNotBlank(patch.getIdentityFrontUrl(), old.getIdentityFrontUrl()));
+		merged.setIdentityBackUrl(firstNotBlank(patch.getIdentityBackUrl(), old.getIdentityBackUrl()));
 		return merged;
 	}
 
@@ -633,6 +654,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 			customer.setContactPosition(firstNotBlank(opportunity.getContactPosition(), customer.getContactPosition()));
 			customer.setChannel(firstNotBlank(opportunity.getChannel(), customer.getChannel()));
 			customer.setThirdPartyChannelName(firstNotBlank(opportunity.getThirdPartyChannelName(), customer.getThirdPartyChannelName()));
+			mergeIdentityFiles(customer, opportunity.getIdCardFiles());
 		}
 	}
 
@@ -669,6 +691,30 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		customer.setContactPosition(firstNotBlank(opportunity.getContactPosition(), customer.getContactPosition()));
 		customer.setChannel(firstNotBlank(opportunity.getChannel(), customer.getChannel()));
 		customer.setThirdPartyChannelName(firstNotBlank(opportunity.getThirdPartyChannelName(), customer.getThirdPartyChannelName()));
+		mergeIdentityFiles(customer, opportunity.getIdCardFiles());
+	}
+
+	/** 将商机中的身份证附件回流到客户档案的正反面字段。旧数据只有一组附件时按上传顺序取前两张。 */
+	private void mergeIdentityFiles(Customer customer, String idCardFiles) {
+		if (StringUtil.isBlank(idCardFiles)) {
+			return;
+		}
+		try {
+			List<Map<String, Object>> files = JsonUtil.getInstance().readValue(idCardFiles, new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {
+			});
+			List<String> urls = files.stream()
+				.map(file -> firstNotBlank(Func.toStr(file.get("url")), Func.toStr(file.get("link"))))
+				.filter(StringUtil::isNotBlank)
+				.collect(Collectors.toList());
+			if (!urls.isEmpty()) {
+				customer.setIdentityFrontUrl(firstNotBlank(customer.getIdentityFrontUrl(), urls.get(0)));
+			}
+			if (urls.size() > 1) {
+				customer.setIdentityBackUrl(firstNotBlank(customer.getIdentityBackUrl(), urls.get(1)));
+			}
+		} catch (Exception ignored) {
+			// 兼容历史脏数据，无法解析时仍由统一必填校验给出明确提示。
+		}
 	}
 
 	private void applyLocalCheck(Customer customer) {

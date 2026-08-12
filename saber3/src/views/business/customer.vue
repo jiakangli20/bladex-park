@@ -1,8 +1,7 @@
 <template>
   <basic-container>
     <div class="customer-page">
-      <template v-if="!formVisible">
-        <section class="summary-grid">
+      <section class="summary-grid">
           <div v-for="item in summaryCards" :key="item.key" class="summary-card">
             <span>{{ item.label }}</span>
             <strong>{{ item.value }}</strong>
@@ -152,20 +151,15 @@
             @current-change="currentChange"
           />
         </div>
-      </template>
 
-      <section v-else class="customer-form-page">
-        <div class="customer-form-header">
-          <div>
-            <h3>{{ formTitle }}</h3>
-            <span>{{ form.enterpriseName || '客户信息' }}</span>
-          </div>
-          <div class="customer-form-actions">
-            <el-button @click="closeFormPage">返回</el-button>
-            <el-button type="primary" :loading="submitLoading" @click="submitForm">保存</el-button>
-          </div>
-        </div>
-
+      <el-drawer
+        v-model="formVisible"
+        :title="formTitle"
+        size="76%"
+        append-to-body
+        class="customer-form-drawer"
+        :before-close="closeFormDrawer"
+      >
         <el-form ref="customerForm" :model="form" :rules="rules" label-width="124px" class="customer-form-card">
           <section class="edit-section">
             <header class="section-head">
@@ -381,8 +375,8 @@
               </el-row>
               <el-row :gutter="18">
                 <el-col :span="12">
-                  <el-form-item label="电子邮箱">
-                    <el-input v-model="form.contactEmail" maxlength="100" />
+                  <el-form-item label="电子邮箱" prop="contactEmail">
+                    <el-input v-model="form.contactEmail" maxlength="100" placeholder="请输入电子邮箱" />
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
@@ -391,6 +385,48 @@
                   </el-form-item>
                 </el-col>
               </el-row>
+              <div class="identity-upload-grid">
+                <div class="identity-upload-field">
+                  <div class="identity-upload-label"><span class="required-mark">*</span>身份证正面</div>
+                  <el-upload
+                    action="/api/blade-resource/oss/endpoint/put-file"
+                    :headers="uploadHeaders"
+                    :show-file-list="false"
+                    accept=".png,.jpg,.jpeg"
+                    :before-upload="beforeIdentityUpload"
+                    :on-success="(response, file) => handleIdentityUploadSuccess('front', response, file)"
+                    :on-error="handleIdentityUploadError"
+                  >
+                    <div class="identity-upload-card">
+                      <el-image v-if="form.identityFrontUrl" :src="form.identityFrontUrl" fit="cover" class="identity-upload-image" />
+                      <div v-else class="identity-upload-placeholder">
+                        <i class="el-icon-camera" />
+                        <span>上传身份证正面</span>
+                      </div>
+                    </div>
+                  </el-upload>
+                </div>
+                <div class="identity-upload-field">
+                  <div class="identity-upload-label"><span class="required-mark">*</span>身份证反面</div>
+                  <el-upload
+                    action="/api/blade-resource/oss/endpoint/put-file"
+                    :headers="uploadHeaders"
+                    :show-file-list="false"
+                    accept=".png,.jpg,.jpeg"
+                    :before-upload="beforeIdentityUpload"
+                    :on-success="(response, file) => handleIdentityUploadSuccess('back', response, file)"
+                    :on-error="handleIdentityUploadError"
+                  >
+                    <div class="identity-upload-card">
+                      <el-image v-if="form.identityBackUrl" :src="form.identityBackUrl" fit="cover" class="identity-upload-image" />
+                      <div v-else class="identity-upload-placeholder">
+                        <i class="el-icon-camera" />
+                        <span>上传身份证反面</span>
+                      </div>
+                    </div>
+                  </el-upload>
+                </div>
+              </div>
               <el-row :gutter="18">
                 <el-col :span="12">
                   <el-form-item label="招商渠道">
@@ -441,7 +477,14 @@
             </div>
           </section>
         </el-form>
-      </section>
+
+        <template #footer>
+          <div class="drawer-footer">
+            <el-button @click="closeFormDrawer">取消</el-button>
+            <el-button type="primary" :loading="submitLoading" @click="submitForm">保存</el-button>
+          </div>
+        </template>
+      </el-drawer>
 
       <el-drawer v-model="detailVisible" :title="detailTitle" size="900px" append-to-body>
         <div v-loading="detailLoading" class="customer-detail">
@@ -867,6 +910,8 @@ const createDefaultForm = () => ({
   contactName: '',
   contactPhone: '',
   contactEmail: '',
+  identityFrontUrl: '',
+  identityBackUrl: '',
   contactPosition: '',
   channel: '',
   thirdPartyChannelName: '',
@@ -945,6 +990,12 @@ export default {
           { required: true, message: '请输入联系电话', trigger: 'blur' },
           { pattern: /^1[3-9]\d{9}$/, message: '联系电话必须为合法手机号', trigger: 'blur' },
         ],
+        contactEmail: [
+          { required: true, message: '请输入电子邮箱', trigger: 'blur' },
+          { type: 'email', message: '请输入合法的电子邮箱', trigger: ['blur', 'change'] },
+        ],
+        identityFrontUrl: [{ required: true, message: '请上传身份证正面', trigger: 'change' }],
+        identityBackUrl: [{ required: true, message: '请上传身份证反面', trigger: 'change' }],
       },
       statusOptions,
       settlementOptions,
@@ -954,7 +1005,7 @@ export default {
     };
   },
   computed: {
-    ...mapGetters(['permission', 'website']),
+    ...mapGetters(['permission']),
     permissionList() {
       return {
         addBtn: this.validData(this.permission.settlement_customer_add, false),
@@ -970,7 +1021,8 @@ export default {
     },
     uploadHeaders() {
       return {
-        [this.website.tokenHeader]: getToken(),
+        'Blade-Auth': `bearer ${getToken()}`,
+        'Blade-Requested-With': 'BladeHttpRequest',
       };
     },
     formTitle() {
@@ -1112,7 +1164,7 @@ export default {
       });
     },
     handleTemplate() {
-      exportBlob(`/blade-park/customer/export-template?${this.website.tokenHeader}=${getToken()}`).then(res => {
+      exportBlob('/blade-park/customer/export-template').then(res => {
         downloadXls(res.data, '客户数据模板.xlsx');
       });
     },
@@ -1154,10 +1206,18 @@ export default {
         });
       });
     },
-    closeFormPage() {
+    closeFormDrawer(done) {
       this.resetFormState();
       this.formVisible = false;
       this.form = this.defaultForm();
+      this.$nextTick(() => {
+        if (this.$refs.customerForm) {
+          this.$refs.customerForm.clearValidate();
+        }
+      });
+      if (typeof done === 'function') {
+        done();
+      }
     },
     openDetail(row) {
       this.activeDetailTab = 'overview';
@@ -1196,6 +1256,10 @@ export default {
       });
     },
     submitForm() {
+      if (!this.form.identityFrontUrl || !this.form.identityBackUrl) {
+        this.$message.warning('请上传身份证正面和反面');
+        return;
+      }
       this.$refs.customerForm.validate(valid => {
         if (!valid) return;
         this.submitLoading = true;
@@ -1203,7 +1267,7 @@ export default {
         action(this.normalizePayload(this.form))
           .then(() => {
             this.$message.success('保存成功');
-            this.closeFormPage();
+            this.closeFormDrawer();
             this.reload();
           })
           .finally(() => {
@@ -1276,10 +1340,42 @@ export default {
         leaseTermLabel,
         address: row.registeredAddress || row.address,
         creditCode: row.creditCode || null,
+        contactEmail: row.contactEmail || null,
+        identityFrontUrl: row.identityFrontUrl || null,
+        identityBackUrl: row.identityBackUrl || null,
         tagIds: Array.isArray(row.tagIds) ? row.tagIds : [],
       };
       delete payload.carrierTypeArray;
       return payload;
+    },
+    beforeIdentityUpload(file) {
+      const isImage =
+        ['image/jpeg', 'image/png'].includes(file.type) ||
+        /\.(jpg|jpeg|png)$/i.test(file.name || '');
+      const isLt10M = file.size / 1024 / 1024 < 10;
+      if (!isImage) this.$message.error('仅支持上传 JPG、PNG 格式图片');
+      if (!isLt10M) this.$message.error('图片大小不能超过 10MB');
+      return isImage && isLt10M;
+    },
+    handleIdentityUploadSuccess(side, response, file) {
+      if (!response || response.success === false) {
+        this.$message.error((response && response.msg) || '上传失败');
+        return;
+      }
+      const data = response.data || {};
+      const fileUrl = data.link || data.url || data.path || response.link || response.url || response.data || '';
+      if (!fileUrl || typeof fileUrl !== 'string') {
+        this.$message.error('上传成功但未返回文件地址');
+        return;
+      }
+      this.form[side === 'front' ? 'identityFrontUrl' : 'identityBackUrl'] = fileUrl;
+      this.$nextTick(() => this.$refs.customerForm && this.$refs.customerForm.clearValidate([
+        side === 'front' ? 'identityFrontUrl' : 'identityBackUrl',
+      ]));
+      this.$message.success(file && file.name ? `${file.name} 上传成功` : '上传成功');
+    },
+    handleIdentityUploadError(error) {
+      this.$message.error((error && error.message) || '上传失败，请重试');
     },
     resolveTagIds(detail = {}) {
       if (Array.isArray(detail.tagIds)) {
@@ -1727,50 +1823,28 @@ export default {
   justify-content: flex-end;
 }
 
-.customer-form-page {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.customer-form-header {
-  border: 1px solid #ebeef5;
-  border-radius: 10px;
-  background: #fff;
-}
-
-.customer-form-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 18px;
-}
-
-.customer-form-header h3 {
-  margin: 0;
-  color: #1f2937;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.customer-form-header span {
-  display: block;
-  margin-top: 4px;
-  color: #6b7280;
-  font-size: 13px;
-}
-
-.customer-form-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .customer-form-card {
   padding: 0;
   border: 0;
   background: transparent;
+}
+
+.customer-form-drawer :deep(.el-drawer__body) {
+  padding: 20px 22px 0;
+  background: #f7f8fa;
+}
+
+.customer-form-drawer :deep(.el-drawer__footer) {
+  padding: 0;
+  border-top: 1px solid #ebeef5;
+  background: #fff;
+}
+
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 10px 22px;
 }
 
 .edit-section {
@@ -1811,6 +1885,90 @@ export default {
 
 .section-body {
   padding: 20px 22px 4px;
+}
+
+.identity-upload-grid {
+  display: grid;
+  width: 100%;
+  margin-bottom: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 18px;
+}
+
+.identity-upload-field {
+  display: flex !important;
+  align-items: flex-start;
+  width: 100%;
+  min-width: 0;
+}
+
+.identity-upload-field + .identity-upload-field {
+  margin-left: 0;
+}
+
+.identity-upload-card {
+  width: 160px;
+  height: 112px;
+  overflow: hidden;
+  border: 1px dashed #dcdfe6;
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+.identity-upload-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.identity-upload-placeholder {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #606266;
+  font-size: 14px;
+}
+
+.identity-upload-placeholder i {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #2f80ff;
+  color: #fff;
+  font-size: 16px;
+}
+
+.identity-upload-label {
+  flex: 0 0 124px;
+  width: 124px;
+  box-sizing: border-box;
+  margin-right: 0;
+  padding-right: 12px;
+  color: #606266;
+  font-size: 14px;
+  line-height: 32px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.identity-upload-field .el-upload {
+  display: block;
+}
+
+.identity-upload-label + .el-upload {
+  flex: 0 0 auto;
+}
+
+.required-mark {
+  display: inline-block;
+  margin-right: 4px;
+  color: #f56c6c;
 }
 
 .industry-check-alert {

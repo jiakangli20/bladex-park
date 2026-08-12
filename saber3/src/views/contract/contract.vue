@@ -507,6 +507,24 @@
         <section class="contract-toolbar">
           <div class="toolbar-left">
             <el-button type="primary" icon="el-icon-plus" @click="handleAdd">新建合同</el-button>
+            <el-button
+              v-if="permission.contract_contract_add"
+              type="primary"
+              plain
+              icon="el-icon-upload"
+              @click="openContractImport"
+            >
+              导入
+            </el-button>
+            <el-button
+              v-if="permission.contract_contract_view"
+              type="primary"
+              plain
+              icon="el-icon-download"
+              @click="handleContractExport"
+            >
+              导出
+            </el-button>
             <el-button type="success" plain @click="handleStartApprovalFromSelection">
               <el-icon><Promotion /></el-icon>
               发起合同审批
@@ -1362,23 +1380,31 @@
         :title="approvalDialogTitle"
         width="760px"
         append-to-body
+        class="contract-workflow-dialog"
         @close="resetApprovalDialog"
       >
         <div class="approval-dialog">
-          <section class="detail-section">
-            <div class="detail-section-title">{{ approvalSummaryTitle }}</div>
-            <div class="contract-field-grid">
-              <div v-for="item in approvalSummaryItems" :key="item.label" class="contract-field">
+          <section class="approval-summary-panel">
+            <div class="approval-panel-title">{{ approvalSummaryTitle }}</div>
+            <div class="approval-summary-grid">
+              <div
+                v-for="item in approvalSummaryItems"
+                :key="item.label"
+                class="approval-summary-item"
+              >
                 <span>{{ item.label }}</span>
                 <strong>{{ item.value }}</strong>
               </div>
             </div>
           </section>
 
-          <section class="detail-section">
-            <div class="detail-section-title">审批配置</div>
-            <el-form :model="approvalForm" label-width="108px">
-              <el-form-item label="审批流程" required>
+          <section class="approval-config-panel">
+            <div class="approval-panel-title">审批配置</div>
+            <el-form :model="approvalForm" label-position="top" class="approval-config-form">
+              <el-form-item required>
+                <template #label>
+                  <span class="approval-form-label">审批流程</span>
+                </template>
                 <el-select
                   v-model="approvalForm.processDefKey"
                   filterable
@@ -1405,54 +1431,68 @@
             </el-form>
           </section>
 
-          <section v-if="isTerminationWorkflow" class="detail-section">
-            <div class="detail-section-title">退租信息</div>
-            <el-form :model="approvalExtra" label-width="108px">
-              <el-form-item label="退租类型">
-                <el-radio-group v-model="approvalExtra.terminationType">
-                  <el-radio-button label="normal">正常退租</el-radio-button>
-                  <el-radio-button label="early">客户提前退租</el-radio-button>
-                  <el-radio-button label="special">特殊情况</el-radio-button>
-                </el-radio-group>
-              </el-form-item>
-              <el-form-item label="退租日期">
-                <el-date-picker
-                  v-model="approvalExtra.expectedTerminationDate"
-                  value-format="YYYY-MM-DD"
-                  type="date"
-                  placeholder="请选择退租日期"
-                  style="width: 100%"
-                />
-              </el-form-item>
-              <el-form-item v-if="approvalExtra.terminationType !== 'normal'" label="违约金">
-                <el-input-number
-                  v-model="approvalExtra.breachPenalty"
-                  :min="0"
-                  :precision="2"
-                  controls-position="right"
-                  style="width: 100%"
-                />
-              </el-form-item>
-              <el-form-item label="退租原因">
-                <el-input
-                  v-model="approvalExtra.terminationReason"
-                  type="textarea"
-                  :rows="3"
-                  placeholder="请填写退租原因"
-                />
-              </el-form-item>
+          <section v-if="isTerminationWorkflow" class="approval-extra-panel">
+            <div class="approval-panel-title">退租信息</div>
+            <el-form :model="approvalExtra" label-position="top" class="termination-approval-form">
+              <el-row :gutter="16">
+                <el-col :span="24">
+                  <el-form-item label="退租类型">
+                    <el-radio-group v-model="approvalExtra.terminationType">
+                      <el-radio-button label="normal">正常退租</el-radio-button>
+                      <el-radio-button label="early">客户提前退租</el-radio-button>
+                      <el-radio-button label="special">特殊情况</el-radio-button>
+                    </el-radio-group>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="approvalExtra.terminationType !== 'normal' ? 12 : 24">
+                  <el-form-item label="退租日期">
+                    <el-date-picker
+                      v-model="approvalExtra.expectedTerminationDate"
+                      value-format="YYYY-MM-DD"
+                      type="date"
+                      placeholder="请选择退租日期"
+                      style="width: 100%"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col v-if="approvalExtra.terminationType !== 'normal'" :span="12">
+                  <el-form-item label="违约金">
+                    <el-input-number
+                      v-model="approvalExtra.breachPenalty"
+                      :min="0"
+                      :precision="2"
+                      controls-position="right"
+                      style="width: 100%"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="24">
+                  <el-form-item label="退租原因">
+                    <el-input
+                      v-model="approvalExtra.terminationReason"
+                      type="textarea"
+                      :rows="3"
+                      resize="none"
+                      placeholder="请填写退租原因"
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
             </el-form>
           </section>
+          <div class="approval-dialog-tip">{{ approvalDialogTip }}</div>
         </div>
         <template #footer>
-          <el-button @click="approvalVisible = false">取消</el-button>
-          <el-button
-            type="primary"
-            :disabled="!approvalForm.processDefKey || approvalLoading"
-            @click="goWorkflowApproval"
-          >
-            下一步
-          </el-button>
+          <div class="approval-dialog-footer">
+            <el-button @click="approvalVisible = false">取消</el-button>
+            <el-button
+              type="primary"
+              :disabled="!approvalForm.processDefKey || approvalLoading"
+              @click="goWorkflowApproval"
+            >
+              下一步
+            </el-button>
+          </div>
         </template>
       </el-dialog>
 
@@ -1632,6 +1672,45 @@
         </template>
       </el-dialog>
 
+      <el-dialog
+        v-model="contractImportVisible"
+        title="合同数据导入"
+        width="560px"
+        append-to-body
+        @closed="clearContractImportFiles"
+      >
+        <div class="contract-import-panel">
+          <el-upload
+            ref="contractImportRef"
+            drag
+            action="/blade-contract/contract/import"
+            name="file"
+            accept=".xls,.xlsx"
+            :headers="uploadHeaders"
+            :limit="1"
+            :show-file-list="true"
+            :before-upload="beforeContractImportUpload"
+            :on-success="handleContractImportSuccess"
+            :on-error="handleContractImportError"
+          >
+            <i class="el-icon-upload"></i>
+            <div class="el-upload__text">将 Excel 文件拖到此处，或点击上传</div>
+            <template #tip>
+              <div class="el-upload__tip">仅支持 .xls / .xlsx 标准合同模板文件</div>
+            </template>
+          </el-upload>
+          <div class="contract-import-template">
+            <span>按园区、楼宇和房源全称填写；导入的新合同统一为待审批。</span>
+            <el-button type="primary" plain icon="el-icon-download" @click="handleContractTemplate">
+              下载模板
+            </el-button>
+          </div>
+        </div>
+        <template #footer>
+          <el-button @click="contractImportVisible = false">关闭</el-button>
+        </template>
+      </el-dialog>
+
       <notice-preview-dialog
         v-model="noticePreview.visible"
         :title="noticePreview.title"
@@ -1654,6 +1733,7 @@
 import { Base64 } from 'js-base64';
 import { Promotion } from '@element-plus/icons-vue';
 import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
+import { exportBlob } from '@/api/common';
 import {
   applyContractChange,
   getDetail,
@@ -1678,6 +1758,7 @@ import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design
 import { paymentCycleDic, paymentStatusDic, statusDic } from '@/option/contract/contract';
 import { mapGetters } from 'vuex';
 import { getToken } from '@/utils/auth';
+import { downloadXls } from '@/utils/util';
 import CustomerTagSelector from '@/views/business/modules/customer-tag-selector.vue';
 import {
   createNoticePreviewState,
@@ -1785,6 +1866,7 @@ export default {
         contractStatus: '',
       },
       loading: false,
+      contractImportVisible: false,
       page: {
         pageSize: 10,
         currentPage: 1,
@@ -2148,6 +2230,18 @@ export default {
     isTerminationWorkflow() {
       return this.approvalType === CONTRACT_TERMINATION_BUSINESS_TYPE;
     },
+    approvalDialogTip() {
+      if (this.approvalType === CONTRACT_TERMINATION_BUSINESS_TYPE) {
+        return '提交后将进入退租审批流程，审批通过后进入退租交接和房屋验收阶段。';
+      }
+      if (this.approvalType === CONTRACT_APPROVAL_BUSINESS_TYPE) {
+        return '提交后将进入合同审批流程，审批完成后可继续合同盖章和履约管理。';
+      }
+      if (this.approvalType === CONTRACT_PAYMENT_BUSINESS_TYPE) {
+        return '提交后将进入付款审批流程，审批通过后由财务确认付款。';
+      }
+      return `提交后将进入${this.approvalDialogTitle.replace('发起', '')}流程。`;
+    },
     approvalSummaryItems() {
       const contract = this.approvalContract || {};
       const payment = this.approvalPayment || {};
@@ -2296,6 +2390,45 @@ export default {
     },
     handleAdd() {
       this.$router.push({ path: '/contract/create-template', query: { mode: 'create' } });
+    },
+    openContractImport() {
+      this.contractImportVisible = true;
+    },
+    clearContractImportFiles() {
+      this.$nextTick(() => {
+        if (this.$refs.contractImportRef) {
+          this.$refs.contractImportRef.clearFiles();
+        }
+      });
+    },
+    beforeContractImportUpload(file) {
+      const isExcel = /\.(xls|xlsx)$/i.test(file.name || '');
+      if (!isExcel) {
+        this.$message.warning('请上传 .xls 或 .xlsx 格式文件');
+      }
+      return isExcel;
+    },
+    handleContractImportSuccess(response) {
+      if (!response || response.code !== 200) {
+        this.$message.error((response && response.msg) || '导入失败');
+        return;
+      }
+      this.$message.success('合同数据导入成功');
+      this.contractImportVisible = false;
+      this.reload();
+    },
+    handleContractImportError(error) {
+      this.$message.error((error && error.message) || '导入失败，请检查模板内容后重试');
+    },
+    handleContractExport() {
+      exportBlob('/blade-contract/contract/export', this.cleanParams(this.query)).then(res => {
+        downloadXls(res.data, `合同数据${this.$dayjs().format('YYYY-MM-DD HH:mm:ss')}.xlsx`);
+      });
+    },
+    handleContractTemplate() {
+      exportBlob('/blade-contract/contract/export-template').then(res => {
+        downloadXls(res.data, '合同数据模板.xlsx');
+      });
     },
     handleStartApprovalFromSelection() {
       if (
@@ -4826,7 +4959,160 @@ export default {
 .approval-dialog {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 18px;
+}
+
+:global(.contract-workflow-dialog .el-dialog__header) {
+  margin-right: 0;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+:global(.contract-workflow-dialog .el-dialog__title) {
+  color: #303133;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+:global(.contract-workflow-dialog .el-dialog__body) {
+  padding: 20px 24px 18px;
+}
+
+:global(.contract-workflow-dialog .el-dialog__footer) {
+  padding: 14px 24px 18px;
+  border-top: 1px solid #ebeef5;
+}
+
+.approval-summary-panel,
+.approval-config-panel,
+.approval-extra-panel {
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.approval-summary-panel {
+  padding: 0 16px 4px;
+  background: #f8fafc;
+}
+
+.approval-config-panel,
+.approval-extra-panel {
+  padding: 16px;
+}
+
+.approval-panel-title {
+  padding: 14px 0 12px;
+  color: #303133;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.approval-config-panel .approval-panel-title,
+.approval-extra-panel .approval-panel-title {
+  padding-top: 0;
+}
+
+.approval-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid #ebeef5;
+}
+
+.approval-summary-item {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 10px;
+  min-height: 48px;
+  align-items: center;
+  padding-right: 16px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.approval-summary-item:nth-child(even) {
+  padding-right: 0;
+  padding-left: 16px;
+  border-left: 1px solid #ebeef5;
+}
+
+.approval-summary-item span {
+  color: #909399;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.approval-summary-item strong {
+  min-width: 0;
+  color: #303133;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.approval-config-form :deep(.el-form-item),
+.termination-approval-form :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.termination-approval-form :deep(.el-col) {
+  margin-bottom: 16px;
+}
+
+.termination-approval-form :deep(.el-col:last-child) {
+  margin-bottom: 0;
+}
+
+.approval-config-form :deep(.el-form-item__label),
+.termination-approval-form :deep(.el-form-item__label) {
+  padding-bottom: 8px;
+  color: #303133;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.approval-form-label {
+  color: #303133;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.approval-config-form :deep(.el-select__wrapper),
+.termination-approval-form :deep(.el-input__wrapper),
+.termination-approval-form :deep(.el-select__wrapper) {
+  min-height: 40px;
+}
+
+.termination-approval-form :deep(.el-radio-group) {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.termination-approval-form :deep(.el-textarea__inner) {
+  min-height: 90px !important;
+  padding: 10px 12px;
+  line-height: 22px;
+}
+
+.approval-dialog-tip {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #ecf5ff;
+  color: #606266;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.approval-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.approval-dialog-footer :deep(.el-button) {
+  min-width: 88px;
+  margin-left: 0;
 }
 
 .approval-option {
@@ -5014,6 +5300,30 @@ export default {
 .contract-page :deep(.el-input__wrapper),
 .contract-page :deep(.el-select__wrapper) {
   border-radius: 6px;
+}
+
+.contract-import-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.contract-import-panel :deep(.el-upload),
+.contract-import-panel :deep(.el-upload-dragger) {
+  width: 100%;
+}
+
+.contract-import-template {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #606266;
+  font-size: 13px;
 }
 
 @media (max-width: 1100px) {

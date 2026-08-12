@@ -47,6 +47,12 @@ public class CustomerExcel implements Serializable {
 	@ExcelProperty("联系邮箱")
 	private String contactEmail;
 
+	@ExcelProperty("身份证正面地址")
+	private String identityFrontUrl;
+
+	@ExcelProperty("身份证反面地址")
+	private String identityBackUrl;
+
 	@ExcelProperty("联系人职务")
 	private String contactPosition;
 

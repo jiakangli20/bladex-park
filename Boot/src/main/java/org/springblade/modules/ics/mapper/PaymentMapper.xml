@@ -41,6 +41,10 @@
 		<result column="customer_name" property="customerName"/>
 		<result column="credit_code" property="creditCode"/>
 		<result column="registered_address" property="registeredAddress"/>
+		<result column="address_change_status" property="addressChangeStatus"/>
+		<result column="address_change_address" property="addressChangeAddress"/>
+		<result column="address_change_time" property="addressChangeTime"/>
+		<result column="address_change_by" property="addressChangeBy"/>
 		<result column="contract_name" property="contractName"/>
 		<result column="room_name" property="roomName"/>
 		<result column="building_name" property="buildingName"/>
@@ -122,6 +126,10 @@
 			COALESCE(NULLIF(c.customer_name, ''), cu.enterprise_name) AS customer_name,
 			cu.credit_code,
 			cu.registered_address,
+			c.address_change_status,
+			c.address_change_address,
+			c.address_change_time,
+			c.address_change_by,
 			c.contract_name,
 			COALESCE(p.selected_room_name, c.room_name) AS room_name,
 			COALESCE(p.selected_building_name, c.building_name) AS building_name,

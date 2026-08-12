@@ -36,6 +36,10 @@
         <result column="contract_status" property="contractStatus"/>
         <result column="payment_cycle" property="paymentCycle"/>
         <result column="contract_file_url" property="contractFileUrl"/>
+		<result column="address_change_status" property="addressChangeStatus"/>
+		<result column="address_change_address" property="addressChangeAddress"/>
+		<result column="address_change_time" property="addressChangeTime"/>
+		<result column="address_change_by" property="addressChangeBy"/>
         <result column="remark" property="remark"/>
         <result column="parent_contract_id" property="parentContractId"/>
         <result column="del_flag" property="delFlag"/>
@@ -127,6 +131,10 @@
             END AS contract_status_name,
             c.payment_cycle,
             c.contract_file_url,
+			c.address_change_status,
+			c.address_change_address,
+			c.address_change_time,
+			c.address_change_by,
             c.remark,
             c.parent_contract_id,
             c.del_flag,
@@ -194,6 +202,14 @@
     </sql>
 
     <select id="selectContractPage" resultMap="contractResultMap">
+        <include refid="selectContractVo"/>
+        <where>
+            <include refid="contractWhere"/>
+        </where>
+        ORDER BY c.create_time DESC, c.contract_id DESC
+    </select>
+
+    <select id="selectContractList" resultMap="contractResultMap">
         <include refid="selectContractVo"/>
         <where>
             <include refid="contractWhere"/>
