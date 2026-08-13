@@ -211,29 +211,17 @@
         </el-tab-pane>
 
         <el-tab-pane
-          :label="`股东/高管关联风险记录（${count('relatedRiskList')}）`"
-          name="relatedRisk"
+          :label="`安全生产挂牌督办未完成整改的信息（${count('safetySupervisionList')}）`"
+          name="safetySupervision"
         >
-          <el-table :data="data.relatedRiskList" border height="280" class="risk-table">
-            <el-table-column prop="name" label="姓名" width="120" align="center" />
-            <el-table-column prop="identity" label="身份" width="140" align="center" />
-            <el-table-column
-              prop="riskType"
-              label="关联风险类型"
-              min-width="180"
-              align="center"
-              show-overflow-tooltip
-            />
-            <el-table-column prop="riskTime" label="风险发生时间" width="150" align="center" />
-            <el-table-column
-              prop="riskSummary"
-              label="风险简要说明"
-              min-width="300"
-              align="center"
-              show-overflow-tooltip
-            />
+          <el-table :data="data.safetySupervisionList" border height="280" class="risk-table">
+            <el-table-column prop="supervisionLevel" label="督办级别" width="140" align="center" />
+            <el-table-column prop="hazardCategory" label="隐患类别" min-width="180" align="center" show-overflow-tooltip />
+            <el-table-column prop="listingDate" label="挂牌日期" width="130" align="center" />
+            <el-table-column prop="rectificationDeadline" label="整改期限" width="130" align="center" />
+            <el-table-column prop="supervisionDepartment" label="跟踪督办部门" min-width="180" align="center" show-overflow-tooltip />
             <template #empty>
-              <el-empty :image-size="64" description="暂无股东/高管关联风险记录" />
+              <el-empty :image-size="64" description="暂无安全生产挂牌督办未完成整改信息" />
             </template>
           </el-table>
         </el-tab-pane>
@@ -252,7 +240,7 @@ const emptyData = () => ({
   litigationList: [],
   executorList: [],
   penaltyList: [],
-  relatedRiskList: [],
+  safetySupervisionList: [],
 });
 
 const emptyForm = () => ({
@@ -335,7 +323,11 @@ export default {
         litigationList: Array.isArray(value.litigationList) ? value.litigationList : [],
         executorList: Array.isArray(value.executorList) ? value.executorList : [],
         penaltyList: Array.isArray(value.penaltyList) ? value.penaltyList : [],
-        relatedRiskList: Array.isArray(value.relatedRiskList) ? value.relatedRiskList : [],
+        safetySupervisionList: Array.isArray(value.safetySupervisionList)
+          ? value.safetySupervisionList
+          : Array.isArray(value.relatedRiskList)
+            ? value.relatedRiskList
+            : [],
       };
     },
     normalizeHistory(value = {}) {

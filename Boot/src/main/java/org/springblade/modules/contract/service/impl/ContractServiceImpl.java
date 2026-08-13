@@ -98,6 +98,8 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private static final String STATUS_PENDING_SEAL = "5";
 	private static final String STATUS_TERMINATION_RUNNING = "6";
 	private static final String STATUS_TERMINATION_HANDOVER = "7";
+	private static final BigDecimal RENT_BASE_PRICE = new BigDecimal("65");
+	private static final BigDecimal FLOATING_RENEWAL_RATE = new BigDecimal("5");
 	private static final String STATUS_ROOM_REVIEW_RUNNING = "8";
 	private static final String CHANGE_TYPE_RENT = "租金变更";
 	private static final String CHANGE_TYPE_TERM = "租期变更";
@@ -726,6 +728,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		if (Func.isBlank(contract.getPaymentCycle())) {
 			contract.setPaymentCycle("monthly");
 		}
+		normalizeRentPolicy(contract);
 		normalizeRentIncreaseNode(contract);
 		contract.setContractFileUrl(null);
 		contract.setParentContractId(parentContractId);
@@ -747,11 +750,13 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		update.setParkId(oldContract.getParkId());
 		validateNewRelations(update);
 		update.setRenewalRemindDays(resolveRenewalRemindDays(update));
+		normalizeRentPolicy(update);
 		normalizeRentIncreaseNode(update);
 		update.setUpdateBy(currentUserName());
 		update.setUpdateTime(DateUtil.now());
 		boolean result = updateById(update);
 		if (result) {
+			clearFixedRentIncrease(update);
 			addLog(contract.getContractId(), "update", "更新合同信息");
 		}
 		return result;
@@ -809,6 +814,40 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 			contract.setRemark(limitText(Func.isBlank(remark) ? detail : remark + "\n" + detail, 500));
 		}
 		contract.setRentIncreaseNode("custom");
+	}
+
+	/**
+	 * 租金低于报价基数时使用浮动租金版，达到基数后使用固定租金版.
+	 */
+	private void normalizeRentPolicy(Contract contract) {
+		BigDecimal rentPrice = contract.getRentPrice();
+		if (rentPrice == null || rentPrice.compareTo(BigDecimal.ZERO) <= 0) {
+			throw new ServiceException("租金单价必须大于0");
+		}
+		if (contract.getMonthlyRent() == null && contract.getRentArea() != null
+			&& contract.getRentArea().compareTo(BigDecimal.ZERO) > 0) {
+			contract.setMonthlyRent(contract.getRentArea().multiply(rentPrice).setScale(2, RoundingMode.HALF_UP));
+		}
+		if (rentPrice.compareTo(RENT_BASE_PRICE) < 0) {
+			contract.setRentIncreaseNode("renewal");
+			contract.setRentIncreaseRate(FLOATING_RENEWAL_RATE);
+			contract.setRentIncreaseUnit("percent");
+			return;
+		}
+		contract.setRentIncreaseNode("");
+		contract.setRentIncreaseRate(null);
+		contract.setRentIncreaseUnit(null);
+	}
+
+	private void clearFixedRentIncrease(Contract contract) {
+		if (contract.getRentPrice() == null || contract.getRentPrice().compareTo(RENT_BASE_PRICE) < 0) {
+			return;
+		}
+		baseMapper.update(null, Wrappers.<Contract>lambdaUpdate()
+			.eq(Contract::getContractId, contract.getContractId())
+			.set(Contract::getRentIncreaseNode, "")
+			.set(Contract::getRentIncreaseRate, null)
+			.set(Contract::getRentIncreaseUnit, null));
 	}
 
 	private Contract requireContract(Long contractId) {

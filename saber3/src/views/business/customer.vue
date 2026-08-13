@@ -670,13 +670,13 @@
                       <el-table-column prop="updateDate" label="信息更新日期" width="130" />
                     </el-table>
                   </el-tab-pane>
-                  <el-tab-pane :label="`股东/高管关联风险记录（${backgroundCount('relatedRiskList')}）`" name="relatedRisk">
-                    <el-table :data="detailBackgroundData.relatedRiskList" border size="small" empty-text="暂无股东/高管关联风险记录" class="detail-table">
-                      <el-table-column prop="name" label="姓名" width="100" />
-                      <el-table-column prop="identity" label="身份" width="120" />
-                      <el-table-column prop="riskType" label="关联风险类型" width="150" />
-                      <el-table-column prop="riskTime" label="风险发生时间" width="140" />
-                      <el-table-column prop="riskSummary" label="风险简要说明" min-width="260" />
+                  <el-tab-pane :label="`安全生产挂牌督办未完成整改的信息（${backgroundCount('safetySupervisionList')}）`" name="safetySupervision">
+                    <el-table :data="detailBackgroundData.safetySupervisionList" border size="small" empty-text="暂无安全生产挂牌督办未完成整改信息" class="detail-table">
+                      <el-table-column prop="supervisionLevel" label="督办级别" width="120" />
+                      <el-table-column prop="hazardCategory" label="隐患类别" min-width="180" show-overflow-tooltip />
+                      <el-table-column prop="listingDate" label="挂牌日期" width="120" />
+                      <el-table-column prop="rectificationDeadline" label="整改期限" width="120" />
+                      <el-table-column prop="supervisionDepartment" label="跟踪督办部门" min-width="160" show-overflow-tooltip />
                     </el-table>
                   </el-tab-pane>
                 </el-tabs>
@@ -974,7 +974,7 @@ export default {
         litigationList: [],
         executorList: [],
         penaltyList: [],
-        relatedRiskList: [],
+        safetySupervisionList: [],
       },
       form: createDefaultForm(),
       tagForm: {
@@ -1053,7 +1053,7 @@ export default {
       return parts.join('；') || '请填写行业类型后检测准入结果';
     },
     backgroundTotal() {
-      return ['litigationList', 'executorList', 'penaltyList', 'relatedRiskList'].reduce((sum, key) => {
+      return ['litigationList', 'executorList', 'penaltyList', 'safetySupervisionList'].reduce((sum, key) => {
         return sum + this.backgroundCount(key);
       }, 0);
     },
@@ -1455,7 +1455,7 @@ export default {
         litigationList: [],
         executorList: [],
         penaltyList: [],
-        relatedRiskList: [],
+        safetySupervisionList: [],
       };
     },
     loadDetailBackground(enterpriseName) {
@@ -1489,7 +1489,11 @@ export default {
         litigationList: Array.isArray(data.litigationList) ? data.litigationList : [],
         executorList: Array.isArray(data.executorList) ? data.executorList : [],
         penaltyList: Array.isArray(data.penaltyList) ? data.penaltyList : [],
-        relatedRiskList: Array.isArray(data.relatedRiskList) ? data.relatedRiskList : [],
+        safetySupervisionList: Array.isArray(data.safetySupervisionList)
+          ? data.safetySupervisionList
+          : Array.isArray(data.relatedRiskList)
+            ? data.relatedRiskList
+            : [],
       };
     },
     backgroundCount(key) {

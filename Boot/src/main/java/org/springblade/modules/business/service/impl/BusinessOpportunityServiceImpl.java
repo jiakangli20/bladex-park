@@ -544,7 +544,9 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		result.put("litigationList", Collections.emptyList());
 		result.put("executorList", Collections.emptyList());
 		result.put("penaltyList", Collections.emptyList());
-		result.put("relatedRiskList", Collections.emptyList());
+		List<Map<String, Object>> safetySupervisionList = Collections.emptyList();
+		result.put("safetySupervisionList", safetySupervisionList);
+		result.put("relatedRiskList", safetySupervisionList);
 		return result;
 	}
 

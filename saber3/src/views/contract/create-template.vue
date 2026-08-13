@@ -38,6 +38,7 @@
                         v-model="currentTemplateKey"
                         placeholder="请选择合同模板"
                         style="width: 100%"
+                        disabled
                         @change="handleTemplateChange"
                       >
                         <el-option
@@ -204,6 +205,7 @@
                         :min="0"
                         :precision="2"
                         style="width: 100%"
+                        @change="calculateMonthlyRent"
                       />
                     </el-form-item>
                   </el-col>
@@ -287,6 +289,50 @@
                   <em>租金、物业费、履约保证金和滞纳金</em>
                 </header>
 
+                <div class="rent-policy-panel">
+                  <div class="rent-policy-panel__header">
+                    <div>
+                      <strong>租金政策核算</strong>
+                      <span>{{ rentPolicy.periodLabel }}</span>
+                    </div>
+                    <el-tag :type="rentPolicy.approvalTagType" effect="light">
+                      建议审批：{{ rentPolicy.approvalLevel }}
+                    </el-tag>
+                  </div>
+                  <div class="rent-policy-grid">
+                    <div class="rent-policy-item">
+                      <span>报价基数</span>
+                      <strong>{{ RENT_BASE_PRICE }} 元/㎡/月</strong>
+                    </div>
+                    <div class="rent-policy-item">
+                      <span>当前报价</span>
+                      <strong>{{ formatNumber(form.rentPrice) }} 元/㎡/月</strong>
+                    </div>
+                    <div class="rent-policy-item">
+                      <span>报价下调</span>
+                      <strong>{{ formatNumber(rentPolicy.discountAmount) }} 元</strong>
+                    </div>
+                    <div class="rent-policy-item">
+                      <span>免租期</span>
+                      <strong>{{ formatNumber(rentPolicy.rentFreeMonths) }} 个月</strong>
+                    </div>
+                    <div class="rent-policy-item">
+                      <span>合同版本</span>
+                      <strong>{{ rentPolicy.contractVersion }}</strong>
+                    </div>
+                    <div class="rent-policy-item">
+                      <span>续签租金</span>
+                      <strong>{{ rentPolicy.renewalRule }}</strong>
+                    </div>
+                  </div>
+                  <p v-if="rentPolicy.specialCase" class="rent-policy-note is-warning">
+                    当前签约日期不在已配置政策期间内，请按特殊情况一事一议。
+                  </p>
+                  <p v-else class="rent-policy-note">
+                    租金和免租期分别核算，审批层级取两项中的较高层级；特殊情况一事一议。
+                  </p>
+                </div>
+
                 <template v-if="isFloatingTemplate">
                   <div class="stage-grid">
                     <div v-for="stage in rentStages" :key="stage.key" class="stage-card">
@@ -347,7 +393,7 @@
                     <el-form-item label="租金单价" prop="rentPrice">
                       <el-input-number
                         v-model="form.rentPrice"
-                        :min="0"
+                        :min="0.01"
                         :precision="2"
                         style="width: 100%"
                         @change="calculateMonthlyRent"
@@ -602,6 +648,30 @@ import { getList as getParkList } from '@/api/park/park';
 import { getSimpleList as getBuildingList } from '@/api/park/building';
 import { getRoomDetail, getRoomList } from '@/api/park/rent-control';
 
+const RENT_BASE_PRICE = 65;
+const RENT_POLICY_PERIODS = [
+  {
+    start: '2024-01-01',
+    end: '2024-06-30',
+    label: '适用政策：2024.01.01-2024.06.30',
+    limits: [
+      { level: '招商员', discount: 3, rentFreeMonths: 1 },
+      { level: '部门经理', discount: 5, rentFreeMonths: 2 },
+      { level: '分管领导', discount: 8, rentFreeMonths: 3 },
+    ],
+  },
+  {
+    start: '2024-07-01',
+    end: '2028-12-31',
+    label: '适用政策：2024.07.01-2028.12.31',
+    limits: [
+      { level: '招商员', discount: 3, rentFreeMonths: 0.5 },
+      { level: '部门经理', discount: 5, rentFreeMonths: 1 },
+      { level: '分管领导', discount: 8, rentFreeMonths: 1.5 },
+    ],
+  },
+];
+
 export default {
   name: 'ContractCreateTemplate',
   components: {
@@ -609,6 +679,7 @@ export default {
   },
   data() {
     return {
+      RENT_BASE_PRICE,
       activeAnchor: 'basic',
       currentTemplateKey: 'fixed-rent',
       renewalMode: false,
@@ -733,6 +804,46 @@ export default {
       );
       return parts.join(' / ');
     },
+    rentPolicy() {
+      const price = Number(this.form.rentPrice || 0);
+      const discountAmount = Math.max(RENT_BASE_PRICE - price, 0);
+      const rentFreeMonths = this.calculateRentFreeMonths();
+      const period = RENT_POLICY_PERIODS.find(
+        item => this.form.signDate >= item.start && this.form.signDate <= item.end
+      );
+      const requiredIndex = (value, limits) => {
+        if (!period) return 3;
+        const index = limits.findIndex(limit => value <= limit);
+        return index >= 0 ? index : 3;
+      };
+      const discountLimits = period ? period.limits.map(item => item.discount) : [];
+      const rentFreeLimits = period ? period.limits.map(item => item.rentFreeMonths) : [];
+      const approvalIndex = Math.max(
+        requiredIndex(discountAmount, discountLimits),
+        requiredIndex(rentFreeMonths, rentFreeLimits)
+      );
+      const approvalLevel = period
+        ? [...period.limits.map(item => item.level), '总经理'][approvalIndex]
+        : '总经理（特殊事项）';
+      const floating = price > 0 && price < RENT_BASE_PRICE;
+      return {
+        periodLabel: period ? period.label : '未匹配到有效政策期间',
+        specialCase: !period,
+        discountAmount: Number(discountAmount.toFixed(2)),
+        rentFreeMonths,
+        approvalLevel,
+        approvalTagType: approvalIndex >= 3 ? 'danger' : approvalIndex === 2 ? 'warning' : 'primary',
+        contractVersion: floating ? '浮动租金版' : '固定租金版',
+        renewalRule: floating ? '每次续签增长 5%-10%' : '续签时另行确认',
+      };
+    },
+  },
+  watch: {
+    'form.rentPrice': {
+      handler() {
+        this.normalizeRentPolicy();
+      },
+    },
   },
   created() {
     this.initFromRoute();
@@ -760,7 +871,7 @@ export default {
         deliveryDate: '',
         rentFreeStartDate: '',
         rentFreeEndDate: '',
-        rentPrice: undefined,
+        rentPrice: RENT_BASE_PRICE,
         monthlyRent: undefined,
         propertyFee: undefined,
         deposit: undefined,
@@ -842,7 +953,6 @@ export default {
         roomId,
         roomName: value('roomName') || this.form.roomName,
         rentArea: this.toNumber(value('rentArea'), this.form.rentArea),
-        rentPrice: this.toNumber(value('rentPrice'), this.form.rentPrice),
         propertyFee: this.toNumber(value('propertyFee'), this.form.propertyFee),
       });
       this.roomQuery.parkId = this.form.parkId || '';
@@ -924,6 +1034,7 @@ export default {
       }
       this.ensureSelectedRoomOption();
       this.syncLeaseMonths();
+      this.normalizeRentPolicy();
       if (contract.customerId) {
         this.prefillCustomer(contract.customerId);
       }
@@ -948,6 +1059,15 @@ export default {
         query.renewEndDate ||
         this.defaultRenewEndDate(renewStartDate, contract.startDate, contract.endDate);
       const templateKey = this.resolveTemplateKey(contract);
+      const sourceRentPrice = this.toNumber(contract.rentPrice, RENT_BASE_PRICE);
+      const renewalRentPrice =
+        sourceRentPrice < RENT_BASE_PRICE
+          ? Math.min(Number((sourceRentPrice * 1.05).toFixed(2)), RENT_BASE_PRICE)
+          : sourceRentPrice;
+      const rentArea = this.toNumber(contract.rentArea, undefined);
+      const renewalMonthlyRent = rentArea
+        ? Number((rentArea * renewalRentPrice).toFixed(2))
+        : this.toNumber(contract.monthlyRent, undefined);
       this.currentTemplateKey = templateKey;
       Object.assign(this.form, {
         contractNo: '',
@@ -961,7 +1081,7 @@ export default {
         buildingName: contract.buildingName || '',
         roomId: contract.roomId || '',
         roomName: contract.roomName || '',
-        rentArea: this.toNumber(contract.rentArea, undefined),
+        rentArea,
         leaseMonths: undefined,
         startDate: renewStartDate,
         endDate: renewEndDate,
@@ -969,8 +1089,8 @@ export default {
         deliveryDate: renewStartDate,
         rentFreeStartDate: '',
         rentFreeEndDate: '',
-        rentPrice: this.toNumber(contract.rentPrice, undefined),
-        monthlyRent: this.toNumber(contract.monthlyRent, undefined),
+        rentPrice: renewalRentPrice,
+        monthlyRent: renewalMonthlyRent,
         propertyFee: this.toNumber(contract.propertyFee, undefined),
         deposit: this.toNumber(contract.deposit, undefined),
         depositMonths: 1,
@@ -980,7 +1100,12 @@ export default {
         lateFeeCap: this.toNumber(contract.lateFeeCap, undefined),
         renewalRemindDays: contract.renewalRemindDays || 30,
         contractStatus: '0',
-        remark: `续租来源合同：${contract.contractNo || contract.contractId}`,
+        remark:
+          sourceRentPrice < RENT_BASE_PRICE
+            ? `续租来源合同：${contract.contractNo || contract.contractId}；原租金${this.formatNumber(
+                sourceRentPrice
+              )}元/㎡/月，本次按最低5%增长回填，最终可在5%-10%范围内确认`
+            : `续租来源合同：${contract.contractNo || contract.contractId}`,
       });
       if (this.isFloatingTemplate) {
         Object.assign(this.form, {
@@ -1011,6 +1136,7 @@ export default {
       }
       this.ensureSelectedRoomOption();
       this.syncLeaseMonths();
+      this.normalizeRentPolicy();
       if (contract.customerId) {
         this.prefillCustomer(contract.customerId);
       }
@@ -1230,14 +1356,8 @@ export default {
       this.form.parkId = parkId;
       this.form.parkName = room.parkName || this.parkName(parkId);
       this.form.rentArea = this.toNumber(room.area, this.form.rentArea);
-      this.form.rentPrice = this.toNumber(
-        room.unitRentPrice,
-        this.toNumber(room.rentUnitPrice, this.form.rentPrice)
-      );
-      if (!this.form.rentPrice && room.rentPrice && this.form.rentArea) {
-        this.form.monthlyRent = this.toNumber(room.rentPrice, this.form.monthlyRent);
-      } else if (room.rentPrice && !this.form.monthlyRent) {
-        this.form.monthlyRent = this.toNumber(room.rentPrice, this.form.monthlyRent);
+      if (!this.form.rentPrice) {
+        this.form.rentPrice = RENT_BASE_PRICE;
       }
       this.form.propertyFee = this.toNumber(room.propertyFee, this.form.propertyFee);
       if (this.isFloatingTemplate) {
@@ -1245,6 +1365,25 @@ export default {
         this.form.stage1MonthlyRent = this.form.stage1MonthlyRent || this.form.monthlyRent;
       }
       this.calculateMonthlyRent();
+      this.normalizeRentPolicy();
+    },
+    normalizeRentPolicy() {
+      const price = Number(this.form.rentPrice || 0);
+      const expectedTemplate = price > 0 && price < RENT_BASE_PRICE ? 'floating-rent' : 'fixed-rent';
+      if (this.currentTemplateKey !== expectedTemplate) {
+        this.handleTemplateChange(expectedTemplate);
+      }
+      if (expectedTemplate === 'floating-rent') {
+        this.form.stage1RentPrice = price || this.form.stage1RentPrice;
+        this.calculateStageRent(this.rentStages[0]);
+      }
+    },
+    calculateRentFreeMonths() {
+      const start = this.parseDate(this.form.rentFreeStartDate);
+      const end = this.parseDate(this.form.rentFreeEndDate);
+      if (!start || !end || end.getTime() < start.getTime()) return 0;
+      const days = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+      return Number((days / 30).toFixed(2));
     },
     calculateMonthlyRent() {
       const area = Number(this.form.rentArea || 0);
@@ -1308,6 +1447,7 @@ export default {
       });
     },
     buildPayload() {
+      this.normalizeRentPolicy();
       const payload = {
         contractNo: this.form.contractNo,
         contractName: this.form.contractName,
@@ -1330,8 +1470,9 @@ export default {
         endDate: this.form.endDate,
         signDate: this.form.signDate,
         paymentCycle: this.form.paymentCycle,
-        // 递增节点字段只保存枚举值，完整的分阶段金额已写入合同备注。
-        rentIncreaseNode: this.isFloatingTemplate ? 'custom' : '',
+        rentIncreaseNode: this.isFloatingTemplate ? 'renewal' : '',
+        rentIncreaseRate: this.isFloatingTemplate ? 5 : undefined,
+        rentIncreaseUnit: this.isFloatingTemplate ? 'percent' : undefined,
         remark: this.buildRemark(),
       };
       return Object.keys(payload).reduce((result, key) => {
@@ -1344,13 +1485,29 @@ export default {
     buildRemark() {
       const lines = [
         `合同模板：${this.currentTemplate.name}`,
+        `租金政策核算：报价基数=${RENT_BASE_PRICE}元/㎡/月；签约单价=${this.formatNumber(
+          this.form.rentPrice
+        )}元/㎡/月；报价下调=${this.formatNumber(
+          this.rentPolicy.discountAmount
+        )}元；免租期=${this.formatNumber(
+          this.rentPolicy.rentFreeMonths
+        )}个月；建议审批=${this.rentPolicy.approvalLevel}；合同版本=${
+          this.rentPolicy.contractVersion
+        }；续签规则=${this.rentPolicy.renewalRule}`,
+        this.rentPolicy.periodLabel,
         `交付日期：${this.form.deliveryDate || '-'}`,
         `免租装修期：${this.form.rentFreeStartDate || '-'} 至 ${this.form.rentFreeEndDate || '-'}`,
         `物业首期缴费日期：${this.form.firstPropertyPayDate || '-'}`,
         `履约保证月数：${this.form.depositMonths || 0}个月`,
       ];
       if (this.isFloatingTemplate) {
-        lines.push(`浮动租金：${this.rentIncreaseSummary()}`);
+        lines.push('浮动租金：续签时增长5%-10%，涨至报价基数后视具体情况另行确认');
+        const stageSummary = this.rentIncreaseSummary();
+        if (stageSummary) {
+          lines.push(`分阶段租金：${stageSummary}`);
+        }
+      } else {
+        lines.push('固定租金：续签合同价格视具体情况另行确认');
       }
       if (this.form.remark) {
         lines.push(`业务备注：${this.form.remark}`);
@@ -1394,7 +1551,7 @@ export default {
         `${this.form.stage2StartDate || '-'} 至 ${this.form.stage2EndDate || '-'}：${
           this.form.stage2RentPrice || '-'
         }元/㎡/月，${this.form.stage2MonthlyRent || '-'}元/月`,
-      ].join('；');
+      ].filter(item => !item.includes('- 至 -')).join('；');
     },
     parkName(parkId) {
       const park = this.parkOptions.find(item => String(item.id) === String(parkId));
@@ -1597,6 +1754,86 @@ export default {
   color: #909399;
   font-size: 12px;
   font-style: normal;
+}
+
+.rent-policy-panel {
+  margin-bottom: 18px;
+  border: 1px solid #d9e6f8;
+  border-radius: 8px;
+  background: #f7faff;
+  overflow: hidden;
+}
+
+.rent-policy-panel__header {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 16px;
+  border-bottom: 1px solid #e3ebf6;
+}
+
+.rent-policy-panel__header > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.rent-policy-panel__header strong {
+  color: #1f2937;
+  font-size: 14px;
+}
+
+.rent-policy-panel__header span {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.rent-policy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.rent-policy-item {
+  display: flex;
+  min-width: 0;
+  min-height: 64px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 16px;
+  border-right: 1px solid #e3ebf6;
+  border-bottom: 1px solid #e3ebf6;
+}
+
+.rent-policy-item:nth-child(3n) {
+  border-right: 0;
+}
+
+.rent-policy-item span {
+  color: #7b8492;
+  font-size: 12px;
+}
+
+.rent-policy-item strong {
+  color: #1f2937;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.rent-policy-note {
+  margin: 0;
+  padding: 10px 16px;
+  color: #607089;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.rent-policy-note.is-warning {
+  color: #b45309;
+  background: #fff8eb;
 }
 
 .select-option-row {

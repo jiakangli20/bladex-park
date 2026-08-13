@@ -35,15 +35,16 @@ oss:
   #租户模式
   tenant-mode: true
   #oss服务地址
-  endpoint: http://172.30.0.90:9000
+  endpoint: http://192.168.19.16:9000
   #oss转换服务地址，用于内网上传后将返回地址改为转换的外网地址
-  #transform-endpoint: http://172.30.0.90:9000
+  transform-endpoint: http://192.168.19.16:9000
   #访问key
-  access-key: bladexadmin
+  access-key: zzminio
   #密钥key
-  secret-key: bladexadmin
+  secret-key: minio@2026
   #存储桶
-  bucket-name: bladex
+  bucket-name: wzjk
+
 
 #blade配置
 blade:

@@ -335,11 +335,11 @@
     <div v-else class="archive-list-page">
       <section class="archive-search-panel">
         <el-form :inline="true" :model="query">
-          <el-form-item label="签订人名称">
+          <el-form-item label="租客名称">
             <el-input
               v-model="query.customerName"
               clearable
-              placeholder="请输入签订人名称"
+              placeholder="请输入租客名称"
               @keyup.enter="searchChange"
             />
           </el-form-item>
@@ -379,9 +379,9 @@
         <el-table-column
           prop="customerName"
           label="租客名称"
-          min-width="180"
+          :width="customerNameColumnWidth"
           align="center"
-          show-overflow-tooltip
+          class-name="archive-customer-cell"
         >
           <template #default="{ row }">
             <el-button text type="primary" class="archive-customer-link" @click="openArchive(row)">
@@ -434,8 +434,16 @@
         </el-table-column>
         <el-table-column prop="startDate" label="开始日" width="115" align="center" />
         <el-table-column prop="endDate" label="结束日" width="145" align="center" />
-        <el-table-column prop="rentPrice" label="租赁单价" width="120" align="center">
-          <template #default="{ row }">{{ formatUnitPrice(row.rentPrice) }}</template>
+        <el-table-column
+          prop="rentPrice"
+          label="租赁单价"
+          :width="rentPriceColumnWidth"
+          align="center"
+          class-name="archive-rent-price-cell"
+        >
+          <template #default="{ row }">
+            <span class="archive-rent-price">{{ formatUnitPrice(row.rentPrice) }}</span>
+          </template>
         </el-table-column>
         <el-table-column prop="signDate" label="签订日期" width="120" align="center">
           <template #default="{ row }">{{ row.signDate || '-' }}</template>
@@ -978,6 +986,24 @@ export default {
     attachmentRows() {
       return this.supplements || [];
     },
+    customerNameColumnWidth() {
+      const longest = (this.data || []).reduce((max, row) => {
+        const name = String((row && row.customerName) || '-');
+        const width = Array.from(name).reduce(
+          (total, character) => total + (/[^\x00-\xff]/.test(character) ? 15 : 8),
+          0
+        );
+        return Math.max(max, width);
+      }, 0);
+      return Math.max(220, longest + 48);
+    },
+    rentPriceColumnWidth() {
+      const longest = (this.data || []).reduce((max, row) => {
+        const text = this.formatUnitPrice(row && row.rentPrice);
+        return Math.max(max, Array.from(text).length * 14);
+      }, 0);
+      return Math.max(160, longest + 32);
+    },
   },
   created() {
     if (this.$route.query.contractId) {
@@ -1503,7 +1529,7 @@ export default {
   width: 100%;
   min-width: 0;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .archive-search-panel,
@@ -1515,9 +1541,10 @@ export default {
 }
 
 .archive-search-panel {
-  padding: 16px 18px 4px;
-  border: 1px solid #e5e7eb;
+  padding: 18px 20px 6px;
+  border: 1px solid #e8edf3;
   background: #fff;
+  box-shadow: 0 2px 10px rgba(30, 64, 120, 0.03);
 }
 
 .archive-search-panel :deep(.el-form-item) {
@@ -1526,7 +1553,7 @@ export default {
 }
 
 .archive-search-panel :deep(.el-input) {
-  width: 190px;
+  width: 220px;
 }
 
 .archive-list-toolbar {
@@ -1534,9 +1561,11 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 16px;
-  border: 1px solid #e5e7eb;
+  min-height: 58px;
+  padding: 12px 18px;
+  border: 1px solid #e8edf3;
   background: #fff;
+  box-shadow: 0 2px 10px rgba(30, 64, 120, 0.03);
 }
 
 .archive-list-toolbar__title {
@@ -1558,6 +1587,24 @@ export default {
 
 .archive-list-table {
   width: 100%;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(30, 64, 120, 0.03);
+}
+
+.archive-list-table :deep(.el-table__header th) {
+  height: 48px;
+  background: #f7f9fc;
+  color: #606266;
+  font-weight: 600;
+}
+
+.archive-list-table :deep(.el-table__row) {
+  height: 54px;
+}
+
+.archive-list-table :deep(.el-table__inner-wrapper::before) {
+  background-color: #e8edf3;
 }
 
 .archive-list-table :deep(.el-table__header th),
@@ -1582,6 +1629,19 @@ export default {
   padding-bottom: 0;
 }
 
+.archive-list-table :deep(.archive-customer-cell .cell) {
+  overflow: visible;
+  white-space: nowrap;
+}
+
+.archive-list-table :deep(.archive-rent-price-cell .cell),
+.archive-rent-price {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+
 .archive-list-table :deep(.archive-list-action.el-button),
 .archive-list-table :deep(.archive-list-action.el-button:hover),
 .archive-list-table :deep(.archive-list-action.el-button:focus),
@@ -1599,7 +1659,7 @@ export default {
 .archive-list-pagination {
   display: flex;
   justify-content: flex-end;
-  padding: 12px 0 0;
+  padding: 2px 0 0;
 }
 
 .archive-detail-page {
@@ -1870,15 +1930,19 @@ export default {
 
 .archive-customer-link {
   display: inline-flex;
-  max-width: 100%;
-  overflow: hidden;
+  width: auto;
+  max-width: none;
+  padding-right: 0;
+  padding-left: 0;
+  overflow: visible;
   vertical-align: middle;
   white-space: nowrap;
+  letter-spacing: 0;
 }
 
 .archive-customer-link :deep(span) {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
 }
 
