@@ -112,6 +112,10 @@ export default [
     ],
   },
   {
+    path: '/finance/bills-overdue',
+    redirect: '/finance/overdue-reminder',
+  },
+  {
     path: '/finance/overdue-notice',
     component: Layout,
     children: [

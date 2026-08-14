@@ -24,6 +24,7 @@ import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.ics.constant.IcsConstant;
 import org.springblade.modules.ics.pojo.dto.OverdueNoticeSendDTO;
+import org.springblade.modules.ics.pojo.dto.LegalLetterSendDTO;
 import org.springblade.modules.ics.pojo.vo.OverdueInternalNoticeVO;
 import org.springblade.modules.ics.pojo.vo.OverdueNoticeRecipientVO;
 import org.springblade.modules.ics.pojo.vo.OverdueDisposalDetailVO;
@@ -248,6 +249,14 @@ public class PaymentController extends BladeController {
 		return R.data(paymentService.sendOverdueNotice(dto));
 	}
 
+	@PostMapping("/legal-letter/send-register")
+	@PreAuth(menu = "finance_overdue_reminder")
+	@ApiOperationSupport(order = 281)
+	@Operation(summary = "登记律师函发送", description = "律师函审批通过后登记发送方式、收件人、时间和凭证")
+	public R registerLegalLetterSend(@RequestBody LegalLetterSendDTO dto) {
+		return R.status(paymentService.registerLegalLetterSend(dto));
+	}
+
 	@GetMapping("/overdue-internal-notice/page")
 	@PreAuth(menu = "finance_overdue_notice")
 	@ApiOperationSupport(order = 29)
@@ -310,32 +319,36 @@ public class PaymentController extends BladeController {
 	@PreAuth(menu = "finance_payment_notice")
 	@ApiOperationSupport(order = 34)
 	@Operation(summary = "小程序发送预留接口", description = "传入paymentId")
-	public R<PaymentNoticeVO> noticeMiniAppSend(@Parameter(description = "账单ID") @RequestParam Long paymentId) {
-		return R.data(paymentService.sendMiniAppNotice(paymentId));
+	public R<PaymentNoticeVO> noticeMiniAppSend(@Parameter(description = "账单ID") @RequestParam Long paymentId,
+															  @RequestParam(required = false, defaultValue = "payment-notice") String noticeType) {
+		return R.data(paymentService.sendMiniAppNotice(paymentId, noticeType));
 	}
 
 	@PostMapping("/notice-sms-send")
 	@PreAuth(menu = "finance_payment_notice")
 	@ApiOperationSupport(order = 35)
 	@Operation(summary = "短信发送入口", description = "传入paymentId")
-	public R<PaymentNoticeVO> noticeSmsSend(@Parameter(description = "账单ID") @RequestParam Long paymentId) {
-		return R.data(paymentService.sendSmsNotice(paymentId));
+	public R<PaymentNoticeVO> noticeSmsSend(@Parameter(description = "账单ID") @RequestParam Long paymentId,
+														 @RequestParam(required = false, defaultValue = "payment-notice") String noticeType) {
+		return R.data(paymentService.sendSmsNotice(paymentId, noticeType));
 	}
 
 	@PostMapping("/notice-email-send")
 	@PreAuth(menu = "finance_payment_notice")
 	@ApiOperationSupport(order = 36)
 	@Operation(summary = "邮件发送入口", description = "传入paymentId")
-	public R<PaymentNoticeVO> noticeEmailSend(@Parameter(description = "账单ID") @RequestParam Long paymentId) {
-		return R.data(paymentService.sendEmailNotice(paymentId));
+	public R<PaymentNoticeVO> noticeEmailSend(@Parameter(description = "账单ID") @RequestParam Long paymentId,
+															@RequestParam(required = false, defaultValue = "payment-notice") String noticeType) {
+		return R.data(paymentService.sendEmailNotice(paymentId, noticeType));
 	}
 
 	@PostMapping("/notice-generate")
 	@PreAuth(menu = "finance_payment_notice")
 	@ApiOperationSupport(order = 37)
-	@Operation(summary = "生成收款通知文件", description = "传入paymentId")
-	public R<ContractNoticeFileVO> noticeGenerate(@Parameter(description = "账单ID") @RequestParam Long paymentId) {
-		return R.data(paymentService.generatePaymentNoticeFile(paymentId));
+	@Operation(summary = "生成通知文件", description = "传入paymentId和noticeType")
+	public R<ContractNoticeFileVO> noticeGenerate(@Parameter(description = "账单ID") @RequestParam Long paymentId,
+											 @RequestParam(required = false, defaultValue = "payment-notice") String noticeType) {
+		return R.data(paymentService.generatePaymentNoticeFile(paymentId, noticeType));
 	}
 
 }

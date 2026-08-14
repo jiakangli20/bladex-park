@@ -16,6 +16,9 @@ import lombok.Data;
 @Schema(description = "收款通知汇总")
 public class PaymentNoticeSummaryVO {
 
+	@Schema(description = "账单总数")
+	private Long totalCount = 0L;
+
 	@Schema(description = "已生成")
 	private Long generatedCount = 0L;
 
@@ -30,5 +33,23 @@ public class PaymentNoticeSummaryVO {
 
 	@Schema(description = "小程序发送成功")
 	private Long miniappSuccessCount = 0L;
+
+	@Schema(description = "累计发送次数")
+	private Long sendCount = 0L;
+
+	@Schema(description = "达到5个工作日的账单数")
+	private Long fiveBusinessDayCount = 0L;
+
+	@Schema(description = "已催款账单数")
+	private Long remindedBillCount = 0L;
+
+	@Schema(description = "累计催款次数")
+	private Long reminderCount = 0L;
+
+	@Schema(description = "达到20个工作日的账单数")
+	private Long twentyBusinessDayCount = 0L;
+
+	@Schema(description = "律师函审批通过数")
+	private Long approvedLegalCount = 0L;
 
 }

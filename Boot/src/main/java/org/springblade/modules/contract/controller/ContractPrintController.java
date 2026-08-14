@@ -58,7 +58,7 @@ public class ContractPrintController extends BladeController {
 	@GetMapping("/payment-notice/{paymentId}")
 	@PreAuth("hasAuth()")
 	@ApiOperationSupport(order = 1)
-	@Operation(summary = "付款通知单", description = "传入paymentId")
+	@Operation(summary = "收款通知", description = "传入paymentId")
 	public void paymentNotice(@Parameter(description = "账单ID") @PathVariable Long paymentId, HttpServletResponse response) {
 		writeDocument(contractNoticeService.buildNotice(IContractNoticeService.NOTICE_PAYMENT, paymentId, null), response);
 	}
@@ -255,7 +255,7 @@ public class ContractPrintController extends BladeController {
 
 	private String noticeDisplayName(String noticeType) {
 		return switch (StringUtil.isBlank(noticeType) ? "" : noticeType) {
-			case IContractNoticeService.NOTICE_PAYMENT -> "付款通知单";
+			case IContractNoticeService.NOTICE_PAYMENT -> "收款通知";
 			case IContractNoticeService.NOTICE_REMINDER -> "催款通知书";
 			case IContractNoticeService.NOTICE_INVOICE -> "开票申请单";
 			case IContractNoticeService.NOTICE_CONTRACT_APPROVAL -> "合同会签审批表";

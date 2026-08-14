@@ -199,3 +199,20 @@ export const previewTenantEntryApprovalForm = (opportunityId, processInsId) => {
     params: processInsId ? { processInsId } : {},
   });
 };
+
+export const exportOpportunityTenantEntryApprovalForm = (opportunityId, processInsId) => {
+  return request({
+    url: `/blade-park/opportunity/tenant-entry/approval-form/${opportunityId}`,
+    method: 'get',
+    params: processInsId ? { processInsId } : {},
+    responseType: 'blob',
+  });
+};
+
+export const previewOpportunityTenantEntryApprovalForm = (opportunityId, processInsId) => {
+  return request({
+    url: `/blade-park/opportunity/tenant-entry/approval-form-preview/${opportunityId}`,
+    method: 'get',
+    params: processInsId ? { processInsId } : {},
+  });
+};

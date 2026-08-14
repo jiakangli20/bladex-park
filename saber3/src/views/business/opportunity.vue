@@ -69,6 +69,16 @@
           >
             批量删除
           </el-button>
+          <el-button
+            v-if="auditBtn"
+            type="primary"
+            plain
+            icon="el-icon-circle-check"
+            :disabled="selectionList.length !== 1"
+            @click="openSelectedTenantEntryStart"
+          >
+            入驻审核
+          </el-button>
         </div>
         <el-tooltip content="刷新" placement="top">
           <el-button icon="el-icon-refresh" circle @click="onLoad(page)" />
@@ -106,7 +116,7 @@
               class="enterprise-link"
               text
               type="primary"
-              @click="handleView(row)"
+              @click="openBusinessDetail(row)"
             >
               {{ row.enterpriseName || '-' }}
             </el-button>
@@ -155,17 +165,24 @@
         <el-table-column prop="followUser" label="跟进人" width="110" align="center" />
         <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
         <el-table-column prop="lastFollowTime" label="跟进时间" width="170" align="center" />
-        <el-table-column label="操作" width="96" fixed="right" align="center">
+        <el-table-column label="操作" width="156" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button
-              v-if="permissionList.followBtn"
-              text
-              type="primary"
-              icon="el-icon-chat-line-square"
-              @click="openFollow(row)"
-            >
-              跟进
-            </el-button>
+            <div class="table-row-actions">
+              <el-button
+                v-if="permissionList.followBtn"
+                text
+                type="primary"
+                icon="el-icon-chat-line-square"
+                @click="openFollow(row)"
+              >跟进</el-button>
+              <el-button
+                v-if="permissionList.viewBtn"
+                text
+                type="primary"
+                icon="el-icon-view"
+                @click="openBusinessDetail(row)"
+              >查看</el-button>
+            </div>
           </template>
         </el-table-column>
         </el-table>
@@ -849,6 +866,158 @@
         </template>
       </el-drawer>
 
+      <el-drawer
+        v-model="businessDetailVisible"
+        :title="businessDetailTitle"
+        size="900px"
+        append-to-body
+        destroy-on-close
+        class="business-detail-drawer"
+      >
+        <div v-loading="businessDetailLoading" class="business-detail">
+          <div class="detail-header">
+            <div class="detail-header-left">
+              <h2>{{ businessDetail.enterpriseName || '商机查看' }}</h2>
+              <span>{{ businessDetail.creditCode || '-' }}</span>
+            </div>
+            <div class="detail-header-right">
+              <el-tag :type="statusTypeMap[businessDetail.opportunityStatus] || ''" effect="light">
+                {{ statusTextMap[businessDetail.opportunityStatus] || businessDetail.opportunityStatus || '-' }}
+              </el-tag>
+              <el-tag :type="tenantEntryStatusType(businessDetail.tenantEntryStatus)" effect="light">
+                {{ tenantEntryStatusText(businessDetail.tenantEntryStatus) }}
+              </el-tag>
+            </div>
+          </div>
+
+          <el-divider />
+
+          <el-tabs v-model="businessDetailTab" class="detail-tabs">
+            <el-tab-pane label="企业概览" name="overview">
+              <el-descriptions title="基本信息" :column="2" border size="small">
+                <el-descriptions-item label="企业名称">{{ detailValue(businessDetail.enterpriseName) }}</el-descriptions-item>
+                <el-descriptions-item label="统一信用代码">{{ detailValue(businessDetail.creditCode) }}</el-descriptions-item>
+                <el-descriptions-item label="成立日期">{{ detailValue(businessDetail.establishDate) }}</el-descriptions-item>
+                <el-descriptions-item label="注册资本">{{ detailValue(businessDetail.registeredCapital) }}</el-descriptions-item>
+                <el-descriptions-item label="企业类型">{{ detailValue(businessDetail.enterpriseType) }}</el-descriptions-item>
+                <el-descriptions-item label="行业类型">{{ detailValue(businessDetail.industryType) }}</el-descriptions-item>
+                <el-descriptions-item label="注册地址" :span="2">{{ detailValue(businessDetail.registeredAddress) }}</el-descriptions-item>
+                <el-descriptions-item label="经营范围" :span="2">{{ detailValue(businessDetail.businessScope) }}</el-descriptions-item>
+              </el-descriptions>
+
+              <el-divider />
+
+              <el-descriptions title="联系人与招商信息" :column="2" border size="small">
+                <el-descriptions-item label="联系人">{{ detailValue(businessDetail.contactName) }}</el-descriptions-item>
+                <el-descriptions-item label="联系电话">{{ detailValue(businessDetail.contactPhone) }}</el-descriptions-item>
+                <el-descriptions-item label="联系邮箱">{{ detailValue(businessDetail.contactEmail) }}</el-descriptions-item>
+                <el-descriptions-item label="职务">{{ detailValue(businessDetail.contactPosition) }}</el-descriptions-item>
+                <el-descriptions-item label="招商渠道">{{ detailValue(businessDetail.channel) }}</el-descriptions-item>
+                <el-descriptions-item label="跟进人">{{ detailValue(businessDetail.followUser) }}</el-descriptions-item>
+                <el-descriptions-item label="联系地址" :span="2">{{ detailValue(businessDetail.contactAddress) }}</el-descriptions-item>
+              </el-descriptions>
+
+              <el-divider />
+
+              <el-descriptions title="入驻需求" :column="2" border size="small">
+                <el-descriptions-item label="所属园区">{{ parkName(businessDetail.parkId) }}</el-descriptions-item>
+                <el-descriptions-item label="意向载体">{{ formatCarrierTypes(businessDetail.carrierTypes) }}</el-descriptions-item>
+                <el-descriptions-item label="意向面积">{{ businessDetail.intentArea ? `${businessDetail.intentArea} ㎡` : '-' }}</el-descriptions-item>
+                <el-descriptions-item label="租赁期限">{{ businessDetail.leaseTermLabel || (businessDetail.leaseTermYears ? `${businessDetail.leaseTermYears} 年` : '-') }}</el-descriptions-item>
+                <el-descriptions-item label="预计入驻日期">{{ detailValue(businessDetail.expectedEntryDate) }}</el-descriptions-item>
+                <el-descriptions-item label="使用用途">{{ detailValue(businessDetail.usagePurpose) }}</el-descriptions-item>
+                <el-descriptions-item label="装修要求" :span="2">{{ detailValue(businessDetail.decorationRequirement) }}</el-descriptions-item>
+                <el-descriptions-item label="配套需求" :span="2">{{ detailValue(businessDetail.supportingNeeds) }}</el-descriptions-item>
+                <el-descriptions-item label="备注" :span="2">{{ detailValue(businessDetail.remark) }}</el-descriptions-item>
+              </el-descriptions>
+            </el-tab-pane>
+
+            <el-tab-pane label="入驻审核" name="approval">
+              <el-descriptions title="审核信息" :column="2" border size="small">
+                <el-descriptions-item label="审核状态">
+                  <el-tag :type="tenantEntryStatusType(businessDetail.tenantEntryStatus)" effect="plain">
+                    {{ tenantEntryStatusText(businessDetail.tenantEntryStatus) }}
+                  </el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="当前节点">{{ detailValue(businessDetail.tenantEntryCurrentNode) }}</el-descriptions-item>
+                <el-descriptions-item label="审核通过时间" :span="2">{{ detailValue(businessDetail.tenantEntryApprovalTime) }}</el-descriptions-item>
+              </el-descriptions>
+
+              <el-divider />
+
+              <div class="section-title">审批表</div>
+              <div class="approval-file-row">
+                <div class="approval-file-info">
+                  <i class="el-icon-document" />
+                  <div>
+                    <strong>企业入驻审批表</strong>
+                    <span>{{ businessDetail.tenantEntryProcessInsId ? '审批流程表单' : '发起审核后生成' }}</span>
+                  </div>
+                </div>
+                <div class="table-row-actions">
+                  <el-button
+                    v-if="approvalFormBtn && businessDetail.tenantEntryProcessInsId"
+                    text
+                    type="primary"
+                    @click="openApprovalForm(businessDetail)"
+                  >预览</el-button>
+                  <el-button
+                    v-if="approvalFormBtn && businessDetail.tenantEntryProcessInsId"
+                    text
+                    type="primary"
+                    @click="downloadApprovalForm(businessDetail)"
+                  >导出审核表</el-button>
+                  <el-button
+                    v-if="auditBtn && canStartTenantEntry(businessDetail)"
+                    type="primary"
+                    size="small"
+                    @click="openTenantEntryStart(businessDetail)"
+                  >{{ tenantEntryStatusText(businessDetail.tenantEntryStatus) === '已驳回' ? '重新发起' : '发起入驻审核' }}</el-button>
+                </div>
+              </div>
+            </el-tab-pane>
+          </el-tabs>
+        </div>
+      </el-drawer>
+
+      <el-dialog v-model="tenantEntryStartVisible" title="发起入驻审核" width="520px" append-to-body>
+        <el-form label-width="96px">
+          <el-form-item label="商机企业">
+            <el-input :model-value="tenantEntryTarget.enterpriseName || '-'" disabled />
+          </el-form-item>
+          <el-form-item label="审核流程">
+            <el-select v-model="tenantEntryStartForm.processDefKey" filterable :loading="processLoading" placeholder="请选择已启用流程" style="width: 100%">
+              <el-option
+                v-for="item in processOptions"
+                :key="item.id || item.key"
+                :label="processOptionLabel(item)"
+                :value="item.key"
+                :disabled="!isProcessActive(item)"
+              />
+            </el-select>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="tenantEntryStartVisible = false">取消</el-button>
+          <el-button type="primary" :loading="processLoading" @click="startTenantEntry">发起审核</el-button>
+        </template>
+      </el-dialog>
+
+      <notice-preview-dialog
+        v-model="approvalPreview.visible"
+        :title="approvalPreview.title"
+        :html="approvalPreview.html"
+        :loading="approvalPreview.loading"
+        :download-url="approvalPreview.downloadUrl"
+        :download-label="approvalPreview.downloadLabel"
+        :preview-type="approvalPreview.previewType"
+        :document-blob="approvalPreview.documentBlob"
+        :pdf-blob="approvalPreview.pdfBlob"
+        :pdf-file-name="approvalPreview.pdfFileName"
+        :preview-error="approvalPreview.previewError"
+        @download="downloadApprovalForm"
+      />
+
       <el-dialog v-model="backgroundVisible" title="背景调查" width="520px" append-to-body>
         <el-empty description="未查询到企业数据" />
       </el-dialog>
@@ -865,6 +1034,8 @@ import {
   getOpportunityFileList,
   getOpportunityList,
   getOpportunityStatistics,
+  exportOpportunityTenantEntryApprovalForm,
+  previewOpportunityTenantEntryApprovalForm,
   removeOpportunity,
   updateOpportunity,
   uploadOpportunityFile,
@@ -875,6 +1046,12 @@ import { getList as getUserList } from '@/api/system/user';
 import CustomerTagSelector from './modules/customer-tag-selector.vue';
 import { mapGetters } from 'vuex';
 import { getToken } from '@/utils/auth';
+import { Base64 } from 'js-base64';
+import Layout from '@/page/index/index.vue';
+import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
+import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
+import { downloadFile } from '@/utils/util';
+import { createNoticePreviewState, resolveDownloadFilename } from '@/utils/contract-notice';
 
 const createDefaultForm = () => ({
   parkId: undefined,
@@ -893,7 +1070,7 @@ const createDefaultForm = () => ({
 
 export default {
   name: 'BusinessOpportunity',
-  components: { CustomerTagSelector },
+  components: { CustomerTagSelector, NoticePreviewDialog },
   data() {
     return {
       loading: false,
@@ -932,6 +1109,17 @@ export default {
       },
       backgroundVisible: false,
       backgroundData: {},
+      businessDetailVisible: false,
+      businessDetailLoading: false,
+      businessDetail: {},
+      businessDetailTab: 'overview',
+      tenantEntryTarget: {},
+      tenantEntryStartVisible: false,
+      tenantEntryStartForm: { processDefKey: 'entry' },
+      processLoading: false,
+      processOptions: [],
+      approvalPreview: createNoticePreviewState(),
+      approvalPreviewRow: null,
       industryCheckResult: null,
       statusOptions: [
         { value: 'LEAD', label: '潜在线索' },
@@ -1000,8 +1188,25 @@ export default {
         viewBtn: this.validData(this.permission.business_opportunity_view, false),
         followBtn: this.validData(this.permission.business_opportunity_follow, false),
 		fileUploadBtn: this.validData(this.permission.business_opportunity_file_upload, false),
-		industryRuleBtn: this.validData(this.permission.business_opportunity_industry_rule, false),
+        industryRuleBtn: this.validData(this.permission.business_opportunity_industry_rule, false),
+        auditBtn:
+          this.validData(this.permission.business_opportunity_audit, false) ||
+          this.validData(this.permission.settlement_project_approval_add, false),
+        approvalFormBtn:
+          this.validData(this.permission.business_opportunity_audit, false) ||
+          this.validData(this.permission.settlement_project_approval_form, false),
       };
+    },
+    auditBtn() {
+      return this.permissionList.auditBtn;
+    },
+    approvalFormBtn() {
+      return this.permissionList.approvalFormBtn;
+    },
+    businessDetailTitle() {
+      return this.businessDetail.enterpriseName
+        ? `企业查看 - ${this.businessDetail.enterpriseName}`
+        : '企业查看';
     },
     ids() {
       return this.selectionList.map(item => item.opportunityId).join(',');
@@ -1191,6 +1396,9 @@ export default {
     selectionChange(list) {
       this.selectionList = list;
     },
+    detailValue(value) {
+      return value === undefined || value === null || value === '' ? '-' : value;
+    },
     handleAdd() {
       this.formMode = 'add';
       this.form = createDefaultForm();
@@ -1205,6 +1413,167 @@ export default {
     },
     handleView(row) {
       this.openForm('view', row);
+    },
+    openBusinessDetail(row) {
+      this.businessDetailVisible = true;
+      this.businessDetailLoading = true;
+      this.businessDetailTab = 'overview';
+      this.businessDetail = { ...row };
+      getOpportunityDetail(row.opportunityId)
+        .then(res => {
+          this.businessDetail = res.data.data || {};
+        })
+        .finally(() => {
+          this.businessDetailLoading = false;
+        });
+    },
+    openSelectedTenantEntryStart() {
+      if (this.selectionList.length !== 1) {
+        this.$message.warning('请选择一条商机后发起入驻审核');
+        return;
+      }
+      const row = this.selectionList[0];
+      if (!this.canStartTenantEntry(row)) {
+        this.$message.warning(
+          String(row.tenantEntryStatus || '').toLowerCase() === 'approved'
+            ? '该商机已通过入驻审核，不能重复发起'
+            : '该商机已有进行中的入驻审核'
+        );
+        return;
+      }
+      this.openTenantEntryStart(row);
+    },
+    tenantEntryStatusText(status) {
+      const map = {
+        running: '审批中',
+        approved: '已通过',
+        rejected: '已驳回',
+        canceled: '已撤回',
+      };
+      return map[String(status || '').toLowerCase()] || '未发起';
+    },
+    tenantEntryStatusType(status) {
+      const value = String(status || '').toLowerCase();
+      if (value === 'approved') return 'success';
+      if (value === 'rejected') return 'danger';
+      if (value === 'running') return 'warning';
+      if (value === 'canceled') return 'info';
+      return 'info';
+    },
+    canStartTenantEntry(row = {}) {
+      const status = String(row.tenantEntryStatus || '').toLowerCase();
+      return !row.tenantEntryProcessInsId || ['rejected', 'canceled'].includes(status);
+    },
+    openTenantEntryStart(row = this.businessDetail) {
+      if (!row || !row.opportunityId) {
+        this.$message.warning('未找到待审核的商机');
+        return;
+      }
+      this.tenantEntryTarget = { ...row };
+      if (!row.parkId) {
+        this.$message.warning('该商机尚未选择所属园区，请先编辑商机补充');
+        return;
+      }
+      this.tenantEntryStartVisible = true;
+      this.loadProcessOptions();
+    },
+    loadProcessOptions() {
+      this.processLoading = true;
+      getDeploymentList(1, -1, {})
+        .then(res => {
+          const records = (res.data.data || {}).records || [];
+          const isEntry = item => {
+            const key = String(item.key || '').toLowerCase();
+            return key === 'entry' || key === 'tenant_entry' || key.startsWith('tenant_entry-');
+          };
+          const active = records.filter(item => isEntry(item));
+          const anchor = active.find(item => item.key === 'entry') || active.find(item => Number(item.status) === 1);
+          const category = anchor && anchor.category;
+          this.processOptions = category
+            ? records.filter(item => String(item.category || '') === String(category))
+            : active;
+          const selected = this.processOptions.find(item => item.key === this.tenantEntryStartForm.processDefKey && Number(item.status) === 1)
+            || this.processOptions.find(item => item.key === 'entry' && Number(item.status) === 1)
+            || this.processOptions.find(item => Number(item.status) === 1);
+          this.tenantEntryStartForm.processDefKey = selected ? selected.key : '';
+        })
+        .finally(() => {
+          this.processLoading = false;
+        });
+    },
+    isProcessActive(item = {}) {
+      return Number(item.status) === 1;
+    },
+    processOptionLabel(item = {}) {
+      return `${item.name || item.key}${item.version ? ` v${item.version}` : ''}（${item.key}，${this.isProcessActive(item) ? '已启用' : '已挂起'}）`;
+    },
+    startTenantEntry() {
+      const selected = this.processOptions.find(item => item.key === this.tenantEntryStartForm.processDefKey);
+      if (!selected || !this.isProcessActive(selected)) {
+        this.$message.warning('请选择已启用的入驻审批流程');
+        return;
+      }
+      const payload = {
+        processDefKey: selected.key,
+        params: {
+          processDefKey: selected.key,
+          businessType: 'tenant_entry',
+          opportunityId: this.tenantEntryTarget.opportunityId,
+        },
+      };
+      this.tenantEntryStartVisible = false;
+      this.businessDetailVisible = false;
+      this.pushExternal('start', payload);
+    },
+    pushExternal(type, payload) {
+      const encodedParam = encodeURIComponent(Base64.encode(JSON.stringify(payload)));
+      const routeName = type === 'start' ? '发起流程TenantEntry' : '流程详情TenantEntry';
+      if (!this.$router.hasRoute(routeName)) {
+        this.$router.addRoute({
+          path: '/plugin/workflow/pages/process/external',
+          component: Layout,
+          children: [{
+            path: `TenantEntry/${type}`,
+            name: routeName,
+            component: () => import(`@/views/plugin/workflow/pages/external/TenantEntry/${type}.vue`),
+          }],
+        });
+      }
+      this.$router.push(`/plugin/workflow/pages/process/external/TenantEntry/${type}?p=${encodedParam}`);
+    },
+    openApprovalForm(row) {
+      const processInsId = row.tenantEntryProcessInsId || row.processInstanceId || row.processId;
+      this.approvalPreviewRow = row;
+      this.approvalPreview.visible = true;
+      this.approvalPreview.loading = true;
+      this.approvalPreview.title = '企业入驻审批表预览';
+      this.approvalPreview.html = '';
+      this.approvalPreview.fallbackName = `企业入驻审批表-${row.enterpriseName || row.opportunityId}.docx`;
+      this.approvalPreview.downloadUrl = `/blade-park/opportunity/tenant-entry/approval-form/${row.opportunityId}`;
+      this.approvalPreview.downloadLabel = '下载Word';
+      previewOpportunityTenantEntryApprovalForm(row.opportunityId, processInsId)
+        .then(res => {
+          const data = res.data.data || {};
+          this.approvalPreview.title = data.noticeName || '企业入驻审批表预览';
+          this.approvalPreview.html = data.html || '';
+          this.approvalPreview.fallbackName = data.fileName || `企业入驻审批表-${row.enterpriseName || row.opportunityId}.docx`;
+        })
+        .finally(() => {
+          this.approvalPreview.loading = false;
+        });
+    },
+    downloadApprovalForm(row = this.approvalPreviewRow) {
+      if (!row) return;
+      const processInsId = row.tenantEntryProcessInsId || row.processInstanceId || row.processId;
+      exportOpportunityTenantEntryApprovalForm(row.opportunityId, processInsId).then(res => {
+		const directFallbackName = `企业入驻审批表-${row.enterpriseName || row.opportunityId}.docx`;
+		const filename = resolveDownloadFilename(
+		  res.headers && res.headers['content-disposition'],
+		  row === this.approvalPreviewRow ? this.approvalPreview.fallbackName || directFallbackName : directFallbackName
+		);
+        downloadFile(res.data, filename, (res.headers && res.headers['content-type']) || 'application/octet-stream');
+        this.$message.success('导出成功');
+      });
     },
     openForm(mode, row) {
       this.formMode = mode;
@@ -1567,6 +1936,173 @@ export default {
   flex-wrap: nowrap;
   white-space: nowrap;
   word-break: keep-all;
+}
+
+.table-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.table-row-actions :deep(.el-button) {
+  margin-left: 0;
+  white-space: nowrap;
+}
+
+.business-detail {
+  min-height: 260px;
+  padding: 0 20px 20px;
+}
+
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0 0;
+}
+
+.detail-header-left h2 {
+  margin: 0 0 6px;
+  color: #1f2937;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.detail-header-left span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.detail-header-right {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.business-detail__section-title > span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.business-detail__section-title,
+.approval-file-row,
+.approval-file-info {
+  display: flex;
+  align-items: center;
+}
+
+.detail-tabs {
+  margin-top: 2px;
+}
+
+.detail-tabs :deep(.el-tabs__header) {
+  margin-bottom: 18px;
+}
+
+.detail-tabs :deep(.el-tabs__item) {
+  height: 40px;
+  line-height: 40px;
+}
+
+.business-detail :deep(.el-descriptions) {
+  margin-bottom: 0;
+}
+
+.business-detail :deep(.el-descriptions__title) {
+  margin-bottom: 12px;
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.business-detail :deep(.el-descriptions__label),
+.business-detail :deep(.el-descriptions__content) {
+  padding: 10px 12px;
+  text-align: left;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.business-detail :deep(.el-descriptions__label) {
+  width: 132px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.business-detail :deep(.el-divider) {
+  margin: 20px 0;
+}
+
+.section-title {
+  margin-bottom: 12px;
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.business-detail__section-title {
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.business-detail__section-title > header {
+  margin-bottom: 0;
+}
+
+.approval-file-row {
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 64px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.approval-file-info {
+  min-width: 0;
+  gap: 10px;
+}
+
+.approval-file-info > i {
+  color: #2f75e8;
+  font-size: 26px;
+}
+
+.approval-file-info span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.approval-file-info div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.approval-file-info strong {
+  overflow: hidden;
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .detail-header,
+  .approval-file-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .detail-header-right {
+    justify-content: flex-start;
+  }
 }
 
 .follow-page {

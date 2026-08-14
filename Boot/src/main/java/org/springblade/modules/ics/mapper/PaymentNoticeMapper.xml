@@ -33,6 +33,15 @@
 		<result column="file_url" property="fileUrl"/>
 		<result column="remark" property="remark"/>
 		<result column="generated_date" property="generatedDate"/>
+		<result column="notice_category" property="noticeCategory"/>
+		<result column="notice_type" property="noticeType"/>
+		<result column="notice_send_status" property="noticeSendStatus"/>
+		<result column="bill_status" property="billStatus"/>
+		<result column="overdue_approval_status" property="overdueApprovalStatus"/>
+		<result column="legal_send_count" property="legalSendCount"/>
+		<result column="legal_last_send_time" property="legalLastSendTime"/>
+		<result column="reminder_count" property="reminderCount"/>
+		<result column="latest_reminder_time" property="latestReminderTime"/>
 	</resultMap>
 
 	<resultMap id="summaryResultMap" type="org.springblade.modules.ics.pojo.vo.PaymentNoticeSummaryVO">
@@ -41,6 +50,13 @@
 		<result column="email_success_count" property="emailSuccessCount"/>
 		<result column="inbox_success_count" property="inboxSuccessCount"/>
 		<result column="miniapp_success_count" property="miniappSuccessCount"/>
+		<result column="total_count" property="totalCount"/>
+		<result column="send_count" property="sendCount"/>
+		<result column="five_business_day_count" property="fiveBusinessDayCount"/>
+		<result column="reminded_bill_count" property="remindedBillCount"/>
+		<result column="reminder_count" property="reminderCount"/>
+		<result column="twenty_business_day_count" property="twentyBusinessDayCount"/>
+		<result column="approved_legal_count" property="approvedLegalCount"/>
 	</resultMap>
 
 	<sql id="selectNoticeVo">
@@ -74,15 +90,93 @@
 			n.file_name,
 			n.file_url,
 			n.remark,
-			DATE(COALESCE(n.create_time, p.create_time, p.pay_deadline)) AS generated_date
+			DATE(COALESCE(n.create_time, p.create_time, p.pay_deadline)) AS generated_date,
+			CASE
+				WHEN p.pay_deadline &lt; CURDATE() AND COALESCE(p.pay_status, '0') != '1' THEN 'overdue'
+				ELSE 'payment'
+			END AS notice_category,
+			CASE
+				WHEN n.notice_type IS NULL OR n.notice_type = 'invoice-apply' THEN
+					CASE
+						WHEN p.pay_deadline &lt; CURDATE() AND COALESCE(p.pay_status, '0') != '1' THEN 'overdue-notice'
+						ELSE 'payment-notice'
+					END
+				ELSE n.notice_type
+			END AS notice_type,
+			CASE
+				WHEN COALESCE(n.sms_status, '') = 'success'
+					OR COALESCE(n.email_status, '') = 'success'
+					OR COALESCE(n.inbox_status, '') = 'success'
+					OR COALESCE(n.miniapp_status, '') IN ('success', 'reserved') THEN 'sent'
+				WHEN COALESCE(n.sms_status, '') = 'failed'
+					OR COALESCE(n.email_status, '') = 'failed'
+					OR COALESCE(n.inbox_status, '') = 'failed'
+					OR COALESCE(n.miniapp_status, '') = 'failed' THEN 'failed'
+				ELSE 'pending'
+			END AS notice_send_status,
+			CASE
+				WHEN COALESCE(p.pay_status, '0') = '1' THEN 'paid'
+				WHEN COALESCE(legal_send_stat.legal_send_count, 0) &gt; 0 THEN 'legal'
+				WHEN COALESCE(reminder_stat.reminder_count, 0) &gt; 0 THEN 'reminded'
+				WHEN p.pay_deadline &lt; CURDATE() THEN 'overdue'
+				ELSE 'pending'
+			END AS bill_status,
+			law_cwr.process_status AS overdue_approval_status,
+			COALESCE(legal_send_stat.legal_send_count, 0) AS legal_send_count,
+			legal_send_stat.legal_last_send_time,
+			COALESCE(reminder_stat.reminder_count, 0) AS reminder_count,
+			reminder_stat.latest_reminder_time
 		FROM biz_contract_payment p
 		LEFT JOIN biz_contract c ON c.contract_id = p.contract_id
 		LEFT JOIN biz_customer bc ON bc.customer_id = c.customer_id
 		LEFT JOIN biz_payment_notice n ON n.payment_id = p.payment_id AND n.del_flag = '0'
+			<choose>
+				<when test="noticeType != null and noticeType != ''">
+					AND n.notice_type = #{noticeType}
+				</when>
+				<when test="query != null and query.noticeType != null and query.noticeType != ''">
+					AND n.notice_type = #{query.noticeType}
+				</when>
+				<when test="query != null and query.categoryQuery == 'reminder'">
+					AND n.notice_type = 'reminder-notice'
+				</when>
+				<when test="query != null and query.categoryQuery == 'overdue'">
+					AND n.notice_type = 'overdue-notice'
+				</when>
+				<otherwise>
+					AND n.notice_type = 'payment-notice'
+				</otherwise>
+			</choose>
+		LEFT JOIN (
+			SELECT payment_id, MAX(record_id) AS record_id
+			FROM biz_contract_workflow_record
+			WHERE business_type = 'contract_overdue_legal' AND del_flag = '0'
+			GROUP BY payment_id
+		) latest_law_cwr ON latest_law_cwr.payment_id = p.payment_id
+		LEFT JOIN biz_contract_workflow_record law_cwr ON law_cwr.record_id = latest_law_cwr.record_id
+		LEFT JOIN (
+			SELECT p2.payment_id, COUNT(l.log_id) AS legal_send_count, MAX(l.operate_time) AS legal_last_send_time
+			FROM biz_contract_payment p2
+			INNER JOIN biz_contract_log l ON l.contract_id = p2.contract_id
+				AND l.action = 'legal_letter_send'
+				AND l.action_desc LIKE CONCAT('%账单ID：', p2.payment_id, '%')
+			GROUP BY p2.payment_id
+		) legal_send_stat ON legal_send_stat.payment_id = p.payment_id
+		LEFT JOIN (
+			SELECT payment_id, COUNT(1) AS reminder_count, MAX(remind_time) AS latest_reminder_time
+			FROM biz_overdue_reminder_record WHERE del_flag = '0' GROUP BY payment_id
+		) reminder_stat ON reminder_stat.payment_id = p.payment_id
 	</sql>
 
 	<sql id="noticeConditions">
 		AND COALESCE(p.direction, 'receivable') = 'receivable'
+		<if test="query != null and query.categoryQuery != null and query.categoryQuery == 'payment'">
+			AND (p.pay_deadline &gt;= CURDATE() OR p.pay_status = '1')
+		</if>
+			<if test="query != null and (query.categoryQuery == 'reminder' or query.categoryQuery == 'overdue')">
+			AND p.pay_deadline &lt; CURDATE()
+			AND COALESCE(p.pay_status, '0') != '1'
+		</if>
 		<if test="query != null and query.parkId != null">
 			AND p.park_id = #{query.parkId}
 		</if>
@@ -129,15 +223,64 @@
 
 	<select id="selectNoticeSummary" resultMap="summaryResultMap">
 		SELECT
-			COUNT(n.notice_id) AS generated_count,
+			COUNT(DISTINCT p.payment_id) AS total_count,
+			SUM(CASE WHEN n.file_url IS NOT NULL AND n.file_url != '' THEN 1 ELSE 0 END) AS generated_count,
+			COALESCE(SUM(COALESCE(n.send_count, 0)), 0) AS send_count,
 			SUM(CASE WHEN COALESCE(n.sms_status, 'pending') = 'success' THEN 1 ELSE 0 END) AS sms_success_count,
 			SUM(CASE WHEN COALESCE(n.email_status, 'pending') = 'success' THEN 1 ELSE 0 END) AS email_success_count,
 			SUM(CASE WHEN COALESCE(n.inbox_status, 'pending') = 'success' THEN 1 ELSE 0 END) AS inbox_success_count,
-			SUM(CASE WHEN COALESCE(n.miniapp_status, 'pending') = 'success' THEN 1 ELSE 0 END) AS miniapp_success_count
+			SUM(CASE WHEN COALESCE(n.miniapp_status, 'pending') IN ('success', 'reserved') THEN 1 ELSE 0 END) AS miniapp_success_count,
+			SUM(CASE WHEN p.pay_deadline &lt; CURDATE()
+				AND COALESCE(p.pay_status, '0') != '1'
+				AND (
+				(
+					5 * FLOOR(DATEDIFF(DATE_ADD(CURDATE(), INTERVAL 1 DAY), '2000-01-03') / 7)
+					+ LEAST(MOD(DATEDIFF(DATE_ADD(CURDATE(), INTERVAL 1 DAY), '2000-01-03'), 7), 5)
+					- 5 * FLOOR(DATEDIFF(DATE_ADD(DATE(p.pay_deadline), INTERVAL 1 DAY), '2000-01-03') / 7)
+					- LEAST(MOD(DATEDIFF(DATE_ADD(DATE(p.pay_deadline), INTERVAL 1 DAY), '2000-01-03'), 7), 5)
+				)
+				) &gt;= 5 THEN 1 ELSE 0 END) AS five_business_day_count,
+			SUM(CASE WHEN COALESCE(reminder_stat.reminder_count, 0) &gt; 0 THEN 1 ELSE 0 END) AS reminded_bill_count,
+			COALESCE(SUM(COALESCE(reminder_stat.reminder_count, 0)), 0) AS reminder_count,
+			SUM(CASE WHEN p.pay_deadline &lt; CURDATE()
+				AND COALESCE(p.pay_status, '0') != '1'
+				AND (
+				(
+					5 * FLOOR(DATEDIFF(DATE_ADD(CURDATE(), INTERVAL 1 DAY), '2000-01-03') / 7)
+					+ LEAST(MOD(DATEDIFF(DATE_ADD(CURDATE(), INTERVAL 1 DAY), '2000-01-03'), 7), 5)
+					- 5 * FLOOR(DATEDIFF(DATE_ADD(DATE(p.pay_deadline), INTERVAL 1 DAY), '2000-01-03') / 7)
+					- LEAST(MOD(DATEDIFF(DATE_ADD(DATE(p.pay_deadline), INTERVAL 1 DAY), '2000-01-03'), 7), 5)
+				)
+				) &gt;= 20 THEN 1 ELSE 0 END) AS twenty_business_day_count,
+			SUM(CASE WHEN law_cwr.process_status = 'approved' THEN 1 ELSE 0 END) AS approved_legal_count
 		FROM biz_contract_payment p
 		LEFT JOIN biz_contract c ON c.contract_id = p.contract_id
 		LEFT JOIN biz_customer bc ON bc.customer_id = c.customer_id
-		LEFT JOIN biz_payment_notice n ON n.payment_id = p.payment_id AND n.del_flag = '0'
+			LEFT JOIN biz_payment_notice n ON n.payment_id = p.payment_id AND n.del_flag = '0'
+				AND n.notice_type = CASE
+					WHEN #{query.categoryQuery} = 'reminder' THEN 'reminder-notice'
+					WHEN #{query.categoryQuery} = 'overdue' THEN 'overdue-notice'
+					ELSE 'payment-notice'
+				END
+		LEFT JOIN (
+			SELECT payment_id, MAX(record_id) AS record_id
+			FROM biz_contract_workflow_record
+			WHERE business_type = 'contract_overdue_legal' AND del_flag = '0'
+			GROUP BY payment_id
+		) latest_law_cwr ON latest_law_cwr.payment_id = p.payment_id
+		LEFT JOIN biz_contract_workflow_record law_cwr ON law_cwr.record_id = latest_law_cwr.record_id
+		LEFT JOIN (
+			SELECT p2.payment_id, COUNT(l.log_id) AS legal_send_count, MAX(l.operate_time) AS legal_last_send_time
+			FROM biz_contract_payment p2
+			INNER JOIN biz_contract_log l ON l.contract_id = p2.contract_id
+				AND l.action = 'legal_letter_send'
+				AND l.action_desc LIKE CONCAT('%账单ID：', p2.payment_id, '%')
+			GROUP BY p2.payment_id
+		) legal_send_stat ON legal_send_stat.payment_id = p.payment_id
+		LEFT JOIN (
+			SELECT payment_id, COUNT(1) AS reminder_count, MAX(remind_time) AS latest_reminder_time
+			FROM biz_overdue_reminder_record WHERE del_flag = '0' GROUP BY payment_id
+		) reminder_stat ON reminder_stat.payment_id = p.payment_id
 		<where>
 			<include refid="noticeConditions"/>
 		</where>
@@ -165,8 +308,9 @@
 			update_by,
 			update_time
 		FROM biz_payment_notice
-		WHERE payment_id = #{paymentId}
-		  AND del_flag = '0'
+			WHERE payment_id = #{paymentId}
+			  AND del_flag = '0'
+			  AND notice_type = #{noticeType}
 		ORDER BY notice_id DESC
 		LIMIT 1
 	</select>
@@ -175,7 +319,12 @@
 		SELECT DISTINCT c.building_name
 		FROM biz_contract_payment p
 		LEFT JOIN biz_contract c ON c.contract_id = p.contract_id
-		LEFT JOIN biz_payment_notice n ON n.payment_id = p.payment_id AND n.del_flag = '0'
+			LEFT JOIN biz_payment_notice n ON n.payment_id = p.payment_id AND n.del_flag = '0'
+				AND n.notice_type = CASE
+					WHEN #{query.categoryQuery} = 'reminder' THEN 'reminder-notice'
+					WHEN #{query.categoryQuery} = 'overdue' THEN 'overdue-notice'
+					ELSE 'payment-notice'
+				END
 		<where>
 			c.building_name IS NOT NULL
 			AND c.building_name != ''
@@ -186,8 +335,9 @@
 
 	<select id="selectNoticeByPaymentId" resultMap="noticeResultMap">
 		<include refid="selectNoticeVo"/>
-		WHERE p.payment_id = #{paymentId}
-		  AND COALESCE(p.direction, 'receivable') = 'receivable'
+			WHERE p.payment_id = #{paymentId}
+			  AND COALESCE(p.direction, 'receivable') = 'receivable'
+			  AND n.notice_type = #{noticeType}
 		LIMIT 1
 	</select>
 

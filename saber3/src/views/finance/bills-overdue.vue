@@ -228,7 +228,7 @@
                 type="primary"
                 :disabled="!drawerRow.paymentId"
                 @click="goOverdueReminder(drawerRow)"
-                >逾期提醒</el-button
+                >逾期处理</el-button
               >
             </div>
           </section>

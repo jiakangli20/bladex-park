@@ -168,7 +168,8 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 	}
 
 	private void validateWorkflowStart(WfNoticeDTO notice, BusinessOpportunity opportunity, String processInsId) {
-		if (!permissionHandler.hasMenu("settlement_project_approval_add")) {
+		if (!permissionHandler.hasMenu("business_opportunity_audit")
+			&& !permissionHandler.hasMenu("settlement_project_approval_add")) {
 			throw new ServiceException("当前账号无权发起入驻审批");
 		}
 		if ("approved".equalsIgnoreCase(Func.toStr(opportunity.getTenantEntryStatus()))

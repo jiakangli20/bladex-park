@@ -11,6 +11,7 @@ import org.springblade.modules.contract.pojo.entity.ContractPayment;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.ics.pojo.vo.OverdueDisposalDetailVO;
 import org.springblade.modules.ics.pojo.dto.OverdueNoticeSendDTO;
+import org.springblade.modules.ics.pojo.dto.LegalLetterSendDTO;
 import org.springblade.modules.ics.pojo.vo.OverdueInternalNoticeVO;
 import org.springblade.modules.ics.pojo.vo.OverdueNoticeRecipientVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticePlaceholderVO;
@@ -188,6 +189,14 @@ public interface IPaymentService {
 	int sendOverdueNotice(OverdueNoticeSendDTO dto);
 
 	/**
+	 * 登记已审批律师函的发送信息.
+	 *
+	 * @param dto 发送登记
+	 * @return 是否成功
+	 */
+	boolean registerLegalLetterSend(LegalLetterSendDTO dto);
+
+	/**
 	 * 当前账号逾期通知与催缴记录分页.
 	 *
 	 * @param page         分页
@@ -245,7 +254,7 @@ public interface IPaymentService {
 	 * @param paymentId 账单ID
 	 * @return 文件
 	 */
-	ContractNoticeFileVO generatePaymentNoticeFile(Long paymentId);
+	ContractNoticeFileVO generatePaymentNoticeFile(Long paymentId, String noticeType);
 
 	/**
 	 * 小程序发送预留接口.
@@ -253,7 +262,7 @@ public interface IPaymentService {
 	 * @param paymentId 账单ID
 	 * @return 通知详情
 	 */
-	PaymentNoticeVO sendMiniAppNotice(Long paymentId);
+	PaymentNoticeVO sendMiniAppNotice(Long paymentId, String noticeType);
 
 	/**
 	 * 短信发送入口.
@@ -261,7 +270,7 @@ public interface IPaymentService {
 	 * @param paymentId 账单ID
 	 * @return 通知详情
 	 */
-	PaymentNoticeVO sendSmsNotice(Long paymentId);
+	PaymentNoticeVO sendSmsNotice(Long paymentId, String noticeType);
 
 	/**
 	 * 邮件发送入口.
@@ -269,6 +278,6 @@ public interface IPaymentService {
 	 * @param paymentId 账单ID
 	 * @return 通知详情
 	 */
-	PaymentNoticeVO sendEmailNotice(Long paymentId);
+	PaymentNoticeVO sendEmailNotice(Long paymentId, String noticeType);
 
 }

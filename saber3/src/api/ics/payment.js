@@ -271,42 +271,46 @@ export const resendPaymentNotice = paymentId => {
   });
 };
 
-export const generatePaymentNotice = paymentId => {
+export const generatePaymentNotice = (paymentId, noticeType = 'payment-notice') => {
   return request({
     url: '/blade-ics/payment/notice-generate',
     method: 'post',
     params: {
       paymentId,
+      noticeType,
     },
   });
 };
 
-export const sendPaymentNoticeMiniApp = paymentId => {
+export const sendPaymentNoticeMiniApp = (paymentId, noticeType = 'payment-notice') => {
   return request({
     url: '/blade-ics/payment/notice-miniapp-send',
     method: 'post',
     params: {
       paymentId,
+      noticeType,
     },
   });
 };
 
-export const sendPaymentNoticeSms = paymentId => {
+export const sendPaymentNoticeSms = (paymentId, noticeType = 'payment-notice') => {
   return request({
     url: '/blade-ics/payment/notice-sms-send',
     method: 'post',
     params: {
       paymentId,
+      noticeType,
     },
   });
 };
 
-export const sendPaymentNoticeEmail = paymentId => {
+export const sendPaymentNoticeEmail = (paymentId, noticeType = 'payment-notice') => {
   return request({
     url: '/blade-ics/payment/notice-email-send',
     method: 'post',
     params: {
       paymentId,
+      noticeType,
     },
   });
 };
@@ -324,5 +328,13 @@ export const sendMiniAppNotice = params => {
     url: '/blade-contract/print/miniapp/send',
     method: 'post',
     params,
+  });
+};
+
+export const registerLegalLetterSend = params => {
+  return request({
+    url: '/blade-ics/payment/legal-letter/send-register',
+    method: 'post',
+    data: params,
   });
 };

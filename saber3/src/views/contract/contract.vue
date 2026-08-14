@@ -30,13 +30,6 @@
                 <div class="contract-detail-actions">
                   <el-button
                     v-if="detailContract.contractId"
-                    type="primary"
-                    @click="handleEditContract(detailContract)"
-                  >
-                    编辑
-                  </el-button>
-                  <el-button
-                    v-if="detailContract.contractId"
                     type="danger"
                     plain
                     @click="handleStartTermination(detailContract)"
@@ -69,11 +62,11 @@
                     <template #dropdown>
                       <el-dropdown-menu>
                         <el-dropdown-item command="downloadContract">下载合同</el-dropdown-item>
-                        <el-dropdown-item command="editContract">编辑合同</el-dropdown-item>
                         <el-dropdown-item command="contractChange">合同变更</el-dropdown-item>
                         <el-dropdown-item command="startApproval">发起合同审批</el-dropdown-item>
                         <el-dropdown-item command="signedUpload">上传盖章合同</el-dropdown-item>
-                        <el-dropdown-item command="roomReview">发起房屋验收</el-dropdown-item>
+                        <el-dropdown-item command="handoverApproval">发起交接单审批</el-dropdown-item>
+                        <el-dropdown-item command="roomReview">发起退租审批</el-dropdown-item>
                         <el-dropdown-item command="archive">合同归档</el-dropdown-item>
                         <el-dropdown-item v-if="currentCustomerId" command="editCustomer">
                           维护租客
@@ -719,7 +712,7 @@
               plain
               @click="handleStartRoomReview(detailContract)"
             >
-              发起房屋验收
+              发起交接单审批
             </el-button>
             <el-button
               v-if="permission.contract_contract_terminate && detailContract.contractStatus === '0'"
@@ -1770,6 +1763,7 @@ import {
 const CONTRACT_APPROVAL_BUSINESS_TYPE = 'contract_approval';
 const CONTRACT_PAYMENT_BUSINESS_TYPE = 'contract_payment';
 const CONTRACT_ROOM_REVIEW_BUSINESS_TYPE = 'contract_room_review';
+const CONTRACT_HANDOVER_BUSINESS_TYPE = 'contract_room_review';
 const CONTRACT_TERMINATION_BUSINESS_TYPE = 'contract_termination';
 const CONTRACT_OVERDUE_LEGAL_BUSINESS_TYPE = 'contract_overdue_legal';
 const WORKFLOW_TYPES = {
@@ -1790,12 +1784,12 @@ const WORKFLOW_TYPES = {
     nameKeywords: ['付款', '缴费', '付款通知'],
   },
   contract_room_review: {
-    title: '发起房屋验收',
-    summaryTitle: '退租交接信息',
-    processPlaceholder: '请选择已部署的房屋验收流程',
-    formKeys: ['return'],
+    title: '发起交接单审批',
+    summaryTitle: '交接单信息',
+    processPlaceholder: '请选择已部署的交接单审批流程',
+    formKeys: ['return', 'roomreview'],
     defaultKeys: ['roomreview'],
-    nameKeywords: ['房屋验收', '交接验收', '归还载体'],
+    nameKeywords: ['交接单', '房屋验收', '交接验收', '归还载体'],
   },
   contract_termination: {
     title: '发起退租审批',
@@ -2473,10 +2467,10 @@ export default {
       this.handleStartWorkflow(CONTRACT_TERMINATION_BUSINESS_TYPE, row);
     },
     handleStartRoomReview(row) {
-      if (!this.ensurePrerequisites('房屋验收前置条件', this.roomReviewPrerequisites(row))) {
+      if (!this.ensurePrerequisites('交接单审批前置条件', this.handoverApprovalPrerequisites(row))) {
         return;
       }
-      this.handleStartWorkflow(CONTRACT_ROOM_REVIEW_BUSINESS_TYPE, row);
+      this.handleStartWorkflow(CONTRACT_HANDOVER_BUSINESS_TYPE, row);
     },
     handleContractChange(row) {
       if (!row || !row.contractId) {
@@ -2727,7 +2721,7 @@ export default {
       return this.terminationPrerequisites(row).every(item => item.done);
     },
     canStartRoomReview(row) {
-      return this.roomReviewPrerequisites(row).every(item => item.done);
+      return this.handoverApprovalPrerequisites(row).every(item => item.done);
     },
     hasRunningWorkflow(businessType) {
       return (this.workflowData || []).some(
@@ -2816,6 +2810,14 @@ export default {
         },
       ];
     },
+    workflowRecord(row, businessType) {
+      return (this.workflowData || []).find(
+        item =>
+          item.businessType === businessType &&
+          String(item.contractId || '') === String(row?.contractId || '') &&
+          item.processStatus !== 'deleted'
+      );
+    },
     selectionContractApprovalPrerequisites() {
       const selectionCount = this.selectionList.length;
       const selectionItems = [
@@ -2849,6 +2851,7 @@ export default {
       ];
     },
     terminationPrerequisites(row) {
+      const handoverRecord = this.workflowRecord(row, CONTRACT_HANDOVER_BUSINESS_TYPE);
       return [
         ...this.baseContractPrerequisites(row),
         {
@@ -2857,24 +2860,30 @@ export default {
           pendingText: `当前状态：${this.statusText(row?.contractStatus)}`,
         },
         {
+          label: '交接单已审批通过',
+          done: Boolean(handoverRecord && handoverRecord.processStatus === 'approved'),
+          pendingText: '请先完成交接单审批',
+        },
+        {
           label: '退租审批未进行中',
           done: !this.hasRunningWorkflow(CONTRACT_TERMINATION_BUSINESS_TYPE),
           pendingText: '该合同已有进行中的退租审批',
         },
       ];
     },
-    roomReviewPrerequisites(row) {
+    handoverApprovalPrerequisites(row) {
+      const handoverRecord = this.workflowRecord(row, CONTRACT_HANDOVER_BUSINESS_TYPE);
       return [
         ...this.baseContractPrerequisites(row),
         {
-          label: '进入退租交接阶段',
-          done: String(row?.contractStatus || '') === '7',
+          label: '合同已生效或已到期',
+          done: ['1', '2', '7', '8'].includes(String(row?.contractStatus || '')),
           pendingText: `当前状态：${this.statusText(row?.contractStatus)}`,
         },
         {
-          label: '房屋验收未进行中',
-          done: !this.hasRunningWorkflow(CONTRACT_ROOM_REVIEW_BUSINESS_TYPE),
-          pendingText: '该合同已有进行中的房屋验收流程',
+          label: '交接单未进行中',
+          done: !handoverRecord || !['running', 'approved'].includes(String(handoverRecord.processStatus || '')),
+          pendingText: '该合同已有进行中的交接单审批',
         },
       ];
     },
@@ -3857,6 +3866,13 @@ export default {
         this.$message.warning('请选择需要编辑的合同');
         return;
       }
+      if (
+        ['1', '2', '3', '4', '5', '6', '7', '8'].includes(String(row.contractStatus || '')) ||
+        ['running', 'approved'].includes(String(row.approvalStatus || ''))
+      ) {
+        this.$message.warning('已审批或已进入退租流程的合同不能修改');
+        return;
+      }
       this.$router.push({
         path: '/contract/create-template',
         query: {
@@ -3869,11 +3885,11 @@ export default {
       const row = this.detailContract || {};
       const actionMap = {
         downloadContract: () => this.handleDownloadContractText(row),
-        editContract: () => this.handleEditContract(row),
         contractChange: () => this.handleContractChange(row),
         startApproval: () => this.handleStartApproval(row),
         signedUpload: () => this.handleSignedUpload(row),
-        roomReview: () => this.handleStartRoomReview(row),
+        handoverApproval: () => this.handleStartRoomReview(row),
+        roomReview: () => this.handleStartTermination(row),
         archive: () => this.handleArchive(row),
         editCustomer: () => this.openCustomerEdit(),
         addAttachment: () => this.openSupplementDialog(),
@@ -4079,7 +4095,7 @@ export default {
       const map = {
         contract_approval: '合同审批',
         contract_payment: '付款流程',
-        contract_room_review: '房屋验收',
+        contract_room_review: '交接单审批',
         contract_termination: '退租审批',
         contract_overdue_legal: '逾期律师函',
       };

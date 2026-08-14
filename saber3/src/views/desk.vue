@@ -209,9 +209,9 @@ export default {
           tone: 'green',
         },
         {
-          title: '项目审批',
-          desc: '入驻审批流程',
-          path: '/settlement/project-approval',
+          title: '入驻审核',
+          desc: '从商机发起入驻审批',
+          path: '/settlement/opportunity',
           icon: 'Finished',
           tone: 'purple',
         },

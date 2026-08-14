@@ -59,6 +59,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -468,7 +471,24 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 				.compareTo(DateUtil.format(DateUtil.now(), DateUtil.PATTERN_DATE)) >= 0) {
 				throw new ServiceException("账单尚未逾期，不能发起逾期律师函流程");
 			}
+			if (businessDaysBetween(payment.getPayDeadline(), new Date()) < 20) {
+				throw new ServiceException("账单逾期满20个工作日后才能发起律师函审批");
+			}
 		}
+	}
+
+	private int businessDaysBetween(Date startDate, Date endDate) {
+		LocalDate cursor = startDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate().plusDays(1);
+		LocalDate end = endDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+		int businessDays = 0;
+		while (!cursor.isAfter(end)) {
+			DayOfWeek dayOfWeek = cursor.getDayOfWeek();
+			if (dayOfWeek != DayOfWeek.SATURDAY && dayOfWeek != DayOfWeek.SUNDAY) {
+				businessDays++;
+			}
+			cursor = cursor.plusDays(1);
+		}
+		return businessDays;
 	}
 
 	private void applyNoticeState(ContractWorkflowRecord record, WfNoticeDTO notice) {

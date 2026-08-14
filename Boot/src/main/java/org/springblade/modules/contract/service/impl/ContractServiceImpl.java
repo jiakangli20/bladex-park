@@ -509,6 +509,11 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		if (!STATUS_PENDING_SEAL.equals(existing.getContractStatus())) {
 			throw new ServiceException("合同审批通过后才可以上传盖章合同");
 		}
+		if (hasApprovedWorkflow(contractId, BUSINESS_TYPE_CONTRACT_TERMINATION)
+			|| hasRunningWorkflow(contractId, BUSINESS_TYPE_CONTRACT_TERMINATION)
+			|| hasRunningWorkflow(contractId, BUSINESS_TYPE_CONTRACT_ROOM_REVIEW)) {
+			throw new ServiceException("当前合同不能上传盖章合同");
+		}
 		if (Func.isBlank(contract.getContractFileUrl())) {
 			throw new ServiceException("请上传盖章合同文件");
 		}
@@ -745,6 +750,14 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 
 	private boolean updateContract(Contract contract) {
 		Contract oldContract = requireContract(contract.getContractId());
+		if (!STATUS_PENDING.equals(oldContract.getContractStatus())
+			|| hasApprovedWorkflow(oldContract.getContractId(), BUSINESS_TYPE_CONTRACT_APPROVAL)
+			|| hasApprovedWorkflow(oldContract.getContractId(), BUSINESS_TYPE_CONTRACT_TERMINATION)
+			|| hasApprovedWorkflow(oldContract.getContractId(), BUSINESS_TYPE_CONTRACT_ROOM_REVIEW)
+			|| hasRunningWorkflow(oldContract.getContractId(), BUSINESS_TYPE_CONTRACT_TERMINATION)
+			|| hasRunningWorkflow(oldContract.getContractId(), BUSINESS_TYPE_CONTRACT_ROOM_REVIEW)) {
+			throw new ServiceException("已审批或已进入退租流程的合同不能修改");
+		}
 		Contract update = editableContract(contract);
 		update.setContractId(oldContract.getContractId());
 		update.setParkId(oldContract.getParkId());
@@ -869,6 +882,19 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		return contract;
 	}
 
+	private boolean hasWorkflowStatus(Long contractId, String businessType, String status) {
+		ContractWorkflowRecord record = contractWorkflowRecordMapper.selectLatest(contractId, businessType);
+		return record != null && status.equals(record.getProcessStatus());
+	}
+
+	private boolean hasRunningWorkflow(Long contractId, String businessType) {
+		return hasWorkflowStatus(contractId, businessType, PROCESS_STATUS_RUNNING);
+	}
+
+	private boolean hasApprovedWorkflow(Long contractId, String businessType) {
+		return hasWorkflowStatus(contractId, businessType, PROCESS_STATUS_APPROVED);
+	}
+
 	private void validateContractCanVoid(Contract contract) {
 		if (!STATUS_PENDING.equals(contract.getContractStatus())) {
 			throw new ServiceException("仅待审批合同可以作废，生效合同请走退租流程");
@@ -882,6 +908,11 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 			throw new ServiceException(PROCESS_STATUS_RUNNING.equals(approvalRecord.getProcessStatus())
 				? "合同审批正在进行中，请先撤回或终止审批后再作废"
 				: "合同审批已通过，不能作废，请按业务状态继续盖章或退租");
+		}
+		if (hasApprovedWorkflow(contract.getContractId(), BUSINESS_TYPE_CONTRACT_TERMINATION)
+			|| hasRunningWorkflow(contract.getContractId(), BUSINESS_TYPE_CONTRACT_TERMINATION)
+			|| hasRunningWorkflow(contract.getContractId(), BUSINESS_TYPE_CONTRACT_ROOM_REVIEW)) {
+			throw new ServiceException("退租相关流程已启动，不能作废");
 		}
 	}
 

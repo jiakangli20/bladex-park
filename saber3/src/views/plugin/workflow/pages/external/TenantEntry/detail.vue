@@ -157,7 +157,7 @@ export default {
         });
         this.handleCompleteTask(pass, variables).then(() => {
           this.$message.success('处理成功');
-          this.handleCloseTag('/settlement/project-approval');
+          this.handleCloseTag('/settlement/opportunity');
         }).catch(() => {
           this.submitLoading = false;
           if (typeof done === 'function') done();

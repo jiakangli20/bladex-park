@@ -478,7 +478,7 @@ export default {
   computed: {
     ...mapGetters(['permission', 'userInfo']),
     isSettlementMode() {
-      return this.mode === 'settlement' || this.$route.path === '/settlement/project-approval';
+      return this.mode === 'settlement';
     },
     approvalMode() {
       if (this.isSettlementMode) return 'settlement';

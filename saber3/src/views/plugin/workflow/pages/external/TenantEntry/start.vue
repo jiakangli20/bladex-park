@@ -119,7 +119,7 @@ export default {
         ...params,
       };
       if (params.opportunityId) {
-		getTenantEntryCandidateDetail(params.opportunityId).then(res => {
+			getTenantEntryCandidateDetail(params.opportunityId).then(res => {
           this.mergeBusinessData(res.data.data || {});
         });
 	  }
@@ -161,7 +161,7 @@ export default {
     },
 	handleSubmit() {
 	  if (!this.form.opportunityId) {
-		this.$message.warning('入驻审批必须关联商机，请返回入驻审核页面选择企业');
+			this.$message.warning('入驻审批必须关联商机，请返回商机管理选择企业');
 		return;
 	  }
 	  if (!this.form.parkId) {
@@ -175,7 +175,7 @@ export default {
 	  this.form.businessKey = this.form.opportunityId;
       this.handleStartProcessByKey(true).then((res, done) => {
         this.$message.success('发起成功');
-        this.handleCloseTag('/settlement/project-approval?scope=send');
+			this.handleCloseTag('/settlement/opportunity');
         if (typeof done === 'function') done();
         this.loading = false;
       }).catch(() => {

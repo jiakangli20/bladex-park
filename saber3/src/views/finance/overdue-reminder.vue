@@ -109,10 +109,10 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="remindStatus" label="催缴状态" width="116" align="center">
+          <el-table-column prop="reminderCount" label="催款次数" width="116" align="center">
             <template #default="{ row }">
-              <el-tag :type="row.remindStatus === '1' ? 'success' : 'info'" effect="plain">
-                {{ row.remindStatus === '1' ? '已催缴' : '未催缴' }}
+              <el-tag :type="Number(row.reminderCount || 0) ? 'success' : 'info'" effect="plain">
+                {{ Number(row.reminderCount || 0) }}次
               </el-tag>
             </template>
           </el-table-column>
@@ -203,6 +203,12 @@
               >
                 律师函申请
               </el-button>
+              <el-button
+                v-if="workflowStatus('contract_overdue_legal') === 'approved'"
+                type="primary"
+                plain
+                @click="openLegalSendDialog(drawerRow)"
+              >登记律师函发送</el-button>
               <el-button
                 type="danger"
                 plain
@@ -377,8 +383,54 @@
               />
             </div>
           </section>
+
+          <section class="drawer-section">
+            <div class="drawer-section-title">律师函发送记录</div>
+            <div class="record-list">
+              <div
+                v-for="item in disposalDetail.legalSendRecords"
+                :key="item.logId"
+                class="record-item"
+              >
+                <div>
+                  <strong>{{ item.actionDesc || item.action }}</strong>
+                  <span>{{ item.operator || '-' }} / {{ item.operateTime || '-' }}</span>
+                </div>
+                <el-tag effect="plain" type="success">已发送</el-tag>
+              </div>
+              <el-empty
+                v-if="!disposalDetail.legalSendRecords.length"
+                description="暂无律师函发送记录"
+              />
+            </div>
+          </section>
         </div>
       </el-drawer>
+
+      <el-dialog v-model="legalSendVisible" title="登记律师函发送" width="620px" append-to-body>
+        <el-form :model="legalSendForm" label-width="110px">
+          <el-form-item label="发送方式" required>
+            <el-select v-model="legalSendForm.channel" placeholder="请选择发送方式" style="width: 100%">
+              <el-option label="线下寄送" value="线下寄送" />
+              <el-option label="邮件发送" value="邮件发送" />
+              <el-option label="当面送达" value="当面送达" />
+              <el-option label="小程序发送" value="小程序发送" />
+              <el-option label="其他" value="其他" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="收件人" required><el-input v-model="legalSendForm.recipient" /></el-form-item>
+          <el-form-item label="送达信息"><el-input v-model="legalSendForm.destination" placeholder="地址、邮箱或联系方式" /></el-form-item>
+          <el-form-item label="发送时间" required>
+            <el-date-picker v-model="legalSendForm.sendTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="凭证地址"><el-input v-model="legalSendForm.proofUrl" /></el-form-item>
+          <el-form-item label="备注"><el-input v-model="legalSendForm.remark" type="textarea" :rows="3" /></el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="legalSendVisible = false">取消</el-button>
+          <el-button type="primary" :loading="legalSending" @click="submitLegalSend">确认登记</el-button>
+        </template>
+      </el-dialog>
 
       <el-dialog v-model="logDialogVisible" title="合同联动日志" width="680px" append-to-body>
         <div v-loading="drawerLogLoading" class="drawer-log-list">
@@ -492,6 +544,7 @@ import {
   getOverdueReminderPage,
   getOverdueReminderSummary,
   readOverdueInternalNotice,
+  registerLegalLetterSend,
   remindOverduePayment,
   sendMiniAppNotice,
 } from '@/api/ics/payment';
@@ -566,6 +619,7 @@ export default {
         paymentNotice: null,
         documentRecords: [],
         miniAppRecords: [],
+        legalSendRecords: [],
         workflowRecords: [],
         internalNotices: [],
       },
@@ -582,6 +636,9 @@ export default {
       recipientPayment: {},
       routePaymentId: '',
       routeDrawerOpened: false,
+      legalSendVisible: false,
+      legalSending: false,
+      legalSendForm: {},
     };
   },
   computed: {
@@ -657,14 +714,15 @@ export default {
         { label: '应缴日期', value: row.payDeadline || '-' },
         { label: '逾期天数', value: `${this.overdueDays(row)}天` },
         { label: '逾期工作日', value: `${this.businessDaysOverdue(row)}个` },
-        { label: '催缴状态', value: row.remindStatus === '1' ? '已催缴' : '未催缴' },
+        { label: '催款次数', value: `${Number(row.reminderCount || 0)}次` },
+        { label: '最近催款', value: row.latestReminderTime || '-' },
         { label: '律师函审批', value: this.approvalStatusText(row.overdueApprovalStatus) },
         { label: '退租审批', value: this.approvalStatusText(row.terminationApprovalStatus) },
       ];
     },
     drawerNoticeTypes() {
       return [
-        { label: '催款通知书', value: 'reminder-notice', recommendedBusinessDays: 20 },
+        { label: '催款通知书', value: 'reminder-notice', recommendedBusinessDays: 5 },
         { label: '逾期处理通知书', value: 'overdue-notice', recommendedBusinessDays: 5 },
         { label: '限期搬离通知书', value: 'move-out-notice' },
       ];
@@ -856,6 +914,7 @@ export default {
             paymentNotice: data.paymentNotice || null,
             documentRecords: data.documentRecords || [],
             miniAppRecords: data.miniAppRecords || [],
+            legalSendRecords: data.legalSendRecords || [],
             workflowRecords: data.workflowRecords || [],
             internalNotices: data.internalNotices || [],
           };
@@ -869,6 +928,7 @@ export default {
         paymentNotice: null,
         documentRecords: [],
         miniAppRecords: [],
+        legalSendRecords: [],
         workflowRecords: [],
         internalNotices: [],
       };
@@ -909,6 +969,42 @@ export default {
         }
         this.reload();
       });
+    },
+    openLegalSendDialog(row) {
+      if (!row || !row.paymentId) return;
+      if (this.workflowStatus(OVERDUE_WORKFLOW) !== 'approved') {
+        this.$message.warning('律师函审批通过后才能登记发送');
+        return;
+      }
+      const now = new Date();
+      const pad = value => String(value).padStart(2, '0');
+      this.legalSendForm = {
+        paymentId: row.paymentId,
+        channel: '',
+        recipient: row.customerName || '',
+        destination: '',
+        sendTime: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
+        proofUrl: '',
+        remark: '',
+      };
+      this.legalSendVisible = true;
+    },
+    submitLegalSend() {
+      if (!this.legalSendForm.channel || !this.legalSendForm.recipient || !this.legalSendForm.sendTime) {
+        this.$message.warning('请填写发送方式、收件人和发送时间');
+        return;
+      }
+      this.legalSending = true;
+      registerLegalLetterSend(this.legalSendForm)
+        .then(() => {
+          this.$message.success('律师函发送已登记');
+          this.legalSendVisible = false;
+          this.loadDisposalDetail(this.drawerRow);
+          this.reload();
+        })
+        .finally(() => {
+          this.legalSending = false;
+        });
     },
     previewNotice(row, noticeType) {
       if (!row || !row.paymentId) return;
@@ -984,20 +1080,14 @@ export default {
         paymentId: row.paymentId,
         contractId: row.contractId,
       }).then(() => {
-        const refresh =
-          noticeType === 'move-out-notice'
-            ? Promise.resolve()
-            : remindOverduePayment(row.paymentId, 'overdue_reminder');
-        refresh.finally(() => {
-          this.loadDisposalDetail(row);
-          this.reload();
-        });
+        this.loadDisposalDetail(row);
+        this.reload();
         this.$message.success(
           `${messageMap[noticeType] || '通知文件'}的小程序发送数据已生成，已预留给小程序接口`
         );
       });
     },
-    handleStartOverdueApproval(row) {
+    async handleStartOverdueApproval(row) {
       if (!row || !row.paymentId) return;
       if (this.isSettled(row)) {
         this.$message.warning('该账单已结清，不能继续发起律师函审批');
@@ -1005,6 +1095,18 @@ export default {
       }
       if (this.workflowStatus(OVERDUE_WORKFLOW) === 'running') {
         this.$message.warning('该账单律师函审批正在进行中');
+        return;
+      }
+      const elapsedBusinessDays = this.businessDaysOverdue(row);
+      if (elapsedBusinessDays < 20) {
+        await this.$alert(
+          `当前逾期${elapsedBusinessDays}个工作日，律师函审批需满20个工作日后才可发起。`,
+          '律师函审批限制',
+          {
+            confirmButtonText: '知道了',
+            type: 'warning',
+          }
+        );
         return;
       }
       this.openWorkflowDialog(OVERDUE_WORKFLOW, row);
@@ -1337,7 +1439,7 @@ export default {
         },
         'reminder-notice': {
           label: '催款通知书',
-          recommendedBusinessDays: 20,
+          recommendedBusinessDays: 5,
         },
       };
       return rules[noticeType] || null;

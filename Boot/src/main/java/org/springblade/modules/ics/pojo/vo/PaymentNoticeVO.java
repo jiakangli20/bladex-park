@@ -131,6 +131,40 @@ public class PaymentNoticeVO implements Serializable {
 	@Schema(description = "备注")
 	private String remark;
 
+	@Schema(description = "通知分类：payment/reminder/overdue")
+	private String noticeCategory;
+
+	@Schema(description = "通知类型")
+	private String noticeType;
+
+	@Schema(description = "统一通知发送状态：pending/sent/failed")
+	private String noticeSendStatus;
+
+	@Schema(description = "统一账单状态：pending/paid/reminded/overdue/legal")
+	private String billStatus;
+
+	@Schema(description = "律师函审批状态")
+	private String overdueApprovalStatus;
+
+	@Schema(description = "律师函发送登记次数")
+	private Integer legalSendCount;
+
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@Schema(description = "律师函最近发送时间")
+	private Date legalLastSendTime;
+
+	@Schema(description = "累计催款次数")
+	private Integer reminderCount;
+
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@Schema(description = "最近催款时间")
+	private Date latestReminderTime;
+
+	@Schema(description = "通知分类查询条件：payment/reminder/overdue")
+	private String categoryQuery;
+
 	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
 	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
 	@Schema(description = "生成日期")

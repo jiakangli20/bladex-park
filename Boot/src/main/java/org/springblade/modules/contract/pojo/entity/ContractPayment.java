@@ -245,6 +245,26 @@ public class ContractPayment implements Serializable {
 	private String overdueFileUrl;
 
 	@TableField(exist = false)
+	@Schema(description = "累计催款次数")
+	private Integer reminderCount;
+
+	@TableField(exist = false)
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@Schema(description = "最近催款时间")
+	private Date latestReminderTime;
+
+	@TableField(exist = false)
+	@Schema(description = "律师函发送登记次数")
+	private Integer legalSendCount;
+
+	@TableField(exist = false)
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@Schema(description = "律师函最近发送时间")
+	private Date legalLastSendTime;
+
+	@TableField(exist = false)
 	@Schema(description = "退租流程实例ID")
 	private String terminationProcessInsId;
 

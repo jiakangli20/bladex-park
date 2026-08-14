@@ -412,9 +412,9 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		Map<String, String> replacements = createPaymentNoticeReplacements(context, fields);
 		return contractTemplateRenderService.render(
 			NOTICE_PAYMENT,
-			"付款通知单",
+			"收款通知",
 			resolveTemplateSource(NOTICE_PAYMENT),
-			"付款通知单-" + context.contractNo(),
+			"收款通知-" + context.contractNo(),
 			fields,
 			replacements
 		);
@@ -1704,7 +1704,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 
 	private String noticeDisplayName(String noticeType) {
 		return switch (noticeType) {
-			case NOTICE_PAYMENT -> "付款通知单";
+			case NOTICE_PAYMENT -> "收款通知";
 			case NOTICE_REMINDER -> "催款通知书";
 			case NOTICE_INVOICE -> "开票申请单";
 			case NOTICE_CONTRACT_APPROVAL -> "合同会签审批表";

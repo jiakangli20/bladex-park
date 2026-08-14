@@ -36,7 +36,7 @@ import java.nio.charset.StandardCharsets;
 @NonDS
 @RestController
 @AllArgsConstructor
-@PreAuth(menu = "settlement_project_approval")
+@PreAuth("hasMenu('business_opportunity') || hasMenu('settlement_project_approval')")
 @RequestMapping("/blade-park/tenant-entry")
 @io.swagger.v3.oas.annotations.tags.Tag(name = "入驻审核", description = "入驻审核候选商机及审批表接口")
 public class TenantEntryApprovalController extends BladeController {
@@ -62,7 +62,7 @@ public class TenantEntryApprovalController extends BladeController {
 	}
 
 	@GetMapping("/candidate-detail/{opportunityId}")
-	@PreAuth(menu = "settlement_project_approval_add")
+	@PreAuth("hasMenu('business_opportunity_audit') || hasMenu('settlement_project_approval_add')")
 	@ApiOperationSupport(order = 2)
 	@Operation(summary = "可发起商机详情")
 	public R<BusinessOpportunity> candidateDetail(@PathVariable Long opportunityId) {

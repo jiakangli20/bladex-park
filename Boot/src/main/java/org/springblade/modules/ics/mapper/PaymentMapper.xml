@@ -63,6 +63,10 @@
 		<result column="overdue_approval_status" property="overdueApprovalStatus"/>
 		<result column="overdue_current_node_name" property="overdueCurrentNodeName"/>
 		<result column="overdue_file_url" property="overdueFileUrl"/>
+		<result column="reminder_count" property="reminderCount"/>
+		<result column="latest_reminder_time" property="latestReminderTime"/>
+		<result column="legal_send_count" property="legalSendCount"/>
+		<result column="legal_last_send_time" property="legalLastSendTime"/>
 		<result column="termination_process_ins_id" property="terminationProcessInsId"/>
 		<result column="termination_approval_status" property="terminationApprovalStatus"/>
 		<result column="termination_current_node_name" property="terminationCurrentNodeName"/>
@@ -159,6 +163,10 @@
 			law_cwr.process_status AS overdue_approval_status,
 			law_cwr.current_node AS overdue_current_node_name,
 			law_cwr.print_file_url AS overdue_file_url,
+			COALESCE(reminder_stat.reminder_count, 0) AS reminder_count,
+			reminder_stat.latest_reminder_time,
+			COALESCE(legal_send_stat.legal_send_count, 0) AS legal_send_count,
+			legal_send_stat.legal_last_send_time,
 			term_cwr.process_ins_id AS termination_process_ins_id,
 			term_cwr.process_status AS termination_approval_status,
 			term_cwr.current_node AS termination_current_node_name,
@@ -200,6 +208,22 @@
 			GROUP BY payment_id
 		) latest_law_cwr ON latest_law_cwr.payment_id = p.payment_id
 		LEFT JOIN biz_contract_workflow_record law_cwr ON law_cwr.record_id = latest_law_cwr.record_id
+		LEFT JOIN (
+			SELECT payment_id, COUNT(1) AS reminder_count, MAX(remind_time) AS latest_reminder_time
+			FROM biz_overdue_reminder_record
+			WHERE del_flag = '0'
+			GROUP BY payment_id
+		) reminder_stat ON reminder_stat.payment_id = p.payment_id
+		LEFT JOIN (
+			SELECT p2.payment_id,
+				COUNT(l.log_id) AS legal_send_count,
+				MAX(l.operate_time) AS legal_last_send_time
+			FROM biz_contract_payment p2
+			INNER JOIN biz_contract_log l ON l.contract_id = p2.contract_id
+				AND l.action = 'legal_letter_send'
+				AND l.action_desc LIKE CONCAT('%账单ID：', p2.payment_id, '%')
+			GROUP BY p2.payment_id
+		) legal_send_stat ON legal_send_stat.payment_id = p.payment_id
 		LEFT JOIN (
 			SELECT contract_id, MAX(record_id) AS record_id
 			FROM biz_contract_workflow_record

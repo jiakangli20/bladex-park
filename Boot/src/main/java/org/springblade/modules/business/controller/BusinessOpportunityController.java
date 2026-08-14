@@ -195,7 +195,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@GetMapping("/tenant-entry/approval-form/{opportunityId}")
-	@PreAuth(menu = "business_opportunity_audit")
+	@PreAuth("hasMenu('business_opportunity_audit') || hasMenu('settlement_project_approval_form')")
 	@ApiOperationSupport(order = 19)
 	@Operation(summary = "企业入驻审批表", description = "按原始模板导出入驻审批表文件")
 	public void tenantEntryApprovalForm(@PathVariable Long opportunityId,
@@ -205,7 +205,7 @@ public class BusinessOpportunityController extends BladeController {
 	}
 
 	@GetMapping("/tenant-entry/approval-form-preview/{opportunityId}")
-	@PreAuth(menu = "business_opportunity_audit")
+	@PreAuth("hasMenu('business_opportunity_audit') || hasMenu('settlement_project_approval_form')")
 	@ApiOperationSupport(order = 20)
 	@Operation(summary = "企业入驻审批表预览", description = "按原始 Word 模板生成并预览入驻审批表")
 	public R<Kv> tenantEntryApprovalFormPreview(@PathVariable Long opportunityId,

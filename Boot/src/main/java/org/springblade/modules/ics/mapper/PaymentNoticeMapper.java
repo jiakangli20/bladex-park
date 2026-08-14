@@ -43,7 +43,7 @@ public interface PaymentNoticeMapper extends BaseMapper<PaymentNotice> {
 	 * @param paymentId 账单ID
 	 * @return 通知记录
 	 */
-	PaymentNotice selectByPaymentId(@Param("paymentId") Long paymentId);
+	PaymentNotice selectByPaymentId(@Param("paymentId") Long paymentId, @Param("noticeType") String noticeType);
 
 	/**
 	 * 查询楼宇选项.
@@ -59,6 +59,6 @@ public interface PaymentNoticeMapper extends BaseMapper<PaymentNotice> {
 	 * @param paymentId 账单ID
 	 * @return 通知详情
 	 */
-	PaymentNoticeVO selectNoticeByPaymentId(@Param("paymentId") Long paymentId);
+	PaymentNoticeVO selectNoticeByPaymentId(@Param("paymentId") Long paymentId, @Param("noticeType") String noticeType);
 
 }

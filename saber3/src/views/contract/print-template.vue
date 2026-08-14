@@ -154,7 +154,7 @@ export default {
         { value: 'contract-approval', label: '合同会签审批表' },
         { value: 'contract-fixed', label: '合同正文（固定租金）' },
         { value: 'contract-floating', label: '合同正文（浮动租金）' },
-        { value: 'payment-notice', label: '付款通知单' },
+        { value: 'payment-notice', label: '收款通知' },
         { value: 'invoice-apply', label: '开票申请单' },
         { value: 'reminder-notice', label: '催款通知书' },
         { value: 'overdue-notice', label: '租金逾期处理通知书' },

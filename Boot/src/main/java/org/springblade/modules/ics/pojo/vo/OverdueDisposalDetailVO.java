@@ -36,6 +36,9 @@ public class OverdueDisposalDetailVO implements Serializable {
 	@Schema(description = "小程序发送记录")
 	private List<ContractLog> miniAppRecords = new ArrayList<>();
 
+	@Schema(description = "律师函发送登记记录")
+	private List<ContractLog> legalSendRecords = new ArrayList<>();
+
 	@Schema(description = "逾期相关审批记录")
 	private List<ContractWorkflowRecord> workflowRecords = new ArrayList<>();
 
