@@ -98,6 +98,16 @@ export const uploadSignedContract = (contractId, row) => {
   });
 };
 
+export const removeSignedContract = contractId => {
+  return request({
+    url: '/blade-contract/contract/signed-file/remove',
+    method: 'post',
+    params: {
+      contractId,
+    },
+  });
+};
+
 export const getStats = params => {
   return request({
     url: '/blade-contract/contract/stats',

@@ -44,6 +44,7 @@ public class ContractWorkflowTraceService {
 		return records.stream()
 			.filter(record -> Objects.equals(businessType, record.getBusinessType()))
 			.filter(record -> paymentId == null || Objects.equals(paymentId, record.getPaymentId()))
+			.filter(record -> matchesHandoverScene(noticeType, record))
 			.filter(record -> matchesNoticeType(noticeType, record))
 			.findFirst()
 			.orElse(null);
@@ -85,6 +86,21 @@ public class ContractWorkflowTraceService {
 		}
 		if (IContractNoticeService.NOTICE_PAYMENT.equals(noticeType)) {
 			return !isInvoiceWorkflow(record);
+		}
+		return true;
+	}
+
+	private boolean matchesHandoverScene(String noticeType, ContractWorkflowRecord record) {
+		if (!Objects.equals(record == null ? null : record.getBusinessType(), "contract_room_review")) {
+			return true;
+		}
+		if (IContractNoticeService.NOTICE_HANDOVER.equals(noticeType)) {
+			return true;
+		}
+		if (IContractNoticeService.NOTICE_ROOM_REVIEW.equals(noticeType)) {
+			return ContractHandoverSceneResolver.TERMINATION.equals(
+				ContractHandoverSceneResolver.resolve(record)
+			);
 		}
 		return true;
 	}

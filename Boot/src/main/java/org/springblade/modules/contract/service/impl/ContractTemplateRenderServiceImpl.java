@@ -74,6 +74,7 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 	private static final String WORD_NAMESPACE = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 	private static final String XML_NAMESPACE = "http://www.w3.org/XML/1998/namespace";
 	private static final String TENANT_ENTRY_APPROVAL_TEMPLATE = "附件一：企业入驻审批表.docx";
+	private static final String HANDOVER_TEMPLATE = "附件三：交接单.docx";
 	private final OssBuilder ossBuilder;
 
 	@Override
@@ -127,6 +128,9 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 				} else {
 					for (XWPFTable table : document.getTables()) {
 						fillDocxTable(table, fields, replacements);
+					}
+					if (HANDOVER_TEMPLATE.equals(templateFileName)) {
+						fillHandoverTemplate(document, fields);
 					}
 				}
 				document.getHeaderList().forEach(header -> {
@@ -197,6 +201,82 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 		setTenantEntryApprovalCell(table.getRow(10).getCell(1), fields.get("分管领导审批"));
 		setTenantEntryApprovalCell(table.getRow(11).getCell(1), fields.get("总经理审批"));
 		normalizeTenantEntryApprovalText(table);
+	}
+
+	private void fillHandoverTemplate(XWPFDocument document, Map<String, String> fields) {
+		if (document == null || document.getTables().isEmpty()) {
+			return;
+		}
+		XWPFTable table = document.getTables().get(0);
+		fillHandoverSignature(table, "综合部", fields.get("综合部签字"));
+		fillHandoverSignature(table, "服务部", fields.get("服务部签字"));
+		fillHandoverSignature(table, "运营中心", fields.get("运营中心签字"));
+		fillHandoverSignature(table, "财务部", fields.get("财务部签字"));
+		markHandoverContents(table, fields.get("交接内容选项"));
+	}
+
+	private void fillHandoverSignature(XWPFTable table, String department, String value) {
+		if (table == null || StringUtil.isBlank(department) || StringUtil.isBlank(value)) {
+			return;
+		}
+		for (XWPFTableRow row : table.getRows()) {
+			List<XWPFTableCell> cells = row.getTableCells();
+			String rowText = cells.stream().map(this::cellText).reduce("", String::concat);
+			if (!normalizeLabel(rowText).contains(normalizeLabel(department))) {
+				continue;
+			}
+			for (int index = 0; index + 1 < cells.size(); index++) {
+				if ("签字".equals(normalizeLabel(cellText(cells.get(index))))) {
+					setCellText(cells.get(index + 1), value);
+					return;
+				}
+			}
+		}
+	}
+
+	private void markHandoverContents(XWPFTable table, String selectedValues) {
+		if (table == null || table.getNumberOfRows() < 2 || StringUtil.isBlank(selectedValues)) {
+			return;
+		}
+		List<String> labels = List.of(
+			"君联大厦租赁合同",
+			"安全生产责任书",
+			"（君联大厦租赁合同）解除之补充协议",
+			"同意转租证明",
+			"租赁合同（转租）",
+			"其他"
+		);
+		XWPFTableCell contentCell = table.getRow(1).getCell(1);
+		for (XWPFParagraph paragraph : contentCell.getParagraphs()) {
+			String text = editableParagraphText(paragraph.getCTP().getDomNode());
+			for (int index = 0; index < labels.size(); index++) {
+				String label = labels.get(index);
+				if (text.contains(label) && handoverContentSelected(selectedValues, index, label)
+					&& !text.trim().startsWith("√")) {
+					replaceParagraphTextPreservingStyles(
+						paragraph.getCTP().getDomNode(),
+						text,
+						"√ " + text
+					);
+					break;
+				}
+			}
+		}
+	}
+
+	private boolean handoverContentSelected(String selectedValues, int index, String label) {
+		String normalized = selectedValues == null ? "" : selectedValues
+			.replace("[", "")
+			.replace("]", "")
+			.replace("\"", "")
+			.replace("'", "")
+			.trim();
+		if (normalized.contains(label)) {
+			return true;
+		}
+		return Arrays.stream(normalized.split("[,，;；]"))
+			.map(String::trim)
+			.anyMatch(value -> value.equals(String.valueOf(index)));
 	}
 
 	private Map<String, String> tenantEntryApprovalLabels() {
@@ -683,6 +763,10 @@ public class ContractTemplateRenderServiceImpl implements IContractTemplateRende
 			return false;
 		}
 		if (normalizedText.contains("审批") && "部门".equals(normalizedLabel)) {
+			return false;
+		}
+		if ((normalizedText.contains("接收部门") || normalizedText.contains("接受部门"))
+			&& "部门".equals(normalizedLabel)) {
 			return false;
 		}
 		return !isGenericManagerLabelMatchedTotalManager(normalizedText, normalizedLabel);

@@ -499,13 +499,19 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	}
 
 	private ContractNoticeFileVO buildHandover(NoticeContext context) {
-		Map<String, String> fields = createRoomReviewFields(context);
-		Map<String, String> replacements = createRoomReviewReplacements(context);
+		Map<String, String> fields = createHandoverFields(context);
+		Map<String, String> replacements = createHandoverReplacements(fields);
+		String handoverScene = Func.toStr(firstNotBlank(
+			formValue(context, "handoverScene", "roomReviewScene", "handoverSceneName"),
+			""
+		), "").toLowerCase();
+		boolean signHandover = "sign".equals(handoverScene) || handoverScene.contains("签约");
+		String noticeName = signHandover ? "签约房屋交接单" : "退租交接单";
 		return contractTemplateRenderService.render(
 			NOTICE_HANDOVER,
-			"退租交接单",
+			noticeName,
 			resolveTemplateSource(NOTICE_HANDOVER),
-			"退租交接单-" + context.contractNo(),
+			noticeName + "-" + context.contractNo(),
 			fields,
 			replacements
 		);
@@ -1022,6 +1028,58 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		fields.put("应退租赁押金", formatMoney(contract == null ? null : contract.getDeposit()));
 		mergeWorkflowApprovalFields(context, fields);
 		return fields;
+	}
+
+	private Map<String, String> createHandoverFields(NoticeContext context) {
+		Map<String, String> fields = new LinkedHashMap<>();
+		Contract contract = context.contract;
+		fields.put("日期", firstNotBlank(
+			formValue(context, "a178228957311663926", "日期", "applyTime", "申请时间"),
+			formatDate(DateUtil.now())
+		));
+		fields.put("企业名称", firstNotBlank(
+			formValue(context, "a178228957844176707", "企业名称", "customerName", "enterpriseName"),
+			context.customerName()
+		));
+		fields.put("交接内容选项", Func.toStr(firstNotBlank(
+			formValue(context, "a178228963775634675", "交接内容", "handoverContent"),
+			""
+		), ""));
+		fields.put("部门", firstNotBlank(
+			formValue(context, "a178228975135484264", "部门", "applicantDept"),
+			"-"
+		));
+		fields.put("经办人", resolveUserDisplayName(firstNotBlank(
+			formValue(context, "a178582191990669727", "经办人", "applicant"),
+			contract == null ? null : firstNotBlank(contract.getFollowUser(), contract.getCreateBy())
+		)));
+		fields.put("企业联系人", firstNotBlank(
+			formValue(context, "a178229002433080623", "企业联系人", "contactName"),
+			context.customer == null ? null : context.customer.getContactName(),
+			"-"
+		));
+		fields.put("联系方式", firstNotBlank(
+			formValue(context, "a178229003807133497", "联系方式", "contactPhone", "customerPhone"),
+			customerContactPhone(context),
+			"-"
+		));
+		fields.put("备注", firstNotBlank(
+			formValue(context, "a178229004644570508", "备注", "remark"),
+			contract == null ? null : contract.getRemark(),
+			"-"
+		));
+		mergeWorkflowApprovalFields(context, fields);
+		fields.put("综合部签字", firstNotBlank(fields.get("综合部"), fields.get("综合管理部"), "-"));
+		fields.put("服务部签字", firstNotBlank(fields.get("服务部"), "-"));
+		fields.put("运营中心签字", firstNotBlank(fields.get("运营中心"), "-"));
+		fields.put("财务部签字", firstNotBlank(fields.get("财务部"), "-"));
+		return fields;
+	}
+
+	private Map<String, String> createHandoverReplacements(Map<String, String> fields) {
+		Map<String, String> replacements = new LinkedHashMap<>();
+		replacements.put(exactReplacementKey("年 月 日"), fields.get("日期"));
+		return replacements;
 	}
 
 	private Map<String, String> createTerminationReplacements(NoticeContext context, Map<String, String> fields) {

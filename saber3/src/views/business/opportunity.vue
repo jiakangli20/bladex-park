@@ -140,6 +140,13 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="tenantEntryStatus" label="审批状态" width="110" align="center">
+          <template #default="{ row }">
+            <el-tag :type="tenantEntryStatusType(row.tenantEntryStatus)" effect="plain">
+              {{ tenantEntryStatusText(row.tenantEntryStatus) }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="客户标签" min-width="160" align="center">
           <template #default="{ row }">
             <div v-if="formatTags(row).length" class="customer-tag-chip-list">
@@ -1456,7 +1463,7 @@ export default {
       const value = String(status || '').toLowerCase();
       if (value === 'approved') return 'success';
       if (value === 'rejected') return 'danger';
-      if (value === 'running') return 'warning';
+      if (value === 'running') return 'primary';
       if (value === 'canceled') return 'info';
       return 'info';
     },

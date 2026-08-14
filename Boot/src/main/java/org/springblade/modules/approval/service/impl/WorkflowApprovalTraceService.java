@@ -52,6 +52,8 @@ public class WorkflowApprovalTraceService {
 		new ApprovalSlot("部门经理", List.of("部门经理", "部门审批", "经理审批", "部门负责人"), List.of("部门经理", "经理", "部门负责人"), List.of("部门经理", "经理")),
 		new ApprovalSlot("部门审批", List.of("部门审批", "部门经理", "经理审批"), List.of("部门经理", "经理", "部门负责人"), List.of("部门经理", "经理")),
 		new ApprovalSlot("经理审批", List.of("经理审批", "部门经理", "部门审批"), List.of("部门经理", "经理", "部门负责人"), List.of("部门经理", "经理")),
+		new ApprovalSlot("综合部", List.of("综合部", "综合管理部", "综合管理", "行政"), List.of("综合部", "综合管理部", "综合管理", "行政"), List.of("综合部", "综合管理", "行政")),
+		new ApprovalSlot("服务部", List.of("服务部", "企业服务", "客户服务"), List.of("服务部", "企业服务", "客户服务"), List.of("服务部", "企业服务", "客户服务")),
 		new ApprovalSlot("运营中心", List.of("运营中心", "运营审批", "运营负责人"), List.of("运营中心", "运营", "运营负责人"), List.of("运营中心", "运营")),
 		new ApprovalSlot("财务部", List.of("财务部", "财务审批", "财务负责人"), List.of("财务部", "财务", "财务负责人"), List.of("财务部", "财务")),
 		new ApprovalSlot("风控审核", List.of("风控", "风险", "风控审核"), List.of("风控", "风险"), List.of("风控", "风险")),

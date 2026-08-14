@@ -31,6 +31,7 @@ class ContractTemplateRenderServiceImplTest {
 	private static final String CONTRACT_FIXED = "君联合同/科技服务中心租赁合同（固定租金）202508版 - 解锁.docx";
 	private static final String TENANT_ENTRY_APPROVAL = "君联大厦招商管理办法2023/附件一：企业入驻审批表.docx";
 	private static final String CONTRACT_APPROVAL = "君联大厦招商管理办法2023/附件二：合同会签审批表.docx";
+	private static final String HANDOVER = "君联大厦招商管理办法2023/附件三：交接单.docx";
 	private static final String PAYMENT_NOTICE = "君联大厦招商管理办法2023/附件四：君联大厦付款通知单.docx";
 	private static final String INVOICE_APPLY = "君联大厦招商管理办法2023/开票申请.docx";
 	private static final String REMINDER = "君联大厦招商管理办法2023/附件五：催款通知书.docx";
@@ -77,6 +78,48 @@ class ContractTemplateRenderServiceImplTest {
 			assertEquals("王经理（同意，2026-08-03）", table.getRow(9).getCell(1).getText());
 			assertFalse(table.getRow(9).getCell(1).getText().contains("日期："));
 			assertEquals(1, occurrences(table.getRow(9).getCell(1).getText(), "2026-08-03"));
+		}
+	}
+
+	@Test
+	void fillsSignHandoverTemplateWithoutOverwritingReceivingDepartments() throws Exception {
+		Map<String, String> fields = new LinkedHashMap<>();
+		fields.put("日期", "2026-08-14");
+		fields.put("企业名称", "核欣（苏州）医药科技有限公司");
+		fields.put("交接内容选项", "0,3");
+		fields.put("部门", "招商服务部");
+		fields.put("经办人", "管理员");
+		fields.put("企业联系人", "核欣联系人");
+		fields.put("联系方式", "13862061912");
+		fields.put("备注", "签约资料交接完成");
+		fields.put("综合部签字", "综合审批人（同意，2026-08-14）");
+		fields.put("服务部签字", "服务审批人（同意，2026-08-14）");
+		fields.put("运营中心签字", "运营审批人（同意，2026-08-14）");
+		fields.put("财务部签字", "财务审批人（同意，2026-08-14）");
+
+		ContractNoticeFileVO file = render(
+			HANDOVER,
+			fields,
+			Map.of(EXACT_PREFIX + "年 月 日", fields.get("日期"))
+		);
+		try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(file.getFileBytes()))) {
+			XWPFTable table = document.getTables().get(0);
+			assertEquals("2026-08-14", table.getRow(0).getCell(1).getText());
+			assertEquals("核欣（苏州）医药科技有限公司", table.getRow(0).getCell(3).getText());
+			assertEquals("招商服务部", table.getRow(6).getCell(1).getText());
+			assertEquals("管理员", table.getRow(6).getCell(3).getText());
+			assertEquals("综合部", table.getRow(7).getCell(1).getText());
+			assertEquals("服务部", table.getRow(8).getCell(1).getText());
+			assertEquals("运营中心", table.getRow(9).getCell(1).getText());
+			assertEquals("财务部", table.getRow(10).getCell(1).getText());
+			assertEquals("综合审批人（同意，2026-08-14）", table.getRow(7).getCell(3).getText());
+			assertEquals("服务审批人（同意，2026-08-14）", table.getRow(8).getCell(3).getText());
+			assertEquals("运营审批人（同意，2026-08-14）", table.getRow(9).getCell(3).getText());
+			assertEquals("财务审批人（同意，2026-08-14）", table.getRow(10).getCell(3).getText());
+			assertEquals("核欣联系人", table.getRow(11).getCell(1).getText());
+			assertEquals("13862061912", table.getRow(11).getCell(3).getText());
+			assertTrue(table.getRow(1).getCell(1).getText().contains("√ 君联大厦租赁合同"));
+			assertTrue(table.getRow(1).getCell(1).getText().contains("√ 同意转租证明"));
 		}
 	}
 

@@ -104,6 +104,8 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 	private static final String CONTRACT_STATUS_TERMINATION_RUNNING = "6";
 	private static final String CONTRACT_STATUS_TERMINATION_HANDOVER = "7";
 	private static final String CONTRACT_STATUS_ROOM_REVIEW_RUNNING = "8";
+	private static final String HANDOVER_SCENE_SIGN = ContractHandoverSceneResolver.SIGN;
+	private static final String HANDOVER_SCENE_TERMINATION = ContractHandoverSceneResolver.TERMINATION;
 	private static final String PAYMENT_DIRECTION_PAYABLE = "payable";
 	private static final String PAY_STATUS_PAID = "1";
 	private static final String PAY_STATUS_PARTIAL = "3";
@@ -144,6 +146,8 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		Map.entry("invoice", BUSINESS_TYPE_CONTRACT_PAYMENT),
 		Map.entry("contract_payment", BUSINESS_TYPE_CONTRACT_PAYMENT),
 		Map.entry("roomreview", BUSINESS_TYPE_CONTRACT_ROOM_REVIEW),
+		Map.entry("roomreview-1", BUSINESS_TYPE_CONTRACT_ROOM_REVIEW),
+		Map.entry("roomview-1", BUSINESS_TYPE_CONTRACT_ROOM_REVIEW),
 		Map.entry("contract_room_review", BUSINESS_TYPE_CONTRACT_ROOM_REVIEW),
 		Map.entry("termination", BUSINESS_TYPE_CONTRACT_TERMINATION),
 		Map.entry("contract_termination", BUSINESS_TYPE_CONTRACT_TERMINATION),
@@ -433,26 +437,39 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		}
 		WfNotice.Type type = notice.getType();
 		if (BUSINESS_TYPE_CONTRACT_TERMINATION.equals(record.getBusinessType())) {
-			if (START == type && !Set.of(CONTRACT_STATUS_ACTIVE, CONTRACT_STATUS_EXPIRED)
-				.contains(contract.getContractStatus())) {
+			if (START == type && !hasApprovedSignHandover(record.getContractId())) {
+				throw new ServiceException("签约交接单审批完成后才可以发起退租审批");
+			}
+			if (START == type && (contract.getContractStatus() == null
+				|| !Set.of(CONTRACT_STATUS_ACTIVE, CONTRACT_STATUS_EXPIRED).contains(contract.getContractStatus()))) {
 				throw new ServiceException("仅生效或已到期合同可以发起退租审批");
 			}
-			if (FINISH == type && !Set.of(CONTRACT_STATUS_TERMINATION_RUNNING,
-				CONTRACT_STATUS_TERMINATION_HANDOVER).contains(contract.getContractStatus())) {
+			if (FINISH == type && (contract.getContractStatus() == null
+				|| !Set.of(CONTRACT_STATUS_TERMINATION_RUNNING, CONTRACT_STATUS_TERMINATION_HANDOVER)
+				.contains(contract.getContractStatus()))) {
 				throw new ServiceException("当前合同状态不能完成退租审批");
 			}
 		}
 		if (BUSINESS_TYPE_CONTRACT_ROOM_REVIEW.equals(record.getBusinessType())) {
-			ContractWorkflowRecord terminationRecord = baseMapper.selectLatest(record.getContractId(), BUSINESS_TYPE_CONTRACT_TERMINATION);
-			if (terminationRecord == null || !STATUS_APPROVED.equals(terminationRecord.getProcessStatus())) {
-				throw new ServiceException("退租审批完成后才可以办理房屋验收");
-			}
-			if (START == type && !CONTRACT_STATUS_TERMINATION_HANDOVER.equals(contract.getContractStatus())) {
-				throw new ServiceException("当前合同尚未进入退租交接阶段");
-			}
-			if (FINISH == type && !Set.of(CONTRACT_STATUS_TERMINATION_HANDOVER,
-					CONTRACT_STATUS_ROOM_REVIEW_RUNNING, CONTRACT_STATUS_TERMINATED).contains(contract.getContractStatus())) {
-					throw new ServiceException("当前合同状态不能完成房屋验收");
+			String scene = resolveHandoverScene(record, contract);
+			if (HANDOVER_SCENE_SIGN.equals(scene)) {
+				validateSignHandoverTransition(record, contract, type);
+			} else {
+				ContractWorkflowRecord terminationRecord = baseMapper.selectLatest(record.getContractId(), BUSINESS_TYPE_CONTRACT_TERMINATION);
+				if (terminationRecord == null || !STATUS_APPROVED.equals(terminationRecord.getProcessStatus())) {
+					throw new ServiceException("退租审批完成后才可以办理退租交接");
+				}
+				if (START == type && latestRoomReviewRecord(record.getContractId(), HANDOVER_SCENE_TERMINATION, STATUS_APPROVED) != null) {
+					throw new ServiceException("退租交接单审批已完成，不需要重复发起");
+				}
+				if (START == type && !CONTRACT_STATUS_TERMINATION_HANDOVER.equals(contract.getContractStatus())) {
+					throw new ServiceException("当前合同尚未进入退租交接阶段");
+				}
+				if (FINISH == type && (contract.getContractStatus() == null
+					|| !Set.of(CONTRACT_STATUS_TERMINATION_HANDOVER,
+						CONTRACT_STATUS_ROOM_REVIEW_RUNNING, CONTRACT_STATUS_TERMINATED).contains(contract.getContractStatus()))) {
+						throw new ServiceException("当前合同状态不能完成退租交接");
+				}
 			}
 		}
 		if (BUSINESS_TYPE_CONTRACT_OVERDUE_LEGAL.equals(record.getBusinessType()) && START == type) {
@@ -533,7 +550,16 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 				return;
 			}
 			if (BUSINESS_TYPE_CONTRACT_ROOM_REVIEW.equals(record.getBusinessType())) {
-				requireWorkflowContractId(record, "房屋验收审批");
+				requireWorkflowContractId(record, "交接单审批");
+				String scene = resolveHandoverScene(record, null);
+				if (HANDOVER_SCENE_SIGN.equals(scene)) {
+					String handoverFileUrl = uploadNotice(IContractNoticeService.NOTICE_HANDOVER, null, record.getContractId());
+					record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), Map.of(
+						IContractNoticeService.NOTICE_HANDOVER, handoverFileUrl
+					)));
+					record.setPrintFileUrl(limit(handoverFileUrl, 500));
+					return;
+				}
 				String reviewFileUrl = uploadNotice(IContractNoticeService.NOTICE_ROOM_REVIEW, null, record.getContractId());
 				String handoverFileUrl = uploadNotice(IContractNoticeService.NOTICE_HANDOVER, null, record.getContractId());
 				record.setAttachmentJson(mergeAttachmentJson(record.getAttachmentJson(), Map.of(
@@ -625,6 +651,10 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 	}
 
 	private void updateRoomReviewState(ContractWorkflowRecord record, WfNotice.Type type) {
+		String scene = resolveHandoverScene(record, null);
+		if (HANDOVER_SCENE_SIGN.equals(scene)) {
+			return;
+		}
 		if (START == type) {
 			updateContractStatus(record, CONTRACT_STATUS_ROOM_REVIEW_RUNNING);
 		} else if (FINISH == type) {
@@ -1004,6 +1034,9 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			return firstNotBlank(uploadNotice(IContractNoticeService.NOTICE_TERMINATION, null, record.getContractId()), "/blade-contract/print/termination-approval/" + record.getContractId());
 		}
 		if (BUSINESS_TYPE_CONTRACT_ROOM_REVIEW.equals(record.getBusinessType()) && record.getContractId() != null) {
+			if (HANDOVER_SCENE_SIGN.equals(resolveHandoverScene(record, null))) {
+				return firstNotBlank(uploadNotice(IContractNoticeService.NOTICE_HANDOVER, null, record.getContractId()), "/blade-contract/print/termination-handover/" + record.getContractId());
+			}
 			return firstNotBlank(uploadNotice(IContractNoticeService.NOTICE_ROOM_REVIEW, null, record.getContractId()), "/blade-contract/print/room-review/" + record.getContractId());
 		}
 		return null;
@@ -1147,7 +1180,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			return "付款流程审批";
 		}
 		if (BUSINESS_TYPE_CONTRACT_ROOM_REVIEW.equals(businessType)) {
-			return "房屋验收审批";
+			return "交接单审批";
 		}
 		if (BUSINESS_TYPE_CONTRACT_TERMINATION.equals(businessType)) {
 			return "退租审批";
@@ -1375,6 +1408,39 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			return defaultValue;
 		}
 		return Func.toStr(variables.get(key), defaultValue);
+	}
+
+	private void validateSignHandoverTransition(ContractWorkflowRecord record, Contract contract, WfNotice.Type type) {
+		if (START == type && latestRoomReviewRecord(record.getContractId(), HANDOVER_SCENE_SIGN, STATUS_APPROVED) != null) {
+			throw new ServiceException("签约交接单审批已完成，不需要重复发起");
+		}
+		if (START == type && latestRoomReviewRecord(record.getContractId(), HANDOVER_SCENE_SIGN, STATUS_RUNNING) != null) {
+			throw new ServiceException("签约交接单审批正在进行中");
+		}
+		if ((START == type || FINISH == type) && (contract.getContractStatus() == null
+			|| !Set.of(CONTRACT_STATUS_ACTIVE, CONTRACT_STATUS_EXPIRED).contains(contract.getContractStatus()))) {
+			throw new ServiceException("合同签订生效后才可以办理签约交接");
+		}
+	}
+
+	private boolean hasApprovedSignHandover(Long contractId) {
+		return latestRoomReviewRecord(contractId, HANDOVER_SCENE_SIGN, STATUS_APPROVED) != null;
+	}
+
+	private ContractWorkflowRecord latestRoomReviewRecord(Long contractId, String scene, String status) {
+		return baseMapper.selectByContractId(contractId).stream()
+			.filter(record -> BUSINESS_TYPE_CONTRACT_ROOM_REVIEW.equals(record.getBusinessType()))
+			.filter(record -> scene.equals(resolveHandoverScene(record, null)))
+			.filter(record -> status == null || status.equals(record.getProcessStatus()))
+			.findFirst()
+			.orElse(null);
+	}
+
+	private String resolveHandoverScene(ContractWorkflowRecord record, Contract contract) {
+		return ContractHandoverSceneResolver.resolve(
+			record,
+			contract == null ? null : contract.getContractStatus()
+		);
 	}
 
 	@SafeVarargs

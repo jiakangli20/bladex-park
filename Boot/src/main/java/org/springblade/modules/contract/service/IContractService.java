@@ -135,6 +135,14 @@ public interface IContractService extends IService<Contract> {
 	boolean uploadSignedContract(Long contractId, Contract contract);
 
 	/**
+	 * 删除盖章合同文件，合同业务状态保持不变.
+	 *
+	 * @param contractId 合同ID
+	 * @return 是否成功
+	 */
+	boolean removeSignedContract(Long contractId);
+
+	/**
 	 * 到期提醒分页
 	 *
 	 * @param page     分页

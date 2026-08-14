@@ -26,6 +26,21 @@ import module from './module.js'
 import { version } from '@nutflow/nf-design-elp';
 import { Base64 } from 'js-base64';
 
+const SIGN_HANDOVER_PROCESS_KEYS = ['roomreview-1', 'roomview-1'];
+const SIGN_HANDOVER_CONTACT_PROP = 'a178229002433080623';
+const SIGN_HANDOVER_SIGNATURE_PROPS = {
+  综合部: 'a178228975723732393',
+  服务部: 'a178582192576027453',
+  运营中心: 'a178582193280813231',
+  财务部: 'a178582193770559273',
+};
+const SIGN_HANDOVER_DEPARTMENT_PROPS = {
+  综合部: 'a178228977700669161',
+  服务部: 'a178228978790877343',
+  运营中心: 'a178228979064136873',
+  财务部: 'a178228979310063487',
+};
+
 export default {
   mixins: [defaultValues, module(['d'])],
   computed: {
@@ -46,6 +61,68 @@ export default {
     };
   },
   methods: {
+    isSignHandoverProcess(process = {}, variables = {}) {
+      const processKey = String(
+        process.processDefinitionKey ||
+          process.processDefKey ||
+          process.key ||
+          variables.processDefKey ||
+          ''
+      ).toLowerCase();
+      const scene = String(
+        variables.handoverScene || variables.roomReviewScene || variables.handoverSceneName || ''
+      ).toLowerCase();
+      return (
+        SIGN_HANDOVER_PROCESS_KEYS.includes(processKey) ||
+        scene === 'sign' ||
+        scene.includes('签约')
+      );
+    },
+    normalizeSignHandoverFormOption(option = {}, process = {}, variables = {}) {
+      if (!this.isSignHandoverProcess(process, variables)) return option;
+      const visit = columns => {
+        (columns || []).forEach(column => {
+          if (column.prop === SIGN_HANDOVER_CONTACT_PROP && column.hide !== true) {
+            column.display = true;
+          }
+          if (column.children && column.children.column) visit(column.children.column);
+          if (column.column) visit(column.column);
+          (column.rows || []).forEach(row =>
+            (row.cols || []).forEach(col => visit(col.column))
+          );
+        });
+      };
+      visit(option.column);
+      (option.group || []).forEach(group => visit(group.column));
+      return option;
+    },
+    applySignHandoverApprovalFlowValues(variables = {}, flow = [], process = {}) {
+      const values = { ...(variables || {}) };
+      if (!this.isSignHandoverProcess(process, values)) return values;
+      Object.entries(SIGN_HANDOVER_DEPARTMENT_PROPS).forEach(([department, prop]) => {
+        if (this.validatenull(values[prop])) values[prop] = department;
+      });
+      if (this.validatenull(values[SIGN_HANDOVER_CONTACT_PROP])) {
+        values[SIGN_HANDOVER_CONTACT_PROP] = values.contactName || '';
+      }
+      Object.entries(SIGN_HANDOVER_SIGNATURE_PROPS).forEach(([department, prop]) => {
+        const item = (flow || []).find(
+          row =>
+            row &&
+            row.endTime &&
+            String(row.historyActivityName || row.taskName || '').includes(department)
+        );
+        if (!item) return;
+        const commentItem = (item.comments || []).find(
+          comment => comment && comment.action === 'AddComment' && comment.type === 'comment'
+        );
+        const approver = item.assigneeName || item.assignee || department;
+        const comment = (commentItem && commentItem.fullMessage) || '同意';
+        const date = String(item.endTime).slice(0, 10);
+        values[prop] = `${approver}（${comment}，${date}）`;
+      });
+      return values;
+    },
     // 动态路由跳转
     dynamicRoute(row, type, async = false) {
       const { id, taskId, processInstanceId, processId, formKey, formUrl, processDefKey } = row;

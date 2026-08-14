@@ -65,7 +65,7 @@
                         <el-dropdown-item command="contractChange">合同变更</el-dropdown-item>
                         <el-dropdown-item command="startApproval">发起合同审批</el-dropdown-item>
                         <el-dropdown-item command="signedUpload">上传盖章合同</el-dropdown-item>
-                        <el-dropdown-item command="handoverApproval">发起交接单审批</el-dropdown-item>
+                        <el-dropdown-item command="handoverApproval">发起签约交接审批</el-dropdown-item>
                         <el-dropdown-item command="roomReview">发起退租审批</el-dropdown-item>
                         <el-dropdown-item command="archive">合同归档</el-dropdown-item>
                         <el-dropdown-item v-if="currentCustomerId" command="editCustomer">
@@ -249,13 +249,6 @@
                           >
                             预览
                           </el-button>
-                          <el-button
-                            type="primary"
-                            :loading="contractTextDownloading"
-                            @click="handleDownloadContractText(detailContract)"
-                          >
-                            下载Word
-                          </el-button>
                         </div>
                       </div>
                       <div v-if="approvalFileRecord" class="contract-text-item">
@@ -269,6 +262,26 @@
                             plain
                             @click="
                               openWorkflowFile(approvalFileRecord.printFileUrl, approvalFileRecord)
+                            "
+                          >
+                            预览
+                          </el-button>
+                        </div>
+                      </div>
+                      <div v-if="signHandoverFileRecord" class="contract-text-item">
+                        <div>
+                          <span>签约交接审批表</span>
+                          <strong>{{ detailContract.contractNo || '合同' }} 签约房屋交接单</strong>
+                        </div>
+                        <div class="contract-text-actions">
+                          <el-button
+                            type="primary"
+                            plain
+                            @click="
+                              openWorkflowFile(
+                                signHandoverFileRecord.printFileUrl,
+                                signHandoverFileRecord
+                              )
                             "
                           >
                             预览
@@ -295,6 +308,15 @@
                             "
                           >
                             预览
+                          </el-button>
+                          <el-button
+                            v-if="detailContract.contractStatus === '1'"
+                            type="danger"
+                            plain
+                            :loading="signedFileRemoving"
+                            @click="handleRemoveSignedContract(detailContract)"
+                          >
+                            删除
                           </el-button>
                         </div>
                       </div>
@@ -712,7 +734,7 @@
               plain
               @click="handleStartRoomReview(detailContract)"
             >
-              发起交接单审批
+              发起签约交接审批
             </el-button>
             <el-button
               v-if="permission.contract_contract_terminate && detailContract.contractStatus === '0'"
@@ -1356,7 +1378,7 @@
           >
             <div>
               <strong>{{ item.label }}</strong>
-              <span>{{ item.done ? '已满足' : item.pendingText }}</span>
+              <span>{{ item.done ? item.doneText || '已满足' : item.pendingText }}</span>
             </div>
             <el-tag :type="item.done ? 'success' : 'warning'" effect="plain">
               {{ item.done ? '完成' : '待处理' }}
@@ -1737,6 +1759,7 @@ import {
   getStats,
   getWorkflowRecords,
   remove,
+  removeSignedContract,
   terminate,
   uploadSignedContract,
 } from '@/api/contract/contract';
@@ -1766,6 +1789,8 @@ const CONTRACT_ROOM_REVIEW_BUSINESS_TYPE = 'contract_room_review';
 const CONTRACT_HANDOVER_BUSINESS_TYPE = 'contract_room_review';
 const CONTRACT_TERMINATION_BUSINESS_TYPE = 'contract_termination';
 const CONTRACT_OVERDUE_LEGAL_BUSINESS_TYPE = 'contract_overdue_legal';
+const HANDOVER_SCENE_SIGN = 'sign';
+const HANDOVER_SCENE_TERMINATION = 'termination';
 const WORKFLOW_TYPES = {
   contract_approval: {
     title: '发起合同审批',
@@ -1784,12 +1809,12 @@ const WORKFLOW_TYPES = {
     nameKeywords: ['付款', '缴费', '付款通知'],
   },
   contract_room_review: {
-    title: '发起交接单审批',
-    summaryTitle: '交接单信息',
-    processPlaceholder: '请选择已部署的交接单审批流程',
-    formKeys: ['return', 'roomreview'],
-    defaultKeys: ['roomreview'],
-    nameKeywords: ['交接单', '房屋验收', '交接验收', '归还载体'],
+    title: '发起签约交接审批',
+    summaryTitle: '签约交接信息',
+    processPlaceholder: '请选择已部署的签约交接流程',
+    formKeys: [],
+    defaultKeys: ['roomview-1', 'roomreview-1'],
+    nameKeywords: ['签约交接', '合同交接', '交接单'],
   },
   contract_termination: {
     title: '发起退租审批',
@@ -1917,6 +1942,7 @@ export default {
       },
       signedUploadVisible: false,
       signedUploadLoading: false,
+      signedFileRemoving: false,
       signedUploadContract: {},
       signedUploadForm: {
         contractFileUrl: '',
@@ -2190,6 +2216,23 @@ export default {
         processName: '合同会签审批表',
       };
     },
+    signHandoverFileRecord() {
+      const record = (this.workflowData || []).find(
+        item =>
+          item.businessType === CONTRACT_HANDOVER_BUSINESS_TYPE &&
+          item.processStatus === 'approved' &&
+          this.handoverScene(item) === HANDOVER_SCENE_SIGN &&
+          (item.printFileUrl || this.workflowAttachmentUrl(item, 'termination-handover'))
+      );
+      if (!record) {
+        return null;
+      }
+      return {
+        ...record,
+        printFileUrl:
+          record.printFileUrl || this.workflowAttachmentUrl(record, 'termination-handover'),
+      };
+    },
     editContactOptions() {
       return [
         this.customerEditForm.contactName,
@@ -2233,6 +2276,9 @@ export default {
       }
       if (this.approvalType === CONTRACT_PAYMENT_BUSINESS_TYPE) {
         return '提交后将进入付款审批流程，审批通过后由财务确认付款。';
+      }
+      if (this.approvalType === CONTRACT_ROOM_REVIEW_BUSINESS_TYPE) {
+        return '提交后将进入签约交接审批流程，审批通过后可作为后续退租审批前置条件。';
       }
       return `提交后将进入${this.approvalDialogTitle.replace('发起', '')}流程。`;
     },
@@ -2286,9 +2332,10 @@ export default {
           { label: '租赁面积', value: this.formatAreaValue(contract.rentArea) },
           { label: '保证金', value: this.formatMoney(contract.deposit) },
           {
-            label: '退租状态',
+            label: '合同状态',
             value: contract.contractStatusName || this.statusText(contract.contractStatus),
           },
+          { label: '交接场景', value: '签约交接' },
         ];
       }
       return [
@@ -2467,7 +2514,7 @@ export default {
       this.handleStartWorkflow(CONTRACT_TERMINATION_BUSINESS_TYPE, row);
     },
     handleStartRoomReview(row) {
-      if (!this.ensurePrerequisites('交接单审批前置条件', this.handoverApprovalPrerequisites(row))) {
+      if (!this.ensurePrerequisites('签约交接审批前置条件', this.handoverApprovalPrerequisites(row))) {
         return;
       }
       this.handleStartWorkflow(CONTRACT_HANDOVER_BUSINESS_TYPE, row);
@@ -2774,7 +2821,7 @@ export default {
       return Boolean(deadline) && deadline < this.formatDate(new Date());
     },
     ensurePrerequisites(title, items = []) {
-      if ((items || []).every(item => item.done)) {
+      if ((items || []).every(item => item.done && !item.terminal)) {
         return true;
       }
       this.precheckTitle = title;
@@ -2818,6 +2865,73 @@ export default {
           item.processStatus !== 'deleted'
       );
     },
+    workflowRecords(row, businessType) {
+      return (this.workflowData || []).filter(
+        item =>
+          item.businessType === businessType &&
+          String(item.contractId || '') === String(row?.contractId || '') &&
+          item.processStatus !== 'deleted'
+      );
+    },
+    handoverWorkflowRecord(row, scene) {
+      return this.workflowRecords(row, CONTRACT_HANDOVER_BUSINESS_TYPE).find(
+        item => this.handoverScene(item) === scene
+      );
+    },
+    signHandoverRecord(row) {
+      return this.handoverWorkflowRecord(row, HANDOVER_SCENE_SIGN);
+    },
+    terminationHandoverRecord(row) {
+      return this.handoverWorkflowRecord(row, HANDOVER_SCENE_TERMINATION);
+    },
+    handoverScene(record = {}) {
+      const formData = this.parseWorkflowFormData(record.formDataJson);
+      const explicitScene = String(
+        formData.handoverScene ||
+          formData.roomReviewScene ||
+          formData.reviewScene ||
+          formData.scene ||
+          ''
+      ).toLowerCase();
+      if (
+        explicitScene.includes('sign') ||
+        explicitScene.includes('contract') ||
+        explicitScene.includes('签约') ||
+        explicitScene.includes('合同')
+      ) {
+        return HANDOVER_SCENE_SIGN;
+      }
+      if (
+        explicitScene.includes('termination') ||
+        explicitScene.includes('return') ||
+        explicitScene.includes('退租')
+      ) {
+        return HANDOVER_SCENE_TERMINATION;
+      }
+      const processKey = String(record.processDefKey || '').toLowerCase();
+      if (['roomview-1', 'roomreview-1'].includes(processKey) || processKey.includes('sign')) {
+        return HANDOVER_SCENE_SIGN;
+      }
+      if (
+        processKey === 'roomreview' ||
+        processKey.includes('termination') ||
+        processKey.includes('return') ||
+        formData.sourceTerminationRecordId ||
+        formData.terminationRecordId
+      ) {
+        return HANDOVER_SCENE_TERMINATION;
+      }
+      return HANDOVER_SCENE_SIGN;
+    },
+    parseWorkflowFormData(value) {
+      if (!value) return {};
+      if (typeof value === 'object') return value;
+      try {
+        return JSON.parse(value);
+      } catch (error) {
+        return {};
+      }
+    },
     selectionContractApprovalPrerequisites() {
       const selectionCount = this.selectionList.length;
       const selectionItems = [
@@ -2841,17 +2955,31 @@ export default {
       ];
     },
     signedUploadPrerequisites(row) {
+      const contractStatus = String(row?.contractStatus || '');
+      const hasSignedFile = Boolean(row?.contractFileUrl);
+      const signedEffective = contractStatus === '1' && hasSignedFile;
+      const awaitingReupload = contractStatus === '1' && !hasSignedFile;
       return [
         ...this.baseContractPrerequisites(row),
         {
-          label: '合同状态为待盖章',
-          done: String(row?.contractStatus || '') === '5',
+          label: signedEffective
+            ? '盖章合同已生效'
+            : awaitingReupload
+              ? '盖章合同待重新上传'
+              : '合同状态为待盖章',
+          done: contractStatus === '5' || signedEffective || awaitingReupload,
+          doneText: awaitingReupload
+            ? '原文件已删除，可以重新上传'
+            : signedEffective
+              ? '当前状态：生效'
+              : '已满足',
           pendingText: `当前状态：${this.statusText(row?.contractStatus)}`,
+          terminal: signedEffective,
         },
       ];
     },
     terminationPrerequisites(row) {
-      const handoverRecord = this.workflowRecord(row, CONTRACT_HANDOVER_BUSINESS_TYPE);
+      const handoverRecord = this.signHandoverRecord(row);
       return [
         ...this.baseContractPrerequisites(row),
         {
@@ -2860,9 +2988,9 @@ export default {
           pendingText: `当前状态：${this.statusText(row?.contractStatus)}`,
         },
         {
-          label: '交接单已审批通过',
+          label: '签约交接单已审批通过',
           done: Boolean(handoverRecord && handoverRecord.processStatus === 'approved'),
-          pendingText: '请先完成交接单审批',
+          pendingText: '请先完成签约交接单审批',
         },
         {
           label: '退租审批未进行中',
@@ -2872,18 +3000,22 @@ export default {
       ];
     },
     handoverApprovalPrerequisites(row) {
-      const handoverRecord = this.workflowRecord(row, CONTRACT_HANDOVER_BUSINESS_TYPE);
+      const handoverRecord = this.signHandoverRecord(row);
+      const processStatus = String(handoverRecord?.processStatus || '');
+      const approved = processStatus === 'approved';
       return [
         ...this.baseContractPrerequisites(row),
         {
           label: '合同已生效或已到期',
-          done: ['1', '2', '7', '8'].includes(String(row?.contractStatus || '')),
+          done: ['1', '2'].includes(String(row?.contractStatus || '')),
           pendingText: `当前状态：${this.statusText(row?.contractStatus)}`,
         },
         {
-          label: '交接单未进行中',
-          done: !handoverRecord || !['running', 'approved'].includes(String(handoverRecord.processStatus || '')),
-          pendingText: '该合同已有进行中的交接单审批',
+          label: approved ? '签约交接单审批已完成' : '签约交接单未进行中且未通过',
+          done: processStatus !== 'running',
+          doneText: approved ? '审批已通过，无需重复发起' : '已满足',
+          pendingText: '该合同已有进行中的签约交接单审批',
+          terminal: approved,
         },
       ];
     },
@@ -3088,6 +3220,26 @@ export default {
           overdueAmount,
         });
       }
+      if (type === CONTRACT_ROOM_REVIEW_BUSINESS_TYPE) {
+        Object.assign(params, {
+          formKey: 'roomreview',
+          handoverScene: HANDOVER_SCENE_SIGN,
+          handoverSceneName: '签约交接',
+          roomReviewScene: HANDOVER_SCENE_SIGN,
+          templateKey: 'termination-handover',
+          a178228957311663926: params.applyTime,
+          a178228957844176707: selectedContract.customerName,
+          a178228975135484264: params.applicantDept,
+          a178582191990669727: params.applicant,
+          a178228977700669161: '综合部',
+          a178228978790877343: '服务部',
+          a178228979064136873: '运营中心',
+          a178228979310063487: '财务部',
+          a178229002433080623: selectedContract.contactName,
+          a178229003807133497:
+            selectedContract.contactPhone || selectedContract.customerPhone,
+        });
+      }
       return {
         processDefKey: this.approvalForm.processDefKey,
         params,
@@ -3258,6 +3410,26 @@ export default {
       if (this.signedUploadContract) {
         this.signedUploadContract.contractFileUrl = '';
       }
+    },
+    handleRemoveSignedContract(row) {
+      if (!row || !row.contractId || !row.contractFileUrl) return;
+      this.$confirm('确定删除该盖章合同文件？删除后可重新上传，合同业务状态保持生效。', '提示', {
+        type: 'warning',
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+      })
+        .then(() => {
+          this.signedFileRemoving = true;
+          return removeSignedContract(row.contractId);
+        })
+        .then(() => {
+          this.$message.success('盖章合同已删除');
+          this.reload();
+          this.openDetail({ contractId: row.contractId });
+        })
+        .finally(() => {
+          this.signedFileRemoving = false;
+        });
     },
     submitSignedUpload() {
       if (!this.signedUploadContract.contractId) {
@@ -3766,6 +3938,10 @@ export default {
         row.processName || '审批表预览'
       );
     },
+    workflowAttachmentUrl(row, key) {
+      const attachments = this.parseWorkflowFormData(row && row.attachmentJson);
+      return String((attachments && attachments[key]) || '');
+    },
     workflowNoticeType(row, url) {
       const currentUrl = String(url || '');
       if (currentUrl.includes('termination-agreement')) return 'termination-agreement';
@@ -3782,7 +3958,9 @@ export default {
             ? 'invoice-apply'
             : 'payment-notice';
         case CONTRACT_ROOM_REVIEW_BUSINESS_TYPE:
-          return 'room-review';
+          return this.handoverScene(row) === HANDOVER_SCENE_SIGN
+            ? 'termination-handover'
+            : 'room-review';
         case CONTRACT_TERMINATION_BUSINESS_TYPE:
           return 'termination-approval';
         case CONTRACT_OVERDUE_LEGAL_BUSINESS_TYPE:
@@ -4089,7 +4267,7 @@ export default {
       return map[String(value || '')] || 'info';
     },
     canUploadSignedContract(row) {
-      return this.signedUploadPrerequisites(row).every(item => item.done);
+      return this.signedUploadPrerequisites(row).every(item => item.done && !item.terminal);
     },
     workflowBusinessTypeText(value) {
       const map = {

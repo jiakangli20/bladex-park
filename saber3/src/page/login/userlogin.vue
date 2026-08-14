@@ -11,6 +11,7 @@
       <el-input
         @keyup.enter="handleLogin"
         v-model="loginForm.tenantId"
+        name="tenantId"
         auto-complete="off"
         :placeholder="$t('login.tenantId')"
       >
@@ -23,7 +24,8 @@
       <el-input
         @keyup.enter="handleLogin"
         v-model="loginForm.username"
-        auto-complete="off"
+        name="username"
+        autocomplete="username"
         :placeholder="$t('login.username')"
       >
         <template #prefix>
@@ -37,7 +39,8 @@
         type="password"
         show-password
         v-model="loginForm.password"
-        auto-complete="off"
+        name="password"
+        autocomplete="current-password"
         :placeholder="$t('login.password')"
       >
         <template #prefix>
@@ -183,11 +186,7 @@ export default {
           this.tenantMode = false;
           this.loginForm.tenantId = data.data.tenantId;
           if (!validatenull(data.data.backgroundUrl)) {
-            const loginEl = this.$parent.$refs.login;
-            loginEl.style.backgroundImage = `url(${data.data.backgroundUrl})`;
-            loginEl.style.backgroundSize = '100% 100%';
-            loginEl.style.backgroundRepeat = 'no-repeat';
-            loginEl.style.backgroundPosition = 'center center';
+            this.$parent.setTenantBackground(data.data.backgroundUrl);
           }
         }
       });

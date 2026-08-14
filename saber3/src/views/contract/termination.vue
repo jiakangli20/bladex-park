@@ -499,6 +499,7 @@ import { noticePrintUrl } from '@/api/contract/print';
 const TERMINATION_BUSINESS_TYPE = 'contract_termination';
 const ROOM_REVIEW_BUSINESS_TYPE = 'contract_room_review';
 const PAYMENT_BUSINESS_TYPE = 'contract_payment';
+const HANDOVER_SCENE_TERMINATION = 'termination';
 const MATERIAL_TYPE_OPTIONS = [
   { value: 'approval', label: '审批资料' },
   { value: 'room_acceptance', label: '房屋验收资料' },
@@ -537,12 +538,12 @@ const PAYMENT_REQUIRED_MATERIALS = [
 ];
 const WORKFLOW_CONFIGS = {
   [ROOM_REVIEW_BUSINESS_TYPE]: {
-    title: '发起房屋验收流程',
+    title: '发起退租交接审批',
     summaryTitle: '退租交接信息',
-    placeholder: '请选择已部署的房屋验收流程',
+    placeholder: '请选择已部署的退租交接流程',
     formKeys: ['return'],
     defaultKeys: ['roomreview'],
-    nameKeywords: ['房屋验收', '交接验收', '归还载体'],
+    nameKeywords: ['退租交接', '房屋验收', '交接验收', '归还载体'],
   },
   [PAYMENT_BUSINESS_TYPE]: {
     title: '发起付款申请',
@@ -1726,6 +1727,9 @@ export default {
           startDate: row.startDate,
           endDate: row.endDate,
           sourceTerminationRecordId: row.recordId,
+          handoverScene: HANDOVER_SCENE_TERMINATION,
+          handoverSceneName: '退租交接',
+          roomReviewScene: HANDOVER_SCENE_TERMINATION,
           templateKey: 'room-review',
           applicant: this.userInfo.nick_name,
           applicantDept: this.userInfo.dept_name,

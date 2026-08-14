@@ -111,6 +111,8 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private static final String BUSINESS_TYPE_CONTRACT_APPROVAL = "contract_approval";
 	private static final String BUSINESS_TYPE_CONTRACT_TERMINATION = "contract_termination";
 	private static final String BUSINESS_TYPE_CONTRACT_ROOM_REVIEW = "contract_room_review";
+	private static final String HANDOVER_SCENE_SIGN = ContractHandoverSceneResolver.SIGN;
+	private static final String HANDOVER_SCENE_TERMINATION = ContractHandoverSceneResolver.TERMINATION;
 	private static final String FEE_TYPE_DEPOSIT_REFUND = "deposit_refund";
 	private static final String PAY_STATUS_UNPAID = "0";
 	private static final String PAY_STATUS_PAID = "1";
@@ -506,12 +508,19 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	@Transactional(rollbackFor = Exception.class)
 	public boolean uploadSignedContract(Long contractId, Contract contract) {
 		Contract existing = requireContract(contractId);
-		if (!STATUS_PENDING_SEAL.equals(existing.getContractStatus())) {
+		boolean firstActivation = STATUS_PENDING_SEAL.equals(existing.getContractStatus());
+		boolean replaceRemovedFile = STATUS_ACTIVE.equals(existing.getContractStatus())
+			&& Func.isBlank(existing.getContractFileUrl());
+		if (!firstActivation && !replaceRemovedFile) {
 			throw new ServiceException("合同审批通过后才可以上传盖章合同");
 		}
 		if (hasApprovedWorkflow(contractId, BUSINESS_TYPE_CONTRACT_TERMINATION)
 			|| hasRunningWorkflow(contractId, BUSINESS_TYPE_CONTRACT_TERMINATION)
-			|| hasRunningWorkflow(contractId, BUSINESS_TYPE_CONTRACT_ROOM_REVIEW)) {
+			|| latestRoomReviewRecord(
+				contractId,
+				HANDOVER_SCENE_TERMINATION,
+				PROCESS_STATUS_RUNNING
+			) != null) {
 			throw new ServiceException("当前合同不能上传盖章合同");
 		}
 		if (Func.isBlank(contract.getContractFileUrl())) {
@@ -529,7 +538,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 				existing.setContractStatus(STATUS_ACTIVE);
 				generatePaymentPlan(existing);
 			}
-			if (existing.getParentContractId() != null) {
+			if (firstActivation && existing.getParentContractId() != null) {
 				Contract parent = requireContract(existing.getParentContractId());
 				Contract parentUpdate = new Contract();
 				parentUpdate.setContractId(parent.getContractId());
@@ -541,9 +550,31 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 				}
 				addLog(parent.getContractId(), "renewed", "续租合同已盖章生效，新合同ID：" + contractId);
 			}
-			addLog(contractId, "signed", "上传盖章合同，合同生效");
+			addLog(contractId, "signed", firstActivation ? "上传盖章合同，合同生效" : "重新上传盖章合同文件");
 		}
 		return result;
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public boolean removeSignedContract(Long contractId) {
+		Contract existing = requireContract(contractId);
+		if (!STATUS_ACTIVE.equals(existing.getContractStatus())) {
+			throw new ServiceException("仅生效合同可以删除盖章合同文件");
+		}
+		if (Func.isBlank(existing.getContractFileUrl())) {
+			throw new ServiceException("当前合同没有可删除的盖章合同文件");
+		}
+		int rows = baseMapper.update(null, Wrappers.<Contract>lambdaUpdate()
+			.eq(Contract::getContractId, contractId)
+			.eq(Contract::getContractStatus, STATUS_ACTIVE)
+			.set(Contract::getContractFileUrl, null)
+			.set(Contract::getUpdateBy, currentUserName())
+			.set(Contract::getUpdateTime, DateUtil.now()));
+		if (rows > 0) {
+			addLog(contractId, "signed_file_removed", "删除盖章合同文件，合同状态保持生效");
+		}
+		return rows > 0;
 	}
 
 	@Override
@@ -1075,7 +1106,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	}
 
 	private ContractWorkflowRecord requireApprovedRoomReview(Long contractId) {
-		ContractWorkflowRecord record = contractWorkflowRecordMapper.selectLatest(contractId, BUSINESS_TYPE_CONTRACT_ROOM_REVIEW);
+		ContractWorkflowRecord record = latestRoomReviewRecord(contractId, HANDOVER_SCENE_TERMINATION, PROCESS_STATUS_APPROVED);
 		if (record == null || !PROCESS_STATUS_APPROVED.equals(record.getProcessStatus())) {
 			throw new ServiceException("房屋验收完成后才可以进行退租结算");
 		}
@@ -1254,7 +1285,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		}
 		List<Map<String, Object>> attachmentSources = new java.util.ArrayList<>();
 		attachmentSources.add(resolveWorkflowAttachments(terminationRecord));
-		ContractWorkflowRecord roomReviewRecord = contractWorkflowRecordMapper.selectLatest(contractId, BUSINESS_TYPE_CONTRACT_ROOM_REVIEW);
+		ContractWorkflowRecord roomReviewRecord = latestRoomReviewRecord(contractId, HANDOVER_SCENE_TERMINATION, PROCESS_STATUS_APPROVED);
 		if (roomReviewRecord != null) {
 			attachmentSources.add(resolveWorkflowAttachments(roomReviewRecord));
 			if (Func.isNotBlank(roomReviewRecord.getPrintFileUrl())) {
@@ -1352,6 +1383,19 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 			return !map.isEmpty();
 		}
 		return Func.isNotBlank(Func.toStr(value, ""));
+	}
+
+	private ContractWorkflowRecord latestRoomReviewRecord(Long contractId, String scene, String status) {
+		return contractWorkflowRecordMapper.selectByContractId(contractId).stream()
+			.filter(record -> BUSINESS_TYPE_CONTRACT_ROOM_REVIEW.equals(record.getBusinessType()))
+			.filter(record -> scene.equals(resolveHandoverScene(record)))
+			.filter(record -> status == null || status.equals(record.getProcessStatus()))
+			.findFirst()
+			.orElse(null);
+	}
+
+	private String resolveHandoverScene(ContractWorkflowRecord record) {
+		return ContractHandoverSceneResolver.resolve(record);
 	}
 
 	@SuppressWarnings("unchecked")

@@ -205,7 +205,7 @@ export default {
         if (data.success && data.data.tenantId) {
           this.tenantMode = false;
           this.loginForm.tenantId = data.data.tenantId;
-          this.$parent.$refs.login.style.backgroundImage = `url(${data.data.backgroundUrl})`;
+          this.$parent.setTenantBackground(data.data.backgroundUrl);
         }
       });
     },

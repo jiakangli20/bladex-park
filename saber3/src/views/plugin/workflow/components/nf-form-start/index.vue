@@ -174,7 +174,7 @@ export default {
           }
           option.column = columnArr;
           option.group = groupArr;
-          this.option = option;
+          this.option = this.normalizeSignHandoverFormOption(option, process, this.params || {});
 
           setTimeout(() => {
             this.applyInitialParams();

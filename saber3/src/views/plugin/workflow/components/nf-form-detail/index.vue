@@ -233,8 +233,13 @@ export default {
     getDetail(taskId, processInsId) {
       this.getTaskDetail(taskId, processInsId)
         .then(res => {
-          const { process, form } = res;
-          const { variables, status } = process;
+          const { process, form, flow } = res;
+          const { variables: processVariables, status } = process;
+          const variables = this.applySignHandoverApprovalFlowValues(
+            processVariables || {},
+            flow || [],
+            process
+          );
 
           if (!taskId) {
             taskId = process.taskId || null;
@@ -262,6 +267,7 @@ export default {
                 null,
                 'done'
               );
+              this.normalizeSignHandoverFormOption(option, process, variables);
               const { column, group } = option;
               options.group.push({
                 label: taskName || taskKey,
@@ -291,6 +297,7 @@ export default {
               taskForm,
               status
             );
+            this.normalizeSignHandoverFormOption(option, process, variables);
             option.menuBtn = false;
             for (let key in variables) {
               if (this.validateNull(variables[key])) delete variables[key];

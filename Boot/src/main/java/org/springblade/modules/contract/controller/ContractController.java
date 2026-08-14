@@ -202,6 +202,16 @@ public class ContractController extends BladeController {
 	}
 
 	/**
+	 * 删除盖章合同文件
+	 */
+	@PostMapping("/signed-file/remove")
+	@ApiOperationSupport(order = 8)
+	@Operation(summary = "删除盖章合同", description = "仅清除盖章合同文件，合同业务状态保持不变")
+	public R removeSignedFile(@RequestParam Long contractId) {
+		return R.status(contractService.removeSignedContract(contractId));
+	}
+
+	/**
 	 * 合同统计
 	 */
 	@GetMapping("/stats")

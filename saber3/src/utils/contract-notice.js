@@ -156,9 +156,16 @@ const escapeHtml = value =>
     .replace(/'/g, '&#39;');
 
 export const fileExtension = file => {
-  const value = String((file && (file.fileName || file.name || file.fileUrl || file.url)) || '');
-  const match = value.match(/\.([a-z0-9]+)(?:\?|#|$)/i);
-  return match ? match[1].toLowerCase() : '';
+  const explicitType = String((file && (file.fileType || file.extension)) || '')
+    .replace(/^\./, '')
+    .toLowerCase();
+  if (/^[a-z0-9]+$/.test(explicitType)) return explicitType;
+  const candidates = [file && (file.fileName || file.name), file && (file.fileUrl || file.url)];
+  for (const candidate of candidates) {
+    const match = String(candidate || '').match(/\.([a-z0-9]+)(?:\?|#|$)/i);
+    if (match) return match[1].toLowerCase();
+  }
+  return '';
 };
 
 export const buildAttachmentPreviewHtml = file => {
@@ -204,8 +211,9 @@ export const openAttachmentPreview = (state, file, title = '附件预览') => {
   releasePreviewObjectUrl(state);
   const downloadUrl = (file && (file.fileUrl || file.url)) || '';
   const ext = fileExtension(file);
+  const inlinePreviewExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
   state.visible = true;
-  state.loading = ext === 'docx';
+  state.loading = ext === 'docx' || inlinePreviewExtensions.includes(ext);
   state.title = title;
   state.html = '';
   state.downloadUrl = downloadUrl;
@@ -216,21 +224,37 @@ export const openAttachmentPreview = (state, file, title = '附件预览') => {
   state.pdfBlob = null;
   state.pdfFileName = '';
   state.previewError = '';
-  if (ext !== 'docx') {
+  if (ext !== 'docx' && !inlinePreviewExtensions.includes(ext)) {
     state.html = buildAttachmentPreviewHtml(file);
     return Promise.resolve();
   }
   return downloadBlob(normalizeNoticeDownloadUrl(downloadUrl))
     .then(res => {
-      state.documentBlob =
-        res.data instanceof Blob
-          ? res.data
-          : new Blob([res.data], {
-              type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            });
+      const contentType =
+        (res.headers && res.headers['content-type']) ||
+        (ext === 'docx'
+          ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          : ext === 'pdf'
+          ? 'application/pdf'
+          : `image/${ext === 'jpg' ? 'jpeg' : ext}`);
+      const blob =
+        res.data instanceof Blob ? res.data : new Blob([res.data], { type: contentType });
+      if (ext === 'docx') {
+        state.documentBlob = blob;
+        return;
+      }
+      state.objectUrl = URL.createObjectURL(blob);
+      state.html = buildAttachmentPreviewHtml({
+        ...file,
+        fileUrl: state.objectUrl,
+        fileType: ext,
+      });
     })
     .catch(() => {
-      state.previewError = 'Word 文件读取失败，可以下载原文件后查看。';
+      state.previewError =
+        ext === 'docx'
+          ? 'Word 文件读取失败，可以下载原文件后查看。'
+          : '文件读取失败，可以下载原文件后查看。';
     })
     .finally(() => {
       state.loading = false;
