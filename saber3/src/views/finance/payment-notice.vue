@@ -339,7 +339,16 @@ export default {
       this.$router.push({ path: '/finance/overdue-reminder', query: { paymentId: row.paymentId } });
     },
     sendSms() { const row = this.drawerRow; if (row) sendPaymentNoticeSms(row.paymentId, this.activeNoticeType()).then(() => { this.$message.warning('短信发送结果已记录'); this.reload(); }); },
-    sendEmail() { const row = this.drawerRow; if (row) sendPaymentNoticeEmail(row.paymentId, this.activeNoticeType()).then(() => { this.$message.warning('邮件发送结果已记录'); this.reload(); }); },
+    sendEmail() {
+      const row = this.drawerRow;
+      if (!row) return;
+      sendPaymentNoticeEmail(row.paymentId, this.activeNoticeType()).then(res => {
+        const result = res.data.data || {};
+        if (result.emailStatus === 'success') this.$message.success('邮件发送成功');
+        else this.$message.error(result.remark || '邮件发送失败');
+        this.reload();
+      });
+    },
     sendPaymentMiniApp() { const row = this.drawerRow; if (row) sendPaymentNoticeMiniApp(row.paymentId, this.activeNoticeType()).then(() => { this.$message.success(`${this.activeCategory === 'payment' ? '收款' : this.activeCategory === 'reminder' ? '催款' : '逾期'}小程序发送结果已记录`); this.reload(); }); },
     activeNoticeType() { return { payment: 'payment-notice', reminder: 'reminder-notice', overdue: 'overdue-notice' }[this.activeCategory] || 'payment-notice'; },
     noticeSendStatusText(value) { return { pending: '未发送', sent: '已发送', failed: '发送失败' }[value] || '未发送'; },

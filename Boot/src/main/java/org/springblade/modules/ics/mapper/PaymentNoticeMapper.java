@@ -56,9 +56,9 @@ public interface PaymentNoticeMapper extends BaseMapper<PaymentNotice> {
 	/**
 	 * 查询通知详情.
 	 *
-	 * @param paymentId 账单ID
+	 * @param query 账单ID和通知类型
 	 * @return 通知详情
 	 */
-	PaymentNoticeVO selectNoticeByPaymentId(@Param("paymentId") Long paymentId, @Param("noticeType") String noticeType);
+	PaymentNoticeVO selectNoticeByPaymentId(@Param("query") PaymentNoticeVO query);
 
 }

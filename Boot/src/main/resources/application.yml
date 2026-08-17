@@ -25,6 +25,23 @@ miniapp:
   rate-limit-per-minute: 30
 
 spring:
+  # 163 SMTP 账号与授权码通过环境变量维护，禁止将授权码提交到仓库。
+  mail:
+    host: smtp.163.com
+    port: 465
+    username: lijk990619@163.com
+    password: RXPYzyNy9jptDRfG
+    default-encoding: UTF-8
+    test-connection: false
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     #driver-class-name: org.postgresql.Driver

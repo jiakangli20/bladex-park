@@ -131,9 +131,6 @@
 		LEFT JOIN biz_customer bc ON bc.customer_id = c.customer_id
 		LEFT JOIN biz_payment_notice n ON n.payment_id = p.payment_id AND n.del_flag = '0'
 			<choose>
-				<when test="noticeType != null and noticeType != ''">
-					AND n.notice_type = #{noticeType}
-				</when>
 				<when test="query != null and query.noticeType != null and query.noticeType != ''">
 					AND n.notice_type = #{query.noticeType}
 				</when>
@@ -335,9 +332,8 @@
 
 	<select id="selectNoticeByPaymentId" resultMap="noticeResultMap">
 		<include refid="selectNoticeVo"/>
-			WHERE p.payment_id = #{paymentId}
+			WHERE p.payment_id = #{query.paymentId}
 			  AND COALESCE(p.direction, 'receivable') = 'receivable'
-			  AND n.notice_type = #{noticeType}
 		LIMIT 1
 	</select>
 

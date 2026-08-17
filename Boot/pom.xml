@@ -60,6 +60,10 @@
             <groupId>org.springblade</groupId>
             <artifactId>blade-core-oauth2</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
         <!-- 多租户字段隔离模式 -->
         <dependency>
             <groupId>org.springblade</groupId>
