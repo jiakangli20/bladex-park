@@ -16,6 +16,7 @@ import org.springblade.core.mp.support.Query;
 import org.springblade.core.secure.annotation.PreAuth;
 import org.springblade.core.tenant.annotation.NonDS;
 import org.springblade.core.tool.api.R;
+import org.springblade.core.tool.support.Kv;
 import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.contract.pojo.entity.Contract;
@@ -25,12 +26,15 @@ import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.ics.constant.IcsConstant;
 import org.springblade.modules.ics.pojo.dto.OverdueNoticeSendDTO;
 import org.springblade.modules.ics.pojo.dto.LegalLetterSendDTO;
+import org.springblade.modules.ics.pojo.dto.PaymentEmailSendDTO;
+import org.springblade.modules.ics.pojo.entity.NoticeSendRecord;
 import org.springblade.modules.ics.pojo.vo.OverdueInternalNoticeVO;
 import org.springblade.modules.ics.pojo.vo.OverdueNoticeRecipientVO;
 import org.springblade.modules.ics.pojo.vo.OverdueDisposalDetailVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticePlaceholderVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeSummaryVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeVO;
+import org.springblade.modules.ics.pojo.vo.PaymentEmailComposeVO;
 import org.springblade.modules.ics.pojo.vo.PaymentSummaryVO;
 import org.springblade.modules.ics.pojo.entity.OverdueInternalNotice;
 import org.springblade.modules.ics.service.IPaymentService;
@@ -315,9 +319,18 @@ public class PaymentController extends BladeController {
 		return R.data(paymentService.resendNotice(paymentId));
 	}
 
-	@PostMapping("/notice-miniapp-send")
+	@GetMapping("/notice-miniapp-compose")
 	@PreAuth(menu = "finance_payment_notice")
 	@ApiOperationSupport(order = 34)
+	@Operation(summary = "小程序通知发送确认", description = "传入paymentId和noticeType")
+	public R<Kv> noticeMiniAppCompose(@Parameter(description = "账单ID") @RequestParam Long paymentId,
+											@RequestParam(required = false, defaultValue = "payment-notice") String noticeType) {
+		return R.data(paymentService.miniAppCompose(paymentId, noticeType));
+	}
+
+	@PostMapping("/notice-miniapp-send")
+	@PreAuth(menu = "finance_payment_notice")
+	@ApiOperationSupport(order = 341)
 	@Operation(summary = "小程序发送预留接口", description = "传入paymentId")
 	public R<PaymentNoticeVO> noticeMiniAppSend(@Parameter(description = "账单ID") @RequestParam Long paymentId,
 															  @RequestParam(required = false, defaultValue = "payment-notice") String noticeType) {
@@ -333,13 +346,30 @@ public class PaymentController extends BladeController {
 		return R.data(paymentService.sendSmsNotice(paymentId, noticeType));
 	}
 
-	@PostMapping("/notice-email-send")
+	@GetMapping("/notice-email-compose")
 	@PreAuth(menu = "finance_payment_notice")
 	@ApiOperationSupport(order = 36)
-	@Operation(summary = "邮件发送入口", description = "传入paymentId")
-	public R<PaymentNoticeVO> noticeEmailSend(@Parameter(description = "账单ID") @RequestParam Long paymentId,
-															@RequestParam(required = false, defaultValue = "payment-notice") String noticeType) {
-		return R.data(paymentService.sendEmailNotice(paymentId, noticeType));
+	@Operation(summary = "邮件编写初始化", description = "传入paymentId和noticeType")
+	public R<PaymentEmailComposeVO> noticeEmailCompose(@Parameter(description = "账单ID") @RequestParam Long paymentId,
+												 @RequestParam(required = false, defaultValue = "payment-notice") String noticeType) {
+		return R.data(paymentService.emailCompose(paymentId, noticeType));
+	}
+
+	@PostMapping("/notice-email-send")
+	@PreAuth(menu = "finance_payment_notice")
+	@ApiOperationSupport(order = 361)
+	@Operation(summary = "发送通知邮件", description = "传入邮件编写内容")
+	public R<PaymentNoticeVO> noticeEmailSend(@RequestBody PaymentEmailSendDTO request) {
+		return R.data(paymentService.sendEmailNotice(request));
+	}
+
+	@GetMapping("/notice-send-records")
+	@PreAuth(menu = "finance_payment_notice")
+	@ApiOperationSupport(order = 362)
+	@Operation(summary = "通知发送记录", description = "传入paymentId和noticeType")
+	public R<List<NoticeSendRecord>> noticeSendRecords(@RequestParam Long paymentId,
+												@RequestParam(required = false, defaultValue = "payment-notice") String noticeType) {
+		return R.data(paymentService.noticeSendRecords(paymentId, noticeType));
 	}
 
 	@PostMapping("/notice-generate")

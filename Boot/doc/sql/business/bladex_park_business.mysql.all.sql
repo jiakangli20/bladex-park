@@ -92,6 +92,9 @@
 -- SELECT 'business/52_miniapp_utility_ad.mysql.sql' AS executing_script;
 -- SOURCE Boot/doc/sql/business/52_miniapp_utility_ad.mysql.sql
 
+-- SELECT 'business/53_user_mail_notice_send_record.mysql.sql' AS executing_script;
+-- SOURCE Boot/doc/sql/business/53_user_mail_notice_send_record.mysql.sql
+
 -- SELECT 'contract/bladex_contract_base_menu.mysql.sql' AS executing_script;
 -- SOURCE Boot/doc/sql/contract/bladex_contract_base_menu.mysql.sql
 

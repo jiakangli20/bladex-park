@@ -72,6 +72,55 @@
           </el-form>
         </el-tab-pane>
 
+        <el-tab-pane label="邮箱配置" name="mail">
+          <el-form ref="mailForm" :model="mailForm" label-width="120px" class="mail-config-form">
+            <el-form-item label="163邮箱">
+              <el-input v-model="mailForm.emailAddress" placeholder="请输入完整的163邮箱地址">
+                <template #prefix>
+                  <el-icon><Message /></el-icon>
+                </template>
+              </el-input>
+            </el-form-item>
+            <el-form-item label="SMTP授权码">
+              <el-input
+                v-model="mailForm.authCode"
+                type="password"
+                show-password
+                :placeholder="mailForm.authCodeConfigured ? '已配置，留空表示不修改' : '请输入163 SMTP授权码'"
+              >
+                <template #prefix>
+                  <el-icon><Lock /></el-icon>
+                </template>
+              </el-input>
+            </el-form-item>
+            <el-form-item label="启用发件">
+              <el-switch v-model="mailForm.enabled" />
+            </el-form-item>
+            <el-form-item label="连接状态">
+              <div class="mail-test-status">
+                <el-tag v-if="mailForm.lastTestStatus" :type="mailForm.lastTestStatus === 'success' ? 'success' : 'danger'" effect="plain">
+                  {{ mailForm.lastTestStatus === 'success' ? '测试成功' : '测试失败' }}
+                </el-tag>
+                <span v-else>尚未测试</span>
+                <span v-if="mailForm.lastTestTime">{{ mailForm.lastTestTime }}</span>
+                <span v-if="mailForm.lastTestMessage">{{ mailForm.lastTestMessage }}</span>
+              </div>
+            </el-form-item>
+            <el-form-item>
+              <div class="button-group">
+                <el-button type="primary" :loading="mailSaving" @click="submitMailAccount">
+                  <el-icon><Check /></el-icon>
+                  <span>保存配置</span>
+                </el-button>
+                <el-button :loading="mailTesting" @click="testMailAccount">
+                  <el-icon><RefreshRight /></el-icon>
+                  <span>测试连接</span>
+                </el-button>
+              </div>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+
         <!-- 修改密码 Tab -->
         <el-tab-pane label="修改密码" name="password">
           <el-form ref="passwordForm" :model="passwordForm" label-width="100px">
@@ -140,7 +189,14 @@
 </template>
 
 <script>
-import { getUserInfo, updateInfo, updatePassword } from '@/api/system/user';
+import {
+  getUserInfo,
+  getUserMailAccount,
+  saveUserMailAccount,
+  testUserMailAccount,
+  updateInfo,
+  updatePassword,
+} from '@/api/system/user';
 import md5 from 'js-md5';
 import { sensitive } from '@/utils/sensitive';
 import {
@@ -176,6 +232,8 @@ export default {
     return {
       activeTab: 'info',
       loading: false,
+      mailSaving: false,
+      mailTesting: false,
       infoForm: {
         id: '',
         avatar: '',
@@ -188,6 +246,15 @@ export default {
         oldPassword: '',
         newPassword: '',
         newPassword1: '',
+      },
+      mailForm: {
+        emailAddress: '',
+        authCode: '',
+        authCodeConfigured: false,
+        enabled: true,
+        lastTestStatus: '',
+        lastTestMessage: '',
+        lastTestTime: '',
       },
       sensitiveManager: null,
       showAvatarPreview: false,
@@ -214,6 +281,53 @@ export default {
       if (name === 'info') {
         this.loadUserInfo();
       }
+      if (name === 'mail') {
+        this.loadMailAccount();
+      }
+    },
+    loadMailAccount() {
+      getUserMailAccount().then(res => {
+        const account = res.data.data || {};
+        this.mailForm = {
+          emailAddress: account.emailAddress || '',
+          authCode: '',
+          authCodeConfigured: Boolean(account.authCodeConfigured),
+          enabled: account.enabled !== false,
+          lastTestStatus: account.lastTestStatus || '',
+          lastTestMessage: account.lastTestMessage || '',
+          lastTestTime: account.lastTestTime || '',
+        };
+      });
+    },
+    submitMailAccount() {
+      this.mailSaving = true;
+      saveUserMailAccount({
+        emailAddress: this.mailForm.emailAddress,
+        authCode: this.mailForm.authCode,
+        enabled: this.mailForm.enabled,
+      })
+        .then(() => {
+          this.$message.success('邮箱配置已保存');
+          this.loadMailAccount();
+        })
+        .finally(() => { this.mailSaving = false; });
+    },
+    testMailAccount() {
+      this.mailTesting = true;
+      testUserMailAccount({
+        emailAddress: this.mailForm.emailAddress,
+        authCode: this.mailForm.authCode,
+        enabled: this.mailForm.enabled,
+      })
+        .then(res => {
+          const result = res.data.data || {};
+          this.mailForm.lastTestStatus = result.lastTestStatus || '';
+          this.mailForm.lastTestMessage = result.lastTestMessage || '';
+          this.mailForm.lastTestTime = result.lastTestTime || '';
+          if (result.lastTestStatus === 'success') this.$message.success('邮箱连接测试成功');
+          else this.$message.error(result.lastTestMessage || '邮箱连接测试失败');
+        })
+        .finally(() => { this.mailTesting = false; });
     },
     // 加载用户信息
     loadUserInfo() {
@@ -329,6 +443,8 @@ export default {
           newPassword: '',
           newPassword1: '',
         };
+      } else if (this.activeTab === 'mail') {
+        this.loadMailAccount();
       }
     },
     // 预览头像
@@ -362,6 +478,18 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+}
+
+.mail-config-form {
+  max-width: 620px;
+}
+
+.mail-test-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  color: #606266;
 }
 
 .avatar-wrapper {

@@ -52,6 +52,14 @@ public interface IContractNoticeService {
 	ContractNoticeFileVO uploadNotice(String noticeType, Long paymentId, Long contractId);
 
 	/**
+	 * 上传已生成的通知文件，保留原始文件内容供后续发送.
+	 *
+	 * @param document 已生成的通知文件
+	 * @return 文件存储地址
+	 */
+	String uploadNoticeAttachment(ContractNoticeFileVO document);
+
+	/**
 	 * 生成合同审批整套文件.
 	 *
 	 * @param contractId 合同ID

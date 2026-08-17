@@ -111,10 +111,23 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		return uploadDocument(buildNotice(noticeType, paymentId, contractId));
 	}
 
+	@Override
+	@SneakyThrows
+	public String uploadNoticeAttachment(ContractNoticeFileVO document) {
+		if (document == null || StringUtil.isBlank(document.getFileName())
+			|| document.getFileBytes() == null || document.getFileBytes().length == 0) {
+			throw new ServiceException("通知文件内容不能为空");
+		}
+		BladeFile bladeFile = ossBuilder.template().putFile(
+			document.getFileName(),
+			new ByteArrayInputStream(document.getFileBytes())
+		);
+		return bladeFile.getLink();
+	}
+
 	@SneakyThrows
 	private ContractNoticeFileVO uploadDocument(ContractNoticeFileVO document) {
-		BladeFile bladeFile = ossBuilder.template().putFile(document.getFileName(), new ByteArrayInputStream(document.getFileBytes()));
-		document.setFileUrl(bladeFile.getLink());
+		document.setFileUrl(uploadNoticeAttachment(document));
 		document.setFileBytes(null);
 		return document;
 	}

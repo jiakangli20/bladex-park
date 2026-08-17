@@ -9,9 +9,11 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import org.springblade.common.mail.MailAttachment;
 import org.springblade.common.mail.MailMessage;
+import org.springblade.common.mail.MailSenderAccount;
 import org.springblade.common.mail.MailService;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.secure.utils.AuthUtil;
+import org.springblade.core.tool.support.Kv;
 import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.Func;
 import org.springblade.core.tool.utils.StringUtil;
@@ -29,9 +31,12 @@ import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractNoticeService;
 import org.springblade.modules.ics.mapper.PaymentMapper;
 import org.springblade.modules.ics.mapper.PaymentNoticeMapper;
+import org.springblade.modules.ics.mapper.NoticeSendRecordMapper;
 import org.springblade.modules.ics.mapper.OverdueInternalNoticeMapper;
 import org.springblade.modules.ics.pojo.dto.OverdueNoticeSendDTO;
 import org.springblade.modules.ics.pojo.dto.LegalLetterSendDTO;
+import org.springblade.modules.ics.pojo.dto.PaymentEmailSendDTO;
+import org.springblade.modules.ics.pojo.entity.NoticeSendRecord;
 import org.springblade.modules.ics.pojo.entity.OverdueInternalNotice;
 import org.springblade.modules.ics.pojo.entity.OverdueReminderRecord;
 import org.springblade.modules.ics.pojo.entity.PaymentNotice;
@@ -41,8 +46,10 @@ import org.springblade.modules.ics.pojo.vo.OverdueNoticeRecipientVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticePlaceholderVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeSummaryVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeVO;
+import org.springblade.modules.ics.pojo.vo.PaymentEmailComposeVO;
 import org.springblade.modules.ics.pojo.vo.PaymentSummaryVO;
 import org.springblade.modules.ics.service.IPaymentService;
+import org.springblade.modules.ics.service.PaymentEmailTemplateService;
 import org.springblade.modules.park.pojo.entity.Room;
 import org.springblade.modules.system.pojo.entity.Dept;
 import org.springblade.modules.system.pojo.entity.Role;
@@ -50,6 +57,7 @@ import org.springblade.modules.system.pojo.entity.User;
 import org.springblade.modules.system.service.IDeptService;
 import org.springblade.modules.system.service.IRoleService;
 import org.springblade.modules.system.service.IUserService;
+import org.springblade.modules.system.service.IUserMailAccountService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,6 +70,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * 财务缴费服务实现.
@@ -93,9 +102,14 @@ public class PaymentServiceImpl implements IPaymentService {
 	private static final String NOTICE_TYPE_OVERDUE = IContractNoticeService.NOTICE_OVERDUE;
 	private static final String NOTICE_READ_UNREAD = "0";
 	private static final String DEFAULT_DEL_FLAG = "0";
+	private static final String NOTICE_CHANNEL_EMAIL = "email";
+	private static final String NOTICE_CHANNEL_SMS = "sms";
+	private static final String NOTICE_CHANNEL_MINIAPP = "miniapp";
+	private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
 	private final PaymentMapper paymentMapper;
 	private final PaymentNoticeMapper paymentNoticeMapper;
+	private final NoticeSendRecordMapper noticeSendRecordMapper;
 	private final OverdueInternalNoticeMapper overdueInternalNoticeMapper;
 	private final ContractMapper contractMapper;
 	private final ContractPaymentMapper contractPaymentMapper;
@@ -104,6 +118,8 @@ public class PaymentServiceImpl implements IPaymentService {
 	private final ContractWorkflowRecordMapper contractWorkflowRecordMapper;
 	private final IContractNoticeService contractNoticeService;
 	private final MailService mailService;
+	private final IUserMailAccountService userMailAccountService;
+	private final PaymentEmailTemplateService paymentEmailTemplateService;
 	private final IUserService userService;
 	private final IDeptService deptService;
 	private final IRoleService roleService;
@@ -740,14 +756,25 @@ public class PaymentServiceImpl implements IPaymentService {
 	}
 
 	@Override
+	public Kv miniAppCompose(Long paymentId, String noticeType) {
+		ContractPayment payment = requirePayment(paymentId);
+		assertAccessible(payment);
+		String normalizedType = normalizeNoticeType(noticeType);
+		validateNoticePayment(payment, normalizedType);
+		return contractNoticeService.buildMiniAppPayload(normalizedType, paymentId, null);
+	}
+
+	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public PaymentNoticeVO sendMiniAppNotice(Long paymentId, String noticeType) {
 		ContractPayment payment = requirePayment(paymentId);
 		assertAccessible(payment);
 		String normalizedType = normalizeNoticeType(noticeType);
 		validateNoticePayment(payment, normalizedType);
+		PaymentNoticeVO detail = selectNoticeDetail(paymentId, normalizedType);
+		validateNoticeDetail(detail);
 		PaymentNotice notice = getOrCreateNotice(paymentId, normalizedType);
-		contractNoticeService.buildMiniAppPayload(normalizedType, paymentId, null);
+		Kv payload = contractNoticeService.buildMiniAppPayload(normalizedType, paymentId, null);
 		Date now = DateUtil.now();
 		notice.setMiniappStatus(NOTICE_STATUS_RESERVED);
 		notice.setMiniappSendTime(null);
@@ -756,6 +783,11 @@ public class PaymentServiceImpl implements IPaymentService {
 		notice.setUpdateBy(currentUserName());
 		notice.setUpdateTime(now);
 		paymentNoticeMapper.updateById(notice);
+		createChannelSendRecord(
+			payment, notice, detail, normalizedType, NOTICE_CHANNEL_MINIAPP,
+			NOTICE_STATUS_RESERVED, null,
+			Func.toStr(payload.get("fileName"), null), Func.toStr(payload.get("fileUrl"), null), now
+		);
 		addLog(payment.getContractId(), "payment_notice_miniapp", noticeTypeName(normalizedType) + "小程序通知，发送通道待接入，账单ID：" + paymentId);
 		return selectNoticeDetail(paymentId, normalizedType);
 	}
@@ -768,54 +800,112 @@ public class PaymentServiceImpl implements IPaymentService {
 		String normalizedType = normalizeNoticeType(noticeType);
 		validateNoticePayment(payment, normalizedType);
 		PaymentNoticeVO detail = selectNoticeDetail(paymentId, normalizedType);
+		validateNoticeDetail(detail);
 		PaymentNotice notice = getOrCreateNotice(paymentId, normalizedType);
 		Date now = DateUtil.now();
+		String failureReason = hasText(detail.getContactPhone()) ? "短信通道未接入，发送失败" : "缺少手机号，短信发送失败";
 		notice.setSmsStatus(NOTICE_STATUS_FAILED);
 		notice.setSendCount((notice.getSendCount() == null ? 0 : notice.getSendCount()) + 1);
 		notice.setLastSendTime(now);
-		notice.setRemark(hasText(detail == null ? null : detail.getContactPhone()) ? "短信通道未接入，发送失败" : "缺少手机号，短信发送失败");
+		notice.setRemark(failureReason);
 		notice.setUpdateBy(currentUserName());
 		notice.setUpdateTime(now);
 		paymentNoticeMapper.updateById(notice);
+		createChannelSendRecord(
+			payment, notice, detail, normalizedType, NOTICE_CHANNEL_SMS,
+			NOTICE_STATUS_FAILED, failureReason, null, null, now
+		);
 		addLog(payment.getContractId(), "payment_notice_sms", noticeTypeName(normalizedType) + "：" + notice.getRemark() + "，账单ID：" + paymentId);
 		return selectNoticeDetail(paymentId, normalizedType);
 	}
 
 	@Override
-	@Transactional(rollbackFor = Exception.class)
-	public PaymentNoticeVO sendEmailNotice(Long paymentId, String noticeType) {
+	public PaymentEmailComposeVO emailCompose(Long paymentId, String noticeType) {
 		ContractPayment payment = requirePayment(paymentId);
 		assertAccessible(payment);
 		String normalizedType = normalizeNoticeType(noticeType);
 		validateNoticePayment(payment, normalizedType);
 		PaymentNoticeVO detail = selectNoticeDetail(paymentId, normalizedType);
-		if (detail == null) {
-			throw new ServiceException("账单通知信息不存在");
+		validateNoticeDetail(detail);
+		requireCustomerEmail(detail);
+		ContractNoticeFileVO document = contractNoticeService.buildNotice(normalizedType, paymentId, null);
+		var sender = userMailAccountService.getCurrent();
+		PaymentEmailComposeVO compose = new PaymentEmailComposeVO();
+		compose.setPaymentId(paymentId);
+		compose.setNoticeType(normalizedType);
+		compose.setSenderEmail(sender.getEmailAddress());
+		compose.setSenderConfigured(Boolean.TRUE.equals(sender.getAuthCodeConfigured()) && Boolean.TRUE.equals(sender.getEnabled()));
+		compose.setRecipientEmail(detail.getContactEmail());
+		compose.setSubject(paymentEmailTemplateService.subject(noticeTypeName(normalizedType), detail));
+		compose.setContent(paymentEmailTemplateService.content(detail));
+		compose.setAttachmentName(document.getFileName());
+		compose.setAttachmentUrl(buildNoticeDownloadPath(normalizedType, paymentId));
+		return compose;
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public PaymentNoticeVO sendEmailNotice(PaymentEmailSendDTO request) {
+		validateEmailRequest(request);
+		ContractPayment payment = requirePayment(request.getPaymentId());
+		Long paymentId = request.getPaymentId();
+		assertAccessible(payment);
+		String normalizedType = normalizeNoticeType(request.getNoticeType());
+		validateNoticePayment(payment, normalizedType);
+		PaymentNoticeVO detail = selectNoticeDetail(paymentId, normalizedType);
+		validateNoticeDetail(detail);
+		String recipientEmail = requireCustomerEmail(detail);
+		if (StringUtil.isBlank(request.getRecipientEmail())
+			|| !EMAIL_PATTERN.matcher(request.getRecipientEmail().trim()).matches()
+			|| !recipientEmail.equalsIgnoreCase(request.getRecipientEmail().trim())) {
+			throw new ServiceException("客户邮箱已变更，请重新打开邮件发送窗口");
 		}
-		if (StringUtil.isBlank(detail.getContactEmail())) {
-			throw new ServiceException("请先维护客户邮件地址");
-		}
+		MailSenderAccount sender = userMailAccountService.requireCurrentSender();
 		PaymentNotice notice = getOrCreateNotice(paymentId, normalizedType);
 		ContractNoticeFileVO document = contractNoticeService.buildNotice(normalizedType, paymentId, null);
+		document.setFileUrl(contractNoticeService.uploadNoticeAttachment(document));
 		Date now = DateUtil.now();
+		NoticeSendRecord record = createEmailSendRecord(request, payment, notice, document, sender, recipientEmail, normalizedType, now);
 		String sendResult;
 		try {
-			mailService.send(buildPaymentMail(detail, document));
+			mailService.send(sender, buildPaymentMail(request, recipientEmail, document));
 			notice.setEmailStatus(NOTICE_STATUS_SUCCESS);
-			sendResult = "邮件已发送至" + detail.getContactEmail();
+			record.setSendStatus(NOTICE_STATUS_SUCCESS);
+			record.setSentTime(DateUtil.now());
+			sendResult = "邮件已发送至" + recipientEmail;
 		} catch (ServiceException exception) {
 			notice.setEmailStatus(NOTICE_STATUS_FAILED);
+			record.setSendStatus(NOTICE_STATUS_FAILED);
+			record.setFailureReason(limitText(exception.getMessage(), 500));
+			record.setSentTime(DateUtil.now());
 			sendResult = exception.getMessage();
 		}
+		record.setUpdateBy(currentUserName());
+		record.setUpdateTime(DateUtil.now());
+		noticeSendRecordMapper.updateById(record);
 		notice.setSendCount((notice.getSendCount() == null ? 0 : notice.getSendCount()) + 1);
 		notice.setLastSendTime(now);
 		notice.setFileName(document.getFileName());
-		notice.setRemark(sendResult);
+		notice.setFileUrl(document.getFileUrl());
+		notice.setRemark(limitText(sendResult, 500));
 		notice.setUpdateBy(currentUserName());
 		notice.setUpdateTime(now);
 		paymentNoticeMapper.updateById(notice);
 		addLog(payment.getContractId(), "payment_notice_email", noticeTypeName(normalizedType) + "：" + sendResult + "，账单ID：" + paymentId);
 		return selectNoticeDetail(paymentId, normalizedType);
+	}
+
+	@Override
+	public List<NoticeSendRecord> noticeSendRecords(Long paymentId, String noticeType) {
+		ContractPayment payment = requirePayment(paymentId);
+		assertAccessible(payment);
+		return noticeSendRecordMapper.selectList(Wrappers.<NoticeSendRecord>lambdaQuery()
+			.eq(NoticeSendRecord::getTenantId, AuthUtil.getTenantId())
+			.eq(NoticeSendRecord::getPaymentId, paymentId)
+			.eq(NoticeSendRecord::getNoticeType, normalizeNoticeType(noticeType))
+			.eq(NoticeSendRecord::getDelFlag, DEFAULT_DEL_FLAG)
+			.orderByDesc(NoticeSendRecord::getCreateTime)
+			.orderByDesc(NoticeSendRecord::getRecordId));
 	}
 
 	private PaymentNoticeVO selectNoticeDetail(Long paymentId, String noticeType) {
@@ -825,25 +915,122 @@ public class PaymentServiceImpl implements IPaymentService {
 		return paymentNoticeMapper.selectNoticeByPaymentId(query);
 	}
 
-	private MailMessage buildPaymentMail(PaymentNoticeVO detail, ContractNoticeFileVO document) {
-		BigDecimal amountDue = detail.getAmountDue() == null ? BigDecimal.ZERO : detail.getAmountDue();
-		BigDecimal amountPaid = detail.getAmountPaid() == null ? BigDecimal.ZERO : detail.getAmountPaid();
-		String unpaidAmount = amountDue.subtract(amountPaid).max(BigDecimal.ZERO).setScale(2).toPlainString();
-		String content = "租客名称：" + firstNotBlank(detail.getCustomerName(), "-")
-			+ "\n合同号：" + firstNotBlank(detail.getContractNo(), "-")
-			+ "\n未收金额：¥" + unpaidAmount;
+	private MailMessage buildPaymentMail(PaymentEmailSendDTO request, String recipientEmail, ContractNoticeFileVO document) {
 		MailAttachment attachment = new MailAttachment(
 			document.getFileName(),
 			firstNotBlank(document.getContentType(), "application/octet-stream"),
 			document.getFileBytes()
 		);
 		return new MailMessage(
-			List.of(detail.getContactEmail().trim()),
-			noticeTypeName(document.getNoticeType()) + "-" + firstNotBlank(detail.getContractNo(), detail.getPaymentNo(), String.valueOf(detail.getPaymentId())),
-			content,
+			List.of(recipientEmail),
+			request.getSubject().trim(),
+			request.getContent().trim(),
 			false,
 			List.of(attachment)
 		);
+	}
+
+	private NoticeSendRecord createEmailSendRecord(PaymentEmailSendDTO request, ContractPayment payment,
+											PaymentNotice notice, ContractNoticeFileVO document,
+											MailSenderAccount sender, String recipientEmail,
+											String noticeType, Date now) {
+		NoticeSendRecord record = new NoticeSendRecord();
+		record.setTenantId(AuthUtil.getTenantId());
+		record.setNoticeId(notice.getNoticeId());
+		record.setPaymentId(payment.getPaymentId());
+		record.setContractId(payment.getContractId());
+		record.setNoticeType(noticeType);
+		record.setChannel(NOTICE_CHANNEL_EMAIL);
+		record.setSenderUserId(AuthUtil.getUserId());
+		record.setSenderName(sender.name());
+		record.setSenderEmail(sender.address());
+		record.setRecipientEmail(recipientEmail);
+		record.setSubject(request.getSubject().trim());
+		record.setContentSnapshot(request.getContent().trim());
+		record.setAttachmentName(document.getFileName());
+		record.setAttachmentUrl(document.getFileUrl());
+		record.setSendStatus(NOTICE_STATUS_PENDING);
+		record.setDelFlag(DEFAULT_DEL_FLAG);
+		record.setCreateBy(currentUserName());
+		record.setCreateTime(now);
+		record.setUpdateBy(currentUserName());
+		record.setUpdateTime(now);
+		noticeSendRecordMapper.insert(record);
+		return record;
+	}
+
+	private void createChannelSendRecord(ContractPayment payment, PaymentNotice notice, PaymentNoticeVO detail,
+									 String noticeType, String channel, String status, String failureReason,
+									 String attachmentName, String attachmentUrl, Date now) {
+		NoticeSendRecord record = new NoticeSendRecord();
+		record.setTenantId(AuthUtil.getTenantId());
+		record.setNoticeId(notice.getNoticeId());
+		record.setPaymentId(payment.getPaymentId());
+		record.setContractId(payment.getContractId());
+		record.setNoticeType(noticeType);
+		record.setChannel(channel);
+		record.setSenderUserId(AuthUtil.getUserId());
+		record.setSenderName(currentUserName());
+		record.setRecipientEmail(NOTICE_CHANNEL_SMS.equals(channel)
+			? firstNotBlank(detail.getContactPhone(), detail.getCustomerName())
+			: firstNotBlank(detail.getContactEmail(), detail.getContactPhone(), detail.getCustomerName()));
+		record.setSubject(noticeTypeName(noticeType) + (NOTICE_CHANNEL_SMS.equals(channel) ? "短信通知" : "小程序通知"));
+		record.setContentSnapshot(paymentEmailTemplateService.content(detail));
+		record.setAttachmentName(attachmentName);
+		record.setAttachmentUrl(attachmentUrl);
+		record.setSendStatus(status);
+		record.setFailureReason(limitText(failureReason, 500));
+		record.setSentTime(now);
+		record.setDelFlag(DEFAULT_DEL_FLAG);
+		record.setCreateBy(currentUserName());
+		record.setCreateTime(now);
+		record.setUpdateBy(currentUserName());
+		record.setUpdateTime(now);
+		noticeSendRecordMapper.insert(record);
+	}
+
+	private void validateNoticeDetail(PaymentNoticeVO detail) {
+		if (detail == null) {
+			throw new ServiceException("账单通知信息不存在");
+		}
+	}
+
+	private String requireCustomerEmail(PaymentNoticeVO detail) {
+		if (StringUtil.isBlank(detail.getContactEmail())) {
+			throw new ServiceException("请先维护客户邮件地址");
+		}
+		String email = detail.getContactEmail().trim();
+		if (!EMAIL_PATTERN.matcher(email).matches()) {
+			throw new ServiceException("客户邮件地址格式不正确，请先维护");
+		}
+		return email;
+	}
+
+	private void validateEmailRequest(PaymentEmailSendDTO request) {
+		if (request == null || request.getPaymentId() == null) {
+			throw new ServiceException("账单ID不能为空");
+		}
+		if (StringUtil.isBlank(request.getSubject())) {
+			throw new ServiceException("邮件主题不能为空");
+		}
+		if (StringUtil.isBlank(request.getContent())) {
+			throw new ServiceException("邮件正文不能为空");
+		}
+	}
+
+	private String buildNoticeDownloadPath(String noticeType, Long paymentId) {
+		return switch (normalizeNoticeType(noticeType)) {
+			case NOTICE_TYPE_REMINDER -> "/blade-contract/print/reminder-notice/" + paymentId;
+			case NOTICE_TYPE_OVERDUE -> "/blade-contract/print/overdue-notice/" + paymentId;
+			default -> "/blade-contract/print/payment-notice/" + paymentId;
+		};
+	}
+
+	private String limitText(String value, int maxLength) {
+		if (value == null || value.length() <= maxLength) {
+			return value;
+		}
+		return value.substring(0, maxLength);
 	}
 
 	private RecipientContext loadRecipientContext() {

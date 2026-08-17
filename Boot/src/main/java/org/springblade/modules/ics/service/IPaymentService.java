@@ -12,12 +12,16 @@ import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.ics.pojo.vo.OverdueDisposalDetailVO;
 import org.springblade.modules.ics.pojo.dto.OverdueNoticeSendDTO;
 import org.springblade.modules.ics.pojo.dto.LegalLetterSendDTO;
+import org.springblade.modules.ics.pojo.dto.PaymentEmailSendDTO;
+import org.springblade.modules.ics.pojo.entity.NoticeSendRecord;
 import org.springblade.modules.ics.pojo.vo.OverdueInternalNoticeVO;
 import org.springblade.modules.ics.pojo.vo.OverdueNoticeRecipientVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticePlaceholderVO;
+import org.springblade.modules.ics.pojo.vo.PaymentEmailComposeVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeSummaryVO;
 import org.springblade.modules.ics.pojo.vo.PaymentNoticeVO;
 import org.springblade.modules.ics.pojo.vo.PaymentSummaryVO;
+import org.springblade.core.tool.support.Kv;
 import org.springblade.modules.ics.pojo.entity.OverdueInternalNotice;
 
 import java.util.Date;
@@ -257,6 +261,15 @@ public interface IPaymentService {
 	ContractNoticeFileVO generatePaymentNoticeFile(Long paymentId, String noticeType);
 
 	/**
+	 * 小程序通知发送确认数据.
+	 *
+	 * @param paymentId  账单ID
+	 * @param noticeType 通知类型
+	 * @return 小程序通知载荷
+	 */
+	Kv miniAppCompose(Long paymentId, String noticeType);
+
+	/**
 	 * 小程序发送预留接口.
 	 *
 	 * @param paymentId 账单ID
@@ -275,9 +288,27 @@ public interface IPaymentService {
 	/**
 	 * 邮件发送入口.
 	 *
-	 * @param paymentId 账单ID
+	 * @param paymentId  账单ID
+	 * @param noticeType 通知类型
+	 * @return 邮件编写数据
+	 */
+	PaymentEmailComposeVO emailCompose(Long paymentId, String noticeType);
+
+	/**
+	 * 发送通知邮件.
+	 *
+	 * @param request 邮件内容
 	 * @return 通知详情
 	 */
-	PaymentNoticeVO sendEmailNotice(Long paymentId, String noticeType);
+	PaymentNoticeVO sendEmailNotice(PaymentEmailSendDTO request);
+
+	/**
+	 * 查询通知发送记录.
+	 *
+	 * @param paymentId  账单ID
+	 * @param noticeType 通知类型
+	 * @return 发送记录
+	 */
+	List<NoticeSendRecord> noticeSendRecords(Long paymentId, String noticeType);
 
 }

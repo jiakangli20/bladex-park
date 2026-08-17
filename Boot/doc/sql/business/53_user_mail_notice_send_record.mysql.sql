@@ -1,0 +1,51 @@
+-- 用户邮箱绑定与通知发送记录
+
+CREATE TABLE IF NOT EXISTS `biz_user_mail_account` (
+  `account_id` bigint NOT NULL AUTO_INCREMENT COMMENT '邮箱账号ID',
+  `tenant_id` varchar(12) NOT NULL DEFAULT '000000' COMMENT '租户ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `email_address` varchar(100) NOT NULL COMMENT '163发件邮箱',
+  `auth_code_ciphertext` varchar(512) NOT NULL COMMENT 'SMTP授权码密文',
+  `enabled` char(1) NOT NULL DEFAULT '1' COMMENT '是否启用：1是0否',
+  `last_test_status` varchar(20) DEFAULT NULL COMMENT '最近测试状态：success/failed',
+  `last_test_message` varchar(255) DEFAULT NULL COMMENT '最近测试结果',
+  `last_test_time` datetime DEFAULT NULL COMMENT '最近测试时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标志',
+  `create_by` varchar(64) DEFAULT NULL COMMENT '创建人',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT NULL COMMENT '更新人',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`account_id`),
+  UNIQUE KEY `uk_user_mail_account` (`tenant_id`, `user_id`, `del_flag`),
+  KEY `idx_user_mail_email` (`email_address`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户SMTP邮箱绑定';
+
+CREATE TABLE IF NOT EXISTS `biz_notice_send_record` (
+  `record_id` bigint NOT NULL AUTO_INCREMENT COMMENT '发送记录ID',
+  `tenant_id` varchar(12) NOT NULL DEFAULT '000000' COMMENT '租户ID',
+  `notice_id` bigint DEFAULT NULL COMMENT '通知ID',
+  `payment_id` bigint NOT NULL COMMENT '账单ID',
+  `contract_id` bigint DEFAULT NULL COMMENT '合同ID',
+  `notice_type` varchar(64) NOT NULL COMMENT '通知类型',
+  `channel` varchar(20) NOT NULL COMMENT '发送渠道',
+  `sender_user_id` bigint DEFAULT NULL COMMENT '发送用户ID',
+  `sender_name` varchar(100) DEFAULT NULL COMMENT '发送人',
+  `sender_email` varchar(100) DEFAULT NULL COMMENT '发件邮箱',
+  `recipient_email` varchar(500) DEFAULT NULL COMMENT '收件邮箱',
+  `subject` varchar(255) DEFAULT NULL COMMENT '邮件主题',
+  `content_snapshot` longtext COMMENT '发送内容快照',
+  `attachment_name` varchar(255) DEFAULT NULL COMMENT '附件名称',
+  `attachment_url` varchar(500) DEFAULT NULL COMMENT '附件地址',
+	  `send_status` varchar(20) NOT NULL DEFAULT 'pending' COMMENT '发送状态：pending/success/failed/reserved',
+  `failure_reason` varchar(500) DEFAULT NULL COMMENT '失败原因',
+  `sent_time` datetime DEFAULT NULL COMMENT '发送完成时间',
+  `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标志',
+  `create_by` varchar(64) DEFAULT NULL COMMENT '创建人',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT NULL COMMENT '更新人',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`record_id`),
+  KEY `idx_notice_send_payment` (`payment_id`, `notice_type`, `channel`),
+  KEY `idx_notice_send_time` (`sent_time`),
+  KEY `idx_notice_send_user` (`sender_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='通知发送明细记录';

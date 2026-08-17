@@ -108,6 +108,29 @@ export const updateInfo = row => {
   });
 };
 
+export const getUserMailAccount = () => {
+  return request({
+    url: '/blade-system/user/mail-account',
+    method: 'get',
+  });
+};
+
+export const saveUserMailAccount = data => {
+  return request({
+    url: '/blade-system/user/mail-account',
+    method: 'post',
+    data,
+  });
+};
+
+export const testUserMailAccount = data => {
+  return request({
+    url: '/blade-system/user/mail-account/test',
+    method: 'post',
+    data,
+  });
+};
+
 export const grant = (userIds, roleIds) => {
   return request({
     url: '/blade-system/user/grant',
@@ -172,4 +195,3 @@ export const getUserPage = (current, size, account, name) => {
     },
   });
 };
-

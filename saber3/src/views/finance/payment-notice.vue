@@ -39,6 +39,12 @@
       <section class="notice-table-wrap">
         <el-table v-loading="loading" :data="data" border row-key="paymentId" class="notice-table">
           <el-table-column prop="customerName" label="租客名称" min-width="180" align="center" show-overflow-tooltip />
+          <el-table-column prop="contactPhone" label="联系电话" width="130" align="center" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.contactPhone || '--' }}</template>
+          </el-table-column>
+          <el-table-column prop="contactEmail" label="联系邮箱" min-width="190" align="center" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.contactEmail || '--' }}</template>
+          </el-table-column>
           <el-table-column prop="contractNo" label="合同编号" min-width="160" align="center" show-overflow-tooltip />
           <el-table-column label="房源信息" min-width="170" align="center" show-overflow-tooltip>
             <template #default="{ row }">{{ row.roomName || row.buildingName || '-' }}</template>
@@ -97,6 +103,8 @@
             <div><span>合同编号</span><strong>{{ drawerRow.contractNo || '-' }}</strong></div>
             <div><span>未收金额</span><strong>{{ formatMoney(unpaidAmount(drawerRow)) }}</strong></div>
             <div><span>应缴日期</span><strong>{{ drawerRow.payDeadline || '-' }}</strong></div>
+            <div><span>联系电话</span><strong>{{ drawerRow.contactPhone || '--' }}</strong></div>
+            <div><span>联系邮箱</span><strong>{{ drawerRow.contactEmail || '--' }}</strong></div>
           </section>
 
           <section v-if="activeCategory !== 'payment'" class="node-strip">
@@ -156,8 +164,140 @@
             </div>
           </section>
 
+          <section class="drawer-section send-record-section">
+            <div class="drawer-section-title-row">
+              <div class="drawer-section-title">发送记录</div>
+              <el-button text type="primary" :loading="sendRecordLoading" @click="loadSendRecords">刷新</el-button>
+            </div>
+            <div v-loading="sendRecordLoading" class="send-record-list">
+              <el-empty v-if="!sendRecordLoading && !sendRecords.length" description="暂无发送记录" :image-size="72" />
+              <div v-for="record in sendRecords" :key="record.recordId" class="send-record-item">
+                <div class="send-record-item__top">
+                  <div>
+                    <el-tag size="small" effect="plain">{{ channelText(record.channel) }}</el-tag>
+                    <el-tag size="small" :type="sendStatusType(record.sendStatus)" effect="plain">
+                      {{ sendStatusText(record.sendStatus) }}
+                    </el-tag>
+                  </div>
+                  <span>{{ record.sentTime || record.createTime || '--' }}</span>
+                </div>
+                <strong>{{ record.senderName || '--' }} · {{ record.subject || '无主题' }}</strong>
+                <span>发件：{{ record.senderEmail || '--' }}</span>
+                <span>收件：{{ record.recipientEmail || '--' }}</span>
+                <span v-if="record.failureReason" class="send-record-item__error">{{ record.failureReason }}</span>
+                <div class="send-record-item__actions">
+                  <el-button text type="primary" @click="viewSendRecord(record)">查看内容</el-button>
+                  <el-button v-if="record.attachmentUrl" text type="primary" @click="downloadSendRecordAttachment(record)">下载附件</el-button>
+                </div>
+              </div>
+            </div>
+          </section>
+
         </div>
       </el-drawer>
+
+      <el-dialog
+        v-model="emailDialogVisible"
+        title="邮件发送"
+        width="720px"
+        append-to-body
+        destroy-on-close
+        :close-on-click-modal="false"
+      >
+        <el-form
+          ref="emailFormRef"
+          v-loading="emailComposeLoading"
+          :model="emailForm"
+          :rules="emailRules"
+          label-width="88px"
+          class="email-compose-form"
+        >
+          <el-form-item label="发件人">
+            <el-input :model-value="emailForm.senderEmail || '未绑定163邮箱'" disabled />
+          </el-form-item>
+          <el-form-item label="收件人" prop="recipientEmail">
+            <el-input v-model="emailForm.recipientEmail" disabled placeholder="客户尚未维护邮箱" />
+          </el-form-item>
+          <el-form-item label="邮件主题" prop="subject">
+            <el-input v-model="emailForm.subject" maxlength="255" show-word-limit placeholder="请输入邮件主题" />
+          </el-form-item>
+          <el-form-item label="邮件正文" prop="content">
+            <el-input
+              v-model="emailForm.content"
+              type="textarea"
+              :rows="10"
+              maxlength="5000"
+              show-word-limit
+              resize="vertical"
+              placeholder="请输入邮件正文"
+            />
+          </el-form-item>
+          <el-form-item label="附件">
+            <div class="email-attachment-row">
+              <span>{{ emailForm.attachmentName || '通知文书' }}</span>
+              <div>
+                <el-button text type="primary" @click="previewEmailAttachment">预览</el-button>
+                <el-button text type="primary" @click="downloadEmailAttachment">下载</el-button>
+              </div>
+            </div>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="emailDialogVisible = false">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="emailSending"
+            :disabled="!emailForm.senderConfigured || emailComposeLoading"
+            @click="submitEmail"
+          >
+            发送邮件
+          </el-button>
+        </template>
+      </el-dialog>
+
+      <el-dialog
+        v-model="miniAppDialogVisible"
+        title="发送小程序通知"
+        width="680px"
+        append-to-body
+        destroy-on-close
+        :close-on-click-modal="false"
+      >
+        <el-form v-loading="miniAppComposeLoading" label-width="96px" class="miniapp-compose-form">
+          <el-form-item label="接收客户">
+            <el-input :model-value="miniAppForm.customerName || '--'" disabled />
+          </el-form-item>
+          <el-form-item label="客户联系人">
+            <el-input :model-value="miniAppForm.contactText || '--'" disabled />
+          </el-form-item>
+          <el-form-item label="通知标题">
+            <el-input :model-value="miniAppForm.noticeTitle" disabled />
+          </el-form-item>
+          <el-form-item label="发送内容">
+            <el-input :model-value="miniAppForm.content" type="textarea" :rows="7" resize="none" disabled />
+          </el-form-item>
+          <el-form-item label="通知文书">
+            <div class="email-attachment-row">
+              <span>{{ miniAppForm.fileName || '通知文书' }}</span>
+              <div>
+                <el-button text type="primary" @click="previewMiniAppAttachment">预览</el-button>
+                <el-button text type="primary" @click="downloadMiniAppAttachment">下载</el-button>
+              </div>
+            </div>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="miniAppDialogVisible = false">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="miniAppSending"
+            :disabled="miniAppComposeLoading || !miniAppForm.paymentId"
+            @click="confirmMiniAppSend"
+          >
+            确认发送
+          </el-button>
+        </template>
+      </el-dialog>
 
       <notice-preview-dialog
         v-model="noticePreview.visible"
@@ -181,8 +321,11 @@ import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue
 import { noticePrintUrl } from '@/api/contract/print';
 import {
   generatePaymentNotice,
+  getPaymentNoticeEmailCompose,
+  getPaymentNoticeMiniAppCompose,
   getPaymentNoticeBuildings,
   getPaymentNoticePage,
+  getPaymentNoticeSendRecords,
   getPaymentNoticeSummary,
   remindOverduePayment,
   sendPaymentNoticeEmail,
@@ -218,6 +361,43 @@ export default {
       drawerRow: null,
       noticePreview: createNoticePreviewState(),
       previewDocument: null,
+      emailDialogVisible: false,
+      emailComposeLoading: false,
+      emailSending: false,
+      miniAppDialogVisible: false,
+      miniAppComposeLoading: false,
+      miniAppSending: false,
+      sendRecordLoading: false,
+      sendRecords: [],
+      emailForm: {
+        paymentId: null,
+        noticeType: 'payment-notice',
+        senderEmail: '',
+        senderConfigured: false,
+        recipientEmail: '',
+        subject: '',
+        content: '',
+        attachmentName: '',
+        attachmentUrl: '',
+      },
+      emailRules: {
+        recipientEmail: [
+          { required: true, message: '请输入客户邮箱', trigger: 'blur' },
+          { type: 'email', message: '请输入有效的邮箱地址', trigger: ['blur', 'change'] },
+        ],
+        subject: [{ required: true, message: '请输入邮件主题', trigger: 'blur' }],
+        content: [{ required: true, message: '请输入邮件正文', trigger: 'blur' }],
+      },
+      miniAppForm: {
+        paymentId: null,
+        noticeType: 'payment-notice',
+        customerName: '',
+        contactText: '',
+        noticeTitle: '',
+        content: '',
+        fileName: '',
+        fileUrl: '',
+      },
     };
   },
   computed: {
@@ -286,6 +466,7 @@ export default {
     openDrawer(row) {
       this.drawerRow = { ...row };
       this.drawerVisible = true;
+      this.loadSendRecords();
     },
     previewNotice(item) {
       const row = this.drawerRow;
@@ -338,18 +519,172 @@ export default {
       this.drawerVisible = false;
       this.$router.push({ path: '/finance/overdue-reminder', query: { paymentId: row.paymentId } });
     },
-    sendSms() { const row = this.drawerRow; if (row) sendPaymentNoticeSms(row.paymentId, this.activeNoticeType()).then(() => { this.$message.warning('短信发送结果已记录'); this.reload(); }); },
+    sendSms() {
+      const row = this.drawerRow;
+      if (!row) return;
+      sendPaymentNoticeSms(row.paymentId, this.activeNoticeType()).then(() => {
+        this.$message.warning('短信发送结果已记录');
+        this.reload();
+        this.loadSendRecords();
+      });
+    },
     sendEmail() {
       const row = this.drawerRow;
       if (!row) return;
-      sendPaymentNoticeEmail(row.paymentId, this.activeNoticeType()).then(res => {
-        const result = res.data.data || {};
-        if (result.emailStatus === 'success') this.$message.success('邮件发送成功');
-        else this.$message.error(result.remark || '邮件发送失败');
-        this.reload();
+      const noticeType = this.activeNoticeType();
+      this.emailForm = {
+        paymentId: row.paymentId,
+        noticeType,
+        senderEmail: '',
+        senderConfigured: false,
+        recipientEmail: '',
+        subject: '',
+        content: '',
+        attachmentName: '',
+        attachmentUrl: '',
+      };
+      this.emailDialogVisible = true;
+      this.emailComposeLoading = true;
+      getPaymentNoticeEmailCompose(row.paymentId, noticeType)
+        .then(res => {
+          const compose = res.data.data || {};
+          this.emailForm = {
+            paymentId: compose.paymentId || row.paymentId,
+            noticeType: compose.noticeType || noticeType,
+            senderEmail: compose.senderEmail || '',
+            senderConfigured: Boolean(compose.senderConfigured),
+            recipientEmail: compose.recipientEmail || '',
+            subject: compose.subject || '',
+            content: compose.content || '',
+            attachmentName: compose.attachmentName || '',
+            attachmentUrl: compose.attachmentUrl || '',
+          };
+          if (!compose.senderConfigured) this.$message.warning('请先到个人中心绑定并启用163邮箱');
+        })
+        .catch(() => { this.emailDialogVisible = false; })
+        .finally(() => { this.emailComposeLoading = false; });
+    },
+    submitEmail() {
+      this.$refs.emailFormRef.validate(valid => {
+        if (!valid) return;
+        this.emailSending = true;
+        sendPaymentNoticeEmail({
+          paymentId: this.emailForm.paymentId,
+          noticeType: this.emailForm.noticeType,
+          recipientEmail: this.emailForm.recipientEmail,
+          subject: this.emailForm.subject,
+          content: this.emailForm.content,
+        })
+          .then(res => {
+            const result = res.data.data || {};
+            if (result.emailStatus === 'success') {
+              this.$message.success('邮件发送成功');
+              this.emailDialogVisible = false;
+            } else {
+              this.$message.error(result.remark || '邮件发送失败');
+            }
+            this.reload();
+            this.loadSendRecords();
+          })
+          .finally(() => { this.emailSending = false; });
       });
     },
-    sendPaymentMiniApp() { const row = this.drawerRow; if (row) sendPaymentNoticeMiniApp(row.paymentId, this.activeNoticeType()).then(() => { this.$message.success(`${this.activeCategory === 'payment' ? '收款' : this.activeCategory === 'reminder' ? '催款' : '逾期'}小程序发送结果已记录`); this.reload(); }); },
+    loadSendRecords() {
+      const row = this.drawerRow;
+      if (!row || !row.paymentId) return;
+      this.sendRecordLoading = true;
+      getPaymentNoticeSendRecords(row.paymentId, this.activeNoticeType())
+        .then(res => { this.sendRecords = res.data.data || []; })
+        .finally(() => { this.sendRecordLoading = false; });
+    },
+    previewEmailAttachment() {
+      const row = this.drawerRow;
+      if (!row) return;
+      const item = this.drawerDocuments.find(document => document.value === this.emailForm.noticeType) || this.drawerDocuments[0];
+      if (item) this.previewNotice(item);
+    },
+    downloadEmailAttachment() {
+      if (this.emailForm.attachmentUrl) {
+        downloadNoticeFile(this.emailForm.attachmentUrl, this.emailForm.attachmentName || '通知文书.docx');
+      }
+    },
+    viewSendRecord(record) {
+      const content = record.contentSnapshot || '无正文内容';
+      this.$alert(content, record.subject || '发送内容', {
+        confirmButtonText: '关闭',
+        customClass: 'send-record-content-dialog',
+      });
+    },
+    downloadSendRecordAttachment(record) {
+      downloadNoticeFile(record.attachmentUrl, record.attachmentName || '通知文书.docx');
+    },
+    channelText(value) { return { email: '邮件', sms: '短信', miniapp: '小程序' }[value] || value || '通知'; },
+    sendStatusText(value) { return { pending: '发送中', success: '发送成功', failed: '发送失败', reserved: '通道待接入' }[value] || '未知'; },
+    sendStatusType(value) { return { pending: 'primary', success: 'success', failed: 'danger', reserved: 'warning' }[value] || 'info'; },
+    sendPaymentMiniApp() {
+      const row = this.drawerRow;
+      if (!row) return;
+      this.miniAppDialogVisible = true;
+      this.miniAppComposeLoading = true;
+      this.miniAppForm = {
+        paymentId: null,
+        noticeType: this.activeNoticeType(),
+        customerName: '',
+        contactText: '',
+        noticeTitle: '',
+        content: '',
+        fileName: '',
+        fileUrl: '',
+      };
+      getPaymentNoticeMiniAppCompose(row.paymentId, this.activeNoticeType())
+        .then(res => {
+          const compose = res.data.data || {};
+          const receiver = compose.receiver || {};
+          const payload = compose.payload || {};
+          this.miniAppForm = {
+            paymentId: compose.paymentId || row.paymentId,
+            noticeType: compose.noticeType || this.activeNoticeType(),
+            customerName: receiver.customerName || payload.customerName || row.customerName || '',
+            contactText: [receiver.contactName, receiver.contactPhone, receiver.contactEmail].filter(Boolean).join(' / '),
+            noticeTitle: compose.noticeTitle || '',
+            content: this.buildMiniAppContent(payload),
+            fileName: compose.fileName || (compose.document || {}).fileName || '',
+            fileUrl: compose.fileUrl || (compose.document || {}).fileUrl || '',
+          };
+        })
+        .finally(() => { this.miniAppComposeLoading = false; });
+    },
+    buildMiniAppContent(payload) {
+      return [
+        `租客名称：${payload.customerName || '-'}`,
+        `合同号：${payload.contractNo || '-'}`,
+        `费用类型：${payload.feeName || '-'}`,
+        `账期：${payload.periodText || '-'}`,
+        `应缴日期：${payload.payDeadline || '-'}`,
+        `未收金额：¥${payload.unpaidAmount || '0.00'}`,
+      ].join('\n');
+    },
+    confirmMiniAppSend() {
+      if (!this.miniAppForm.paymentId) return;
+      this.miniAppSending = true;
+      sendPaymentNoticeMiniApp(this.miniAppForm.paymentId, this.miniAppForm.noticeType)
+        .then(() => {
+          this.$message.warning(`${this.activeCategory === 'payment' ? '收款' : this.activeCategory === 'reminder' ? '催款' : '逾期'}小程序发送内容已记录，通道待接入`);
+          this.miniAppDialogVisible = false;
+          this.reload();
+          this.loadSendRecords();
+        })
+        .finally(() => { this.miniAppSending = false; });
+    },
+    previewMiniAppAttachment() {
+      const item = this.drawerDocuments.find(document => document.value === this.miniAppForm.noticeType) || this.drawerDocuments[0];
+      if (item) this.previewNotice(item);
+    },
+    downloadMiniAppAttachment() {
+      if (this.miniAppForm.fileUrl) {
+        downloadNoticeFile(this.miniAppForm.fileUrl, this.miniAppForm.fileName || '通知文书.docx');
+      }
+    },
     activeNoticeType() { return { payment: 'payment-notice', reminder: 'reminder-notice', overdue: 'overdue-notice' }[this.activeCategory] || 'payment-notice'; },
     noticeSendStatusText(value) { return { pending: '未发送', sent: '已发送', failed: '发送失败' }[value] || '未发送'; },
     noticeSendStatusType(value) { return { pending: 'info', sent: 'success', failed: 'danger' }[value] || 'info'; },
@@ -427,5 +762,19 @@ export default {
 .drawer-hint { color: #909399; font-size: 12px; }
 .send-record-list { margin-top: 12px; }
 .send-record-list > div { align-items: flex-start; flex-direction: column; }
+.send-record-section { min-height: 260px; }
+.send-record-item { width: 100%; box-sizing: border-box; }
+.send-record-item__top { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.send-record-item__top > div { display: inline-flex; align-items: center; gap: 8px; }
+.send-record-item__top > span { color: #909399; font-size: 12px; }
+.send-record-item__error { color: #f56c6c !important; }
+.send-record-item__actions { display: flex; align-items: center; gap: 8px; }
+.send-record-item__actions :deep(.el-button) { margin-left: 0; }
+.email-compose-form { padding-right: 12px; }
+.miniapp-compose-form { padding-right: 12px; }
+.email-attachment-row { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 12px; border: 1px solid #ebeef5; border-radius: 8px; background: #fafafa; }
+.email-attachment-row > span { min-width: 0; overflow: hidden; color: #303133; text-overflow: ellipsis; white-space: nowrap; }
+.email-attachment-row > div { display: inline-flex; align-items: center; white-space: nowrap; }
+.email-attachment-row :deep(.el-button) { margin-left: 8px; }
 @media (max-width: 900px) { .notice-header { align-items: flex-start; flex-direction: column; gap: 14px; } .notice-summary { grid-template-columns: repeat(2, 1fr); } .drawer-profile, .node-strip { grid-template-columns: 1fr; } }
 </style>

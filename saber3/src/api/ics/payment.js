@@ -293,6 +293,17 @@ export const sendPaymentNoticeMiniApp = (paymentId, noticeType = 'payment-notice
   });
 };
 
+export const getPaymentNoticeMiniAppCompose = (paymentId, noticeType = 'payment-notice') => {
+  return request({
+    url: '/blade-ics/payment/notice-miniapp-compose',
+    method: 'get',
+    params: {
+      paymentId,
+      noticeType,
+    },
+  });
+};
+
 export const sendPaymentNoticeSms = (paymentId, noticeType = 'payment-notice') => {
   return request({
     url: '/blade-ics/payment/notice-sms-send',
@@ -304,10 +315,29 @@ export const sendPaymentNoticeSms = (paymentId, noticeType = 'payment-notice') =
   });
 };
 
-export const sendPaymentNoticeEmail = (paymentId, noticeType = 'payment-notice') => {
+export const getPaymentNoticeEmailCompose = (paymentId, noticeType = 'payment-notice') => {
+  return request({
+    url: '/blade-ics/payment/notice-email-compose',
+    method: 'get',
+    params: {
+      paymentId,
+      noticeType,
+    },
+  });
+};
+
+export const sendPaymentNoticeEmail = data => {
   return request({
     url: '/blade-ics/payment/notice-email-send',
     method: 'post',
+    data,
+  });
+};
+
+export const getPaymentNoticeSendRecords = (paymentId, noticeType = 'payment-notice') => {
+  return request({
+    url: '/blade-ics/payment/notice-send-records',
+    method: 'get',
     params: {
       paymentId,
       noticeType,

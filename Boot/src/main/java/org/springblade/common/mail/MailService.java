@@ -12,8 +12,16 @@ public interface MailService {
 	/**
 	 * 发送邮件.
 	 *
+	 * @param sender  发件账号
 	 * @param message 邮件消息
 	 */
-	void send(MailMessage message);
+	void send(MailSenderAccount sender, MailMessage message);
+
+	/**
+	 * 测试发件账号连接.
+	 *
+	 * @param sender 发件账号
+	 */
+	void testConnection(MailSenderAccount sender);
 
 }
