@@ -1715,7 +1715,7 @@
             </template>
           </el-upload>
           <div class="contract-import-template">
-            <span>按园区、楼宇和房源全称填写；导入的新合同统一为待审批。</span>
+            <span>请使用租赁信息表：按园区、楼宇、楼层和房间号填写；租赁期填写 YYYY-MM-DD 至 YYYY-MM-DD。</span>
             <el-button type="primary" plain icon="el-icon-download" @click="handleContractTemplate">
               下载模板
             </el-button>
@@ -2076,6 +2076,9 @@ export default {
         { label: '所属公司', value: this.detailValue(contract.parkName) },
         { label: '合同开始日', value: this.detailValue(contract.startDate) },
         { label: '合同结束日', value: this.detailValue(contract.endDate) },
+        { label: '免租期', value: this.detailValue(contract.rentFreePeriod) },
+        { label: '2026年租金', value: this.formatMoneyWithUnitOrDash(contract.annualRent2026) },
+        { label: '2026年物业费', value: this.formatMoneyWithUnitOrDash(contract.annualPropertyFee2026) },
         { label: '合同来源', value: this.contractSourceText(contract) },
         {
           label: '续签提醒',
@@ -2463,12 +2466,12 @@ export default {
     },
     handleContractExport() {
       exportBlob('/blade-contract/contract/export', this.cleanParams(this.query)).then(res => {
-        downloadXls(res.data, `合同数据${this.$dayjs().format('YYYY-MM-DD HH:mm:ss')}.xlsx`);
+        downloadXls(res.data, `租赁信息表${this.$dayjs().format('YYYYMMDD_HHmmss')}.xlsx`);
       });
     },
     handleContractTemplate() {
       exportBlob('/blade-contract/contract/export-template').then(res => {
-        downloadXls(res.data, '合同数据模板.xlsx');
+        downloadXls(res.data, '租赁信息表.xlsx');
       });
     },
     handleStartApprovalFromSelection() {

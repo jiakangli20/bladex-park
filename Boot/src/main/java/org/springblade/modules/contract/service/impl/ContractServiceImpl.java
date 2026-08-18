@@ -74,6 +74,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -151,11 +153,20 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 			throw new ServiceException("导入数据不能为空");
 		}
 		int imported = 0;
+		String currentPark = "";
+		String currentBuilding = "";
+		String currentFloor = "";
 		for (int index = 0; index < data.size(); index++) {
 			ContractExcel excel = data.get(index);
 			if (excel == null || isBlankImportRow(excel)) {
 				continue;
 			}
+			if (Func.isNotBlank(excel.getParkName())) currentPark = trimImportText(excel.getParkName());
+			excel.setParkName(currentPark);
+			if (Func.isNotBlank(excel.getBuildingName())) currentBuilding = trimImportText(excel.getBuildingName());
+			excel.setBuildingName(currentBuilding);
+			if (Func.isNotBlank(excel.getFloor())) currentFloor = trimImportText(excel.getFloor());
+			excel.setFloor(currentFloor);
 			Contract contract = fromContractExcel(excel, index + 2);
 			if (Func.isNotBlank(contract.getContractNo())) {
 				Contract existing = getOne(Wrappers.<Contract>lambdaQuery()
@@ -179,37 +190,34 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 
 	private ContractExcel toContractExcel(Contract contract) {
 		ContractExcel excel = new ContractExcel();
-		excel.setContractNo(contract.getContractNo());
-		excel.setContractName(contract.getContractName());
+		Room room = contract.getRoomId() == null ? null : roomMapper.selectById(contract.getRoomId());
+		excel.setFloor(room == null || room.getFloor() == null ? "" : room.getFloor() + "F");
+		excel.setParkName(room == null ? "" : room.getParkName());
+		excel.setBuildingName(room == null ? "" : room.getBuildingName());
 		excel.setCustomerName(contract.getCustomerName());
-		excel.setParkName(contract.getParkName());
-		excel.setBuildingName(contract.getBuildingName());
 		excel.setRoomName(contract.getRoomName());
+		excel.setContractNo(contract.getContractNo());
 		excel.setRentArea(contract.getRentArea());
+		excel.setLeasePeriod(formatLeasePeriod(contract.getStartDate(), contract.getEndDate()));
+		excel.setRentFreePeriod(contract.getRentFreePeriod());
 		excel.setRentPrice(contract.getRentPrice());
 		excel.setMonthlyRent(contract.getMonthlyRent());
 		excel.setPropertyFee(contract.getPropertyFee());
-		excel.setDeposit(contract.getDeposit());
-		excel.setStartDate(contract.getStartDate());
-		excel.setEndDate(contract.getEndDate());
-		excel.setSignDate(contract.getSignDate());
-		excel.setPaymentCycleName(paymentCycleText(contract.getPaymentCycle()));
-		excel.setLateFeeRatio(contract.getLateFeeRatio());
-		excel.setLateFeeUnitName(lateFeeUnitText(contract.getLateFeeUnit()));
-		excel.setLateFeeCap(contract.getLateFeeCap());
-		excel.setRentIncreaseNode(contract.getRentIncreaseNode());
+		excel.setAnnualRent2026(contract.getAnnualRent2026());
+		excel.setAnnualPropertyFee2026(contract.getAnnualPropertyFee2026());
 		excel.setFollowUser(contract.getFollowUser());
-		excel.setContractStatusName(firstNotBlank(contract.getContractStatusName(), contractStatusText(contract.getContractStatus())));
-		excel.setRemark(contract.getRemark());
 		return excel;
 	}
 
 	private Contract fromContractExcel(ContractExcel excel, int rowNumber) {
-		String contractName = requiredImportText(excel.getContractName(), rowNumber, "合同名称");
-		String customerName = requiredImportText(excel.getCustomerName(), rowNumber, "租客名称");
+		String contractName = "租赁合同-" + requiredImportText(excel.getRoomName(), rowNumber, "房间号");
 		String parkName = requiredImportText(excel.getParkName(), rowNumber, "所属园区");
 		String buildingName = requiredImportText(excel.getBuildingName(), rowNumber, "所属楼宇");
+		String customerName = requiredImportText(excel.getCustomerName(), rowNumber, "租客名称");
 		String roomName = requiredImportText(excel.getRoomName(), rowNumber, "房源名称");
+		if (roomName.matches(".*[、,，~～—–].*") || roomName.matches(".*\\d\\s*-\\s*\\d.*")) {
+			throw new ServiceException("第" + rowNumber + "行【房间号】只能填写一个房间，请拆分为一行一个房间：" + roomName);
+		}
 		Park park = resolveImportPark(parkName, rowNumber);
 		Building building = buildingMapper.selectBuildingByParkAndName(park.getId(), buildingName);
 		if (building == null) {
@@ -219,15 +227,20 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 			.eq(Room::getParkId, park.getId())
 			.eq(Room::getBuildingId, building.getId())
 			.eq(Room::getName, roomName));
+		String floor = normalizeFloor(excel.getFloor());
+		if (Func.isNotBlank(floor)) rooms = rooms.stream().filter(r -> floor.equals(String.valueOf(r.getFloor()))).toList();
 		if (rooms.isEmpty()) {
-			throw new ServiceException("第" + rowNumber + "行房源不存在或不属于所选楼宇：" + roomName);
+			throw new ServiceException("第" + rowNumber + "行【楼层+房间号】未匹配到房源：" + excel.getFloor() + " / " + roomName);
 		}
 		if (rooms.size() > 1) {
 			throw new ServiceException("第" + rowNumber + "行房源名称重复，请先在房源管理中处理：" + roomName);
 		}
 		Room room = rooms.get(0);
-		Date startDate = requiredImportDate(excel.getStartDate(), rowNumber, "合同开始日期");
-		Date endDate = requiredImportDate(excel.getEndDate(), rowNumber, "合同结束日期");
+		park = parkMapper.selectById(room.getParkId());
+		building = buildingMapper.selectById(room.getBuildingId());
+		Date[] period = parseLeasePeriod(excel.getLeasePeriod(), rowNumber);
+		Date startDate = period[0];
+		Date endDate = period[1];
 		if (!endDate.after(startDate)) {
 			throw new ServiceException("第" + rowNumber + "行合同结束日期必须晚于开始日期");
 		}
@@ -240,7 +253,9 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		contract.setContractNo(trimImportText(excel.getContractNo()));
 		contract.setContractName(contractName);
 		contract.setCustomerName(customerName);
-		contract.setCustomerId(customerMapper.selectCustomerIdByEnterpriseAndPark(customerName, park.getId(), null));
+		Long customerId = customerMapper.selectCustomerIdByEnterpriseAndPark(customerName, park.getId(), null);
+		if (customerId == null) throw new ServiceException("第" + rowNumber + "行【客户】在房源所属园区中不存在：" + customerName);
+		contract.setCustomerId(customerId);
 		contract.setParkId(park.getId());
 		contract.setBuildingId(building.getId());
 		contract.setBuildingName(building.getName());
@@ -250,18 +265,20 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		contract.setRentPrice(rentPrice);
 		contract.setMonthlyRent(monthlyRent);
 		contract.setPropertyFee(nonNegativeImportAmount(firstAmount(excel.getPropertyFee(), room.getPropertyFee()), rowNumber, "物业费"));
-		contract.setDeposit(nonNegativeImportAmount(excel.getDeposit(), rowNumber, "押金"));
+		contract.setRentFreePeriod(trimImportText(excel.getRentFreePeriod()));
+		contract.setAnnualRent2026(nonNegativeImportAmount(excel.getAnnualRent2026(), rowNumber, "2026年租金"));
+		contract.setAnnualPropertyFee2026(nonNegativeImportAmount(excel.getAnnualPropertyFee2026(), rowNumber, "2026年物业费"));
 		contract.setStartDate(startDate);
 		contract.setEndDate(endDate);
-		contract.setSignDate(excel.getSignDate() == null ? startDate : excel.getSignDate());
-		contract.setPaymentCycle(resolvePaymentCycle(excel.getPaymentCycleName(), rowNumber));
-		contract.setLateFeeRatio(nonNegativeImportAmount(excel.getLateFeeRatio(), rowNumber, "滞纳金比例"));
-		contract.setLateFeeUnit(resolveLateFeeUnit(excel.getLateFeeUnitName(), rowNumber));
-		contract.setLateFeeCap(nonNegativeImportAmount(excel.getLateFeeCap(), rowNumber, "滞纳金上限"));
-		contract.setRentIncreaseNode(trimImportText(excel.getRentIncreaseNode()));
+		contract.setSignDate(startDate);
 		contract.setFollowUser(trimImportText(excel.getFollowUser()));
-		contract.setRemark(trimImportText(excel.getRemark()));
 		return contract;
+	}
+
+	private String formatLeasePeriod(Date startDate, Date endDate) {
+		if (startDate == null || endDate == null) return "";
+		SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd");
+		return f.format(startDate) + " 至 " + f.format(endDate);
 	}
 
 	private Park resolveImportPark(String parkName, int rowNumber) {
@@ -275,13 +292,21 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		return parks.get(0);
 	}
 
+	private Date[] parseLeasePeriod(String value, int rowNumber) {
+		String text = trimImportText(value);
+		java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("^\\s*(\\d{4}[-/]\\d{1,2}[-/]\\d{1,2})\\s*(?:至|到|~|～|—|–|\\s+-\\s+)\\s*(\\d{4}[-/]\\d{1,2}[-/]\\d{1,2})\\s*$").matcher(text);
+		if (!matcher.matches()) throw new ServiceException("第" + rowNumber + "行【租赁期】格式错误，应为 YYYY-MM-DD 至 YYYY-MM-DD");
+		try {
+			SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd"); f.setLenient(false);
+			return new Date[]{f.parse(matcher.group(1).replace('/', '-')), f.parse(matcher.group(2).replace('/', '-'))};
+		} catch (ParseException e) { throw new ServiceException("第" + rowNumber + "行【租赁期】日期格式错误"); }
+	}
+
 	private boolean isBlankImportRow(ContractExcel excel) {
-		return Func.isBlank(excel.getContractNo())
-			&& Func.isBlank(excel.getContractName())
-			&& Func.isBlank(excel.getCustomerName())
-			&& Func.isBlank(excel.getParkName())
-			&& Func.isBlank(excel.getBuildingName())
-			&& Func.isBlank(excel.getRoomName());
+		return excel == null
+			|| (Func.isBlank(excel.getParkName()) && Func.isBlank(excel.getBuildingName())
+			&& Func.isBlank(excel.getFloor()) && Func.isBlank(excel.getCustomerName())
+			&& Func.isBlank(excel.getRoomName()) && Func.isBlank(excel.getContractNo()));
 	}
 
 	private String requiredImportText(String value, int rowNumber, String label) {
@@ -290,13 +315,6 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 			throw new ServiceException("第" + rowNumber + "行" + label + "不能为空");
 		}
 		return text;
-	}
-
-	private Date requiredImportDate(Date value, int rowNumber, String label) {
-		if (value == null) {
-			throw new ServiceException("第" + rowNumber + "行" + label + "不能为空");
-		}
-		return value;
 	}
 
 	private BigDecimal positiveImportAmount(BigDecimal value, int rowNumber, String label) {
@@ -321,48 +339,8 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		return Func.toStr(value, "").trim();
 	}
 
-	private String resolvePaymentCycle(String value, int rowNumber) {
-		String text = trimImportText(value);
-		if (Func.isBlank(text) || "月付".equals(text) || "monthly".equalsIgnoreCase(text)) return "monthly";
-		if ("季付".equals(text) || "quarterly".equalsIgnoreCase(text)) return "quarterly";
-		if ("半年付".equals(text) || "halfYear".equalsIgnoreCase(text)) return "halfYear";
-		if ("年付".equals(text) || "yearly".equalsIgnoreCase(text)) return "yearly";
-		throw new ServiceException("第" + rowNumber + "行缴费周期仅支持月付、季付、半年付、年付");
-	}
-
-	private String resolveLateFeeUnit(String value, int rowNumber) {
-		String text = trimImportText(value);
-		if (Func.isBlank(text) || "%/天".equals(text) || "percent_day".equalsIgnoreCase(text)) return "percent_day";
-		if ("元/天".equals(text) || "yuan_day".equalsIgnoreCase(text)) return "yuan_day";
-		throw new ServiceException("第" + rowNumber + "行滞纳金单位仅支持%/天、元/天");
-	}
-
-	private String paymentCycleText(String value) {
-		return switch (Func.toStr(value, "")) {
-			case "quarterly" -> "季付";
-			case "halfYear" -> "半年付";
-			case "yearly" -> "年付";
-			default -> "月付";
-		};
-	}
-
-	private String lateFeeUnitText(String value) {
-		return "yuan_day".equals(value) ? "元/天" : "%/天";
-	}
-
-	private String contractStatusText(String value) {
-		return switch (Func.toStr(value, "")) {
-			case "0" -> "待审批";
-			case "1" -> "生效";
-			case "2" -> "已到期";
-			case "3" -> "已续签";
-			case "4" -> "已退租";
-			case "5" -> "待盖章";
-			case "6" -> "退租中";
-			case "7" -> "退租交接中";
-			case "8" -> "房屋验收中";
-			default -> "未知";
-		};
+	private String normalizeFloor(String value) {
+		return trimImportText(value).toUpperCase().replace("F", "").replace("层", "").trim();
 	}
 
 	@Override

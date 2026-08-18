@@ -19,6 +19,9 @@
         <result column="rent_area" property="rentArea"/>
         <result column="monthly_rent" property="monthlyRent"/>
         <result column="property_fee" property="propertyFee"/>
+        <result column="rent_free_period" property="rentFreePeriod"/>
+        <result column="annual_rent_2026" property="annualRent2026"/>
+        <result column="annual_property_fee_2026" property="annualPropertyFee2026"/>
         <result column="deposit" property="deposit"/>
         <result column="follow_user" property="followUser"/>
         <result column="rent_increase_node" property="rentIncreaseNode"/>
@@ -89,6 +92,9 @@
             c.rent_area,
             c.monthly_rent,
             c.property_fee,
+            c.rent_free_period,
+            c.annual_rent_2026,
+            c.annual_property_fee_2026,
             c.deposit,
             c.follow_user,
             c.rent_increase_node,

@@ -39,7 +39,6 @@ import org.springblade.core.secure.annotation.PreAuth;
 import org.springblade.core.tenant.annotation.NonDS;
 import org.springblade.core.tenant.annotation.TenantIgnore;
 import org.springblade.core.tool.api.R;
-import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.modules.contract.excel.ContractExcel;
 import org.springblade.modules.contract.excel.ContractImporter;
 import org.springblade.modules.contract.pojo.entity.Contract;
@@ -56,6 +55,8 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 import java.util.Map;
+import java.util.Date;
+import java.text.SimpleDateFormat;
 
 /**
  * 合同管理控制器
@@ -104,7 +105,8 @@ public class ContractController extends BladeController {
 	@Operation(summary = "导出", description = "按当前查询条件导出合同数据")
 	public void export(Contract contract, HttpServletResponse response) {
 		List<ContractExcel> list = contractService.exportContract(contract);
-		ExcelUtil.export(response, "合同数据" + DateUtil.time(), "合同数据表", list, ContractExcel.class);
+		String stamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+		ExcelUtil.export(response, "租赁信息表" + stamp, "租赁信息表", list, ContractExcel.class);
 	}
 
 	/**
@@ -115,7 +117,7 @@ public class ContractController extends BladeController {
 	@ApiOperationSupport(order = 4)
 	@Operation(summary = "导出模板", description = "导出合同导入模板")
 	public void exportTemplate(HttpServletResponse response) {
-		ExcelUtil.export(response, "合同数据模板", "合同数据表", List.of(), ContractExcel.class);
+		ExcelUtil.export(response, "租赁信息表模板", "租赁信息表", List.of(), ContractExcel.class);
 	}
 
 	/**
