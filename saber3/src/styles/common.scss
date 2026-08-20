@@ -34,6 +34,15 @@ a {
   outline: none;
 }
 
+// MessageBox is appended to body; keep its mask and panel above global floating tools.
+.el-overlay.el-message-box {
+  z-index: 10000 !important;
+}
+
+.el-overlay-message-box {
+  z-index: 10001 !important;
+}
+
 .avue-sidebar,
 .avue-top,
 .avue-logo,

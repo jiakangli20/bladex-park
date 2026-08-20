@@ -25,6 +25,7 @@
         </div>
       </div>
       <!-- <wechat></wechat> -->
+      <ai-chat-assistant />
     </div>
   </el-watermark>
 </template>
@@ -38,6 +39,7 @@ import tags from './tags.vue';
 import search from './search.vue';
 import top from './top/index.vue';
 import sidebar from './sidebar/index.vue';
+import AiChatAssistant from '@/components/ai-chat-assistant/main.vue';
 import website from '@/config/website';
 import { validatenull } from '@/utils/validate';
 
@@ -48,6 +50,7 @@ export default {
     tags,
     search,
     sidebar,
+    AiChatAssistant,
     wechat,
   },
   name: 'index',

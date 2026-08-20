@@ -55,7 +55,8 @@ for sql in \
   37_add_embedded_smart_meter_tab.mysql.sql \
   38_add_rent_control_asset_ledger.mysql.sql \
   39_add_building_scene_images.mysql.sql \
-  40_add_room_utility_vehicle.mysql.sql
+  40_add_room_utility_vehicle.mysql.sql \
+  46_add_ai_chat_module.mysql.sql
 do
   echo "Executing $sql"
   test -f "$SQL_DIR/$sql"
@@ -117,6 +118,8 @@ SELECT COUNT(*) AS vacant_since_column_count FROM information_schema.columns WHE
 SELECT COUNT(*) AS scene_images_column_count FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='ics_building' AND column_name='scene_images';
 SELECT COUNT(*) AS room_utility_record_table_count FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='biz_room_utility_record';
 SELECT COUNT(*) AS room_vehicle_table_count FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='biz_room_vehicle';
+SELECT COUNT(*) AS ai_conversation_table_count FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='biz_ai_conversation';
+SELECT COUNT(*) AS ai_message_table_count FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='biz_ai_message';
 SELECT COUNT(*) AS smart_meter_column_count FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='biz_smart_device' AND column_name IN ('payment_type','meter_type','purpose','current_reading','current_balance','multiplier','max_reading','warning_unit','warning_rules');
 SELECT COUNT(*) AS standalone_smart_meter_menu_count FROM blade_menu WHERE code='smart_device';
 "

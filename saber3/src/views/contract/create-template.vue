@@ -131,6 +131,17 @@
                     </el-form-item>
                   </el-col>
                 </el-row>
+                <el-row :gutter="18">
+                  <el-col :span="12">
+                    <el-form-item label="免租期">
+                      <el-input
+                        v-model="form.rentFreePeriod"
+                        maxlength="100"
+                        placeholder="请输入免租期"
+                      />
+                    </el-form-item>
+                  </el-col>
+                </el-row>
               </section>
 
               <section class="form-section">
@@ -440,6 +451,29 @@
                     </el-form-item>
                   </el-col>
                   <el-col :span="8">
+                    <el-form-item label="2026年租金">
+                      <el-input-number
+                        v-model="form.annualRent2026"
+                        :min="0"
+                        :precision="2"
+                        style="width: 100%"
+                      />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-form-item label="2026年物业费">
+                      <el-input-number
+                        v-model="form.annualPropertyFee2026"
+                        :min="0"
+                        :precision="2"
+                        style="width: 100%"
+                      />
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+
+                <el-row :gutter="18">
+                  <el-col :span="8">
                     <el-form-item label="押金">
                       <el-input-number
                         v-model="form.deposit"
@@ -459,6 +493,7 @@
                       />
                     </el-form-item>
                   </el-col>
+                  <el-col :span="8"></el-col>
                 </el-row>
 
                 <el-row :gutter="18">
@@ -871,9 +906,12 @@ export default {
         deliveryDate: '',
         rentFreeStartDate: '',
         rentFreeEndDate: '',
+        rentFreePeriod: '',
         rentPrice: RENT_BASE_PRICE,
         monthlyRent: undefined,
         propertyFee: undefined,
+        annualRent2026: undefined,
+        annualPropertyFee2026: undefined,
         deposit: undefined,
         depositMonths: 1,
         paymentCycle: 'monthly',
@@ -954,6 +992,12 @@ export default {
         roomName: value('roomName') || this.form.roomName,
         rentArea: this.toNumber(value('rentArea'), this.form.rentArea),
         propertyFee: this.toNumber(value('propertyFee'), this.form.propertyFee),
+        rentFreePeriod: value('rentFreePeriod') || this.form.rentFreePeriod,
+        annualRent2026: this.toNumber(value('annualRent2026'), this.form.annualRent2026),
+        annualPropertyFee2026: this.toNumber(
+          value('annualPropertyFee2026'),
+          this.form.annualPropertyFee2026
+        ),
       });
       this.roomQuery.parkId = this.form.parkId || '';
       this.roomQuery.buildingId = this.form.buildingId || '';
@@ -991,9 +1035,12 @@ export default {
         deliveryDate: contract.deliveryDate || contract.startDate || '',
         rentFreeStartDate: contract.rentFreeStartDate || '',
         rentFreeEndDate: contract.rentFreeEndDate || '',
+        rentFreePeriod: contract.rentFreePeriod || '',
         rentPrice: this.toNumber(contract.rentPrice, undefined),
         monthlyRent: this.toNumber(contract.monthlyRent, undefined),
         propertyFee: this.toNumber(contract.propertyFee, undefined),
+        annualRent2026: this.toNumber(contract.annualRent2026, undefined),
+        annualPropertyFee2026: this.toNumber(contract.annualPropertyFee2026, undefined),
         deposit: this.toNumber(contract.deposit, undefined),
         depositMonths: this.toNumber(contract.depositMonths, 1),
         paymentCycle: contract.paymentCycle || 'monthly',
@@ -1089,9 +1136,12 @@ export default {
         deliveryDate: renewStartDate,
         rentFreeStartDate: '',
         rentFreeEndDate: '',
+        rentFreePeriod: contract.rentFreePeriod || '',
         rentPrice: renewalRentPrice,
         monthlyRent: renewalMonthlyRent,
         propertyFee: this.toNumber(contract.propertyFee, undefined),
+        annualRent2026: this.toNumber(contract.annualRent2026, undefined),
+        annualPropertyFee2026: this.toNumber(contract.annualPropertyFee2026, undefined),
         deposit: this.toNumber(contract.deposit, undefined),
         depositMonths: 1,
         paymentCycle: contract.paymentCycle || 'monthly',
@@ -1462,6 +1512,9 @@ export default {
         rentArea: this.form.rentArea,
         monthlyRent: this.form.monthlyRent,
         propertyFee: this.form.propertyFee,
+        rentFreePeriod: this.form.rentFreePeriod,
+        annualRent2026: this.form.annualRent2026,
+        annualPropertyFee2026: this.form.annualPropertyFee2026,
         deposit: this.form.deposit,
         lateFeeRatio: this.form.lateFeeRatio,
         lateFeeUnit: this.form.lateFeeUnit,
@@ -1492,9 +1545,10 @@ export default {
         )}元；免租期=${this.formatNumber(
           this.rentPolicy.rentFreeMonths
         )}个月；建议审批=${this.rentPolicy.approvalLevel}；合同版本=${
-          this.rentPolicy.contractVersion
+        this.rentPolicy.contractVersion
         }；续签规则=${this.rentPolicy.renewalRule}`,
         this.rentPolicy.periodLabel,
+        `免租期：${this.form.rentFreePeriod || '-'}`,
         `交付日期：${this.form.deliveryDate || '-'}`,
         `免租装修期：${this.form.rentFreeStartDate || '-'} 至 ${this.form.rentFreeEndDate || '-'}`,
         `物业首期缴费日期：${this.form.firstPropertyPayDate || '-'}`,

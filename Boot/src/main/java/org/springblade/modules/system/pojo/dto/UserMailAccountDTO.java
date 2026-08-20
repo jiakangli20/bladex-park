@@ -14,10 +14,10 @@ import lombok.Data;
 @Schema(description = "用户邮箱配置请求")
 public class UserMailAccountDTO {
 
-	@Schema(description = "163邮箱地址")
+	@Schema(description = "QQ邮箱地址")
 	private String emailAddress;
 
-	@Schema(description = "163 SMTP授权码，留空表示不修改")
+	@Schema(description = "QQ邮箱SMTP授权码，留空表示不修改")
 	private String authCode;
 
 	@Schema(description = "是否启用")

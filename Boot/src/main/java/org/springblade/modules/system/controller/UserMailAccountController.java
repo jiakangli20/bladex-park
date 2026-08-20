@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(AppConstant.APPLICATION_SYSTEM_NAME + "/user/mail-account")
-@Tag(name = "用户邮箱配置", description = "当前用户163邮箱绑定")
+@Tag(name = "用户邮箱配置", description = "当前用户QQ邮箱绑定")
 public class UserMailAccountController {
 
 	private final IUserMailAccountService userMailAccountService;

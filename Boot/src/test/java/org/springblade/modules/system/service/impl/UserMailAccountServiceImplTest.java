@@ -32,15 +32,15 @@ class UserMailAccountServiceImplTest {
 
 	@Test
 	void requiresNewAuthorizationCodeWhenEmailAddressChanges() {
-		UserMailAccount saved = savedAccount("old@163.com", "old-auth-code");
+		UserMailAccount saved = savedAccount("old@qq.com", "old-auth-code");
 		when(mapper.selectOne(any())).thenReturn(saved);
 		UserMailAccountDTO request = new UserMailAccountDTO();
-		request.setEmailAddress("new@163.com");
+		request.setEmailAddress("new@qq.com");
 		request.setAuthCode("");
 
 		try (MockedStatic<AuthUtil> auth = mockAuth()) {
 			ServiceException exception = assertThrows(ServiceException.class, () -> service.saveCurrent(request));
-			assertEquals("修改发件邮箱时请重新填写163 SMTP授权码", exception.getMessage());
+			assertEquals("修改发件邮箱时请重新填写QQ邮箱SMTP授权码", exception.getMessage());
 		}
 
 		verify(mapper, never()).updateById(any(UserMailAccount.class));
@@ -48,16 +48,16 @@ class UserMailAccountServiceImplTest {
 
 	@Test
 	void doesNotPersistTestStatusForUnsavedCredentials() {
-		UserMailAccount saved = savedAccount("saved@163.com", "saved-auth-code");
+		UserMailAccount saved = savedAccount("saved@qq.com", "saved-auth-code");
 		when(mapper.selectOne(any())).thenReturn(saved);
 		UserMailAccountDTO request = new UserMailAccountDTO();
-		request.setEmailAddress("draft@163.com");
+		request.setEmailAddress("draft@qq.com");
 		request.setAuthCode("draft-auth-code");
 
 		try (MockedStatic<AuthUtil> auth = mockAuth()) {
 			var result = service.testCurrent(request);
 			assertEquals("success", result.getLastTestStatus());
-			assertEquals("draft@163.com", result.getEmailAddress());
+			assertEquals("draft@qq.com", result.getEmailAddress());
 		}
 
 		verify(mapper, never()).updateById(any(UserMailAccount.class));

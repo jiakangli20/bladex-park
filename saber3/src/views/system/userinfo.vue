@@ -74,8 +74,8 @@
 
         <el-tab-pane label="邮箱配置" name="mail">
           <el-form ref="mailForm" :model="mailForm" label-width="120px" class="mail-config-form">
-            <el-form-item label="163邮箱">
-              <el-input v-model="mailForm.emailAddress" placeholder="请输入完整的163邮箱地址">
+            <el-form-item label="QQ邮箱">
+              <el-input v-model="mailForm.emailAddress" placeholder="请输入完整的QQ邮箱地址">
                 <template #prefix>
                   <el-icon><Message /></el-icon>
                 </template>
@@ -86,7 +86,7 @@
                 v-model="mailForm.authCode"
                 type="password"
                 show-password
-                :placeholder="mailForm.authCodeConfigured ? '已配置，留空表示不修改' : '请输入163 SMTP授权码'"
+                :placeholder="mailForm.authCodeConfigured ? '已配置，留空表示不修改' : '请输入QQ邮箱SMTP授权码'"
               >
                 <template #prefix>
                   <el-icon><Lock /></el-icon>

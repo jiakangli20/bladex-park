@@ -213,7 +213,7 @@
           class="email-compose-form"
         >
           <el-form-item label="发件人">
-            <el-input :model-value="emailForm.senderEmail || '未绑定163邮箱'" disabled />
+            <el-input :model-value="emailForm.senderEmail || '未绑定QQ邮箱'" disabled />
           </el-form-item>
           <el-form-item label="收件人" prop="recipientEmail">
             <el-input v-model="emailForm.recipientEmail" disabled placeholder="客户尚未维护邮箱" />
@@ -559,7 +559,7 @@ export default {
             attachmentName: compose.attachmentName || '',
             attachmentUrl: compose.attachmentUrl || '',
           };
-          if (!compose.senderConfigured) this.$message.warning('请先到个人中心绑定并启用163邮箱');
+          if (!compose.senderConfigured) this.$message.warning('请先到个人中心绑定并启用QQ邮箱');
         })
         .catch(() => { this.emailDialogVisible = false; })
         .finally(() => { this.emailComposeLoading = false; });

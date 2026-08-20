@@ -25,9 +25,9 @@ miniapp:
   rate-limit-per-minute: 30
 
 spring:
-  # 163 SMTP 公共连接参数；发件账号与授权码由用户在个人中心维护。
+  # QQ SMTP 公共连接参数；发件账号与授权码由用户在个人中心维护。
   mail:
-    host: smtp.163.com
+    host: smtp.qq.com
     port: 465
     default-encoding: UTF-8
     test-connection: false
@@ -338,3 +338,12 @@ blade:
   #分库分表配置
   sharding:
     enabled: false
+
+# DeepSeek 固定配置：直接替换下方 api-key 的值即可，不再读取环境变量。
+ai:
+  deepseek:
+    enabled: true
+    api-key: "sk-893528077eff432b8be2786a219dcc5a"
+    base-url: https://api.deepseek.com
+    model: deepseek-v4-flash
+    timeout-seconds: 30

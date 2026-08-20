@@ -192,8 +192,12 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		ContractExcel excel = new ContractExcel();
 		Room room = contract.getRoomId() == null ? null : roomMapper.selectById(contract.getRoomId());
 		excel.setFloor(room == null || room.getFloor() == null ? "" : room.getFloor() + "F");
-		excel.setParkName(room == null ? "" : room.getParkName());
-		excel.setBuildingName(room == null ? "" : room.getBuildingName());
+		excel.setParkName(
+			Func.isNotBlank(contract.getParkName()) ? contract.getParkName() : (room == null ? "" : room.getParkName())
+		);
+		excel.setBuildingName(
+			Func.isNotBlank(contract.getBuildingName()) ? contract.getBuildingName() : (room == null ? "" : room.getBuildingName())
+		);
 		excel.setCustomerName(contract.getCustomerName());
 		excel.setRoomName(contract.getRoomName());
 		excel.setContractNo(contract.getContractNo());

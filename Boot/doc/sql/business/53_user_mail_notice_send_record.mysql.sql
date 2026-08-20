@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS `biz_user_mail_account` (
   `account_id` bigint NOT NULL AUTO_INCREMENT COMMENT '邮箱账号ID',
   `tenant_id` varchar(12) NOT NULL DEFAULT '000000' COMMENT '租户ID',
   `user_id` bigint NOT NULL COMMENT '用户ID',
-  `email_address` varchar(100) NOT NULL COMMENT '163发件邮箱',
+  `email_address` varchar(100) NOT NULL COMMENT 'QQ发件邮箱',
   `auth_code_ciphertext` varchar(512) NOT NULL COMMENT 'SMTP授权码密文',
   `enabled` char(1) NOT NULL DEFAULT '1' COMMENT '是否启用：1是0否',
   `last_test_status` varchar(20) DEFAULT NULL COMMENT '最近测试状态：success/failed',

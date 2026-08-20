@@ -36,7 +36,7 @@ public class UserMailAccountServiceImpl implements IUserMailAccountService {
 
 	private static final String ENABLED = "1";
 	private static final String NOT_DELETED = "0";
-	private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9._%+-]+@163\\.com$", Pattern.CASE_INSENSITIVE);
+	private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9._%+-]+@qq\\.com$", Pattern.CASE_INSENSITIVE);
 
 	private final UserMailAccountMapper userMailAccountMapper;
 	private final IUserService userService;
@@ -58,7 +58,7 @@ public class UserMailAccountServiceImpl implements IUserMailAccountService {
 		Date now = DateUtil.now();
 		if (account == null) {
 			if (StringUtil.isBlank(request.getAuthCode())) {
-				throw new ServiceException("请输入163 SMTP授权码");
+				throw new ServiceException("请输入QQ邮箱SMTP授权码");
 			}
 			account = new UserMailAccount();
 			account.setTenantId(AuthUtil.getTenantId());
@@ -68,7 +68,7 @@ public class UserMailAccountServiceImpl implements IUserMailAccountService {
 			account.setCreateTime(now);
 		}
 		if (emailChanged && StringUtil.isBlank(request.getAuthCode())) {
-			throw new ServiceException("修改发件邮箱时请重新填写163 SMTP授权码");
+			throw new ServiceException("修改发件邮箱时请重新填写QQ邮箱SMTP授权码");
 		}
 		account.setEmailAddress(emailAddress);
 		if (!StringUtil.isBlank(request.getAuthCode())) {
@@ -137,7 +137,7 @@ public class UserMailAccountServiceImpl implements IUserMailAccountService {
 	public MailSenderAccount requireCurrentSender() {
 		UserMailAccount account = findCurrent();
 		if (account == null || !ENABLED.equals(account.getEnabled())) {
-			throw new ServiceException("请先在个人中心绑定并启用163邮箱");
+			throw new ServiceException("请先在个人中心绑定并启用QQ邮箱");
 		}
 		return new MailSenderAccount(account.getEmailAddress(), credentialCipher.decrypt(account.getAuthCodeCiphertext()), currentUserName());
 	}
@@ -163,7 +163,7 @@ public class UserMailAccountServiceImpl implements IUserMailAccountService {
 
 	private void validateEmail(String email) {
 		if (StringUtil.isBlank(email) || !EMAIL_PATTERN.matcher(email.trim()).matches()) {
-			throw new ServiceException("发件邮箱必须为有效的163邮箱");
+			throw new ServiceException("发件邮箱必须为有效的QQ邮箱");
 		}
 	}
 
