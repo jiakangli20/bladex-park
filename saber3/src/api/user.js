@@ -78,6 +78,9 @@ export const refreshToken = (refresh_token, tenantId, deptId, roleId) =>
   request({
     url: '/blade-auth/oauth/token',
     method: 'post',
+    meta: {
+      isRefreshToken: true,
+    },
     headers: {
       'Tenant-Id': tenantId,
       'Dept-Id': func.toStr(deptId),

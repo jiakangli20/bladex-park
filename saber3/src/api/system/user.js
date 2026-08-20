@@ -78,6 +78,15 @@ export const getUserInfo = () => {
   });
 };
 
+// 业务页面人员下拉框使用。该接口按当前租户隔离，不要求系统管理员权限。
+export const getUserOptions = (params = { status: 1 }) => {
+  return request({
+    url: '/blade-system/user/user-list',
+    method: 'get',
+    params,
+  });
+};
+
 export const resetPassword = userIds => {
   return request({
     url: '/blade-system/user/reset-password',

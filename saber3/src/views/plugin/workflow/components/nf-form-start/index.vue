@@ -117,8 +117,13 @@ export default {
       handler(val) {
         if (!val || Object.keys(val).length === 0) return;
         const { processDefId, processDefKey, params } = val;
+        if (params) {
+          this.params = params;
+          if (this.option && (this.option.column || this.option.group)) {
+            this.applyInitialParams();
+          }
+        }
         if (processDefId || processDefKey) this.getForm(processDefId, processDefKey);
-        if (params) this.params = params;
       },
       deep: true,
       immediate: true,
@@ -287,6 +292,13 @@ export default {
       if (label.includes('企业名称')) {
         return pick(['enterpriseName', 'customerName', 'tenantName', 'lesseeName']);
       }
+      if (label.includes('股东信息') || label.includes('股权结构')) {
+        return pick(['equityStructure', 'shareholderInfo']);
+      }
+      if (label.includes('经营范围')) return pick(['businessScope']);
+      if (label.includes('负责人') || label.includes('法人')) {
+        return pick(['contactName', 'principalName', 'legalRepresentative']);
+      }
       if (label.includes('单位名称')) {
         return pick(['customerName', 'enterpriseName', 'tenantName', 'lesseeName']);
       }
@@ -310,8 +322,14 @@ export default {
       if (label.includes('房源') || label.includes('房屋') || label.includes('房间')) {
         return pick(['roomName', 'buildingName', 'roomNo']);
       }
-      if (label.includes('租赁面积') || label.includes('面积')) return pick(['rentArea']);
-      if (label.includes('租赁单价') || label.includes('租金单价')) return pick(['rentPrice']);
+      if (label.includes('租赁楼层') && label.includes('面积')) {
+        return pick(['leaseFloorArea']);
+      }
+      if (label.includes('免租期')) return pick(['rentFreePeriod']);
+      if (label.includes('租赁面积') || label.includes('面积')) {
+        return pick(['intentArea', 'rentArea']);
+      }
+      if (label.includes('单价')) return pick(['unitPrice', 'rentPrice']);
       if (label.includes('月租金') || label.includes('租金金额')) return pick(['monthlyRent']);
       if (label.includes('保证金') || label.includes('押金')) return pick(['deposit']);
       if (
@@ -331,6 +349,7 @@ export default {
       if (label.includes('欠费金额') || label.includes('未缴金额')) {
         return pick(['unpaidAmount', 'amountDue']);
       }
+      if (label.includes('审批事项')) return pick(['approvalMatter', 'approvalItem']);
       if (label.includes('费用类型') || label.includes('费用名称')) return pick(['feeName', 'feeType']);
       if (label.includes('账期') || label.includes('所属期')) {
         return pick(['periodText']) || this.buildPeriodText(params);

@@ -53,7 +53,6 @@ import java.util.List;
 @NonDS
 @RestController
 @AllArgsConstructor
-@PreAuth(menu = "finance")
 @RequestMapping(IcsConstant.APPLICATION_ICS_NAME + "/payment")
 @Tag(name = "财务缴费", description = "缴费管理接口")
 public class PaymentController extends BladeController {
@@ -121,7 +120,7 @@ public class PaymentController extends BladeController {
 	}
 
 	@GetMapping("/by-contract")
-	@PreAuth(menu = "finance")
+	@PreAuth(menu = "finance_bills_all_view")
 	@ApiOperationSupport(order = 4)
 	@Operation(summary = "合同账单", description = "传入contractId")
 	public R<List<ContractPayment>> byContract(@Parameter(description = "合同ID") @RequestParam Long contractId) {
@@ -129,7 +128,7 @@ public class PaymentController extends BladeController {
 	}
 
 	@GetMapping("/summary")
-	@PreAuth(menu = "finance")
+	@PreAuth(menu = "finance_bills_all")
 	@ApiOperationSupport(order = 5)
 	@Operation(summary = "账单汇总", description = "传入缴费查询条件")
 	public R<PaymentSummaryVO> summary(ContractPayment payment) {
@@ -170,7 +169,7 @@ public class PaymentController extends BladeController {
 	}
 
 	@PostMapping("/deadline")
-	@PreAuth(menu = "finance")
+	@PreAuth(menu = "finance_bills_all")
 	@ApiOperationSupport(order = 9)
 	@Operation(summary = "调整账单日期", description = "传入paymentId和payDeadline")
 	public R deadline(@Parameter(description = "账单ID") @RequestParam Long paymentId,
@@ -179,7 +178,7 @@ public class PaymentController extends BladeController {
 	}
 
 	@PostMapping("/attachment")
-	@PreAuth(menu = "finance")
+	@PreAuth(menu = "finance_bills_all")
 	@ApiOperationSupport(order = 10)
 	@Operation(summary = "更新账单附件", description = "传入paymentId和附件数据")
 	public R<ContractPayment> attachment(@Parameter(description = "账单ID") @RequestParam Long paymentId,
@@ -188,7 +187,7 @@ public class PaymentController extends BladeController {
 	}
 
 	@PostMapping("/remind")
-	@PreAuth(menu = "finance")
+	@PreAuth(menu = "finance_overdue_reminder")
 	@ApiOperationSupport(order = 11)
 	@Operation(summary = "催缴", description = "传入paymentId")
 	public R remind(@Parameter(description = "账单ID") @RequestParam Long paymentId,
@@ -281,6 +280,7 @@ public class PaymentController extends BladeController {
 	}
 
 	@GetMapping("/notice-placeholder")
+	@PreAuth(menu = "finance_payment_notice")
 	@ApiOperationSupport(order = 10)
 	@Operation(summary = "收款通知占位", description = "当前阶段暂不开发通知单主流程")
 	public R<PaymentNoticePlaceholderVO> noticePlaceholder() {

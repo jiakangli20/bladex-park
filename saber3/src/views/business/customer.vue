@@ -189,22 +189,19 @@
               </el-row>
               <el-row :gutter="18">
                 <el-col :span="12">
-                  <el-form-item label="统一信用代码">
-                    <el-input v-model="form.creditCode" maxlength="50" placeholder="请输入统一信用代码" />
+                  <el-form-item label="机构代码">
+                    <el-input v-model="form.creditCode" maxlength="50" placeholder="请输入机构代码" />
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
-                  <el-form-item label="成立日期">
-                    <el-date-picker
-                      v-model="form.establishDate"
-                      type="date"
-                      value-format="YYYY-MM-DD"
-                      placeholder="请选择成立日期"
-                      style="width: 100%"
-                    />
+                  <el-form-item label="法定代表人">
+                    <el-input v-model="form.legalRepresentative" maxlength="100" placeholder="请输入法定代表人" />
                   </el-form-item>
                 </el-col>
               </el-row>
+              <el-form-item label="注册地址">
+                <el-input v-model="form.registeredAddress" maxlength="500" placeholder="请输入注册地址" />
+              </el-form-item>
               <el-row :gutter="18">
                 <el-col :span="12">
                   <el-form-item label="注册资本(万元)">
@@ -212,15 +209,45 @@
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
-                  <el-form-item label="企业类型">
-                    <el-input v-model="form.enterpriseType" maxlength="100" placeholder="请输入企业类型" />
+                  <el-form-item label="公司类型">
+                    <el-input v-model="form.enterpriseType" maxlength="100" placeholder="请输入公司类型" />
                   </el-form-item>
                 </el-col>
               </el-row>
               <el-row :gutter="18">
                 <el-col :span="12">
-                  <el-form-item label="行业类型">
-                    <el-input v-model="form.industry" maxlength="50" placeholder="请输入行业类型">
+                  <el-form-item label="企业联系电话">
+                    <el-input v-model="form.enterprisePhone" maxlength="100" placeholder="请输入企业联系电话" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="成立时间">
+                    <el-date-picker
+                      v-model="form.establishDate"
+                      type="date"
+                      value-format="YYYY-MM-DD"
+                      placeholder="请选择成立时间"
+                      style="width: 100%"
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row :gutter="18">
+                <el-col :span="12">
+                  <el-form-item label="营业期限">
+                    <el-input v-model="form.businessTerm" maxlength="200" placeholder="请输入营业期限" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="经营状态">
+                    <el-input v-model="form.operatingStatus" maxlength="50" placeholder="请输入经营状态" />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row :gutter="18">
+                <el-col :span="12">
+                  <el-form-item label="行业分类">
+                    <el-input v-model="form.industry" maxlength="50" placeholder="请输入行业分类">
                       <template #append>
                         <el-button :loading="industryChecking" @click.stop="handleIndustryCheck">
                           检测准入
@@ -241,9 +268,6 @@
               />
               <el-form-item label="经营范围">
                 <el-input v-model="form.businessScope" type="textarea" :rows="3" maxlength="2000" />
-              </el-form-item>
-              <el-form-item label="注册地址">
-                <el-input v-model="form.registeredAddress" maxlength="500" />
               </el-form-item>
               <el-form-item label="股权结构">
                 <el-input v-model="form.equityStructure" type="textarea" :rows="3" maxlength="1000" />
@@ -459,11 +483,6 @@
               </el-row>
               <el-row :gutter="18">
                 <el-col :span="12">
-                  <el-form-item label="企业规模">
-                    <el-input v-model="form.scale" maxlength="20" />
-                  </el-form-item>
-                </el-col>
-                <el-col :span="12">
                   <el-form-item label="合作等级">
                     <el-select v-model="form.cooperationLevel" placeholder="请选择合作等级" style="width: 100%">
                       <el-option v-for="item in cooperationOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -507,13 +526,26 @@
 
           <el-tabs v-model="activeDetailTab" class="detail-tabs">
             <el-tab-pane label="企业概览" name="overview">
-              <el-descriptions title="基本信息" :column="2" border size="small">
+              <el-descriptions title="企业与工商信息" :column="2" border size="small">
                 <el-descriptions-item label="企业名称">{{ detailValue(current.enterpriseName) }}</el-descriptions-item>
-                <el-descriptions-item label="统一信用代码">{{ detailValue(current.creditCode) }}</el-descriptions-item>
-                <el-descriptions-item label="所属行业">{{ detailValue(current.industry) }}</el-descriptions-item>
-                <el-descriptions-item label="企业规模">{{ detailValue(current.scale) }}</el-descriptions-item>
+                <el-descriptions-item label="机构代码">{{ detailValue(current.creditCode) }}</el-descriptions-item>
+                <el-descriptions-item label="注册地址" :span="2">{{ detailValue(current.registeredAddress) }}</el-descriptions-item>
+                <el-descriptions-item label="法定代表人">{{ detailValue(current.legalRepresentative) }}</el-descriptions-item>
+                <el-descriptions-item label="注册资本">{{ formatMoney(current.registeredCapital) }}</el-descriptions-item>
+                <el-descriptions-item label="公司类型">{{ detailValue(current.enterpriseType) }}</el-descriptions-item>
+                <el-descriptions-item label="企业联系电话">{{ detailValue(current.enterprisePhone) }}</el-descriptions-item>
+                <el-descriptions-item label="成立时间">{{ detailValue(current.establishDate) }}</el-descriptions-item>
+                <el-descriptions-item label="营业期限">{{ detailValue(current.businessTerm) }}</el-descriptions-item>
+                <el-descriptions-item label="行业分类">{{ detailValue(current.industry) }}</el-descriptions-item>
+                <el-descriptions-item label="经营状态">{{ detailValue(current.operatingStatus) }}</el-descriptions-item>
+                <el-descriptions-item label="经营范围" :span="2">{{ detailValue(current.businessScope) }}</el-descriptions-item>
+              </el-descriptions>
+
+              <el-divider />
+
+              <el-descriptions title="客户联系信息" :column="2" border size="small">
                 <el-descriptions-item label="联系人">{{ detailValue(current.contactName) }}</el-descriptions-item>
-                <el-descriptions-item label="联系电话">{{ detailValue(current.contactPhone) }}</el-descriptions-item>
+                <el-descriptions-item label="联系人电话">{{ detailValue(current.contactPhone) }}</el-descriptions-item>
                 <el-descriptions-item label="联系邮箱">{{ detailValue(current.contactEmail) }}</el-descriptions-item>
                 <el-descriptions-item label="合作等级">
                   <el-tag v-if="current.cooperationLevel" :type="cooperationType(current.cooperationLevel)" effect="plain">
@@ -524,8 +556,6 @@
                 <el-descriptions-item label="企业地址" :span="2">
                   {{ detailValue(current.address || current.registeredAddress) }}
                 </el-descriptions-item>
-                <el-descriptions-item label="迁入地">{{ detailValue(current.migrationPlace) }}</el-descriptions-item>
-                <el-descriptions-item label="迁入原因">{{ detailValue(current.migrationReason) }}</el-descriptions-item>
                 <el-descriptions-item label="备注" :span="2">{{ detailValue(current.remark) }}</el-descriptions-item>
               </el-descriptions>
 
@@ -567,26 +597,6 @@
                   </div>
                 </el-col>
               </el-row>
-            </el-tab-pane>
-
-            <el-tab-pane label="工商信息" name="business">
-              <el-alert
-                title="工商信息接口预留"
-                description="此模块将对接企业工商信息接口，核验企业基本信息的真实性与有效性。接口开通后将自动展示。"
-                type="info"
-                show-icon
-                :closable="false"
-                class="detail-alert"
-              />
-              <el-descriptions title="工商信息（待对接）" :column="2" border size="small">
-                <el-descriptions-item label="成立时间">{{ detailValue(current.establishDate) }}</el-descriptions-item>
-                <el-descriptions-item label="注册资本">{{ formatMoney(current.registeredCapital) }}</el-descriptions-item>
-                <el-descriptions-item label="经营状态">-</el-descriptions-item>
-                <el-descriptions-item label="企业类型">{{ detailValue(current.enterpriseType) }}</el-descriptions-item>
-                <el-descriptions-item label="法定代表人">-</el-descriptions-item>
-                <el-descriptions-item label="注册地址">{{ detailValue(current.registeredAddress || current.address) }}</el-descriptions-item>
-                <el-descriptions-item label="经营范围" :span="2">{{ detailValue(current.businessScope) }}</el-descriptions-item>
-              </el-descriptions>
             </el-tab-pane>
 
             <el-tab-pane label="行业准入" name="industry">
@@ -884,10 +894,14 @@ const createDefaultForm = () => ({
   customerId: null,
   enterpriseName: '',
   creditCode: '',
+  legalRepresentative: '',
+  enterprisePhone: '',
   parkId: undefined,
   establishDate: '',
   registeredCapital: undefined,
   enterpriseType: '',
+  businessTerm: '',
+  operatingStatus: '',
   industry: '',
   businessScope: '',
   registeredAddress: '',
@@ -919,7 +933,6 @@ const createDefaultForm = () => ({
   settlementStatus: 0,
   status: '0',
   cooperationLevel: 1,
-  scale: '',
   remark: '',
   tagIds: [],
 });

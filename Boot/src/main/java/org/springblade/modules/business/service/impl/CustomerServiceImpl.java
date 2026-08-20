@@ -271,7 +271,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		}
 		try {
 			normalizeCustomer(customer);
-			validateCustomer(customer, isCreate ? null : customer.getCustomerId());
+			validateCustomer(customer, isCreate ? null : customer.getCustomerId(), false);
 			if (isCreate) {
 				customer.setCreateBy(currentUserName());
 				customer.setCreateTime(DateUtil.now());
@@ -327,7 +327,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		}
 		try {
 			normalizeCustomer(customer);
-			validateCustomer(customer, isCreate ? null : customer.getCustomerId());
+			validateCustomer(customer, isCreate ? null : customer.getCustomerId(), false);
 			if (isCreate) {
 				customer.setCreateBy(currentUserName());
 				customer.setCreateTime(DateUtil.now());
@@ -485,6 +485,10 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 	private void normalizeCustomer(Customer customer) {
 		customer.setEnterpriseName(trimToNull(customer.getEnterpriseName()));
 		customer.setCreditCode(trimToNull(customer.getCreditCode()));
+		customer.setLegalRepresentative(trimToNull(customer.getLegalRepresentative()));
+		customer.setEnterprisePhone(trimToNull(customer.getEnterprisePhone()));
+		customer.setBusinessTerm(trimToNull(customer.getBusinessTerm()));
+		customer.setOperatingStatus(trimToNull(customer.getOperatingStatus()));
 		customer.setContactName(trimToNull(customer.getContactName()));
 		customer.setContactPhone(trimToNull(customer.getContactPhone()));
 		customer.setContactEmail(trimToNull(customer.getContactEmail()));
@@ -521,6 +525,10 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 	}
 
 	private void validateCustomer(Customer customer, Long excludeCustomerId) {
+		validateCustomer(customer, excludeCustomerId, true);
+	}
+
+	private void validateCustomer(Customer customer, Long excludeCustomerId, boolean requireIdentityBack) {
 		if (StringUtil.isBlank(customer.getEnterpriseName())) {
 			throw new ServiceException("企业名称不能为空");
 		}
@@ -539,7 +547,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		if (StringUtil.isBlank(customer.getIdentityFrontUrl())) {
 			throw new ServiceException("身份证正面不能为空");
 		}
-		if (StringUtil.isBlank(customer.getIdentityBackUrl())) {
+		if (requireIdentityBack && StringUtil.isBlank(customer.getIdentityBackUrl())) {
 			throw new ServiceException("身份证反面不能为空");
 		}
 		Long existsId = baseMapper.selectCustomerIdByEnterpriseAndPark(customer.getEnterpriseName(), customer.getParkId(), excludeCustomerId);
@@ -630,9 +638,13 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		customer.setBusinessScope(firstNotBlank(project.getBusinessScope(), opportunity == null ? customer.getBusinessScope() : opportunity.getBusinessScope(), customer.getBusinessScope()));
 		customer.setRemark(firstNotBlank(project.getSummary(), project.getApprovalMatter(), opportunity == null ? customer.getRemark() : opportunity.getRemark(), customer.getRemark()));
 		if (opportunity != null) {
+			customer.setLegalRepresentative(firstNotBlank(opportunity.getLegalRepresentative(), customer.getLegalRepresentative()));
+			customer.setEnterprisePhone(firstNotBlank(opportunity.getEnterprisePhone(), customer.getEnterprisePhone()));
 			customer.setEstablishDate(firstNonNull(opportunity.getEstablishDate(), customer.getEstablishDate()));
 			customer.setRegisteredCapital(firstNonNull(opportunity.getRegisteredCapital(), customer.getRegisteredCapital()));
 			customer.setEnterpriseType(firstNotBlank(opportunity.getEnterpriseType(), customer.getEnterpriseType()));
+			customer.setBusinessTerm(firstNotBlank(opportunity.getBusinessTerm(), customer.getBusinessTerm()));
+			customer.setOperatingStatus(firstNotBlank(opportunity.getOperatingStatus(), customer.getOperatingStatus()));
 			customer.setIndustry(firstNotBlank(opportunity.getIndustryType(), customer.getIndustry()));
 			customer.setRegisteredAddress(firstNotBlank(opportunity.getRegisteredAddress(), customer.getRegisteredAddress()));
 			customer.setAddress(firstNotBlank(customer.getAddress(), opportunity.getRegisteredAddress()));
@@ -662,6 +674,8 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		customer.setParkId(Func.isNotEmpty(opportunity.getParkId()) ? opportunity.getParkId() : customer.getParkId());
 		customer.setEnterpriseName(firstNotBlank(opportunity.getEnterpriseName(), customer.getEnterpriseName()));
 		customer.setCreditCode(firstNotBlank(opportunity.getCreditCode(), customer.getCreditCode()));
+		customer.setLegalRepresentative(firstNotBlank(opportunity.getLegalRepresentative(), customer.getLegalRepresentative()));
+		customer.setEnterprisePhone(firstNotBlank(opportunity.getEnterprisePhone(), customer.getEnterprisePhone()));
 		customer.setContactName(firstNotBlank(opportunity.getContactName(), customer.getContactName(), opportunity.getEnterpriseName()));
 		customer.setContactPhone(firstNotBlank(opportunity.getContactPhone(), customer.getContactPhone()));
 		customer.setIntentArea(firstNonNull(opportunity.getIntentArea(), customer.getIntentArea()));
@@ -670,6 +684,8 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		customer.setEstablishDate(firstNonNull(opportunity.getEstablishDate(), customer.getEstablishDate()));
 		customer.setRegisteredCapital(firstNonNull(opportunity.getRegisteredCapital(), customer.getRegisteredCapital()));
 		customer.setEnterpriseType(firstNotBlank(opportunity.getEnterpriseType(), customer.getEnterpriseType()));
+		customer.setBusinessTerm(firstNotBlank(opportunity.getBusinessTerm(), customer.getBusinessTerm()));
+		customer.setOperatingStatus(firstNotBlank(opportunity.getOperatingStatus(), customer.getOperatingStatus()));
 		customer.setIndustry(firstNotBlank(opportunity.getIndustryType(), customer.getIndustry()));
 		customer.setRegisteredAddress(firstNotBlank(opportunity.getRegisteredAddress(), customer.getRegisteredAddress()));
 		customer.setAddress(firstNotBlank(customer.getAddress(), opportunity.getRegisteredAddress()));

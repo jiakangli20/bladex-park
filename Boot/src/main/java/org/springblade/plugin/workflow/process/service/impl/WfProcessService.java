@@ -98,9 +98,10 @@ public class WfProcessService implements IWfProcessService {
 		}
 		String userId = WfTaskUtil.getTaskUser();
 		variables.put(WfProcessConstant.TASK_VARIABLE_APPLY_USER, userId);
+		String businessKey = Func.toStr(variables.remove("businessKey"), definition.getKey());
 		// 启动流程
 		identityService.setAuthenticatedUserId(userId);
-		ProcessInstance processInstance = runtimeService.startProcessInstanceById(processDefId, definition.getKey(), variables);
+		ProcessInstance processInstance = runtimeService.startProcessInstanceById(processDefId, businessKey, variables);
 		identityService.setAuthenticatedUserId(null);
 		return handleProcessInstance(processInstance, variables);
 	}

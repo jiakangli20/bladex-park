@@ -66,6 +66,12 @@ public class BusinessOpportunity implements Serializable {
 	@Schema(description = "统一社会信用代码")
 	private String creditCode;
 
+	@Schema(description = "法定代表人")
+	private String legalRepresentative;
+
+	@Schema(description = "企业联系电话")
+	private String enterprisePhone;
+
 	@DateTimeFormat(pattern = "yyyy-MM-dd")
 	@JsonFormat(pattern = "yyyy-MM-dd")
 	@Schema(description = "成立日期")
@@ -76,6 +82,12 @@ public class BusinessOpportunity implements Serializable {
 
 	@Schema(description = "企业类型")
 	private String enterpriseType;
+
+	@Schema(description = "营业期限")
+	private String businessTerm;
+
+	@Schema(description = "经营状态")
+	private String operatingStatus;
 
 	@Schema(description = "行业类型")
 	private String industryType;
@@ -118,6 +130,15 @@ public class BusinessOpportunity implements Serializable {
 
 	@Schema(description = "意向面积")
 	private BigDecimal intentArea;
+
+	@Schema(description = "意向租赁楼层")
+	private String leaseFloor;
+
+	@Schema(description = "免租期")
+	private String rentFreePeriod;
+
+	@Schema(description = "租赁单价")
+	private BigDecimal unitPrice;
 
 	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
 	@JsonFormat(pattern = DateUtil.PATTERN_DATE)

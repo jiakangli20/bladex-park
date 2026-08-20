@@ -196,7 +196,7 @@
 <script>
 import { mapGetters } from 'vuex';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { getList as getUserList } from '@/api/system/user';
+import { getUserOptions } from '@/api/system/user';
 import WorkorderPanel from './components/workorder-panel.vue';
 import AssigneeSelect from './components/assignee-select.vue';
 import {
@@ -517,9 +517,9 @@ export default {
       this.loadProcessPage();
     },
     loadUserOptions() {
-      getUserList(1, 500, { status: 1 }).then(res => {
-        const data = this.responseData(res) || {};
-        this.userOptions = Array.isArray(data.records) ? data.records : [];
+      getUserOptions({ status: 1 }).then(res => {
+        const data = this.responseData(res);
+        this.userOptions = Array.isArray(data) ? data : [];
       }).catch(() => {
         this.userOptions = [];
       });

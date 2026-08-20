@@ -12,9 +12,13 @@
 		<result property="opportunityNo" column="opportunity_no"/>
 		<result property="enterpriseName" column="enterprise_name"/>
 		<result property="creditCode" column="credit_code"/>
+		<result property="legalRepresentative" column="legal_representative"/>
+		<result property="enterprisePhone" column="enterprise_phone"/>
 		<result property="establishDate" column="establish_date"/>
 		<result property="registeredCapital" column="registered_capital"/>
 		<result property="enterpriseType" column="enterprise_type"/>
+		<result property="businessTerm" column="business_term"/>
+		<result property="operatingStatus" column="operating_status"/>
 		<result property="industryType" column="industry_type"/>
 		<result property="enterpriseScale" column="enterprise_scale"/>
 		<result property="businessScope" column="business_scope"/>
@@ -29,6 +33,9 @@
 		<result property="industryPenaltyFlag" column="industry_penalty_flag"/>
 		<result property="carrierTypes" column="carrier_types"/>
 		<result property="intentArea" column="intent_area"/>
+		<result property="leaseFloor" column="lease_floor"/>
+		<result property="rentFreePeriod" column="rent_free_period"/>
+		<result property="unitPrice" column="unit_price"/>
 		<result property="expectedEntryDate" column="expected_entry_date"/>
 		<result property="usagePurpose" column="usage_purpose"/>
 		<result property="leaseTermYears" column="lease_term_years"/>
@@ -98,9 +105,13 @@
 			   opportunity_no,
 			   enterprise_name,
 			   credit_code,
+			   legal_representative,
+			   enterprise_phone,
 			   establish_date,
 			   registered_capital,
 			   enterprise_type,
+			   business_term,
+			   operating_status,
 			   industry_type,
 			   enterprise_scale,
 			   business_scope,
@@ -115,6 +126,9 @@
 			   industry_penalty_flag,
 			   carrier_types,
 			   intent_area,
+			   lease_floor,
+			   rent_free_period,
+			   unit_price,
 			   expected_entry_date,
 			   usage_purpose,
 			   lease_term_years,
@@ -254,19 +268,21 @@
 
 	<insert id="insertBusinessOpportunity" parameterType="org.springblade.modules.business.pojo.entity.BusinessOpportunity" useGeneratedKeys="true" keyProperty="opportunityId">
 		insert into biz_business_opportunity (
-			park_id, source_room_id, customer_id, opportunity_no, enterprise_name, credit_code, establish_date, registered_capital,
-			enterprise_type, industry_type, enterprise_scale, business_scope, registered_address, equity_structure, organization_structure,
+			park_id, source_room_id, customer_id, opportunity_no, enterprise_name, credit_code, legal_representative, enterprise_phone,
+			establish_date, registered_capital, enterprise_type, business_term, operating_status, industry_type, enterprise_scale,
+			business_scope, registered_address, equity_structure, organization_structure,
 			main_business, last_year_revenue, major_clients, major_illegal_flag, dishonest_flag, industry_penalty_flag,
-			carrier_types, intent_area, expected_entry_date, usage_purpose, lease_term_years, lease_term_label, decoration_requirement,
+			carrier_types, intent_area, lease_floor, rent_free_period, unit_price, expected_entry_date, usage_purpose, lease_term_years, lease_term_label, decoration_requirement,
 			supporting_needs, contact_name, contact_phone, contact_email, contact_address, id_card_files, contact_position, channel,
 			third_party_channel_name, follow_user, follow_user_id, opportunity_status, remark, approval_project_id, submitted_audit_flag,
 			tenant_entry_process_ins_id, tenant_entry_status, tenant_entry_current_node, tenant_entry_approval_pdf_url, tenant_entry_approval_time,
 			last_follow_time, next_follow_time, del_flag, create_by, create_time, update_by, update_time
 		) values (
-			#{parkId}, #{sourceRoomId}, #{customerId}, #{opportunityNo}, #{enterpriseName}, #{creditCode}, #{establishDate}, #{registeredCapital},
-			#{enterpriseType}, #{industryType}, #{enterpriseScale}, #{businessScope}, #{registeredAddress}, #{equityStructure}, #{organizationStructure},
+			#{parkId}, #{sourceRoomId}, #{customerId}, #{opportunityNo}, #{enterpriseName}, #{creditCode}, #{legalRepresentative}, #{enterprisePhone},
+			#{establishDate}, #{registeredCapital}, #{enterpriseType}, #{businessTerm}, #{operatingStatus}, #{industryType}, #{enterpriseScale},
+			#{businessScope}, #{registeredAddress}, #{equityStructure}, #{organizationStructure},
 			#{mainBusiness}, #{lastYearRevenue}, #{majorClients}, #{majorIllegalFlag}, #{dishonestFlag}, #{industryPenaltyFlag},
-			#{carrierTypes}, #{intentArea}, #{expectedEntryDate}, #{usagePurpose}, #{leaseTermYears}, #{leaseTermLabel}, #{decorationRequirement},
+			#{carrierTypes}, #{intentArea}, #{leaseFloor}, #{rentFreePeriod}, #{unitPrice}, #{expectedEntryDate}, #{usagePurpose}, #{leaseTermYears}, #{leaseTermLabel}, #{decorationRequirement},
 			#{supportingNeeds}, #{contactName}, #{contactPhone}, #{contactEmail}, #{contactAddress}, #{idCardFiles}, #{contactPosition}, #{channel},
 			#{thirdPartyChannelName}, #{followUser}, #{followUserId}, #{opportunityStatus}, #{remark}, #{approvalProjectId}, #{submittedAuditFlag},
 			#{tenantEntryProcessInsId}, #{tenantEntryStatus}, #{tenantEntryCurrentNode}, #{tenantEntryApprovalPdfUrl}, #{tenantEntryApprovalTime},
@@ -282,9 +298,13 @@
 			<if test="customerId != null">customer_id = #{customerId},</if>
 			<if test="enterpriseName != null">enterprise_name = #{enterpriseName},</if>
 			<if test="creditCode != null">credit_code = #{creditCode},</if>
+			<if test="legalRepresentative != null">legal_representative = #{legalRepresentative},</if>
+			<if test="enterprisePhone != null">enterprise_phone = #{enterprisePhone},</if>
 			<if test="establishDate != null">establish_date = #{establishDate},</if>
 			<if test="registeredCapital != null">registered_capital = #{registeredCapital},</if>
 			<if test="enterpriseType != null">enterprise_type = #{enterpriseType},</if>
+			<if test="businessTerm != null">business_term = #{businessTerm},</if>
+			<if test="operatingStatus != null">operating_status = #{operatingStatus},</if>
 			<if test="industryType != null">industry_type = #{industryType},</if>
 			<if test="enterpriseScale != null">enterprise_scale = #{enterpriseScale},</if>
 			<if test="businessScope != null">business_scope = #{businessScope},</if>
@@ -299,6 +319,9 @@
 			<if test="industryPenaltyFlag != null">industry_penalty_flag = #{industryPenaltyFlag},</if>
 			<if test="carrierTypes != null">carrier_types = #{carrierTypes},</if>
 			<if test="intentArea != null">intent_area = #{intentArea},</if>
+			<if test="leaseFloor != null">lease_floor = #{leaseFloor},</if>
+			<if test="rentFreePeriod != null">rent_free_period = #{rentFreePeriod},</if>
+			<if test="unitPrice != null">unit_price = #{unitPrice},</if>
 			<if test="expectedEntryDate != null">expected_entry_date = #{expectedEntryDate},</if>
 			<if test="usagePurpose != null">usage_purpose = #{usagePurpose},</if>
 			<if test="leaseTermYears != null">lease_term_years = #{leaseTermYears},</if>
@@ -481,12 +504,12 @@
 		insert into biz_approval_project (
 			park_id, customer_id, flow_id, business_type, business_id, project_name, enterprise_name, credit_code,
 			applicant, applicant_time, shareholder_info, business_scope, responsible_person, contact_phone,
-			lease_floor, lease_area, rent_price, summary, approval_matter, process_status, create_by, create_time
+			lease_floor, lease_area, rent_price, rent_free_period, summary, approval_matter, process_status, create_by, create_time
 		) values (
 			#{opportunity.parkId}, #{opportunity.customerId}, #{flowId}, 'tenant_entry', #{opportunity.opportunityId},
 			concat(#{opportunity.enterpriseName}, ' 入驻审核'), #{opportunity.enterpriseName}, #{opportunity.creditCode},
 			#{loginName}, now(), coalesce(#{opportunity.equityStructure}, #{opportunity.enterpriseType}), #{opportunity.businessScope},
-			#{opportunity.contactName}, #{opportunity.contactPhone}, #{opportunity.carrierTypes}, #{opportunity.intentArea}, null,
+			#{opportunity.contactName}, #{opportunity.contactPhone}, #{opportunity.leaseFloor}, #{opportunity.intentArea}, #{opportunity.unitPrice}, #{opportunity.rentFreePeriod},
 			coalesce(#{opportunity.remark}, #{opportunity.businessScope}),
 			coalesce(#{opportunity.remark}, concat(#{opportunity.enterpriseName}, ' 入驻审批申请')),
 			'0', #{loginName}, now()

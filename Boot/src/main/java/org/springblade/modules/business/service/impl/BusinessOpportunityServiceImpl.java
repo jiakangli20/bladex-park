@@ -653,7 +653,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		);
 		String department = firstNotBlank(variableText(variables, "handlerDept"), variableText(variables, "applicantDept"));
 		String legalContact = joinNonBlank("，",
-			firstNotBlank(variableText(variables, "legalRepresentative"), variableText(variables, "principalName"), opportunity.getContactName()),
+			firstNotBlank(variableText(variables, "legalRepresentative"), opportunity.getLegalRepresentative(), variableText(variables, "principalName"), opportunity.getContactName()),
 			firstNotBlank(variableText(variables, "legalPhone"), variableText(variables, "principalPhone"), opportunity.getContactPhone())
 		);
 		String financeContact = joinNonBlank("，",
@@ -661,8 +661,9 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 			firstNotBlank(variableText(variables, "financeContactPhone"), variableText(variables, "financialContactPhone"))
 		);
 		String intentFloor = firstNotBlank(variableText(variables, "intentFloor"), variableText(variables, "leaseFloorArea"), formatArea(opportunity));
-		String rent = firstNotBlank(variableText(variables, "rent"), variableText(variables, "unitPrice"));
-		String description = firstNotBlank(variableText(variables, "situationDescription"), variableText(variables, "approvalMatter"), opportunity.getRemark(), opportunity.getMainBusiness());
+		String rent = firstNotBlank(variableText(variables, "rent"), variableText(variables, "unitPrice"), formatNumber(opportunity.getUnitPrice()));
+		String description = firstNotBlank(variableText(variables, "situationDescription"), opportunity.getRemark(), opportunity.getMainBusiness());
+		String approvalMatter = variableText(variables, "approvalMatter");
 		fields.put("申请人", value(applicant));
 		fields.put("部门", value(department));
 		fields.put("申请日期", value(applyTime));
@@ -687,12 +688,12 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		fields.put("意向楼层", value(intentFloor));
 		fields.put("租金", value(rent));
 		fields.put("租赁楼层、面积", value(firstNotBlank(variableText(variables, "leaseFloorArea"), formatArea(opportunity))));
-		fields.put("免租期", value(variableText(variables, "rentFreePeriod")));
-		fields.put("单价（元）", value(variableText(variables, "unitPrice")));
+		fields.put("免租期", value(firstNotBlank(variableText(variables, "rentFreePeriod"), opportunity.getRentFreePeriod())));
+		fields.put("单价（元）", value(firstNotBlank(variableText(variables, "unitPrice"), formatNumber(opportunity.getUnitPrice()))));
 		fields.put("保证金（元）", value(variableText(variables, "deposit")));
 		fields.put("合同有效期", value(firstNotBlank(variableText(variables, "contractPeriod"), opportunity.getLeaseTermLabel())));
 		fields.put("经办人", value(applicant));
-		fields.put("审批事项", value(description));
+		fields.put("审批事项", value(approvalMatter));
 		return fields;
 	}
 
@@ -770,6 +771,10 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	}
 
 	private void normalizeOpportunity(BusinessOpportunity opportunity) {
+		opportunity.setLegalRepresentative(trimToNull(opportunity.getLegalRepresentative()));
+		opportunity.setEnterprisePhone(trimToNull(opportunity.getEnterprisePhone()));
+		opportunity.setBusinessTerm(trimToNull(opportunity.getBusinessTerm()));
+		opportunity.setOperatingStatus(trimToNull(opportunity.getOperatingStatus()));
 		if (opportunity.getCarrierTypeArray() != null && opportunity.getCarrierTypeArray().length > 0) {
 			opportunity.setCarrierTypes(String.join(",", opportunity.getCarrierTypeArray()));
 		}
@@ -960,6 +965,10 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		return null;
 	}
 
+	private String trimToNull(String value) {
+		return StringUtil.isBlank(value) ? null : value.trim();
+	}
+
 	private String variableText(Map<String, Object> variables, String key) {
 		if (variables == null || StringUtil.isBlank(key) || variables.get(key) == null) {
 			return null;
@@ -993,9 +1002,9 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		}
 		String area = formatNumber(opportunity.getIntentArea());
 		if (StringUtil.isBlank(area)) {
-			return opportunity.getCarrierTypes();
+			return opportunity.getLeaseFloor();
 		}
-		return firstNotBlank(opportunity.getCarrierTypes(), "") + (StringUtil.isBlank(opportunity.getCarrierTypes()) ? "" : "，") + area + "㎡";
+		return firstNotBlank(opportunity.getLeaseFloor(), "") + (StringUtil.isBlank(opportunity.getLeaseFloor()) ? "" : "，") + area + "㎡";
 	}
 
 	private String formatNumber(BigDecimal value) {

@@ -323,14 +323,26 @@
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="统一信用代码" prop="creditCode">
-                  <el-input v-model="form.creditCode" placeholder="请输入统一信用代码" />
+                <el-form-item label="机构代码" prop="creditCode">
+                  <el-input v-model="form.creditCode" placeholder="请输入机构代码" />
                 </el-form-item>
               </el-col>
             </el-row>
             <el-row :gutter="18">
               <el-col :span="12">
-                <el-form-item label="成立日期">
+                <el-form-item label="法定代表人">
+                  <el-input v-model="form.legalRepresentative" placeholder="请输入法定代表人" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="企业联系电话">
+                  <el-input v-model="form.enterprisePhone" placeholder="请输入企业联系电话" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="18">
+              <el-col :span="12">
+                <el-form-item label="成立时间">
                   <el-date-picker
                     v-model="form.establishDate"
                     type="date"
@@ -341,18 +353,21 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="注册资本">
-                  <el-input-number v-model="form.registeredCapital" :min="0" style="width: 100%" />
+                  <div class="number-with-unit">
+                    <el-input-number v-model="form.registeredCapital" :min="0" />
+                    <span>万元</span>
+                  </div>
                 </el-form-item>
               </el-col>
             </el-row>
             <el-row :gutter="18">
               <el-col :span="12">
-                <el-form-item label="企业类型">
+                <el-form-item label="公司类型">
                   <el-input v-model="form.enterpriseType" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="行业类型">
+                <el-form-item label="行业分类">
                   <el-input v-model="form.industryType" placeholder="请输入行业类型">
 					<template v-if="permissionList.industryRuleBtn" #append>
                       <el-button :loading="industryChecking" @click.stop="handleIndustryCheck">
@@ -360,6 +375,18 @@
                       </el-button>
                     </template>
                   </el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="18">
+              <el-col :span="12">
+                <el-form-item label="营业期限">
+                  <el-input v-model="form.businessTerm" placeholder="请输入营业期限" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="经营状态">
+                  <el-input v-model="form.operatingStatus" placeholder="请输入经营状态" />
                 </el-form-item>
               </el-col>
             </el-row>
@@ -374,6 +401,9 @@
             />
             <el-form-item label="经营范围">
               <el-input v-model="form.businessScope" type="textarea" :rows="3" />
+            </el-form-item>
+            <el-form-item label="股东信息">
+              <el-input v-model="form.equityStructure" type="textarea" :rows="2" placeholder="请输入股东信息" />
             </el-form-item>
             <el-form-item label="注册地址">
               <el-input v-model="form.registeredAddress" />
@@ -448,8 +478,44 @@
                 </el-form-item>
               </el-col>
               <el-col :span="12">
+                <el-form-item label="意向楼层">
+                  <el-input v-model="form.leaseFloor" placeholder="请输入意向租赁楼层" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="18">
+              <el-col :span="12">
                 <el-form-item label="意向面积" prop="intentArea">
-                  <el-input-number v-model="form.intentArea" :min="0" style="width: 100%" />
+                  <div class="number-with-unit">
+                    <el-input-number v-model="form.intentArea" :min="0" />
+                    <span>㎡</span>
+                  </div>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="免租期">
+                  <el-input v-model="form.rentFreePeriod" placeholder="例如：2个月" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="18">
+              <el-col :span="12">
+                <el-form-item label="单价">
+                  <div class="number-with-unit">
+                    <el-input-number v-model="form.unitPrice" :min="0" :precision="2" />
+                    <span>元</span>
+                  </div>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="预计入驻日期">
+                  <el-date-picker
+                    v-model="form.expectedEntryDate"
+                    type="date"
+                    value-format="YYYY-MM-DD"
+                    placeholder="请选择预计入驻日期"
+                    style="width: 100%"
+                  />
                 </el-form-item>
               </el-col>
             </el-row>
@@ -607,14 +673,26 @@
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="统一信用代码" prop="creditCode">
-                  <el-input v-model="form.creditCode" placeholder="请输入统一信用代码" />
+                <el-form-item label="机构代码" prop="creditCode">
+                  <el-input v-model="form.creditCode" placeholder="请输入机构代码" />
                 </el-form-item>
               </el-col>
             </el-row>
             <el-row :gutter="18">
               <el-col :span="12">
-                <el-form-item label="成立日期">
+                <el-form-item label="法定代表人">
+                  <el-input v-model="form.legalRepresentative" placeholder="请输入法定代表人" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="企业联系电话">
+                  <el-input v-model="form.enterprisePhone" placeholder="请输入企业联系电话" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="18">
+              <el-col :span="12">
+                <el-form-item label="成立时间">
                   <el-date-picker
                     v-model="form.establishDate"
                     type="date"
@@ -625,18 +703,21 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="注册资本">
-                  <el-input-number v-model="form.registeredCapital" :min="0" style="width: 100%" />
+                  <div class="number-with-unit">
+                    <el-input-number v-model="form.registeredCapital" :min="0" />
+                    <span>万元</span>
+                  </div>
                 </el-form-item>
               </el-col>
             </el-row>
             <el-row :gutter="18">
               <el-col :span="12">
-                <el-form-item label="企业类型">
+                <el-form-item label="公司类型">
                   <el-input v-model="form.enterpriseType" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="行业类型">
+                <el-form-item label="行业分类">
                   <el-input v-model="form.industryType" placeholder="请输入行业类型">
                     <template #append>
                       <el-button :loading="industryChecking" @click.stop="handleIndustryCheck">
@@ -644,6 +725,18 @@
                       </el-button>
                     </template>
                   </el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="18">
+              <el-col :span="12">
+                <el-form-item label="营业期限">
+                  <el-input v-model="form.businessTerm" placeholder="请输入营业期限" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="经营状态">
+                  <el-input v-model="form.operatingStatus" placeholder="请输入经营状态" />
                 </el-form-item>
               </el-col>
             </el-row>
@@ -658,6 +751,9 @@
             />
             <el-form-item label="经营范围">
               <el-input v-model="form.businessScope" type="textarea" :rows="3" />
+            </el-form-item>
+            <el-form-item label="股东信息">
+              <el-input v-model="form.equityStructure" type="textarea" :rows="2" placeholder="请输入股东信息" />
             </el-form-item>
             <el-form-item label="注册地址">
               <el-input v-model="form.registeredAddress" />
@@ -732,8 +828,44 @@
                 </el-form-item>
               </el-col>
               <el-col :span="12">
+                <el-form-item label="意向楼层">
+                  <el-input v-model="form.leaseFloor" placeholder="请输入意向租赁楼层" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="18">
+              <el-col :span="12">
                 <el-form-item label="意向面积" prop="intentArea">
-                  <el-input-number v-model="form.intentArea" :min="0" style="width: 100%" />
+                  <div class="number-with-unit">
+                    <el-input-number v-model="form.intentArea" :min="0" />
+                    <span>㎡</span>
+                  </div>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="免租期">
+                  <el-input v-model="form.rentFreePeriod" placeholder="例如：2个月" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="18">
+              <el-col :span="12">
+                <el-form-item label="单价">
+                  <div class="number-with-unit">
+                    <el-input-number v-model="form.unitPrice" :min="0" :precision="2" />
+                    <span>元</span>
+                  </div>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="预计入驻日期">
+                  <el-date-picker
+                    v-model="form.expectedEntryDate"
+                    type="date"
+                    value-format="YYYY-MM-DD"
+                    placeholder="请选择预计入驻日期"
+                    style="width: 100%"
+                  />
                 </el-form-item>
               </el-col>
             </el-row>
@@ -901,22 +1033,27 @@
 
           <el-tabs v-model="businessDetailTab" class="detail-tabs">
             <el-tab-pane label="企业概览" name="overview">
-              <el-descriptions title="基本信息" :column="2" border size="small">
+              <el-descriptions title="企业与工商信息" :column="2" border size="small">
                 <el-descriptions-item label="企业名称">{{ detailValue(businessDetail.enterpriseName) }}</el-descriptions-item>
-                <el-descriptions-item label="统一信用代码">{{ detailValue(businessDetail.creditCode) }}</el-descriptions-item>
-                <el-descriptions-item label="成立日期">{{ detailValue(businessDetail.establishDate) }}</el-descriptions-item>
-                <el-descriptions-item label="注册资本">{{ detailValue(businessDetail.registeredCapital) }}</el-descriptions-item>
-                <el-descriptions-item label="企业类型">{{ detailValue(businessDetail.enterpriseType) }}</el-descriptions-item>
-                <el-descriptions-item label="行业类型">{{ detailValue(businessDetail.industryType) }}</el-descriptions-item>
+                <el-descriptions-item label="机构代码">{{ detailValue(businessDetail.creditCode) }}</el-descriptions-item>
                 <el-descriptions-item label="注册地址" :span="2">{{ detailValue(businessDetail.registeredAddress) }}</el-descriptions-item>
+                <el-descriptions-item label="法定代表人">{{ detailValue(businessDetail.legalRepresentative) }}</el-descriptions-item>
+                <el-descriptions-item label="注册资本">{{ businessDetail.registeredCapital || businessDetail.registeredCapital === 0 ? `${businessDetail.registeredCapital} 万元` : '-' }}</el-descriptions-item>
+                <el-descriptions-item label="公司类型">{{ detailValue(businessDetail.enterpriseType) }}</el-descriptions-item>
+                <el-descriptions-item label="企业联系电话">{{ detailValue(businessDetail.enterprisePhone) }}</el-descriptions-item>
+                <el-descriptions-item label="成立时间">{{ detailValue(businessDetail.establishDate) }}</el-descriptions-item>
+                <el-descriptions-item label="营业期限">{{ detailValue(businessDetail.businessTerm) }}</el-descriptions-item>
+                <el-descriptions-item label="行业分类">{{ detailValue(businessDetail.industryType) }}</el-descriptions-item>
+                <el-descriptions-item label="经营状态">{{ detailValue(businessDetail.operatingStatus) }}</el-descriptions-item>
                 <el-descriptions-item label="经营范围" :span="2">{{ detailValue(businessDetail.businessScope) }}</el-descriptions-item>
+                <el-descriptions-item label="股东信息" :span="2">{{ detailValue(businessDetail.equityStructure) }}</el-descriptions-item>
               </el-descriptions>
 
               <el-divider />
 
               <el-descriptions title="联系人与招商信息" :column="2" border size="small">
                 <el-descriptions-item label="联系人">{{ detailValue(businessDetail.contactName) }}</el-descriptions-item>
-                <el-descriptions-item label="联系电话">{{ detailValue(businessDetail.contactPhone) }}</el-descriptions-item>
+                <el-descriptions-item label="联系人电话">{{ detailValue(businessDetail.contactPhone) }}</el-descriptions-item>
                 <el-descriptions-item label="联系邮箱">{{ detailValue(businessDetail.contactEmail) }}</el-descriptions-item>
                 <el-descriptions-item label="职务">{{ detailValue(businessDetail.contactPosition) }}</el-descriptions-item>
                 <el-descriptions-item label="招商渠道">{{ detailValue(businessDetail.channel) }}</el-descriptions-item>
@@ -929,7 +1066,10 @@
               <el-descriptions title="入驻需求" :column="2" border size="small">
                 <el-descriptions-item label="所属园区">{{ parkName(businessDetail.parkId) }}</el-descriptions-item>
                 <el-descriptions-item label="意向载体">{{ formatCarrierTypes(businessDetail.carrierTypes) }}</el-descriptions-item>
+                <el-descriptions-item label="意向楼层">{{ detailValue(businessDetail.leaseFloor) }}</el-descriptions-item>
                 <el-descriptions-item label="意向面积">{{ businessDetail.intentArea ? `${businessDetail.intentArea} ㎡` : '-' }}</el-descriptions-item>
+                <el-descriptions-item label="免租期">{{ detailValue(businessDetail.rentFreePeriod) }}</el-descriptions-item>
+                <el-descriptions-item label="单价">{{ businessDetail.unitPrice || businessDetail.unitPrice === 0 ? `${businessDetail.unitPrice} 元` : '-' }}</el-descriptions-item>
                 <el-descriptions-item label="租赁期限">{{ businessDetail.leaseTermLabel || (businessDetail.leaseTermYears ? `${businessDetail.leaseTermYears} 年` : '-') }}</el-descriptions-item>
                 <el-descriptions-item label="预计入驻日期">{{ detailValue(businessDetail.expectedEntryDate) }}</el-descriptions-item>
                 <el-descriptions-item label="使用用途">{{ detailValue(businessDetail.usagePurpose) }}</el-descriptions-item>
@@ -1049,12 +1189,11 @@ import {
 } from '@/api/business/opportunity';
 import { checkIndustryRule } from '@/api/business/customer';
 import { getList as getParkList } from '@/api/park/park';
-import { getList as getUserList } from '@/api/system/user';
+import { getUserOptions } from '@/api/system/user';
 import CustomerTagSelector from './modules/customer-tag-selector.vue';
 import { mapGetters } from 'vuex';
 import { getToken } from '@/utils/auth';
 import { Base64 } from 'js-base64';
-import Layout from '@/page/index/index.vue';
 import { getList as getDeploymentList } from '@/views/plugin/workflow/api/design/deployment';
 import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
 import { downloadFile } from '@/utils/util';
@@ -1062,6 +1201,10 @@ import { createNoticePreviewState, resolveDownloadFilename } from '@/utils/contr
 
 const createDefaultForm = () => ({
   parkId: undefined,
+  legalRepresentative: '',
+  enterprisePhone: '',
+  businessTerm: '',
+  operatingStatus: '',
   opportunityStatus: 'INITIAL',
   followUserId: '',
   followUser: '',
@@ -1072,6 +1215,11 @@ const createDefaultForm = () => ({
   dishonestFlag: '0',
   industryPenaltyFlag: '0',
   carrierTypeArray: [],
+  equityStructure: '',
+  leaseFloor: '',
+  rentFreePeriod: '',
+  unitPrice: undefined,
+  expectedEntryDate: '',
   tagIds: [],
 });
 
@@ -1274,9 +1422,9 @@ export default {
       return park ? park.name : '-';
     },
     loadUserOptions() {
-      getUserList(1, 500, { status: 1 }).then(res => {
-        const data = this.responseData(res) || {};
-        this.userOptions = Array.isArray(data.records) ? data.records : [];
+      getUserOptions({ status: 1 }).then(res => {
+        const data = this.responseData(res);
+        this.userOptions = Array.isArray(data) ? data : [];
       }).catch(() => {
         this.userOptions = [];
       });
@@ -1514,39 +1662,72 @@ export default {
     processOptionLabel(item = {}) {
       return `${item.name || item.key}${item.version ? ` v${item.version}` : ''}（${item.key}，${this.isProcessActive(item) ? '已启用' : '已挂起'}）`;
     },
-    startTenantEntry() {
+    async startTenantEntry() {
       const selected = this.processOptions.find(item => item.key === this.tenantEntryStartForm.processDefKey);
       if (!selected || !this.isProcessActive(selected)) {
         this.$message.warning('请选择已启用的入驻审批流程');
         return;
       }
-      const payload = {
-        processDefKey: selected.key,
-        params: {
-          processDefKey: selected.key,
-          businessType: 'tenant_entry',
-          opportunityId: this.tenantEntryTarget.opportunityId,
-        },
-      };
-      this.tenantEntryStartVisible = false;
-      this.businessDetailVisible = false;
-      this.pushExternal('start', payload);
-    },
-    pushExternal(type, payload) {
-      const encodedParam = encodeURIComponent(Base64.encode(JSON.stringify(payload)));
-      const routeName = type === 'start' ? '发起流程TenantEntry' : '流程详情TenantEntry';
-      if (!this.$router.hasRoute(routeName)) {
-        this.$router.addRoute({
-          path: '/plugin/workflow/pages/process/external',
-          component: Layout,
-          children: [{
-            path: `TenantEntry/${type}`,
-            name: routeName,
-            component: () => import(`@/views/plugin/workflow/pages/external/TenantEntry/${type}.vue`),
-          }],
-        });
+      if (selected.formKey && selected.formKey.startsWith('wf_ex_')) {
+        this.$message.warning('当前流程仍配置为外置表单，请在流程设计器中绑定入驻申请内置表单后重新发布');
+        return;
       }
-      this.$router.push(`/plugin/workflow/pages/process/external/TenantEntry/${type}?p=${encodedParam}`);
+      this.processLoading = true;
+      try {
+        const res = await getOpportunityDetail(this.tenantEntryTarget.opportunityId);
+        const detail = (res.data && res.data.data) || {};
+        const params = this.buildTenantEntryParams(detail);
+        this.tenantEntryStartVisible = false;
+        this.businessDetailVisible = false;
+        this.pushProcessStart({
+          processId: selected.id,
+          processDefKey: selected.key,
+          params: {
+            processDefKey: selected.key,
+            businessType: 'tenant_entry',
+            opportunityId: this.tenantEntryTarget.opportunityId,
+            businessKey: String(this.tenantEntryTarget.opportunityId),
+            ...params,
+          },
+        });
+      } finally {
+        this.processLoading = false;
+      }
+    },
+    buildTenantEntryParams(detail = {}) {
+      const leaseFloorArea = this.formatLeaseFloorArea(detail.leaseFloor, detail.intentArea);
+      return {
+        enterpriseName: detail.enterpriseName,
+        equityStructure: detail.equityStructure,
+        shareholderInfo: detail.equityStructure,
+        businessScope: detail.businessScope,
+        contactName: detail.contactName,
+        principalName: detail.contactName,
+        contactPhone: detail.contactPhone,
+        leaseFloor: detail.leaseFloor,
+        intentArea: detail.intentArea,
+        leaseFloorArea,
+        rentFreePeriod: detail.rentFreePeriod,
+        unitPrice: detail.unitPrice,
+        'a178574349923130256': detail.enterpriseName,
+        'a178212053151833802': detail.equityStructure,
+        'a178220726558020214': detail.businessScope,
+        'a178228044385118452': detail.contactName,
+        'a178228045445874686': detail.contactPhone,
+        'a178228047043429582': leaseFloorArea,
+        'a178228047250051969': detail.rentFreePeriod,
+        'a17857436371663478': detail.unitPrice,
+      };
+    },
+    formatLeaseFloorArea(leaseFloor, intentArea) {
+      const values = [];
+      if (leaseFloor) values.push(leaseFloor);
+      if (intentArea || intentArea === 0) values.push(`${intentArea} ㎡`);
+      return values.join(' / ');
+    },
+    pushProcessStart(payload) {
+      const encodedParam = encodeURIComponent(Base64.encode(JSON.stringify(payload)));
+      this.$router.push(`/plugin/workflow/pages/process/form/start/${encodedParam}`);
     },
     openApprovalForm(row) {
       const processInsId = row.tenantEntryProcessInsId || row.processInstanceId || row.processId;
@@ -1555,6 +1736,7 @@ export default {
       this.approvalPreview.loading = true;
       this.approvalPreview.title = '企业入驻审批表预览';
       this.approvalPreview.html = '';
+      this.approvalPreview.previewError = '';
       this.approvalPreview.fallbackName = `企业入驻审批表-${row.enterpriseName || row.opportunityId}.docx`;
       this.approvalPreview.downloadUrl = `/blade-park/opportunity/tenant-entry/approval-form/${row.opportunityId}`;
       this.approvalPreview.downloadLabel = '下载Word';
@@ -1564,6 +1746,9 @@ export default {
           this.approvalPreview.title = data.noticeName || '企业入驻审批表预览';
           this.approvalPreview.html = data.html || '';
           this.approvalPreview.fallbackName = data.fileName || `企业入驻审批表-${row.enterpriseName || row.opportunityId}.docx`;
+        })
+        .catch(() => {
+          this.approvalPreview.previewError = '审批表预览生成失败，请重试或直接下载 Word 文件。';
         })
         .finally(() => {
           this.approvalPreview.loading = false;
@@ -2206,6 +2391,34 @@ export default {
   color: #1f2937;
   font-size: 15px;
   font-weight: 600;
+}
+
+.number-with-unit {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.number-with-unit :deep(.el-input-number) {
+  flex: 1;
+  width: auto;
+}
+
+.number-with-unit > span {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  padding: 0 12px;
+  border: 1px solid #dcdfe6;
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+  background: #f5f7fa;
+  color: #606266;
+  white-space: nowrap;
+}
+
+.number-with-unit :deep(.el-input__wrapper) {
+  border-radius: 6px 0 0 6px;
 }
 
 .follow-record-section {

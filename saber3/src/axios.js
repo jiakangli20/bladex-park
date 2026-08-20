@@ -116,6 +116,11 @@ axios.interceptors.response.use(
     //如果在白名单里则自行catch逻辑处理
     if (statusWhiteList.includes(status)) return Promise.reject(res);
 
+    // 刷新令牌请求失败时交给外层统一退出，避免拦截器递归刷新。
+    if (status === 401 && config.meta && config.meta.isRefreshToken) {
+      return Promise.reject(new Error(message));
+    }
+
     // 如果是401并且没有重试过，尝试刷新token
     if (status === 401 && !config._retry) {
       config._retry = true;
@@ -139,25 +144,14 @@ axios.interceptors.response.use(
       // 开始刷新token
       isRefreshing = true;
 
-      // 调用RefreshToken action来刷新token
+      // 这里只维护刷新动作本身，不能把随后重试原接口的失败也当成刷新失败。
       refreshTokenPromise = store
         .dispatch('RefreshToken')
         .then(() => {
-          isRefreshing = false; // 重置刷新标志
-          const meta = config.meta || {};
-          const isToken = meta.isToken === false;
-          const cryptoToken = config.cryptoToken === true;
-          // 获取刷新后的token
-          const token = getToken();
-          if (token && !isToken) {
-            config.headers[website.tokenHeader] = cryptoToken
-              ? 'crypto ' + crypto.encryptAES(token, crypto.cryptoKey)
-              : 'bearer ' + token;
-          }
-          return axios(config);
+          isRefreshing = false;
         })
         .catch(() => {
-          isRefreshing = false; // 重置刷新标志
+          isRefreshing = false;
           // 首次报错时提示
           if (!isErrorShown) {
             isErrorShown = true;
@@ -174,21 +168,29 @@ axios.interceptors.response.use(
           return Promise.reject(new Error(message));
         });
 
-      return refreshTokenPromise;
+      return refreshTokenPromise.then(() => {
+        const meta = config.meta || {};
+        const isToken = meta.isToken === false;
+        const cryptoToken = config.cryptoToken === true;
+        const token = getToken();
+        if (token && !isToken) {
+          config.headers[website.tokenHeader] = cryptoToken
+            ? 'crypto ' + crypto.encryptAES(token, crypto.cryptoKey)
+            : 'bearer ' + token;
+        }
+        return axios(config);
+      });
     }
 
-    // 如果是401并且已经重试过，直接跳转到登录页面
+    // 刷新成功后仍返回401，说明当前账号没有该接口权限，而不是令牌失效。
     if (status === 401 && config._retry) {
       if (!isErrorShown) {
         isErrorShown = true;
         ElMessage({
-          message: '用户令牌不可用，请重新登录',
+          message,
           type: 'error',
         });
       }
-      removeToken();
-      removeRefreshToken();
-      store.dispatch('FedLogOut').then(() => router.push({ path: '/login' }));
       return Promise.reject(new Error(message));
     }
 

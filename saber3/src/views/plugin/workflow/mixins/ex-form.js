@@ -129,8 +129,6 @@ export default {
       // 流程列表把业务字段放在 variables，业务页面直达入口则使用 params。
       // 统一回退后，重新发起和直达发起都能把租客/企业等字段带入表单。
       const params = row.params || row.variables || {};
-      const businessType = row && row.variables ? row.variables.businessType : '';
-      const resolvedFormKey = businessType === 'tenant_entry' ? 'wf_ex_TenantEntry' : formKey;
       const param = Base64.encode(
         JSON.stringify({
           processId: id,
@@ -143,7 +141,7 @@ export default {
       const encodedParam = encodeURIComponent(param);
 
       return new Promise(resolve => {
-        if (resolvedFormKey && resolvedFormKey.startsWith('wf_ex_')) {
+        if (formKey && formKey.startsWith('wf_ex_')) {
           if (formUrl) {
             // 配置了自定义路由
             const url = formUrl.startsWith('/workflow/process')
@@ -151,7 +149,7 @@ export default {
               : formUrl;
             this.$router.push(url + `?p=${encodedParam}`);
           } else {
-            const exFormKey = resolvedFormKey.substring(6);
+            const exFormKey = formKey.substring(6);
             // 动态添加路由
             this.$router.addRoute({
               path: `/plugin/workflow/pages/process/external`,

@@ -16,6 +16,7 @@ import org.w3c.dom.Node;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -49,9 +50,12 @@ class ContractTemplateRenderServiceImplTest {
 		fields.put("申请人", "招商员张三");
 		fields.put("部门", "招商服务部");
 		fields.put("申请日期", "2026-08-03");
+		fields.put("申请时间", "2026-08-03");
 		fields.put("企业名称", "苏州验收科技有限公司");
 		fields.put("股东信息", "自然人股东");
 		fields.put("经营范围", "软件开发与技术服务");
+		fields.put("负责人", "张三");
+		fields.put("联系方式", "13800000000");
 		fields.put("税收", "预计年税收100万元");
 		fields.put("法人、联系方式", "张三，13800000000");
 		fields.put("财务、联系方式", "李四，13900000000");
@@ -59,6 +63,12 @@ class ContractTemplateRenderServiceImplTest {
 		fields.put("意向楼层", "22层2201，559.8㎡");
 		fields.put("租金", "50元/㎡/月");
 		fields.put("免租期", "2个月");
+		fields.put("租赁楼层、面积", "22层2201，559.8㎡");
+		fields.put("单价（元）", "50");
+		fields.put("保证金（元）", "50000");
+		fields.put("合同有效期", "2026-09-01至2029-08-31");
+		fields.put("经办人", "招商员张三");
+		fields.put("审批事项", "企业入驻审批");
 		fields.put("部门审批", "王经理（同意，2026-08-03）");
 		fields.put("分管领导审批", "李总（同意，2026-08-03）");
 		fields.put("总经理审批", "赵总（同意，2026-08-03）");
@@ -67,17 +77,29 @@ class ContractTemplateRenderServiceImplTest {
 		try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(file.getFileBytes()))) {
 			assertEquals(1, document.getTables().size());
 			XWPFTable table = document.getTables().get(0);
-			assertEquals(12, table.getNumberOfRows());
-			assertEquals("企业入驻审核表", table.getRow(0).getCell(0).getText());
+			assertEquals(13, table.getNumberOfRows());
+			assertEquals("企业入驻审批表", table.getRow(0).getCell(0).getText());
 			assertFalse(documentText(document).contains("合同会签审批表"));
-			assertEquals("招商员张三", table.getRow(1).getCell(1).getText());
-			assertEquals("苏州验收科技有限公司", table.getRow(2).getCell(1).getText());
-			assertEquals("张三，13800000000", table.getRow(6).getCell(1).getText());
-			assertEquals("李四，13900000000", table.getRow(6).getCell(3).getText());
-			assertEquals("50元/㎡/月", table.getRow(8).getCell(3).getText());
-			assertEquals("王经理（同意，2026-08-03）", table.getRow(9).getCell(1).getText());
-			assertFalse(table.getRow(9).getCell(1).getText().contains("日期："));
-			assertEquals(1, occurrences(table.getRow(9).getCell(1).getText(), "2026-08-03"));
+			assertEquals("苏州验收科技有限公司", table.getRow(1).getCell(1).getText());
+			assertEquals("2026-08-03", table.getRow(1).getCell(3).getText());
+			assertEquals("张三", table.getRow(4).getCell(1).getText());
+			assertEquals("13800000000", table.getRow(4).getCell(3).getText());
+			assertEquals("22层2201，559.8㎡", table.getRow(5).getCell(1).getText());
+			assertEquals("50", table.getRow(6).getCell(1).getText());
+			assertEquals("招商员张三", table.getRow(8).getCell(1).getText());
+			assertEquals("部门审批：", table.getRow(10).getCell(0).getText());
+			assertEquals("分管领导审批：", table.getRow(11).getCell(0).getText());
+			assertEquals("总经理审批：", table.getRow(12).getCell(0).getText());
+			assertEquals("王经理（同意，2026-08-03）", table.getRow(10).getCell(1).getText());
+			assertEquals("李总（同意，2026-08-03）", table.getRow(11).getCell(1).getText());
+			assertEquals("赵总（同意，2026-08-03）", table.getRow(12).getCell(1).getText());
+			assertFalse(table.getRow(10).getCell(1).getText().contains("日期："));
+			assertEquals(1, occurrences(table.getRow(10).getCell(1).getText(), "2026-08-03"));
+			assertEquals(800, table.getRow(0).getHeight());
+			assertEquals(720, table.getRow(1).getHeight());
+			assertEquals(880, table.getRow(10).getHeight());
+			assertEquals(BigInteger.valueOf(720), document.getDocument().getBody().getSectPr().getPgMar().getTop());
+			assertEquals(BigInteger.valueOf(720), document.getDocument().getBody().getSectPr().getPgMar().getBottom());
 		}
 	}
 

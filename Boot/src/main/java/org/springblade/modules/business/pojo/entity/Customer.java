@@ -46,6 +46,12 @@ public class Customer implements Serializable {
 	@Schema(description = "统一社会信用代码")
 	private String creditCode;
 
+	@Schema(description = "法定代表人")
+	private String legalRepresentative;
+
+	@Schema(description = "企业联系电话")
+	private String enterprisePhone;
+
 	@DateTimeFormat(pattern = DateUtil.PATTERN_DATE)
 	@JsonFormat(pattern = DateUtil.PATTERN_DATE)
 	@Schema(description = "成立日期")
@@ -56,6 +62,12 @@ public class Customer implements Serializable {
 
 	@Schema(description = "企业类型")
 	private String enterpriseType;
+
+	@Schema(description = "营业期限")
+	private String businessTerm;
+
+	@Schema(description = "经营状态")
+	private String operatingStatus;
 
 	@Schema(description = "所属行业")
 	private String industry;

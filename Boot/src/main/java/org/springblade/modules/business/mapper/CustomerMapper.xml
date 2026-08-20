@@ -6,9 +6,13 @@
 		<id column="customer_id" property="customerId"/>
 		<result column="enterprise_name" property="enterpriseName"/>
 		<result column="credit_code" property="creditCode"/>
+		<result column="legal_representative" property="legalRepresentative"/>
+		<result column="enterprise_phone" property="enterprisePhone"/>
 		<result column="establish_date" property="establishDate"/>
 		<result column="registered_capital" property="registeredCapital"/>
 		<result column="enterprise_type" property="enterpriseType"/>
+		<result column="business_term" property="businessTerm"/>
+		<result column="operating_status" property="operatingStatus"/>
 		<result column="industry" property="industry"/>
 		<result column="tenant_type" property="tenantType"/>
 		<result column="business_scope" property="businessScope"/>
@@ -76,9 +80,13 @@
 		select customer_id,
 			   enterprise_name,
 			   credit_code,
+			   legal_representative,
+			   enterprise_phone,
 			   establish_date,
 			   registered_capital,
 			   enterprise_type,
+			   business_term,
+			   operating_status,
 			   industry,
 			   tenant_type,
 			   business_scope,
@@ -262,7 +270,8 @@
 
 	<insert id="insertCustomer" parameterType="org.springblade.modules.business.pojo.entity.Customer" useGeneratedKeys="true" keyProperty="customerId">
 		insert into biz_customer (
-			enterprise_name, credit_code, establish_date, registered_capital, enterprise_type, industry, tenant_type,
+			enterprise_name, credit_code, legal_representative, enterprise_phone, establish_date, registered_capital,
+			enterprise_type, business_term, operating_status, industry, tenant_type,
 			business_scope, registered_address, equity_structure, organization_structure, main_business,
 			last_year_revenue, major_clients, major_illegal_flag, dishonest_flag, industry_penalty_flag,
 			carrier_types, intent_area, usage_purpose, lease_term_years, lease_term_label, decoration_requirement,
@@ -275,7 +284,8 @@
 			legal_risk_flag, executive_risk_flag, shareholder_risk_flag, del_flag, park_id, create_by, update_by,
 			create_time, update_time
 		) values (
-			#{enterpriseName}, #{creditCode}, #{establishDate}, #{registeredCapital}, #{enterpriseType}, #{industry}, #{tenantType},
+			#{enterpriseName}, #{creditCode}, #{legalRepresentative}, #{enterprisePhone}, #{establishDate}, #{registeredCapital},
+			#{enterpriseType}, #{businessTerm}, #{operatingStatus}, #{industry}, #{tenantType},
 			#{businessScope}, #{registeredAddress}, #{equityStructure}, #{organizationStructure}, #{mainBusiness},
 			#{lastYearRevenue}, #{majorClients}, #{majorIllegalFlag}, #{dishonestFlag}, #{industryPenaltyFlag},
 			#{carrierTypes}, #{intentArea}, #{usagePurpose}, #{leaseTermYears}, #{leaseTermLabel}, #{decorationRequirement},
@@ -295,9 +305,13 @@
 		<set>
 			<if test="enterpriseName != null">enterprise_name = #{enterpriseName},</if>
 			<if test="creditCode != null">credit_code = #{creditCode},</if>
+			<if test="legalRepresentative != null">legal_representative = #{legalRepresentative},</if>
+			<if test="enterprisePhone != null">enterprise_phone = #{enterprisePhone},</if>
 			<if test="establishDate != null">establish_date = #{establishDate},</if>
 			<if test="registeredCapital != null">registered_capital = #{registeredCapital},</if>
 			<if test="enterpriseType != null">enterprise_type = #{enterpriseType},</if>
+			<if test="businessTerm != null">business_term = #{businessTerm},</if>
+			<if test="operatingStatus != null">operating_status = #{operatingStatus},</if>
 			<if test="industry != null">industry = #{industry},</if>
 			<if test="tenantType != null">tenant_type = #{tenantType},</if>
 			<if test="businessScope != null">business_scope = #{businessScope},</if>

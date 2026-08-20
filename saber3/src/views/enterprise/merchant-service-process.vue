@@ -289,7 +289,7 @@
 
 <script>
 import { mapGetters } from 'vuex';
-import { getList as getUserList } from '@/api/system/user';
+import { getUserOptions } from '@/api/system/user';
 import AssigneeSelect from './components/assignee-select.vue';
 import { getMerchantList } from '@/api/business/merchant';
 import {
@@ -471,9 +471,9 @@ export default {
       });
     },
     loadUserOptions() {
-      getUserList(1, 999, {}).then(res => {
-        const payload = res.data.data || {};
-        this.userOptions = payload.records || [];
+      getUserOptions({ status: 1 }).then(res => {
+        const payload = res.data.data || [];
+        this.userOptions = Array.isArray(payload) ? payload : [];
       });
     },
     loadStatistics() {

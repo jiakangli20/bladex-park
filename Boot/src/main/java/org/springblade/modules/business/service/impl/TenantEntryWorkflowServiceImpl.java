@@ -142,8 +142,8 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 	private BusinessOpportunity resolveOpportunity(ProcessInstance processInstance, Map<String, Object> variables) {
 		BusinessOpportunity persisted = businessOpportunityMapper.selectBusinessOpportunityByProcessInsId(processInstance.getId());
 		Long persistedId = persisted == null ? null : persisted.getOpportunityId();
-		Long businessKeyId = parseBusinessId(processInstance.getBusinessKey());
 		Long variableId = getLong(variables, "opportunityId");
+		Long businessKeyId = parseBusinessId(processInstance.getBusinessKey(), persistedId != null || variableId != null);
 		assertSameOpportunityId(persistedId, businessKeyId);
 		assertSameOpportunityId(persistedId, variableId);
 		assertSameOpportunityId(businessKeyId, variableId);
@@ -194,13 +194,16 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 		}
 	}
 
-	private Long parseBusinessId(String value) {
+	private Long parseBusinessId(String value, boolean hasOpportunityFallback) {
 		if (StringUtil.isBlank(value)) {
 			return null;
 		}
 		try {
 			return Long.valueOf(value.trim());
 		} catch (NumberFormatException exception) {
+			if (hasOpportunityFallback) {
+				return null;
+			}
 			throw new ServiceException("入驻流程业务主键格式不正确");
 		}
 	}
@@ -288,8 +291,8 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 		appendFullRow(html, "情况说明", getString(variables, "approvalMatter", ""), 58);
 		appendTripleCells(html,
 			"意向楼层", leaseFloorArea,
-			"租金", getString(variables, "unitPrice", ""),
-			"免租期", getString(variables, "rentFreePeriod", ""));
+			"租金", firstNotBlank(getString(variables, "unitPrice", null), formatNumber(opportunity.getUnitPrice())),
+			"免租期", firstNotBlank(getString(variables, "rentFreePeriod", null), opportunity.getRentFreePeriod()));
 		appendSignRow(html, "部门审批：", approvalValue(approvalFields, "部门审批", "部门经理", "经理审批"));
 		appendSignRow(html, "分管领导审批：", approvalValue(approvalFields, "分管领导审批", "分管领导"));
 		appendSignRow(html, "总经理审批：", approvalValue(approvalFields, "总经理审批", "总经理"));
@@ -441,7 +444,10 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 
 	private String formatArea(BusinessOpportunity opportunity) {
 		String area = formatNumber(opportunity.getIntentArea());
-		return StringUtil.isBlank(area) ? "" : area + "平";
+		if (StringUtil.isBlank(area)) {
+			return value(opportunity.getLeaseFloor());
+		}
+		return value(opportunity.getLeaseFloor()) + (StringUtil.isBlank(opportunity.getLeaseFloor()) ? "" : "，") + area + "㎡";
 	}
 
 	private String normalizeDisplayDate(String value) {

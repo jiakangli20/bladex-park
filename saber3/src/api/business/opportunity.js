@@ -197,6 +197,7 @@ export const previewTenantEntryApprovalForm = (opportunityId, processInsId) => {
 	url: `/blade-park/tenant-entry/approval-form-preview/${opportunityId}`,
     method: 'get',
     params: processInsId ? { processInsId } : {},
+    timeout: 60000,
   });
 };
 
@@ -214,5 +215,6 @@ export const previewOpportunityTenantEntryApprovalForm = (opportunityId, process
     url: `/blade-park/opportunity/tenant-entry/approval-form-preview/${opportunityId}`,
     method: 'get',
     params: processInsId ? { processInsId } : {},
+    timeout: 60000,
   });
 };

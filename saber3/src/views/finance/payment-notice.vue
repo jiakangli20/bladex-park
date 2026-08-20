@@ -171,24 +171,36 @@
             </div>
             <div v-loading="sendRecordLoading" class="send-record-list">
               <el-empty v-if="!sendRecordLoading && !sendRecords.length" description="暂无发送记录" :image-size="72" />
-              <div v-for="record in sendRecords" :key="record.recordId" class="send-record-item">
+              <div
+                v-for="record in sendRecords"
+                :key="record.recordId"
+                class="send-record-item"
+                :class="`send-record-item--${record.sendStatus || 'pending'}`"
+              >
                 <div class="send-record-item__top">
-                  <div>
+                  <div class="send-record-item__tags">
                     <el-tag size="small" effect="plain">{{ channelText(record.channel) }}</el-tag>
                     <el-tag size="small" :type="sendStatusType(record.sendStatus)" effect="plain">
                       {{ sendStatusText(record.sendStatus) }}
                     </el-tag>
                   </div>
-                  <span>{{ record.sentTime || record.createTime || '--' }}</span>
+                  <time>{{ record.sentTime || record.createTime || '--' }}</time>
                 </div>
-                <strong>{{ record.senderName || '--' }} · {{ record.subject || '无主题' }}</strong>
-                <span>发件：{{ record.senderEmail || '--' }}</span>
-                <span>收件：{{ record.recipientEmail || '--' }}</span>
+                <div class="send-record-item__title">
+                  <strong>{{ record.subject || '无主题' }}</strong>
+                  <span>发送人：{{ record.senderName || '--' }}</span>
+                </div>
+                <div class="send-record-item__mailbox">
+                  <div>
+                    <span>发件邮箱</span>
+                    <strong :title="record.senderEmail || '--'">{{ record.senderEmail || '--' }}</strong>
+                  </div>
+                  <div>
+                    <span>收件邮箱</span>
+                    <strong :title="record.recipientEmail || '--'">{{ record.recipientEmail || '--' }}</strong>
+                  </div>
+                </div>
                 <span v-if="record.failureReason" class="send-record-item__error">{{ record.failureReason }}</span>
-                <div class="send-record-item__actions">
-                  <el-button text type="primary" @click="viewSendRecord(record)">查看内容</el-button>
-                  <el-button v-if="record.attachmentUrl" text type="primary" @click="downloadSendRecordAttachment(record)">下载附件</el-button>
-                </div>
               </div>
             </div>
           </section>
@@ -608,16 +620,6 @@ export default {
         downloadNoticeFile(this.emailForm.attachmentUrl, this.emailForm.attachmentName || '通知文书.docx');
       }
     },
-    viewSendRecord(record) {
-      const content = record.contentSnapshot || '无正文内容';
-      this.$alert(content, record.subject || '发送内容', {
-        confirmButtonText: '关闭',
-        customClass: 'send-record-content-dialog',
-      });
-    },
-    downloadSendRecordAttachment(record) {
-      downloadNoticeFile(record.attachmentUrl, record.attachmentName || '通知文书.docx');
-    },
     channelText(value) { return { email: '邮件', sms: '短信', miniapp: '小程序' }[value] || value || '通知'; },
     sendStatusText(value) { return { pending: '发送中', success: '发送成功', failed: '发送失败', reserved: '通道待接入' }[value] || '未知'; },
     sendStatusType(value) { return { pending: 'primary', success: 'success', failed: 'danger', reserved: 'warning' }[value] || 'info'; },
@@ -751,30 +753,40 @@ export default {
 .document-list, .send-record-list { display: flex; flex-direction: column; gap: 10px; }
 .document-row, .send-record-list > div { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; border: 1px solid #ebeef5; border-radius: 8px; background: #fafafa; }
 .document-row__name { min-width: 0; }
-.document-row__name strong, .document-row__name span, .send-record-list strong, .send-record-list span { display: block; }
+.document-row__name strong, .document-row__name span { display: block; }
 .document-row__name strong { color: #1f2937; font-size: 14px; line-height: 20px; }
-.document-row__name span, .send-record-list span { margin-top: 3px; color: #909399; font-size: 12px; }
+.document-row__name span { margin-top: 3px; color: #909399; font-size: 12px; }
 .document-row__actions, .channel-actions { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .document-row__actions :deep(.el-button) { margin-left: 0; }
 .legal-approval-action { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 14px; border: 1px solid #ebeef5; border-radius: 8px; }
 .legal-approval-action strong, .legal-approval-action span { display: block; }
 .legal-approval-action span { margin-top: 4px; color: #909399; font-size: 12px; }
 .drawer-hint { color: #909399; font-size: 12px; }
-.send-record-list { margin-top: 12px; }
-.send-record-list > div { align-items: flex-start; flex-direction: column; }
+.send-record-list { margin-top: 8px; }
+.send-record-list > div { align-items: stretch; flex-direction: column; }
 .send-record-section { min-height: 260px; }
-.send-record-item { width: 100%; box-sizing: border-box; }
+.send-record-item { position: relative; width: 100%; box-sizing: border-box; overflow: hidden; padding: 14px 16px !important; border-color: #e5e7eb !important; background: #fff !important; }
+.send-record-item::before { position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: #409eff; content: ''; }
+.send-record-item--success::before { background: #67c23a; }
+.send-record-item--failed::before { background: #f56c6c; }
+.send-record-item--reserved::before { background: #e6a23c; }
 .send-record-item__top { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.send-record-item__top > div { display: inline-flex; align-items: center; gap: 8px; }
-.send-record-item__top > span { color: #909399; font-size: 12px; }
-.send-record-item__error { color: #f56c6c !important; }
-.send-record-item__actions { display: flex; align-items: center; gap: 8px; }
-.send-record-item__actions :deep(.el-button) { margin-left: 0; }
+.send-record-item__tags { display: inline-flex; align-items: center; gap: 8px; }
+.send-record-item__top time { color: #8a93a3; font-size: 12px; white-space: nowrap; }
+.send-record-item__title { display: flex; min-width: 0; align-items: baseline; gap: 10px; }
+.send-record-item__title strong { min-width: 0; overflow: hidden; color: #1f2937; font-size: 14px; line-height: 22px; text-overflow: ellipsis; white-space: nowrap; }
+.send-record-item__title span { flex: none; color: #8a93a3; font-size: 12px; }
+.send-record-item__mailbox { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: hidden; border: 1px solid #edf0f5; border-radius: 6px; background: #fafbfc; }
+.send-record-item__mailbox > div { min-width: 0; padding: 9px 12px; }
+.send-record-item__mailbox > div + div { border-left: 1px solid #edf0f5; }
+.send-record-item__mailbox span { display: block; margin-bottom: 3px; color: #8a93a3; font-size: 12px; }
+.send-record-item__mailbox strong { display: block; overflow: hidden; color: #4b5563; font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.send-record-item__error { padding: 8px 10px; border-radius: 6px; background: #fef0f0; color: #f56c6c; font-size: 12px; line-height: 18px; }
 .email-compose-form { padding-right: 12px; }
 .miniapp-compose-form { padding-right: 12px; }
 .email-attachment-row { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 12px; border: 1px solid #ebeef5; border-radius: 8px; background: #fafafa; }
 .email-attachment-row > span { min-width: 0; overflow: hidden; color: #303133; text-overflow: ellipsis; white-space: nowrap; }
 .email-attachment-row > div { display: inline-flex; align-items: center; white-space: nowrap; }
 .email-attachment-row :deep(.el-button) { margin-left: 8px; }
-@media (max-width: 900px) { .notice-header { align-items: flex-start; flex-direction: column; gap: 14px; } .notice-summary { grid-template-columns: repeat(2, 1fr); } .drawer-profile, .node-strip { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .notice-header { align-items: flex-start; flex-direction: column; gap: 14px; } .notice-summary { grid-template-columns: repeat(2, 1fr); } .drawer-profile, .node-strip { grid-template-columns: 1fr; } .send-record-item__title { align-items: flex-start; flex-direction: column; gap: 2px; } .send-record-item__mailbox { grid-template-columns: 1fr; } .send-record-item__mailbox > div + div { border-top: 1px solid #edf0f5; border-left: 0; } }
 </style>
