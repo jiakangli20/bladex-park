@@ -27,14 +27,11 @@ public class OverdueDisposalDetailVO implements Serializable {
 	@Serial
 	private static final long serialVersionUID = 1L;
 
-	@Schema(description = "收款通知状态")
+	@Schema(description = "客户逾期通知状态")
 	private PaymentNoticeVO paymentNotice;
 
-	@Schema(description = "通知文件生成记录")
-	private List<ContractLog> documentRecords = new ArrayList<>();
-
-	@Schema(description = "小程序发送记录")
-	private List<ContractLog> miniAppRecords = new ArrayList<>();
+	@Schema(description = "客户催款通知状态")
+	private PaymentNoticeVO reminderNotice;
 
 	@Schema(description = "律师函发送登记记录")
 	private List<ContractLog> legalSendRecords = new ArrayList<>();

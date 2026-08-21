@@ -1,13 +1,19 @@
 <template>
   <el-dialog
     :model-value="modelValue"
-    title="发送催缴通知"
+    title="发送内部逾期处置提醒"
     width="820px"
     append-to-body
     @close="closeDialog"
     @closed="resetDialog"
   >
     <div class="recipient-dialog">
+      <el-alert
+        title="该提醒发送给公司内部人员，并同步记录到 PC“我的消息”和内部小程序。"
+        type="info"
+        :closable="false"
+        show-icon
+      />
       <div class="recipient-summary">
         <div>
           <span>租客名称</span>
@@ -207,7 +213,7 @@ export default {
           const inserted = results.reduce((total, item) => total + item.inserted, 0);
           const sentPayments = results.filter(item => item.inserted > 0).map(item => item.payment);
           if (inserted > 0) {
-            this.$message.success(`已发送 ${inserted} 条催缴通知`);
+            this.$message.success(`已向 ${inserted} 名内部人员发送处置提醒`);
             this.$emit('sent', {
               inserted,
               payment: { ...(sentPayments[0] || this.targetPayments[0]) },
@@ -215,7 +221,7 @@ export default {
               recipients: this.selection.map(item => ({ ...item })),
             });
           } else {
-            this.$message.warning('所选账号均已收到该账单的催缴通知');
+            this.$message.warning('所选账号均已收到该账单的内部处置提醒');
           }
           this.closeDialog();
         })

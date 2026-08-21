@@ -177,6 +177,9 @@
 		<if test="query != null and query.parkId != null">
 			AND p.park_id = #{query.parkId}
 		</if>
+		<if test="query != null and query.paymentId != null">
+			AND p.payment_id = #{query.paymentId}
+		</if>
 		<if test="query != null and query.customerName != null and query.customerName != ''">
 			AND c.customer_name LIKE CONCAT('%', #{query.customerName}, '%')
 		</if>

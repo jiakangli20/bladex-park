@@ -258,7 +258,7 @@ export default {
           tone: 'purple',
         },
         {
-          title: '逾期通知',
+          title: '我的消息',
           desc: '逾期处置闭环',
           path: '/finance/overdue-notice',
           icon: 'Bell',

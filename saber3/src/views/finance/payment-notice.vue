@@ -4,7 +4,7 @@
       <section class="notice-header">
         <div>
           <h2>通知管理</h2>
-          <span>统一管理收款、催款和逾期通知</span>
+          <span>面向租户和客户发送短信、邮件及小程序外部通知</span>
         </div>
         <el-segmented v-model="activeCategory" :options="categoryOptions" @change="categoryChange" />
       </section>
@@ -58,10 +58,10 @@
           <el-table-column v-if="activeCategory !== 'payment'" label="逾期工作日" width="116" align="center">
             <template #default="{ row }">{{ businessDaysOverdue(row) }}个</template>
           </el-table-column>
-          <el-table-column v-if="activeCategory !== 'payment'" label="催款记录" width="126" align="center">
+          <el-table-column v-if="activeCategory !== 'payment'" label="累计发送" width="116" align="center">
             <template #default="{ row }">
-              <el-tag :type="Number(row.reminderCount || 0) ? 'success' : 'info'" effect="plain">
-                {{ Number(row.reminderCount || 0) }}次
+              <el-tag :type="Number(row.sendCount || 0) ? 'success' : 'info'" effect="plain">
+                {{ Number(row.sendCount || 0) }}次
               </el-tag>
             </template>
           </el-table-column>
@@ -75,10 +75,9 @@
               <el-tag :type="billStatusType(row.billStatus)" effect="plain">{{ billStatusText(row.billStatus) }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" :width="activeCategory === 'reminder' ? 156 : 96" align="center" fixed="right">
+          <el-table-column label="操作" width="96" align="center" fixed="right">
             <template #default="{ row }">
               <el-button text type="primary" @click="openDrawer(row)">处理</el-button>
-              <el-button v-if="activeCategory === 'reminder'" text type="warning" @click="handleReminder(row)">{{ Number(row.reminderCount || 0) > 0 ? '再次催款' : '催款' }}</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -96,68 +95,59 @@
         </div>
       </section>
 
-      <el-drawer v-model="drawerVisible" :title="drawerTitle" size="720px" append-to-body>
-        <div v-if="drawerRow" class="notice-drawer">
-          <section class="drawer-profile">
-            <div><span>租客名称</span><strong>{{ drawerRow.customerName || '-' }}</strong></div>
-            <div><span>合同编号</span><strong>{{ drawerRow.contractNo || '-' }}</strong></div>
-            <div><span>未收金额</span><strong>{{ formatMoney(unpaidAmount(drawerRow)) }}</strong></div>
-            <div><span>应缴日期</span><strong>{{ drawerRow.payDeadline || '-' }}</strong></div>
-            <div><span>联系电话</span><strong>{{ drawerRow.contactPhone || '--' }}</strong></div>
-            <div><span>联系邮箱</span><strong>{{ drawerRow.contactEmail || '--' }}</strong></div>
+      <el-drawer v-model="drawerVisible" :title="drawerTitle" size="720px" append-to-body class="notice-action-drawer">
+        <div v-if="drawerRow" class="drawer-body">
+          <section class="drawer-section">
+            <div class="drawer-section-title">账单信息</div>
+            <div class="drawer-field-grid">
+              <div class="drawer-field"><span>账单编号</span><strong>{{ drawerRow.paymentNo || `ZD${drawerRow.paymentId}` }}</strong></div>
+              <div class="drawer-field"><span>房源信息</span><strong>{{ drawerRow.roomName || drawerRow.buildingName || '-' }}</strong></div>
+              <div class="drawer-field"><span>费用类型</span><strong>{{ drawerRow.feeName || '-' }}</strong></div>
+              <div class="drawer-field"><span>租客名称</span><strong>{{ drawerRow.customerName || '-' }}</strong></div>
+              <div class="drawer-field"><span>合同编号</span><strong>{{ drawerRow.contractNo || '-' }}</strong></div>
+              <div class="drawer-field"><span>应收金额</span><strong>{{ formatMoney(drawerRow.amountDue) }}</strong></div>
+              <div class="drawer-field"><span>已缴金额</span><strong>{{ formatMoney(drawerRow.amountPaid) }}</strong></div>
+              <div class="drawer-field"><span>未收金额</span><strong>{{ formatMoney(unpaidAmount(drawerRow)) }}</strong></div>
+              <div class="drawer-field"><span>应缴日期</span><strong>{{ drawerRow.payDeadline || '-' }}</strong></div>
+              <div class="drawer-field"><span>联系电话</span><strong>{{ drawerRow.contactPhone || '--' }}</strong></div>
+              <div class="drawer-field"><span>联系邮箱</span><strong>{{ drawerRow.contactEmail || '--' }}</strong></div>
+            </div>
           </section>
 
-          <section v-if="activeCategory !== 'payment'" class="node-strip">
-            <div><span>逾期工作日</span><strong>{{ businessDaysOverdue(drawerRow) }}个</strong></div>
-            <div><span>累计催款</span><strong>{{ Number(drawerRow.reminderCount || 0) }}次</strong></div>
-            <div><span>最近催款</span><strong>{{ drawerRow.latestReminderTime || '-' }}</strong></div>
+          <section v-if="activeCategory !== 'payment'" class="drawer-section">
+            <div class="drawer-section-title">逾期信息</div>
+            <div class="drawer-field-grid">
+              <div class="drawer-field"><span>逾期工作日</span><strong>{{ businessDaysOverdue(drawerRow) }}个</strong></div>
+              <div class="drawer-field"><span>累计催款</span><strong>{{ Number(drawerRow.reminderCount || 0) }}次</strong></div>
+              <div class="drawer-field"><span>最近催款</span><strong>{{ drawerRow.latestReminderTime || '-' }}</strong></div>
+            </div>
           </section>
 
           <section class="drawer-section">
-            <div class="drawer-section-title">通知文书</div>
+            <div class="drawer-section-title">客户通知文书（外部）</div>
             <div class="document-list">
               <div v-for="item in drawerDocuments" :key="item.value" class="document-row">
                 <div class="document-row__name">
                   <strong>{{ item.label }}</strong>
-                  <span>{{ documentTimingText(item) }}</span>
+                  <span>{{ documentStatusText() }}</span>
                 </div>
                 <div class="document-row__actions">
-                  <el-button text type="primary" @click="previewNotice(item)">预览</el-button>
-                  <el-button text type="primary" @click="generateNotice(item)">下载</el-button>
+                  <el-button
+                    text
+                    type="primary"
+                    :disabled="activeCategory !== 'payment' && !hasGeneratedDocument(drawerRow)"
+                    @click="previewNotice(item)"
+                  >
+                    预览
+                  </el-button>
                 </div>
               </div>
-            </div>
-          </section>
-
-          <section v-if="activeCategory === 'reminder'" class="drawer-section">
-            <div class="drawer-section-title">催款操作</div>
-            <div class="channel-actions">
-              <el-button plain type="warning" @click="handleReminder(drawerRow)">{{ Number(drawerRow.reminderCount || 0) > 0 ? '再次催款' : '催款' }}</el-button>
-              <span class="drawer-hint">催款不限制次数，未满 5 个工作日会先提示</span>
-            </div>
-          </section>
-
-          <section v-if="activeCategory === 'overdue'" class="drawer-section">
-            <div class="drawer-section-title">律师函审批</div>
-            <div class="legal-approval-action">
-              <div>
-                <strong>{{ legalStatusText(drawerRow) }}</strong>
-                <span>{{ legalApprovalTimingText(drawerRow) }}</span>
-              </div>
-              <el-button
-                type="warning"
-                plain
-                :disabled="drawerRow.overdueApprovalStatus === 'running'"
-                @click="handleLegalApproval(drawerRow)"
-              >
-                {{ drawerRow.overdueApprovalStatus === 'running' ? '审批中' : '律师函审批' }}
-              </el-button>
             </div>
           </section>
 
           <section class="drawer-section">
-            <div class="drawer-section-title">发送通道</div>
-            <div class="channel-actions">
+            <div class="drawer-section-title">客户发送通道（外部）</div>
+            <div class="drawer-action-row">
               <el-button plain type="primary" @click="sendSms">短信发送</el-button>
               <el-button plain type="primary" @click="sendEmail">邮件发送</el-button>
               <el-button plain type="primary" @click="sendPaymentMiniApp">小程序发送</el-button>
@@ -249,7 +239,6 @@
               <span>{{ emailForm.attachmentName || '通知文书' }}</span>
               <div>
                 <el-button text type="primary" @click="previewEmailAttachment">预览</el-button>
-                <el-button text type="primary" @click="downloadEmailAttachment">下载</el-button>
               </div>
             </div>
           </el-form-item>
@@ -293,7 +282,6 @@
               <span>{{ miniAppForm.fileName || '通知文书' }}</span>
               <div>
                 <el-button text type="primary" @click="previewMiniAppAttachment">预览</el-button>
-                <el-button text type="primary" @click="downloadMiniAppAttachment">下载</el-button>
               </div>
             </div>
           </el-form-item>
@@ -316,13 +304,12 @@
         :title="noticePreview.title"
         :html="noticePreview.html"
         :loading="noticePreview.loading"
-        :download-url="noticePreview.downloadUrl"
+        :show-download="false"
         :preview-type="noticePreview.previewType"
         :document-blob="noticePreview.documentBlob"
         :pdf-blob="noticePreview.pdfBlob"
         :pdf-file-name="noticePreview.pdfFileName"
         :preview-error="noticePreview.previewError"
-        @download="downloadNoticePreviewFile"
       />
     </div>
   </basic-container>
@@ -332,24 +319,26 @@
 import NoticePreviewDialog from '@/components/contract/notice-preview-dialog.vue';
 import { noticePrintUrl } from '@/api/contract/print';
 import {
-  generatePaymentNotice,
   getPaymentNoticeEmailCompose,
   getPaymentNoticeMiniAppCompose,
   getPaymentNoticeBuildings,
   getPaymentNoticePage,
   getPaymentNoticeSendRecords,
   getPaymentNoticeSummary,
-  remindOverduePayment,
   sendPaymentNoticeEmail,
   sendPaymentNoticeMiniApp,
   sendPaymentNoticeSms,
 } from '@/api/ics/payment';
-import { createNoticePreviewState, downloadNoticeFile, openNoticePreview } from '@/utils/contract-notice';
+import {
+  createNoticePreviewState,
+  openAttachmentPreview,
+  openNoticePreview,
+} from '@/utils/contract-notice';
 
 const DOCUMENTS = {
   payment: [{ label: '收款通知', value: 'payment-notice' }],
-  reminder: [{ label: '催款通知书', value: 'reminder-notice', recommendedBusinessDays: 5 }],
-  overdue: [{ label: '租金逾期处理通知书', value: 'overdue-notice', recommendedBusinessDays: 5 }],
+  reminder: [{ label: '催款通知书', value: 'reminder-notice' }],
+  overdue: [{ label: '租金逾期处理通知书', value: 'overdue-notice' }],
 };
 
 export default {
@@ -359,11 +348,12 @@ export default {
     return {
       activeCategory: 'payment',
       categoryOptions: [
-        { label: '收款', value: 'payment' },
-        { label: '催款', value: 'reminder' },
-        { label: '逾期', value: 'overdue' },
+        { label: '收款通知（外部）', value: 'payment' },
+        { label: '逾期通知（外部）', value: 'overdue' },
+        { label: '催款通知（外部）', value: 'reminder' },
       ],
       query: {},
+      routePaymentId: '',
       summary: {},
       buildingOptions: [],
       loading: false,
@@ -372,7 +362,6 @@ export default {
       drawerVisible: false,
       drawerRow: null,
       noticePreview: createNoticePreviewState(),
-      previewDocument: null,
       emailDialogVisible: false,
       emailComposeLoading: false,
       emailSending: false,
@@ -424,16 +413,16 @@ export default {
       if (this.activeCategory === 'reminder') {
         return [
           { key: 'total', label: '催款账单', value: this.page.total || 0 },
-          { key: 'five', label: '达到5个工作日', value: this.summary.fiveBusinessDayCount || 0 },
-          { key: 'reminded', label: '已催款账单', value: this.summary.remindedBillCount || 0 },
-          { key: 'count', label: '累计催款次数', value: this.summary.reminderCount || 0 },
+          { key: 'twenty', label: '达到20个工作日', value: this.summary.twentyBusinessDayCount || 0 },
+          { key: 'generated', label: '已生成文书', value: this.summary.generatedCount || 0 },
+          { key: 'send', label: '累计发送', value: this.summary.sendCount || 0 },
         ];
       }
       return [
         { key: 'total', label: '逾期账单', value: this.page.total || 0 },
         { key: 'five', label: '达到5个工作日', value: this.summary.fiveBusinessDayCount || 0 },
-        { key: 'twenty', label: '达到20个工作日', value: this.summary.twentyBusinessDayCount || 0 },
-        { key: 'approval', label: '律师函审批通过', value: this.summary.approvedLegalCount || 0 },
+        { key: 'generated', label: '已生成文书', value: this.summary.generatedCount || 0 },
+        { key: 'send', label: '累计发送', value: this.summary.sendCount || 0 },
       ];
     },
     drawerTitle() {
@@ -446,6 +435,8 @@ export default {
   },
   mounted() {
     const routeCategory = this.$route.query && this.$route.query.category;
+    this.routePaymentId = String((this.$route.query && this.$route.query.paymentId) || '');
+    if (this.routePaymentId) this.query.paymentId = this.routePaymentId;
     if (['payment', 'reminder', 'overdue'].includes(routeCategory)) this.activeCategory = routeCategory;
     if (routeCategory === 'legal') this.activeCategory = 'overdue';
     this.reload();
@@ -464,6 +455,12 @@ export default {
           if (this.drawerVisible && this.drawerRow) {
             const latestRow = this.data.find(item => String(item.paymentId) === String(this.drawerRow.paymentId));
             if (latestRow) this.drawerRow = { ...latestRow };
+          } else if (this.routePaymentId) {
+            const routeRow = this.data.find(item => String(item.paymentId) === this.routePaymentId);
+            if (routeRow) {
+              this.routePaymentId = '';
+              this.openDrawer(routeRow);
+            }
           }
         })
         .finally(() => { this.loading = false; });
@@ -483,57 +480,22 @@ export default {
     previewNotice(item) {
       const row = this.drawerRow;
       if (!row) return;
-      this.previewDocument = item;
+      if (this.activeCategory !== 'payment' && !this.hasGeneratedDocument(row)) {
+        this.$message.warning(`请先在逾期处理生成${item.label}`);
+        return;
+      }
+      if (this.activeCategory !== 'payment') {
+        openAttachmentPreview(this.noticePreview, {
+          fileName: row.fileName || this.fileName(row, item),
+          fileUrl: row.fileUrl,
+        }, `${item.label}预览`);
+        return;
+      }
       openNoticePreview(this, this.noticePreview, { noticeType: item.value, paymentId: row.paymentId, contractId: row.contractId }, noticePrintUrl(item.value, { paymentId: row.paymentId, contractId: row.contractId }), this.fileName(row, item), `${item.label}预览`);
-    },
-    async generateNotice(item) {
-      const row = this.drawerRow;
-      if (!row) return;
-      const elapsed = this.businessDaysOverdue(row);
-      if (item.recommendedBusinessDays && elapsed < item.recommendedBusinessDays) {
-        try {
-          await this.$confirm(`当前逾期${elapsed}个工作日，尚未达到${item.recommendedBusinessDays}个工作日的建议节点，是否继续生成？`, '提前生成确认', { type: 'warning', confirmButtonText: '继续生成' });
-        } catch (error) { return; }
-      }
-      generatePaymentNotice(row.paymentId, item.value).then(res => {
-        const file = res.data.data || {};
-        const url = file.fileUrl || noticePrintUrl(item.value, { paymentId: row.paymentId, contractId: row.contractId });
-        return downloadNoticeFile(url, this.fileName(row, item)).then(() => this.$message.success(`${item.label}已生成`));
-      });
-    },
-    async handleReminder(row) {
-      if (!row || !row.paymentId) return;
-      const elapsed = this.businessDaysOverdue(row);
-      if (elapsed < 5) {
-        try {
-          await this.$confirm(`当前逾期${elapsed}个工作日，尚未达到5个工作日的建议催款节点，是否继续催款？`, '提前催款提示', { type: 'warning', confirmButtonText: '继续催款', cancelButtonText: '取消' });
-        } catch (error) { return; }
-      }
-      remindOverduePayment(row.paymentId, 'notice_management').then(() => {
-        this.$message.success('催款已发送，可继续重复催款');
-        this.reload();
-      });
-    },
-    async handleLegalApproval(row) {
-      if (!row || !row.paymentId) return;
-      if (row.overdueApprovalStatus === 'running') {
-        this.$message.warning('该账单律师函审批正在进行中');
-        return;
-      }
-      const elapsed = this.businessDaysOverdue(row);
-      if (elapsed < 20) {
-        await this.$alert(`当前逾期${elapsed}个工作日，律师函审批需满20个工作日后才可发起。`, '律师函审批限制', {
-          confirmButtonText: '知道了',
-          type: 'warning',
-        });
-        return;
-      }
-      this.drawerVisible = false;
-      this.$router.push({ path: '/finance/overdue-reminder', query: { paymentId: row.paymentId } });
     },
     sendSms() {
       const row = this.drawerRow;
-      if (!row) return;
+      if (!row || !this.ensureExternalNoticeNode(row)) return;
       sendPaymentNoticeSms(row.paymentId, this.activeNoticeType()).then(() => {
         this.$message.warning('短信发送结果已记录');
         this.reload();
@@ -542,7 +504,7 @@ export default {
     },
     sendEmail() {
       const row = this.drawerRow;
-      if (!row) return;
+      if (!row || !this.ensureExternalNoticeNode(row)) return;
       const noticeType = this.activeNoticeType();
       this.emailForm = {
         paymentId: row.paymentId,
@@ -615,17 +577,12 @@ export default {
       const item = this.drawerDocuments.find(document => document.value === this.emailForm.noticeType) || this.drawerDocuments[0];
       if (item) this.previewNotice(item);
     },
-    downloadEmailAttachment() {
-      if (this.emailForm.attachmentUrl) {
-        downloadNoticeFile(this.emailForm.attachmentUrl, this.emailForm.attachmentName || '通知文书.docx');
-      }
-    },
     channelText(value) { return { email: '邮件', sms: '短信', miniapp: '小程序' }[value] || value || '通知'; },
     sendStatusText(value) { return { pending: '发送中', success: '发送成功', failed: '发送失败', reserved: '通道待接入' }[value] || '未知'; },
     sendStatusType(value) { return { pending: 'primary', success: 'success', failed: 'danger', reserved: 'warning' }[value] || 'info'; },
     sendPaymentMiniApp() {
       const row = this.drawerRow;
-      if (!row) return;
+      if (!row || !this.ensureExternalNoticeNode(row)) return;
       this.miniAppDialogVisible = true;
       this.miniAppComposeLoading = true;
       this.miniAppForm = {
@@ -682,30 +639,38 @@ export default {
       const item = this.drawerDocuments.find(document => document.value === this.miniAppForm.noticeType) || this.drawerDocuments[0];
       if (item) this.previewNotice(item);
     },
-    downloadMiniAppAttachment() {
-      if (this.miniAppForm.fileUrl) {
-        downloadNoticeFile(this.miniAppForm.fileUrl, this.miniAppForm.fileName || '通知文书.docx');
-      }
-    },
     activeNoticeType() { return { payment: 'payment-notice', reminder: 'reminder-notice', overdue: 'overdue-notice' }[this.activeCategory] || 'payment-notice'; },
+    hasGeneratedDocument(row) {
+      return Boolean(row && (row.fileName || row.fileUrl));
+    },
+    ensureExternalNoticeNode(row) {
+      if (this.activeCategory === 'payment') return true;
+      const requiredDays = this.activeCategory === 'overdue' ? 5 : 20;
+      const elapsed = this.businessDaysOverdue(row);
+      const typeText = this.activeCategory === 'overdue' ? '逾期通知书' : '催款通知书';
+      if (elapsed < requiredDays) {
+        this.$message.warning(`${typeText}需逾期满${requiredDays}个工作日后发送，当前为${elapsed}个工作日`);
+        return false;
+      }
+      if (!this.hasGeneratedDocument(row)) {
+        this.$message.warning(`请先在逾期处理生成${typeText}`);
+        return false;
+      }
+      return true;
+    },
     noticeSendStatusText(value) { return { pending: '未发送', sent: '已发送', failed: '发送失败' }[value] || '未发送'; },
     noticeSendStatusType(value) { return { pending: 'info', sent: 'success', failed: 'danger' }[value] || 'info'; },
     billStatusText(value) { return { pending: '待处理', paid: '已交款', reminded: '已催款', overdue: '已逾期', legal: '已律师函' }[value] || '待处理'; },
     billStatusType(value) { return { pending: 'info', paid: 'success', reminded: 'warning', overdue: 'danger', legal: 'danger' }[value] || 'info'; },
-    documentTimingText(item) {
-      if (this.activeCategory === 'payment') return '账单生成后可发送';
-      const elapsed = this.businessDaysOverdue(this.drawerRow);
-      return elapsed >= item.recommendedBusinessDays ? `已达到${item.recommendedBusinessDays}个工作日建议节点` : `建议满${item.recommendedBusinessDays}个工作日，当前${elapsed}个`;
-    },
-    legalStatusText(row) {
-      if (Number(row.legalSendCount || 0) > 0) return `律师函已发送${row.legalSendCount}次`;
-      const map = { running: '律师函审批中', approved: '律师函审批通过', rejected: '律师函审批驳回', canceled: '律师函审批取消' };
-      return map[row.overdueApprovalStatus] || '律师函未发起';
-    },
-    legalStatusType(row) { if (Number(row.legalSendCount || 0) > 0) return 'success'; return { running: 'warning', approved: 'primary', rejected: 'danger' }[row.overdueApprovalStatus] || 'info'; },
-    legalApprovalTimingText(row) {
-      const elapsed = this.businessDaysOverdue(row);
-      return elapsed >= 20 ? '已满20个工作日，可进入逾期处理发起审批' : `需满20个工作日，当前${elapsed}个工作日`;
+    documentStatusText() {
+      if (this.activeCategory === 'payment') {
+        return this.hasGeneratedDocument(this.drawerRow)
+          ? '附件已生成'
+          : '附件预览';
+      }
+      return this.hasGeneratedDocument(this.drawerRow)
+        ? '已在逾期处理生成'
+        : '尚未在逾期处理生成';
     },
     businessDaysOverdue(row) {
       if (!row || !row.payDeadline) return 0;
@@ -720,7 +685,6 @@ export default {
     unpaidAmount(row) { return Math.max(Number(row.amountDue || 0) - Number(row.amountPaid || 0), 0); },
     formatMoney(value) { return `¥${Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; },
     fileName(row, item) { return `${row.paymentNo || `ZD${row.paymentId}`}-${item.label}.docx`; },
-    downloadNoticePreviewFile() { if (this.noticePreview.downloadUrl) downloadNoticeFile(this.noticePreview.downloadUrl, this.noticePreview.fallbackName); },
   },
 };
 </script>
@@ -731,7 +695,7 @@ export default {
 .notice-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; }
 .notice-header h2 { margin: 0 0 4px; color: #1f2937; font-size: 20px; }
 .notice-header span { color: #909399; font-size: 13px; }
-.notice-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 16px; }
+.notice-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 16px; }
 .notice-summary__item { min-height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-right: 1px solid #ebeef5; }
 .notice-summary__item:last-child { border-right: 0; }
 .notice-summary__item span { color: #909399; font-size: 13px; }
@@ -739,29 +703,25 @@ export default {
 .notice-search { padding: 16px 18px 0; }
 .notice-table-wrap { padding: 16px; }
 .notice-pagination { display: flex; justify-content: flex-end; padding-top: 16px; }
-.notice-drawer { display: flex; flex-direction: column; gap: 16px; }
-.drawer-profile, .node-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.node-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.drawer-profile > div, .node-strip > div { min-width: 0; padding: 12px; border: 1px solid #ebeef5; border-radius: 8px; background: #fafafa; }
-.drawer-profile span, .drawer-profile strong, .node-strip span, .node-strip strong { display: block; }
-.drawer-profile span, .node-strip span { color: #909399; font-size: 12px; }
-.drawer-profile strong, .node-strip strong { margin-top: 5px; overflow: hidden; color: #1f2937; text-overflow: ellipsis; white-space: nowrap; }
-.drawer-section { padding-top: 4px; }
+.notice-action-drawer :deep(.el-drawer__body) { padding: 16px; }
+.drawer-body { display: flex; flex-direction: column; gap: 16px; }
+.drawer-section { padding: 16px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; }
 .drawer-section-title, .drawer-section-title-row { margin-bottom: 12px; color: #1f2937; font-size: 15px; font-weight: 600; }
 .drawer-section-title-row { display: flex; align-items: center; justify-content: space-between; }
 .drawer-section-title-row .drawer-section-title { margin-bottom: 0; }
+.drawer-field-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.drawer-field { min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid #ebeef5; border-radius: 8px; background: #fafafa; }
+.drawer-field span { color: #6b7280; font-size: 12px; }
+.drawer-field strong { overflow: hidden; color: #1f2937; font-size: 14px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .document-list, .send-record-list { display: flex; flex-direction: column; gap: 10px; }
-.document-row, .send-record-list > div { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; border: 1px solid #ebeef5; border-radius: 8px; background: #fafafa; }
+.document-row, .send-record-list > div { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; border: 1px solid #ebeef5; border-radius: 8px; background: #fff; }
 .document-row__name { min-width: 0; }
 .document-row__name strong, .document-row__name span { display: block; }
 .document-row__name strong { color: #1f2937; font-size: 14px; line-height: 20px; }
 .document-row__name span { margin-top: 3px; color: #909399; font-size: 12px; }
-.document-row__actions, .channel-actions { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.document-row__actions { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
 .document-row__actions :deep(.el-button) { margin-left: 0; }
-.legal-approval-action { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 14px; border: 1px solid #ebeef5; border-radius: 8px; }
-.legal-approval-action strong, .legal-approval-action span { display: block; }
-.legal-approval-action span { margin-top: 4px; color: #909399; font-size: 12px; }
-.drawer-hint { color: #909399; font-size: 12px; }
+.drawer-action-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .send-record-list { margin-top: 8px; }
 .send-record-list > div { align-items: stretch; flex-direction: column; }
 .send-record-section { min-height: 260px; }
@@ -788,5 +748,5 @@ export default {
 .email-attachment-row > span { min-width: 0; overflow: hidden; color: #303133; text-overflow: ellipsis; white-space: nowrap; }
 .email-attachment-row > div { display: inline-flex; align-items: center; white-space: nowrap; }
 .email-attachment-row :deep(.el-button) { margin-left: 8px; }
-@media (max-width: 900px) { .notice-header { align-items: flex-start; flex-direction: column; gap: 14px; } .notice-summary { grid-template-columns: repeat(2, 1fr); } .drawer-profile, .node-strip { grid-template-columns: 1fr; } .send-record-item__title { align-items: flex-start; flex-direction: column; gap: 2px; } .send-record-item__mailbox { grid-template-columns: 1fr; } .send-record-item__mailbox > div + div { border-top: 1px solid #edf0f5; border-left: 0; } }
+@media (max-width: 900px) { .notice-header { align-items: flex-start; flex-direction: column; gap: 14px; } .notice-summary { grid-template-columns: repeat(2, 1fr); } .drawer-field-grid, .drawer-field-grid.node-grid { grid-template-columns: 1fr; } .send-record-item__title { align-items: flex-start; flex-direction: column; gap: 2px; } .send-record-item__mailbox { grid-template-columns: 1fr; } .send-record-item__mailbox > div + div { border-top: 1px solid #edf0f5; border-left: 0; } }
 </style>

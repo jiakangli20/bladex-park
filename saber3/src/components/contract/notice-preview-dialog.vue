@@ -26,8 +26,15 @@
       <el-button v-if="showPrint" :disabled="!html || loading" @click="$emit('print')">
         打印预览
       </el-button>
-      <el-button v-if="pdfBlob" :disabled="loading" @click="downloadPdf"> 下载PDF </el-button>
-      <el-button type="primary" :disabled="!downloadUrl" @click="$emit('download')">
+      <el-button v-if="showDownload && pdfBlob" :disabled="loading" @click="downloadPdf">
+        下载PDF
+      </el-button>
+      <el-button
+        v-if="showDownload"
+        type="primary"
+        :disabled="!downloadUrl"
+        @click="$emit('download')"
+      >
         {{ downloadLabel }}
       </el-button>
     </template>
@@ -64,6 +71,10 @@ export default {
     downloadLabel: {
       type: String,
       default: '下载Word',
+    },
+    showDownload: {
+      type: Boolean,
+      default: true,
     },
     showPrint: {
       type: Boolean,

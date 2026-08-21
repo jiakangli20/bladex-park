@@ -60,6 +60,15 @@ public interface IContractNoticeService {
 	String uploadNoticeAttachment(ContractNoticeFileVO document);
 
 	/**
+	 * 读取已生成并落库的通知附件.
+	 *
+	 * @param fileName 文件名称
+	 * @param fileUrl  文件存储地址
+	 * @return 包含原始文件内容的通知附件
+	 */
+	ContractNoticeFileVO readNoticeAttachment(String fileName, String fileUrl);
+
+	/**
 	 * 生成合同审批整套文件.
 	 *
 	 * @param contractId 合同ID

@@ -62,6 +62,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -478,9 +480,8 @@ public class PaymentServiceImpl implements IPaymentService {
 		validateOverdueHistoryReceivable(payment, DateUtil.now());
 		OverdueDisposalDetailVO detail = new OverdueDisposalDetailVO();
 		detail.setPaymentNotice(selectNoticeDetail(paymentId, NOTICE_TYPE_OVERDUE));
+		detail.setReminderNotice(selectNoticeDetail(paymentId, NOTICE_TYPE_REMINDER));
 		List<ContractLog> logs = payment.getContractId() == null ? List.of() : contractLogMapper.selectByContractId(payment.getContractId());
-		detail.setDocumentRecords(logs.stream().filter(log -> isDocumentRecord(log, paymentId)).toList());
-		detail.setMiniAppRecords(logs.stream().filter(log -> isMiniAppRecord(log, paymentId)).toList());
 		detail.setLegalSendRecords(logs.stream().filter(log -> isLegalSendRecord(log, paymentId)).toList());
 		detail.setWorkflowRecords(payment.getContractId() == null
 			? List.of()
@@ -526,7 +527,7 @@ public class PaymentServiceImpl implements IPaymentService {
 	public List<OverdueNoticeRecipientVO> overdueNoticeRecipients(Long paymentId) {
 		ContractPayment payment = requirePayment(paymentId);
 		assertAccessible(payment);
-		validateOverdueReceivable(payment, DateUtil.now());
+		validateInternalDisposalNotice(payment, DateUtil.now());
 		Contract contract = contractMapper.selectContractById(payment.getContractId());
 		if (contract == null) {
 			throw new ServiceException("账单关联合同不存在");
@@ -578,7 +579,7 @@ public class PaymentServiceImpl implements IPaymentService {
 		ContractPayment payment = requirePayment(dto.getPaymentId());
 		assertAccessible(payment);
 		Date now = DateUtil.now();
-		validateOverdueReceivable(payment, now);
+		validateInternalDisposalNotice(payment, now);
 		Contract contract = contractMapper.selectContractById(payment.getContractId());
 		if (contract == null) {
 			throw new ServiceException("账单关联合同不存在");
@@ -606,7 +607,7 @@ public class PaymentServiceImpl implements IPaymentService {
 			notice.setRecipientAccount(user.getAccount());
 			notice.setRecipientName(firstNotBlank(user.getRealName(), user.getName(), user.getAccount()));
 			notice.setRecipientRoles(responsibilities);
-			notice.setNoticeTitle("合同账单催缴通知");
+			notice.setNoticeTitle("逾期处置提醒");
 			notice.setNoticeContent(buildOverdueInternalNoticeContent(contract, payment));
 			notice.setReadStatus(NOTICE_READ_UNREAD);
 			notice.setParkId(payment.getParkId());
@@ -620,7 +621,7 @@ public class PaymentServiceImpl implements IPaymentService {
 			}
 		}
 		if (!insertedRecipients.isEmpty()) {
-			addLog(payment.getContractId(), "overdue_internal_notice", "发送首次逾期通知：" + String.join("、", insertedRecipients));
+			addLog(payment.getContractId(), "overdue_internal_notice", "发送内部逾期处置提醒：" + String.join("、", insertedRecipients));
 		}
 		return inserted;
 	}
@@ -671,14 +672,13 @@ public class PaymentServiceImpl implements IPaymentService {
 
 	@Override
 	public IPage<OverdueInternalNoticeVO> overdueNoticePage(IPage<OverdueInternalNoticeVO> page, String customerName,
-																		String readStatus, String recordType) {
+																				String readStatus, String recordType) {
 		Long userId = AuthUtil.getUserId();
 		if (Func.isEmpty(userId)) {
 			page.setRecords(List.of());
 			return page;
 		}
-		String normalizedRecordType = "notice".equals(recordType) || "reminder".equals(recordType) ? recordType : "";
-		page.setRecords(overdueInternalNoticeMapper.selectNoticePage(page, userId, customerName, readStatus, normalizedRecordType));
+		page.setRecords(overdueInternalNoticeMapper.selectNoticePage(page, userId, customerName, readStatus, "notice"));
 		return page;
 	}
 
@@ -686,8 +686,8 @@ public class PaymentServiceImpl implements IPaymentService {
 	public PaymentNoticePlaceholderVO noticePlaceholder() {
 		return new PaymentNoticePlaceholderVO(
 			"通知管理",
-			"通知管理统一承载收款、催款和逾期三类通知，律师函审批和发送归入逾期处理。",
-			"邮件通道已接入 SMTP，短信通道仍为预留；站内信与小程序发送记录会同步生成。"
+			"通知管理面向客户统一承载收款、逾期和催款三类外部通知，律师函审批和内部提醒归入逾期处理。",
+			"邮件通道已接入 SMTP，短信通道仍为预留；小程序发送记录会同步生成。"
 		);
 	}
 
@@ -761,6 +761,7 @@ public class PaymentServiceImpl implements IPaymentService {
 		assertAccessible(payment);
 		String normalizedType = normalizeNoticeType(noticeType);
 		validateNoticePayment(payment, normalizedType);
+		validateExternalNoticeGenerated(paymentId, normalizedType);
 		return contractNoticeService.buildMiniAppPayload(normalizedType, paymentId, null);
 	}
 
@@ -771,6 +772,7 @@ public class PaymentServiceImpl implements IPaymentService {
 		assertAccessible(payment);
 		String normalizedType = normalizeNoticeType(noticeType);
 		validateNoticePayment(payment, normalizedType);
+		validateExternalNoticeGenerated(paymentId, normalizedType);
 		PaymentNoticeVO detail = selectNoticeDetail(paymentId, normalizedType);
 		validateNoticeDetail(detail);
 		PaymentNotice notice = getOrCreateNotice(paymentId, normalizedType);
@@ -799,6 +801,7 @@ public class PaymentServiceImpl implements IPaymentService {
 		assertAccessible(payment);
 		String normalizedType = normalizeNoticeType(noticeType);
 		validateNoticePayment(payment, normalizedType);
+		validateExternalNoticeGenerated(paymentId, normalizedType);
 		PaymentNoticeVO detail = selectNoticeDetail(paymentId, normalizedType);
 		validateNoticeDetail(detail);
 		PaymentNotice notice = getOrCreateNotice(paymentId, normalizedType);
@@ -825,10 +828,13 @@ public class PaymentServiceImpl implements IPaymentService {
 		assertAccessible(payment);
 		String normalizedType = normalizeNoticeType(noticeType);
 		validateNoticePayment(payment, normalizedType);
+		validateExternalNoticeGenerated(paymentId, normalizedType);
 		PaymentNoticeVO detail = selectNoticeDetail(paymentId, normalizedType);
 		validateNoticeDetail(detail);
 		requireCustomerEmail(detail);
-		ContractNoticeFileVO document = contractNoticeService.buildNotice(normalizedType, paymentId, null);
+		ContractNoticeFileVO document = isExternalOverdueNotice(normalizedType)
+			? storedNoticeMetadata(detail)
+			: contractNoticeService.buildNotice(normalizedType, paymentId, null);
 		var sender = userMailAccountService.getCurrent();
 		PaymentEmailComposeVO compose = new PaymentEmailComposeVO();
 		compose.setPaymentId(paymentId);
@@ -839,7 +845,9 @@ public class PaymentServiceImpl implements IPaymentService {
 		compose.setSubject(paymentEmailTemplateService.subject(noticeTypeName(normalizedType), detail));
 		compose.setContent(paymentEmailTemplateService.content(detail));
 		compose.setAttachmentName(document.getFileName());
-		compose.setAttachmentUrl(buildNoticeDownloadPath(normalizedType, paymentId));
+		compose.setAttachmentUrl(isExternalOverdueNotice(normalizedType)
+			? document.getFileUrl()
+			: buildNoticeDownloadPath(normalizedType, paymentId));
 		return compose;
 	}
 
@@ -852,6 +860,7 @@ public class PaymentServiceImpl implements IPaymentService {
 		assertAccessible(payment);
 		String normalizedType = normalizeNoticeType(request.getNoticeType());
 		validateNoticePayment(payment, normalizedType);
+		validateExternalNoticeGenerated(paymentId, normalizedType);
 		PaymentNoticeVO detail = selectNoticeDetail(paymentId, normalizedType);
 		validateNoticeDetail(detail);
 		String recipientEmail = requireCustomerEmail(detail);
@@ -862,8 +871,14 @@ public class PaymentServiceImpl implements IPaymentService {
 		}
 		MailSenderAccount sender = userMailAccountService.requireCurrentSender();
 		PaymentNotice notice = getOrCreateNotice(paymentId, normalizedType);
-		ContractNoticeFileVO document = contractNoticeService.buildNotice(normalizedType, paymentId, null);
-		document.setFileUrl(contractNoticeService.uploadNoticeAttachment(document));
+		boolean storedExternalNotice = isExternalOverdueNotice(normalizedType);
+		ContractNoticeFileVO document;
+		if (storedExternalNotice) {
+			document = contractNoticeService.readNoticeAttachment(notice.getFileName(), notice.getFileUrl());
+		} else {
+			document = contractNoticeService.buildNotice(normalizedType, paymentId, null);
+			document.setFileUrl(contractNoticeService.uploadNoticeAttachment(document));
+		}
 		Date now = DateUtil.now();
 		NoticeSendRecord record = createEmailSendRecord(request, payment, notice, document, sender, recipientEmail, normalizedType, now);
 		String sendResult;
@@ -885,8 +900,10 @@ public class PaymentServiceImpl implements IPaymentService {
 		noticeSendRecordMapper.updateById(record);
 		notice.setSendCount((notice.getSendCount() == null ? 0 : notice.getSendCount()) + 1);
 		notice.setLastSendTime(now);
-		notice.setFileName(document.getFileName());
-		notice.setFileUrl(document.getFileUrl());
+		if (!storedExternalNotice) {
+			notice.setFileName(document.getFileName());
+			notice.setFileUrl(document.getFileUrl());
+		}
 		notice.setRemark(limitText(sendResult, 500));
 		notice.setUpdateBy(currentUserName());
 		notice.setUpdateTime(now);
@@ -1205,6 +1222,31 @@ public class PaymentServiceImpl implements IPaymentService {
 		}
 	}
 
+	private void validateInternalDisposalNotice(ContractPayment payment, Date now) {
+		validateOverdueReceivable(payment, now);
+		int businessDays = businessDaysOverdue(payment.getPayDeadline(), now);
+		if (businessDays < 20) {
+			throw new ServiceException("逾期满20个工作日后才能发送内部处置提醒，当前为" + businessDays + "个工作日");
+		}
+	}
+
+	private int businessDaysOverdue(Date deadline, Date now) {
+		if (deadline == null || now == null) {
+			return 0;
+		}
+		LocalDate cursor = LocalDate.parse(DateUtil.format(deadline, DateUtil.PATTERN_DATE)).plusDays(1);
+		LocalDate end = LocalDate.parse(DateUtil.format(now, DateUtil.PATTERN_DATE));
+		int count = 0;
+		while (!cursor.isAfter(end)) {
+			DayOfWeek dayOfWeek = cursor.getDayOfWeek();
+			if (dayOfWeek != DayOfWeek.SATURDAY && dayOfWeek != DayOfWeek.SUNDAY) {
+				count++;
+			}
+			cursor = cursor.plusDays(1);
+		}
+		return count;
+	}
+
 	private void validateReceivableConfirmation(ContractPayment payment, ContractPayment confirmation) {
 		if (!DIRECTION_RECEIVABLE.equals(normalizeDirection(payment == null ? null : payment.getDirection()))) {
 			throw new ServiceException("付款账单需先完成付款申请审批，不能直接确认缴费");
@@ -1253,10 +1295,38 @@ public class PaymentServiceImpl implements IPaymentService {
 
 	private void validateNoticePayment(ContractPayment payment, String noticeType) {
 		if (NOTICE_TYPE_REMINDER.equals(noticeType) || NOTICE_TYPE_OVERDUE.equals(noticeType)) {
-			validateOverdueReceivable(payment, DateUtil.now());
+			Date now = DateUtil.now();
+			validateOverdueReceivable(payment, now);
+			int businessDays = businessDaysOverdue(payment.getPayDeadline(), now);
+			int requiredDays = NOTICE_TYPE_OVERDUE.equals(noticeType) ? 5 : 20;
+			if (businessDays < requiredDays) {
+				String typeName = NOTICE_TYPE_OVERDUE.equals(noticeType) ? "客户逾期通知" : "客户催款通知";
+				throw new ServiceException(typeName + "需逾期满" + requiredDays + "个工作日后发送，当前为" + businessDays + "个工作日");
+			}
 			return;
 		}
 		validateReceivableNoticePayment(payment);
+	}
+
+	private void validateExternalNoticeGenerated(Long paymentId, String noticeType) {
+		if (!isExternalOverdueNotice(noticeType)) {
+			return;
+		}
+		PaymentNotice notice = paymentNoticeMapper.selectByPaymentId(paymentId, noticeType);
+		if (notice == null || StringUtil.isBlank(notice.getFileUrl())) {
+			throw new ServiceException("请先在逾期处理生成" + noticeTypeName(noticeType));
+		}
+	}
+
+	private boolean isExternalOverdueNotice(String noticeType) {
+		return NOTICE_TYPE_REMINDER.equals(noticeType) || NOTICE_TYPE_OVERDUE.equals(noticeType);
+	}
+
+	private ContractNoticeFileVO storedNoticeMetadata(PaymentNoticeVO detail) {
+		ContractNoticeFileVO document = new ContractNoticeFileVO();
+		document.setFileName(firstNotBlank(detail.getFileName(), noticeTypeName(detail.getNoticeType()) + ".docx"));
+		document.setFileUrl(detail.getFileUrl());
+		return document;
 	}
 
 	private static class NoticeRecipient {
@@ -1549,22 +1619,6 @@ public class PaymentServiceImpl implements IPaymentService {
 
 	private boolean hasText(String value) {
 		return !StringUtil.isBlank(value);
-	}
-
-	private boolean isDocumentRecord(ContractLog log, Long paymentId) {
-		if (log == null) {
-			return false;
-		}
-		String action = Func.toStr(log.getAction());
-		return ("notice_generate".equals(action) || "payment_notice_generate".equals(action)) && logBelongsToPayment(log, paymentId);
-	}
-
-	private boolean isMiniAppRecord(ContractLog log, Long paymentId) {
-		if (log == null) {
-			return false;
-		}
-		String action = Func.toStr(log.getAction());
-		return ("notice_miniapp".equals(action) || "payment_notice_miniapp".equals(action)) && logBelongsToPayment(log, paymentId);
 	}
 
 	private boolean isLegalSendRecord(ContractLog log, Long paymentId) {

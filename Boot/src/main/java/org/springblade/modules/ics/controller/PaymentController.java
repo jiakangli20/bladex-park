@@ -239,7 +239,7 @@ public class PaymentController extends BladeController {
 	@GetMapping("/overdue-internal-notice/recipients")
 	@PreAuth(menu = "finance_overdue_reminder")
 	@ApiOperationSupport(order = 27)
-	@Operation(summary = "催缴通知收件人", description = "默认推荐招商员、部门领导、分管领导和财务，支持按账号筛选调整")
+	@Operation(summary = "内部处置提醒收件人", description = "逾期满20个工作日后，默认推荐招商员、部门领导、分管领导和财务，支持按账号筛选调整")
 	public R<List<OverdueNoticeRecipientVO>> overdueNoticeRecipients(@RequestParam Long paymentId) {
 		return R.data(paymentService.overdueNoticeRecipients(paymentId));
 	}
@@ -247,7 +247,7 @@ public class PaymentController extends BladeController {
 	@PostMapping("/overdue-internal-notice/send")
 	@PreAuth(menu = "finance_overdue_reminder")
 	@ApiOperationSupport(order = 28)
-	@Operation(summary = "发送催缴通知", description = "向选中的内部用户账号发送逾期催缴通知")
+	@Operation(summary = "发送内部处置提醒", description = "逾期满20个工作日后，向选中的内部用户账号发送处置提醒")
 	public R<Integer> sendOverdueNotice(@RequestBody OverdueNoticeSendDTO dto) {
 		return R.data(paymentService.sendOverdueNotice(dto));
 	}
@@ -263,7 +263,7 @@ public class PaymentController extends BladeController {
 	@GetMapping("/overdue-internal-notice/page")
 	@PreAuth(menu = "finance_overdue_notice")
 	@ApiOperationSupport(order = 29)
-	@Operation(summary = "逾期通知与催缴记录", description = "查询当前账号收到的逾期通知和发起的催缴记录")
+	@Operation(summary = "我的逾期消息", description = "查询当前账号收到的内部逾期处置提醒")
 	public R<IPage<OverdueInternalNoticeVO>> overdueNoticePage(@RequestParam(required = false) String customerName,
 															 @RequestParam(required = false) String readStatus,
 															 @RequestParam(required = false) String recordType,

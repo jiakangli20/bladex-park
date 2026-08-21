@@ -31,8 +31,10 @@ import org.springblade.modules.system.pojo.entity.User;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.URI;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -55,6 +57,8 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class ContractNoticeServiceImpl implements IContractNoticeService {
+
+	private static final int MAX_NOTICE_ATTACHMENT_BYTES = 30 * 1024 * 1024;
 
 	private static final String TEMPLATE_CONTRACT_APPROVAL = "君联大厦招商管理办法2023/附件二：合同会签审批表.docx";
 	private static final String TEMPLATE_PAYMENT = "君联大厦招商管理办法2023/附件四：君联大厦付款通知单.docx";
@@ -123,6 +127,61 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 			new ByteArrayInputStream(document.getFileBytes())
 		);
 		return bladeFile.getLink();
+	}
+
+	@Override
+	public ContractNoticeFileVO readNoticeAttachment(String fileName, String fileUrl) {
+		if (StringUtil.isBlank(fileUrl)) {
+			throw new ServiceException("通知附件地址不能为空");
+		}
+		try {
+			byte[] content;
+			try (InputStream input = openStoredNoticeStream(fileUrl)) {
+				content = input.readNBytes(MAX_NOTICE_ATTACHMENT_BYTES + 1);
+			}
+			if (content.length == 0) {
+				throw new ServiceException("已生成的通知附件内容为空");
+			}
+			if (content.length > MAX_NOTICE_ATTACHMENT_BYTES) {
+				throw new ServiceException("通知附件不能超过30MB");
+			}
+			ContractNoticeFileVO document = new ContractNoticeFileVO();
+			document.setFileName(firstNotBlank(fileName, "通知文书.docx"));
+			document.setFileUrl(fileUrl.trim());
+			document.setContentType(firstNotBlank(
+				java.net.URLConnection.guessContentTypeFromName(document.getFileName()),
+				"application/octet-stream"
+			));
+			document.setFileBytes(content);
+			return document;
+		} catch (ServiceException exception) {
+			throw exception;
+		} catch (Exception exception) {
+			throw new ServiceException("读取已生成的通知附件失败");
+		}
+	}
+
+	private InputStream openStoredNoticeStream(String fileUrl) {
+		String path;
+		try {
+			path = URI.create(fileUrl.trim()).getPath();
+		} catch (Exception exception) {
+			throw new ServiceException("通知附件地址格式不正确");
+		}
+		String normalizedPath = Func.toStr(path).replaceFirst("^/+", "");
+		if (StringUtil.isBlank(normalizedPath)) {
+			throw new ServiceException("通知附件地址格式不正确");
+		}
+		String[] segments = normalizedPath.split("/");
+		for (int index = 0; index < segments.length; index++) {
+			String objectName = String.join("/", java.util.Arrays.copyOfRange(segments, index, segments.length));
+			try {
+				return ossBuilder.template().statFileStream(objectName);
+			} catch (Exception ignored) {
+				// MinIO links normally contain the bucket before the object name.
+			}
+		}
+		throw new ServiceException("已生成的通知附件不存在");
 	}
 
 	@SneakyThrows

@@ -1,6 +1,14 @@
 <template>
   <basic-container>
     <div class="overdue-notice-page">
+      <section class="notice-header">
+        <div>
+          <h2>我的消息</h2>
+          <span>公司内部逾期处置提醒，统一记录 PC 和小程序消息</span>
+        </div>
+        <el-tag type="primary" effect="plain">内部通知</el-tag>
+      </section>
+
       <section class="notice-summary">
         <div v-for="item in summaryCards" :key="item.key" class="notice-summary__item">
           <span>{{ item.label }}</span>
@@ -13,14 +21,8 @@
           <el-form-item label="租客名称">
             <el-input v-model="query.customerName" clearable placeholder="请输入租客名称" @keyup.enter="searchChange" />
           </el-form-item>
-          <el-form-item label="记录类型">
-            <el-select v-model="query.recordType" clearable placeholder="全部记录" @change="handleRecordTypeChange">
-              <el-option label="逾期通知" value="notice" />
-              <el-option label="催缴记录" value="reminder" />
-            </el-select>
-          </el-form-item>
           <el-form-item label="阅读状态">
-            <el-select v-model="query.readStatus" clearable placeholder="全部状态" :disabled="query.recordType === 'reminder'">
+            <el-select v-model="query.readStatus" clearable placeholder="全部状态">
               <el-option label="未读" value="0" />
               <el-option label="已读" value="1" />
             </el-select>
@@ -41,14 +43,10 @@
           scrollbar-always-on
           class="notice-table"
         >
-          <el-table-column label="记录类型" width="100" align="center">
-            <template #default="{ row }">
-              <el-tag :type="row.recordType === 'reminder' ? 'success' : 'warning'" effect="plain">
-                {{ recordTypeText(row) }}
-              </el-tag>
-            </template>
+          <el-table-column label="消息类型" width="110" align="center">
+            <template #default><el-tag type="primary" effect="plain">内部提醒</el-tag></template>
           </el-table-column>
-          <el-table-column prop="noticeTitle" label="记录标题" min-width="170" align="center" show-overflow-tooltip />
+          <el-table-column prop="noticeTitle" label="消息标题" min-width="170" align="center" show-overflow-tooltip />
           <el-table-column
             prop="customerName"
             label="租客名称"
@@ -71,10 +69,10 @@
             <template #default="{ row }">{{ formatMoney(unpaidAmount(row)) }}</template>
           </el-table-column>
           <el-table-column prop="payDeadline" label="应缴日期" width="116" align="center" />
-          <el-table-column label="接收职责/操作人" min-width="130" align="center" show-overflow-tooltip>
-            <template #default="{ row }">{{ row.recordType === 'reminder' ? row.operatorName || '-' : row.recipientRoles || '-' }}</template>
-          </el-table-column>
-          <el-table-column prop="createTime" label="记录时间" width="168" align="center" />
+          <el-table-column prop="recipientRoles" label="接收职责" min-width="130" align="center" show-overflow-tooltip />
+          <el-table-column prop="createBy" label="发送人" width="110" align="center" show-overflow-tooltip />
+          <el-table-column label="消息端" width="112" align="center">PC / 小程序</el-table-column>
+          <el-table-column prop="createTime" label="发送时间" width="168" align="center" />
           <el-table-column label="状态" width="86" align="center">
             <template #default="{ row }">
               <el-tag :type="recordStatusType(row)" effect="plain">
@@ -85,8 +83,8 @@
           <el-table-column label="操作" width="156" align="center" fixed="right">
             <template #default="{ row }">
               <div class="notice-actions">
-                <el-button v-if="row.recordType !== 'reminder' && row.readStatus !== '1'" text type="primary" @click="markRead(row)">标记已读</el-button>
-                <el-button v-if="row.recordType !== 'reminder'" text type="primary" @click="openNotice(row)">查看通知</el-button>
+                <el-button v-if="row.readStatus !== '1'" text type="primary" @click="markRead(row)">标记已读</el-button>
+                <el-button text type="primary" @click="openNotice(row)">查看通知</el-button>
               </div>
             </template>
           </el-table-column>
@@ -108,11 +106,11 @@
         </div>
       </section>
 
-      <el-drawer v-model="noticeDetailVisible" title="逾期记录详情" size="520px" append-to-body>
+      <el-drawer v-model="noticeDetailVisible" title="内部处置提醒详情" size="520px" append-to-body>
         <div class="notice-detail">
           <section class="notice-detail__header">
             <div>
-              <span>{{ noticeDetail.recordType === 'reminder' ? '记录标题' : '通知标题' }}</span>
+              <span>消息标题</span>
               <strong>{{ noticeDetail.noticeTitle || '-' }}</strong>
             </div>
             <el-tag :type="recordStatusType(noticeDetail)" effect="plain">
@@ -129,10 +127,10 @@
             </div>
           </section>
           <section class="notice-detail__meta">
-            <span>记录时间</span>
+            <span>发送时间</span>
             <strong>{{ noticeDetail.createTime || '-' }}</strong>
-            <span>{{ noticeDetail.recordType === 'reminder' ? '操作人 / 来源' : '通知职责' }}</span>
-            <strong>{{ detailResponsibility }}</strong>
+            <span>发送人 / 接收职责</span>
+            <strong>{{ noticeDetail.createBy || '-' }} / {{ noticeDetail.recipientRoles || '-' }}</strong>
           </section>
         </div>
         <template #footer>
@@ -158,7 +156,7 @@ export default {
       query: {
         customerName: '',
         readStatus: '',
-        recordType: '',
+        recordType: 'notice',
       },
       page: {
         currentPage: 1,
@@ -171,7 +169,6 @@ export default {
         total: 0,
         unread: 0,
         read: 0,
-        reminder: 0,
       },
       noticeDetailVisible: false,
       noticeDetail: {},
@@ -200,16 +197,10 @@ export default {
     },
     summaryCards() {
       return [
-        { key: 'total', label: '全部记录', value: this.summary.total },
-        { key: 'unread', label: '未读通知', value: this.summary.unread },
-        { key: 'read', label: '已读通知', value: this.summary.read },
-        { key: 'reminder', label: '催缴记录', value: this.summary.reminder },
+        { key: 'total', label: '全部内部消息', value: this.summary.total },
+        { key: 'unread', label: '未读消息', value: this.summary.unread },
+        { key: 'read', label: '已读消息', value: this.summary.read },
       ];
-    },
-    detailResponsibility() {
-      const row = this.noticeDetail || {};
-      if (row.recordType !== 'reminder') return row.recipientRoles || '-';
-      return `${row.operatorName || '-'} / ${this.sourceText(row.source)}`;
     },
     detailItems() {
       const row = this.noticeDetail || {};
@@ -244,25 +235,18 @@ export default {
         });
     },
     loadSummary() {
-      const base = this.cleanParams({ customerName: this.query.customerName });
+      const base = this.cleanParams({ customerName: this.query.customerName, recordType: 'notice' });
       Promise.all([
         getOverdueInternalNoticePage(1, 1, base),
-        getOverdueInternalNoticePage(1, 1, { ...base, recordType: 'notice', readStatus: '0' }),
-        getOverdueInternalNoticePage(1, 1, { ...base, recordType: 'notice', readStatus: '1' }),
-        getOverdueInternalNoticePage(1, 1, { ...base, recordType: 'reminder' }),
-      ]).then(([totalRes, unreadRes, readRes, reminderRes]) => {
+        getOverdueInternalNoticePage(1, 1, { ...base, readStatus: '0' }),
+        getOverdueInternalNoticePage(1, 1, { ...base, readStatus: '1' }),
+      ]).then(([totalRes, unreadRes, readRes]) => {
         this.summary = {
           total: Number((totalRes.data.data || {}).total) || 0,
           unread: Number((unreadRes.data.data || {}).total) || 0,
           read: Number((readRes.data.data || {}).total) || 0,
-          reminder: Number((reminderRes.data.data || {}).total) || 0,
         };
       });
-    },
-    handleRecordTypeChange(value) {
-      if (value === 'reminder') {
-        this.query.readStatus = '';
-      }
     },
     searchChange() {
       this.page.currentPage = 1;
@@ -272,7 +256,7 @@ export default {
       this.query = {
         customerName: '',
         readStatus: '',
-        recordType: '',
+        recordType: 'notice',
       };
       this.page.currentPage = 1;
       this.reload();
@@ -287,7 +271,7 @@ export default {
       this.loadData();
     },
     markRead(row) {
-      if (!row || row.recordType === 'reminder' || !row.paymentId) return Promise.resolve();
+      if (!row || !row.paymentId) return Promise.resolve();
       return readOverdueInternalNotice(row.paymentId).then(() => {
         this.$message.success('已标记为已读');
         this.reload();
@@ -297,7 +281,7 @@ export default {
       if (!row) return;
       this.noticeDetail = { ...row };
       this.noticeDetailVisible = true;
-      if (row.recordType === 'reminder' || row.readStatus === '1' || !row.paymentId) return;
+      if (row.readStatus === '1' || !row.paymentId) return;
       readOverdueInternalNotice(row.paymentId).then(() => {
         this.noticeDetail.readStatus = '1';
         this.reload();
@@ -314,7 +298,7 @@ export default {
           },
         });
       };
-      if (row.recordType === 'reminder' || row.readStatus === '1') {
+      if (row.readStatus === '1') {
         navigate();
         return;
       }
@@ -329,24 +313,11 @@ export default {
         maximumFractionDigits: 2,
       })}`;
     },
-    recordTypeText(row) {
-      return row && row.recordType === 'reminder' ? '催缴记录' : '逾期通知';
-    },
     recordStatusType(row) {
-      if (row && row.recordType === 'reminder') return 'success';
       return row && row.readStatus === '1' ? 'success' : 'warning';
     },
     recordStatusText(row) {
-      if (row && row.recordType === 'reminder') return '已记录';
       return row && row.readStatus === '1' ? '已读' : '未读';
-    },
-    sourceText(source) {
-      const sourceMap = {
-        overdue_bill: '逾期账单',
-        overdue_reminder: '逾期提醒',
-        bill_management: '账单管理',
-      };
-      return sourceMap[source] || '账单管理';
     },
     cleanParams(params) {
       return Object.keys(params || {}).reduce((result, key) => {
@@ -368,6 +339,7 @@ export default {
   gap: 16px;
 }
 
+.notice-header,
 .notice-summary,
 .notice-search,
 .notice-table-wrap {
@@ -376,9 +348,27 @@ export default {
   background: #fff;
 }
 
+.notice-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+}
+
+.notice-header h2 {
+  margin: 0 0 4px;
+  color: #1f2937;
+  font-size: 20px;
+}
+
+.notice-header span {
+  color: #909399;
+  font-size: 13px;
+}
+
 .notice-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: 20px 18px;
 }
 
