@@ -40,5 +40,6 @@ public class MiniLoginVO {
 	private Long customerId;
 	private List<String> roleCodes = Collections.emptyList();
 	private List<String> capabilities = Collections.emptyList();
+	private List<String> subscribeTemplateIds = Collections.emptyList();
 	private MiniProfileVO profile;
 }

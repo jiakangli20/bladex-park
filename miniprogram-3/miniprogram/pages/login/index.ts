@@ -1,5 +1,5 @@
 import { authApi } from '../../services/miniapp'
-import { saveSession } from '../../utils/session'
+import { MiniSession, saveSession } from '../../utils/session'
 
 const wechatCode = (): Promise<string> => new Promise((resolve, reject) => {
   wx.login({
@@ -47,6 +47,7 @@ Page({
         return
       }
       saveSession(session)
+      await this.requestSubscriptions(session)
       this.finish()
     } finally {
       this.setData({ loading: false })
@@ -67,6 +68,7 @@ Page({
         this.data.inviteCode,
       )
       saveSession(session)
+      await this.requestSubscriptions(session)
       this.finish()
     } finally {
       this.setData({ loading: false })
@@ -75,6 +77,12 @@ Page({
 
   browseFirst() {
     wx.redirectTo({ url: '/pages/index/index' })
+  },
+
+  async requestSubscriptions(session: MiniSession) {
+    const templateIds = (session.subscribeTemplateIds || []).filter(Boolean).slice(0, 3)
+    if (!templateIds.length) return
+    await wx.requestSubscribeMessage({ tmplIds: templateIds }).catch(() => undefined)
   },
 
   finish() {

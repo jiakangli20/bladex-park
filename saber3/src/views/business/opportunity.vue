@@ -1,6 +1,8 @@
 <template>
   <basic-container>
     <div class="opportunity-page">
+      <business-page-intro title="商机管理" subtitle="跟进招商线索、企业意向与入驻审核进度" />
+
       <template v-if="!followPageVisible">
         <section class="summary-grid">
           <div v-for="item in summaryCards" :key="item.key" class="summary-card">

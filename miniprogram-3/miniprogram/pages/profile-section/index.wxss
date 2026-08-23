@@ -7,3 +7,19 @@
   justify-content: space-between;
   gap: 20rpx;
 }
+
+.account-block { padding-bottom: 24rpx; }
+.member-section, .invite-section { margin-top: 20rpx; }
+.member-row, .invite-row { display: flex; align-items: center; gap: 18rpx; padding: 22rpx 0; border-bottom: 1rpx solid #edf1f6; }
+.member-row:last-child, .invite-row:last-child { border-bottom: 0; }
+.member-avatar { width: 64rpx; height: 64rpx; display: flex; align-items: center; justify-content: center; flex: none; border-radius: 14rpx; background: #eaf3ff; color: #1f63f5; font-size: 28rpx; }
+.member-main { flex: 1; min-width: 0; color: #263247; font-size: 26rpx; }
+.member-main text, .invite-row text { display: block; margin-top: 8rpx; color: #8290a3; font-size: 22rpx; }
+.member-side { flex: none; color: #6d7b8f; font-size: 22rpx; text-align: right; }
+.disable-link { margin-top: 10rpx; color: #dc5661; }
+.invite-form { margin-top: 20rpx; }
+.invite-form input, .invite-picker { height: 76rpx; margin-top: 14rpx; padding: 0 22rpx; display: flex; align-items: center; border: 1rpx solid #e2e8f0; border-radius: 12rpx; background: #f8fafc; color: #344155; font-size: 25rpx; }
+.invite-button { margin-top: 20rpx; }
+.invite-row { justify-content: space-between; color: #334057; font-size: 24rpx; }
+.invite-row > view:last-child { max-width: 220rpx; color: #8894a5; font-size: 21rpx; text-align: right; }
+.account-empty { padding: 28rpx 0 10rpx; color: #909bad; font-size: 24rpx; text-align: center; }

@@ -1,6 +1,8 @@
 <template>
   <basic-container>
-    <avue-crud
+    <div class="notice-page">
+      <business-page-intro title="通知公告" subtitle="面向园区企业发布公告、政策、活动与服务通知" />
+      <avue-crud
       :option="option"
       :table-loading="loading"
       :data="data"
@@ -33,7 +35,8 @@
       <template #category="{ row }">
         <el-tag>{{ row.categoryName }}</el-tag>
       </template>
-    </avue-crud>
+      </avue-crud>
+    </div>
   </basic-container>
 </template>
 
@@ -69,7 +72,7 @@ export default {
         grid: false,
         column: [
           {
-            label: '通知标题',
+            label: '公告标题',
             prop: 'title',
             span: 24,
             row: true,
@@ -77,13 +80,13 @@ export default {
             rules: [
               {
                 required: true,
-                message: '请输入通知标题',
+                message: '请输入公告标题',
                 trigger: 'blur',
               },
             ],
           },
           {
-            label: '通知类型',
+            label: '公告类型',
             type: 'select',
             dicUrl: '/blade-system/dict/dictionary?code=notice',
             props: {
@@ -97,13 +100,13 @@ export default {
             rules: [
               {
                 required: true,
-                message: '请输入通知类型',
+                message: '请选择公告类型',
                 trigger: 'blur',
               },
             ],
           },
           {
-            label: '通知时间',
+            label: '发布时间',
             prop: 'releaseTimeRange',
             type: 'datetime',
             format: 'YYYY-MM-DD HH:mm:ss',
@@ -117,13 +120,13 @@ export default {
             rules: [
               {
                 required: true,
-                message: '请输入通知时间',
+                message: '请选择发布时间',
                 trigger: 'blur',
               },
             ],
           },
           {
-            label: '通知日期',
+            label: '发布日期',
             prop: 'releaseTime',
             type: 'date',
             gridRow: true,
@@ -132,13 +135,13 @@ export default {
             rules: [
               {
                 required: true,
-                message: '请输入通知日期',
+                message: '请选择发布日期',
                 trigger: 'click',
               },
             ],
           },
           {
-            label: '通知内容',
+            label: '公告内容',
             prop: 'content',
             component: 'avue-ueditor',
             action: '/blade-resource/oss/endpoint/put-file',
@@ -306,4 +309,10 @@ export default {
 };
 </script>
 
-<style></style>
+<style scoped>
+.notice-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+</style>

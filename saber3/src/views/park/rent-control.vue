@@ -1,6 +1,11 @@
 <template>
   <basic-container>
     <div class="rent-control-page">
+      <business-page-intro
+        title="租控管理"
+        subtitle="查看园区房源租赁状态、空置情况与房间业务信息"
+      />
+
       <aside class="rent-sidebar">
         <div class="side-search">
           <div class="side-search-bar">
@@ -1472,10 +1477,15 @@ export default {
 .rent-control-page {
   display: grid;
   grid-template-columns: 276px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 14px;
   height: calc(100vh - 160px);
   min-height: 620px;
   overflow: hidden;
+}
+
+.rent-control-page :deep(.business-page-intro) {
+  grid-column: 1 / -1;
 }
 
 .rent-sidebar {

@@ -2,6 +2,11 @@
   <basic-container>
     <template v-if="!editPageVisible">
       <div class="park-page">
+        <business-page-intro
+          title="园区档案"
+          subtitle="管理园区基础档案、运营状态与展示信息"
+        />
+
         <section class="summary-grid">
           <div v-for="item in summaryCards" :key="item.key" class="summary-card">
             <span>{{ item.label }}</span>

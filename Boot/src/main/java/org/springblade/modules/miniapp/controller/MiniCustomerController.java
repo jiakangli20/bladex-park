@@ -42,6 +42,8 @@ public class MiniCustomerController {
 	public R<Void> cancelAppointment(@PathVariable Long id, @RequestParam(required = false) String reason) { businessService.cancelAppointment(id, reason); return R.success("取消成功"); }
 	@PostMapping("/settlement-intentions") @Operation(summary = "提交入驻意向")
 	public R<Map<String, Object>> settlement(@RequestHeader("X-Request-Id") String requestId, @Valid @RequestBody MiniBusinessDTO.Settlement request) { return R.data(businessService.createSettlement(requestId, request)); }
+	@GetMapping("/settlement-intentions") @Operation(summary = "我的入驻意向")
+	public R<List<Map<String, Object>>> settlements() { return R.data(businessService.settlements()); }
 	@PostMapping("/property-work-orders") @Operation(summary = "提交物业申请")
 	public R<Map<String, Object>> propertyOrder(@RequestHeader("X-Request-Id") String requestId, @Valid @RequestBody MiniBusinessDTO.PropertyOrder request) { return R.data(businessService.createPropertyOrder(requestId, request)); }
 	@PostMapping("/value-service-orders") @Operation(summary = "提交增值服务申请")

@@ -1,0 +1,6 @@
+.notice-content { padding-top: 22rpx; }
+.notice-item { display: flex; align-items: center; gap: 20rpx; }
+.notice-item-main { flex: 1; min-width: 0; }
+.notice-summary { margin-top: 14rpx; color: #6f7c8f; font-size: 24rpx; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.notice-time { margin-top: 14rpx; color: #9aa5b4; font-size: 22rpx; }
+.notice-item-arrow { flex: none; color: #aeb8c7; font-size: 38rpx; }

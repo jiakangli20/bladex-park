@@ -1,10 +1,7 @@
 <template>
   <basic-container>
     <div class="entry-page">
-      <div class="entry-head">
-        <h2>物业服务</h2>
-        <p>统一维护物业服务配置，并集中处理企业服务工单。</p>
-      </div>
+      <business-page-intro title="物业服务" subtitle="统一维护物业服务配置，并集中处理企业服务工单" />
       <div class="entry-grid">
         <button type="button" class="entry-card" @click="go('/enterprise/property-service-config')">
           <span class="entry-icon">配</span>
@@ -37,19 +34,6 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 18px;
-}
-
-.entry-head h2 {
-  margin: 0 0 6px;
-  color: #1f2937;
-  font-size: 22px;
-  font-weight: 600;
-}
-
-.entry-head p {
-  margin: 0;
-  color: #64748b;
-  font-size: 14px;
 }
 
 .entry-grid {

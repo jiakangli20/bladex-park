@@ -402,6 +402,9 @@
   padding: 0 30rpx 20rpx;
 }
 
+.value-search input { flex: 1; min-width: 0; color: #2e394b; font-size: 26rpx; }
+.search-clear { flex: none; color: #95a0af; font-size: 34rpx; }
+
 .category-scroll {
   width: 100%;
   white-space: nowrap;

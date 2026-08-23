@@ -1,13 +1,12 @@
 <template>
   <basic-container>
     <div class="overdue-notice-page">
-      <section class="notice-header">
-        <div>
-          <h2>我的消息</h2>
-          <span>公司内部逾期处置提醒，统一记录 PC 和小程序消息</span>
-        </div>
+      <business-page-intro
+        title="我的消息"
+        subtitle="查看当前账号收到的逾期处置提醒与阅读状态"
+      >
         <el-tag type="primary" effect="plain">内部通知</el-tag>
-      </section>
+      </business-page-intro>
 
       <section class="notice-summary">
         <div v-for="item in summaryCards" :key="item.key" class="notice-summary__item">
@@ -339,31 +338,12 @@ export default {
   gap: 16px;
 }
 
-.notice-header,
 .notice-summary,
 .notice-search,
 .notice-table-wrap {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   background: #fff;
-}
-
-.notice-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 20px;
-}
-
-.notice-header h2 {
-  margin: 0 0 4px;
-  color: #1f2937;
-  font-size: 20px;
-}
-
-.notice-header span {
-  color: #909399;
-  font-size: 13px;
 }
 
 .notice-summary {

@@ -1,5 +1,7 @@
 <template>
   <basic-container>
+    <business-page-intro title="客户标签" subtitle="维护客户标签分类，为企业画像与筛选提供依据" />
+
     <div class="tag-page">
       <aside class="tag-sidebar">
         <div class="sidebar-head">
@@ -545,6 +547,7 @@ export default {
 .tag-page {
   display: grid;
   min-height: calc(100vh - 150px);
+  margin-top: 16px;
   grid-template-columns: 252px minmax(0, 1fr);
   gap: 12px;
 }

@@ -14,7 +14,6 @@ Page({
     const services = await publicApi.propertyServices()
     const selected: Record<string, any> | undefined = services.find(item => String(item.id) === options.id)
       || services.find(item => String(item.type).includes(options.type || ''))
-      || services[0]
     if (!selected) {
       wx.showToast({ title: '该物业服务暂未配置', icon: 'none' })
       return

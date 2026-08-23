@@ -4,7 +4,7 @@
       <view class="hero-panel">
         <view class="hero-top">
           <view class="service-center">服务中心⌄</view>
-          <view class="hero-notice" bindtap="showNotice">
+          <view class="hero-notice" bindtap="showAdminNotifications">
             <view class="hero-bell"></view>
             <view wx:if="{{noticeCount}}" class="hero-badge">{{noticeCount}}</view>
           </view>
@@ -19,9 +19,15 @@
           <text>通知</text>
           <text>公告</text>
         </view>
-        <view class="notice-text">关于开展园区 “智慧安防升级” 专项应急...</view>
+        <view class="notice-text">{{noticeTitle}}</view>
         <view class="notice-arrow">〉</view>
       </view>
+
+      <swiper wx:if="{{homeBanners.length}}" class="home-banner" indicator-dots="{{homeBanners.length > 1}}" autoplay circular interval="4500">
+        <block wx:for="{{homeBanners}}" wx:key="id">
+          <swiper-item><image class="home-banner-image" src="{{item.image}}" mode="aspectFill" data-id="{{item.id}}" bindtap="openBanner"></image></swiper-item>
+        </block>
+      </swiper>
 
       <view class="feature-panel">
         <block wx:for="{{quickActionRows}}" wx:for-item="actionRow" wx:key="*this">

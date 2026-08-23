@@ -16,6 +16,8 @@ export const authApi = {
 
 export const publicApi = {
   home: () => request<JsonMap>('/blade-miniapp/public/home', { auth: false }),
+  notices: () => request<JsonMap[]>('/blade-miniapp/public/notices', { auth: false }),
+  notice: (id: string) => request<JsonMap>(`/blade-miniapp/public/notices/${id}`, { auth: false }),
   houses: (keyword = '') => request<JsonMap[]>(`/blade-miniapp/public/houses?keyword=${encodeURIComponent(keyword)}`, { auth: false, real: true }),
   house: (id: string) => request<JsonMap>(`/blade-miniapp/public/houses/${id}`, { auth: false, real: true }),
   propertyServices: () => request<JsonMap[]>('/blade-miniapp/public/property-services', { auth: false }),
@@ -32,6 +34,7 @@ export const customerApi = {
   appointments: () => request<JsonMap[]>('/blade-miniapp/customer/appointments'),
   cancelAppointment: (id: string, reason = '') => request<void>(`/blade-miniapp/customer/appointments/${id}/cancel?reason=${encodeURIComponent(reason)}`, { method: 'POST' }),
   createSettlement: (data: JsonMap) => postOnce<JsonMap>('/blade-miniapp/customer/settlement-intentions', data),
+  settlements: () => request<JsonMap[]>('/blade-miniapp/customer/settlement-intentions'),
   createPropertyOrder: (data: JsonMap) => postOnce<JsonMap>('/blade-miniapp/customer/property-work-orders', data),
   createValueOrder: (data: JsonMap) => postOnce<JsonMap>('/blade-miniapp/customer/value-service-orders', data),
   company: () => request<JsonMap>('/blade-miniapp/customer/company'),

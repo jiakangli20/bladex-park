@@ -148,7 +148,27 @@ export default {
         const children = menuItem.children || [];
         return children.some(child => matchPath(child));
       };
-      return topMenus.find(menuItem => matchPath(menuItem));
+      const matchedByPath = topMenus.find(menuItem => matchPath(menuItem));
+      if (matchedByPath) {
+        return matchedByPath;
+      }
+      const topMenuCode = this.topMenuCodeByRoute(path);
+      return topMenus.find(menuItem => topMenuCode && menuItem.code === topMenuCode);
+    },
+    topMenuCodeByRoute(path) {
+      const routeMap = [
+        { prefix: '/desk/notice', code: 'service' },
+        { prefix: '/plugin/workflow', code: 'office' },
+        { prefix: '/settlement', code: 'entry' },
+        { prefix: '/enterprise', code: 'service' },
+        { prefix: '/contract', code: 'contract' },
+        { prefix: '/finance', code: 'finance' },
+        { prefix: '/park', code: 'park' },
+        { prefix: '/system', code: 'system' },
+      ];
+      return routeMap.find(
+        item => path === item.prefix || path.indexOf(`${item.prefix}/`) === 0
+      )?.code;
     },
     findFirstPagePath(menuList = []) {
       for (const menuItem of menuList) {

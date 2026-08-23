@@ -17,12 +17,16 @@ miniapp:
   app-id: ${MINIAPP_WECHAT_APP_ID:wx3feaa2327be80026}
   app-secret: ${MINIAPP_WECHAT_APP_SECRET:}
   default-tenant-id: ${MINIAPP_DEFAULT_TENANT_ID:000000}
-  default-park-id: ${MINIAPP_DEFAULT_PARK_ID:1}
+  # 0 表示自动选取首个启用园区；公开内容默认汇总全部启用园区。
+  default-park-id: ${MINIAPP_DEFAULT_PARK_ID:0}
   oauth-client-id: ${MINIAPP_OAUTH_CLIENT_ID:saber}
   oauth-client-secret: ${MINIAPP_OAUTH_CLIENT_SECRET:saber_secret}
   mock-enabled: ${MINIAPP_MOCK_ENABLED:false}
   bind-ticket-minutes: 5
   rate-limit-per-minute: 30
+  # 在微信公众平台“订阅消息”中选用模板后，通过环境变量注入模板 ID。
+  service-notice-template-id: ${MINIAPP_SERVICE_NOTICE_TEMPLATE_ID:}
+  todo-reminder-template-id: ${MINIAPP_TODO_REMINDER_TEMPLATE_ID:}
 
 spring:
   # QQ SMTP 公共连接参数；发件账号与授权码由用户在个人中心维护。

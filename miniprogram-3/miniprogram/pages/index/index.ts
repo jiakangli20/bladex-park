@@ -1,4 +1,4 @@
-import { publicApi } from '../../services/miniapp'
+import { adminApi, publicApi } from '../../services/miniapp'
 import { hasCapability, requireLogin } from '../../utils/session'
 
 const baseActions = [
@@ -37,6 +37,9 @@ Page({
     homeServiceCards: serviceCards,
     homePolicies: [] as Record<string, any>[],
     homeActivities: [] as Record<string, any>[],
+    homeBanners: [] as Record<string, any>[],
+    homeNotices: [] as Record<string, any>[],
+    noticeTitle: '暂无最新公告',
     noticeCount: 0,
   },
 
@@ -49,7 +52,15 @@ Page({
     publicApi.home().then(data => this.setData({
       homePolicies: data.policies || [],
       homeActivities: data.activities || [],
+      homeBanners: data.banners || [],
+      homeNotices: data.notices || [],
+      noticeTitle: data.notices?.[0]?.title || '暂无最新公告',
     })).catch(() => undefined)
+    if (hasCapability('admin.notification.view')) {
+      adminApi.notifications().then(items => this.setData({ noticeCount: items.filter(item => item.status === 'unread').length })).catch(() => undefined)
+    } else {
+      this.setData({ noticeCount: 0 })
+    }
   },
 
   handleQuickAction(event: WechatMiniprogram.TouchEvent) {
@@ -107,7 +118,7 @@ Page({
     if (key === 'more') {
       if (!requireLogin('/pages/notifications/index')) return
       wx.showActionSheet({
-        itemList: ['通知中心', '物业工单处理', '增值服务工单处理'],
+        itemList: ['通知中心', '物业工单处理', '增值服务工单处理', '看房预约处理', '入驻商机跟进'],
         success(result) {
           if (result.tapIndex === 0) {
             wx.navigateTo({ url: '/pages/notifications/index' })
@@ -118,14 +129,20 @@ Page({
           if (result.tapIndex === 2) {
             wx.navigateTo({ url: '/pages/admin-work-orders/index?type=value' })
           }
+          if (result.tapIndex === 3) wx.navigateTo({ url: '/pages/admin-work-orders/index?type=appointment' })
+          if (result.tapIndex === 4) wx.navigateTo({ url: '/pages/admin-work-orders/index?type=settlement' })
         },
       })
     }
   },
 
   showNotice() {
-    if (!requireLogin('/pages/notifications/index')) return
-    wx.navigateTo({ url: '/pages/notifications/index' })
+    wx.navigateTo({ url: '/pages/notices/index' })
+  },
+
+  showAdminNotifications() {
+    if (hasCapability('admin.notification.view')) wx.navigateTo({ url: '/pages/notifications/index' })
+    else this.showNotice()
   },
 
   goOverview() {
@@ -144,13 +161,20 @@ Page({
       return
     }
     if (key === 'declare') {
-      wx.navigateTo({ url: '/pages/service-detail/index?id=register' })
+      wx.redirectTo({ url: '/pages/services/index?tab=value&keyword=申报' })
       return
     }
     if (key === 'ip') {
-      wx.navigateTo({ url: '/pages/service-detail/index?id=trademark' })
+      wx.redirectTo({ url: '/pages/services/index?tab=value&keyword=知识产权' })
       return
     }
     wx.redirectTo({ url: '/pages/services/index?tab=value' })
+  },
+  openBanner(event: WechatMiniprogram.TouchEvent) {
+    const banner = this.data.homeBanners.find(item => String(item.id) === String(event.currentTarget.dataset.id))
+    const link = String(banner?.linkUrl || '')
+    if (!link) return
+    if (link.startsWith('/pages/')) wx.navigateTo({ url: link })
+    else wx.showToast({ title: '该广告暂未配置小程序跳转页面', icon: 'none' })
   },
 })

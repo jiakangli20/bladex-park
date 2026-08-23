@@ -2,6 +2,7 @@ import { authApi } from '../../services/miniapp'
 import { clearSession, getSession, hasCapability, requireLogin } from '../../utils/session'
 
 const customerMenus = [
+  { key: 'intentions', label: '看房与入驻', tone: 'orange', badge: '' },
   { key: 'orders', label: '我的工单', tone: 'red', badge: '' },
   { key: 'contracts', label: '我的合同', tone: 'blue', badge: '' },
   { key: 'payments', label: '缴费记录', tone: 'green', badge: '' },
@@ -30,6 +31,7 @@ Page({
     if (!requireLogin('/pages/mine/index')) return
     const key = event.currentTarget.dataset.key
     if (key === 'orders') return void wx.navigateTo({ url: '/pages/work-orders/index' })
+    if (key === 'intentions') return void wx.navigateTo({ url: '/pages/my-intentions/index' })
     if (key === 'overview') return void wx.navigateTo({ url: '/pages/overview/index' })
     if (key === 'notifications') return void wx.navigateTo({ url: '/pages/notifications/index' })
     wx.navigateTo({ url: `/pages/profile-section/index?type=${key}` })

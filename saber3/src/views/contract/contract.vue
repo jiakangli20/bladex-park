@@ -464,6 +464,11 @@
       </template>
 
       <template v-else>
+        <business-page-intro
+          title="合同列表"
+          subtitle="统一管理园区租赁合同、执行状态与合同资料"
+        />
+
         <el-alert
           v-if="expiringData.length"
           type="warning"

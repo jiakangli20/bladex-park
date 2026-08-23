@@ -1,6 +1,11 @@
 <template>
   <basic-container>
     <div class="overdue-reminder-page">
+      <business-page-intro
+        title="逾期处理"
+        subtitle="跟进逾期账单催缴、处置审批与处理记录"
+      />
+
       <section class="summary-grid">
         <div v-for="item in summaryCards" :key="item.key" class="summary-card">
           <span>{{ item.label }}</span>

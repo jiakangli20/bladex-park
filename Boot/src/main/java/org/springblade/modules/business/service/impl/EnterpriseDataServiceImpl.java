@@ -99,7 +99,10 @@ public class EnterpriseDataServiceImpl implements IEnterpriseDataService {
 			.set("pendingRooms", number(room, "pendingRooms"))
 			.set("expiringRooms", number(room, "expiringRooms"))
 			.set("rentedRooms", number(room, "rentedRooms"))
-			.set("occupiedRooms", number(room, "occupiedRooms"));
+			.set("occupiedRooms", number(room, "occupiedRooms"))
+			.set("totalArea", decimal(room, "totalArea"))
+			.set("rentedArea", decimal(room, "rentedArea"))
+			.set("vacantArea", decimal(room, "vacantArea"));
 	}
 
 	private Kv buildRentMetrics(Map<String, Object> room) {
@@ -113,7 +116,10 @@ public class EnterpriseDataServiceImpl implements IEnterpriseDataService {
 			.set("averageRent", decimal(room, "averageRent").setScale(2, RoundingMode.HALF_UP))
 			.set("rentRate", percent(occupiedRooms, totalRooms))
 			.set("vacancyRate", percent(vacantRooms, totalRooms))
-			.set("billingRate", percent(billableArea, totalArea));
+			.set("billingRate", percent(billableArea, totalArea))
+			.set("totalArea", totalArea)
+			.set("rentedArea", decimal(room, "rentedArea"))
+			.set("billableArea", billableArea);
 	}
 
 	private Kv card(String key, String label, Object value, String tone) {

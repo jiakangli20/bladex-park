@@ -1,11 +1,12 @@
 .admin-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 16rpx;
   padding: 24rpx 30rpx 0;
 }
 
 .admin-tab {
-  flex: 1;
+  flex: 0 0 calc(50% - 8rpx);
   height: 72rpx;
   display: flex;
   align-items: center;

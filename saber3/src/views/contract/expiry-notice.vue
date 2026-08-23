@@ -1,6 +1,11 @@
 <template>
   <basic-container>
     <div class="expiry-notice-page">
+      <business-page-intro
+        title="合同到期提醒"
+        subtitle="查看临近到期合同，及时安排续租或退租跟进"
+      />
+
       <section class="expiry-summary">
         <div v-for="item in summaryCards" :key="item.key" class="expiry-summary__item">
           <span>{{ item.label }}</span>

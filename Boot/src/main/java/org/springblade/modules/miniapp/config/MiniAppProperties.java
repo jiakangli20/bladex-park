@@ -42,10 +42,12 @@ public class MiniAppProperties {
 	private String appId = "";
 	private String appSecret = "";
 	private String defaultTenantId = "000000";
-	private Long defaultParkId = 1L;
+	private Long defaultParkId = 0L;
 	private String oauthClientId = "saber";
 	private String oauthClientSecret = "saber_secret";
 	private Boolean mockEnabled = false;
 	private Integer bindTicketMinutes = 5;
 	private Integer rateLimitPerMinute = 30;
+	private String serviceNoticeTemplateId = "";
+	private String todoReminderTemplateId = "";
 }

@@ -1,6 +1,8 @@
 <template>
   <basic-container>
     <div class="merchant-ad-page">
+      <business-page-intro title="广告管理" subtitle="审核园区广告内容，并控制小程序首页的发布与展示" />
+
       <section class="summary-grid">
         <div v-for="item in summaryCards" :key="item.key" class="summary-card">
           <span>{{ item.label }}</span>
@@ -10,14 +12,6 @@
 
       <section class="contract-search">
         <el-form :inline="true" :model="query">
-          <el-form-item label="广告标题">
-            <el-input
-              v-model="query.adTitle"
-              clearable
-              placeholder="请输入广告标题"
-              @keyup.enter="searchChange"
-            />
-          </el-form-item>
           <el-form-item label="广告位置">
             <el-select v-model="query.adPosition" clearable placeholder="全部位置">
               <el-option
@@ -56,7 +50,7 @@
               @keyup.enter="searchChange"
             />
           </el-form-item>
-          <el-form-item>
+          <el-form-item class="search-actions">
             <el-button type="primary" icon="el-icon-search" @click="searchChange">搜索</el-button>
             <el-button icon="el-icon-delete" @click="searchReset">清空</el-button>
           </el-form-item>
@@ -884,14 +878,25 @@ export default {
   background: #fff;
 }
 
+.contract-search :deep(.el-form) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 12px;
+}
+
 .contract-search :deep(.el-form-item) {
-  margin-right: 20px;
+  margin-right: 0;
   margin-bottom: 12px;
 }
 
 .contract-search :deep(.el-input),
 .contract-search :deep(.el-select) {
-  width: 190px;
+  width: 150px;
+}
+
+.contract-search :deep(.search-actions) {
+  flex: 0 0 auto;
 }
 
 .contract-toolbar {

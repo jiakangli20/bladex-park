@@ -1,13 +1,12 @@
 <template>
   <basic-container>
     <div class="notice-center-page">
-      <section class="notice-header">
-        <div>
-          <h2>通知管理</h2>
-          <span>面向租户和客户发送短信、邮件及小程序外部通知</span>
-        </div>
+      <business-page-intro
+        title="通知管理"
+        subtitle="向园区租客发送缴费、逾期及合同相关通知"
+      >
         <el-segmented v-model="activeCategory" :options="categoryOptions" @change="categoryChange" />
-      </section>
+      </business-page-intro>
 
       <section class="notice-summary">
         <div v-for="item in summaryCards" :key="item.key" class="notice-summary__item">
@@ -691,10 +690,7 @@ export default {
 
 <style lang="scss" scoped>
 .notice-center-page { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.notice-header, .notice-summary, .notice-search, .notice-table-wrap { border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; }
-.notice-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; }
-.notice-header h2 { margin: 0 0 4px; color: #1f2937; font-size: 20px; }
-.notice-header span { color: #909399; font-size: 13px; }
+.notice-summary, .notice-search, .notice-table-wrap { border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; }
 .notice-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 16px; }
 .notice-summary__item { min-height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-right: 1px solid #ebeef5; }
 .notice-summary__item:last-child { border-right: 0; }
@@ -748,5 +744,5 @@ export default {
 .email-attachment-row > span { min-width: 0; overflow: hidden; color: #303133; text-overflow: ellipsis; white-space: nowrap; }
 .email-attachment-row > div { display: inline-flex; align-items: center; white-space: nowrap; }
 .email-attachment-row :deep(.el-button) { margin-left: 8px; }
-@media (max-width: 900px) { .notice-header { align-items: flex-start; flex-direction: column; gap: 14px; } .notice-summary { grid-template-columns: repeat(2, 1fr); } .drawer-field-grid, .drawer-field-grid.node-grid { grid-template-columns: 1fr; } .send-record-item__title { align-items: flex-start; flex-direction: column; gap: 2px; } .send-record-item__mailbox { grid-template-columns: 1fr; } .send-record-item__mailbox > div + div { border-top: 1px solid #edf0f5; border-left: 0; } }
+@media (max-width: 900px) { .notice-summary { grid-template-columns: repeat(2, 1fr); } .drawer-field-grid, .drawer-field-grid.node-grid { grid-template-columns: 1fr; } .send-record-item__title { align-items: flex-start; flex-direction: column; gap: 2px; } .send-record-item__mailbox { grid-template-columns: 1fr; } .send-record-item__mailbox > div + div { border-top: 1px solid #edf0f5; border-left: 0; } }
 </style>

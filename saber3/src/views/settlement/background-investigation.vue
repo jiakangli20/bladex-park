@@ -1,6 +1,8 @@
 <template>
   <basic-container>
     <div class="background-page">
+      <business-page-intro title="背景调查" subtitle="核验企业基础信息、准入条件与风险情况" />
+
       <section class="background-search">
         <el-form :inline="true" :model="query">
           <el-form-item label="企业关键词">

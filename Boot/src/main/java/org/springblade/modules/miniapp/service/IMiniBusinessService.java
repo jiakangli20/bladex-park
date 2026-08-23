@@ -22,6 +22,8 @@ import java.util.Map;
  */
 public interface IMiniBusinessService {
 	Map<String, Object> home();
+	List<Map<String, Object>> publicNotices();
+	Map<String, Object> publicNotice(Long id);
 	List<Map<String, Object>> houses(String keyword);
 	Map<String, Object> house(Long id);
 	List<Map<String, Object>> propertyServices();
@@ -32,6 +34,7 @@ public interface IMiniBusinessService {
 	List<Map<String, Object>> appointments();
 	void cancelAppointment(Long id, String reason);
 	Map<String, Object> createSettlement(String requestId, MiniBusinessDTO.Settlement request);
+	List<Map<String, Object>> settlements();
 	Map<String, Object> createPropertyOrder(String requestId, MiniBusinessDTO.PropertyOrder request);
 	Map<String, Object> createValueOrder(String requestId, MiniBusinessDTO.ValueOrder request);
 	Map<String, Object> company();

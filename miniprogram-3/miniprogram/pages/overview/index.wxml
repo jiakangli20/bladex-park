@@ -44,8 +44,8 @@
             <view class="progress-track"><view class="progress-fill rent-fill" style="width: {{progress.rentRate}}%;"></view></view>
           </view>
           <view class="snapshot-card collection-card">
-            <view class="snapshot-card-head"><view><view class="snapshot-label">本月收缴率</view><view class="snapshot-value collection-value">{{progress.collectionRate}}<text>%</text></view></view><view class="ring ring-green"><view><text>{{progress.collectionRate}}</text><text>%</text></view></view></view>
-            <view class="snapshot-caption">已收 {{progress.monthReceived}} · 应收 {{progress.monthReceivable}}</view>
+            <view class="snapshot-card-head"><view><view class="snapshot-label">计租率</view><view class="snapshot-value collection-value">{{progress.collectionRate}}<text>%</text></view></view><view class="ring ring-green"><view><text>{{progress.collectionRate}}</text><text>%</text></view></view></view>
+            <view class="snapshot-caption">计租 {{progress.monthReceived}} · 总面积 {{progress.monthReceivable}}</view>
             <view class="progress-track"><view class="progress-fill collection-fill" style="width: {{progress.collectionRate}}%;"></view></view>
           </view>
         </view>
@@ -53,7 +53,7 @@
 
       <view class="section-block trend-todo-section">
         <view class="trend-card">
-          <view class="section-heading compact"><view><view class="section-kicker">REVENUE TREND</view><view class="section-title">收入趋势</view></view><view class="trend-legend"><view></view>近6个月</view></view>
+          <view class="section-heading compact"><view><view class="section-kicker">OCCUPANCY TREND</view><view class="section-title">出租率趋势</view></view><view class="trend-legend"><view></view>近6个月</view></view>
           <view class="chart"><view class="chart-grid"><view></view><view></view><view></view></view><view class="chart-bars"><block wx:for="{{trend}}" wx:key="month"><view class="bar-item"><view class="bar-value">{{item.value}}</view><view class="bar" style="height: {{item.height}}%;"></view><view class="bar-label">{{item.month}}</view></view></block></view></view>
         </view>
         <view class="todo-panel">

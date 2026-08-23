@@ -1,0 +1,7 @@
+.intent-tabs { display: flex; gap: 16rpx; padding: 24rpx 30rpx 0; }
+.intent-tab { flex: 1; height: 70rpx; display: flex; align-items: center; justify-content: center; border-radius: 14rpx; background: #fff; color: #657186; font-size: 26rpx; }
+.intent-tab.is-active { background: #1f63f5; color: #fff; }
+.intent-card { margin-top: 20rpx; }
+.intent-head { display: flex; justify-content: space-between; gap: 18rpx; }
+.intent-desc, .intent-time { margin-top: 18rpx; color: #667387; font-size: 24rpx; line-height: 1.55; }
+.intent-action { width: 160rpx; height: 62rpx; margin: 22rpx 0 0 auto; display: flex; align-items: center; justify-content: center; border: 1rpx solid #e35d68; border-radius: 12rpx; color: #d94c58; font-size: 24rpx; }

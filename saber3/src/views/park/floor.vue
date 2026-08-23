@@ -1,6 +1,11 @@
 <template>
   <basic-container>
     <div class="floor-page">
+      <business-page-intro
+        title="房源管理"
+        subtitle="统一维护楼层房源、房间信息与小程序同步状态"
+      />
+
       <section class="summary-grid">
         <div v-for="item in summaryCards" :key="item.key" class="summary-card">
           <span>{{ item.label }}</span>

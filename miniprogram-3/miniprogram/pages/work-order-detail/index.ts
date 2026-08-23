@@ -4,7 +4,9 @@ import { requireLogin } from '../../utils/session'
 const statusText = (kind: string, status: string): string => {
   const property: Record<string, string> = { '0': '待受理', '1': '处理中', '2': '待评价', '3': '已完成', '4': '已关闭' }
   const value: Record<string, string> = { '0': '待受理', '1': '沟通中', '2': '已完成', '3': '已关闭' }
-  return (kind === 'property' ? property : value)[status] || status || '待受理'
+  const appointment: Record<string, string> = { PENDING: '待受理', ACCEPTED: '已受理', COMPLETED: '已完成', REJECTED: '已驳回', CANCELLED: '已取消' }
+  const settlement: Record<string, string> = { '0': '待跟进', '1': '已受理', '2': '跟进中', '3': '已成交', '4': '已驳回' }
+  return ({ property, value, appointment, settlement }[kind] || {})[status] || status || '待受理'
 }
 
 Page({
@@ -29,7 +31,9 @@ Page({
       desc: step.actionContent || step.content || step.desc,
       done: true,
     }))
-    this.setData({ order: { ...raw, status, type: raw.kind === 'property' ? '物业服务' : '增值服务', tone: status === '已完成' ? 'green' : status === '待受理' ? 'orange' : status === '已关闭' ? 'red' : 'blue', steps } })
+    const labels: Record<string, string> = { property: '物业服务', value: '增值服务', appointment: '看房预约', settlement: '入驻商机' }
+    const normalizedSteps = steps.length ? steps : [{ title: '提交申请', time: raw.createTime, desc: raw.description || '申请已提交，等待园区处理', done: true }]
+    this.setData({ order: { ...raw, status, type: labels[raw.kind] || raw.kind, tone: ['已完成', '已成交'].includes(status) ? 'green' : ['待受理', '待跟进'].includes(status) ? 'orange' : ['已关闭', '已驳回', '已取消'].includes(status) ? 'red' : 'blue', steps: normalizedSteps } })
   },
 
   goBack() { wx.navigateBack() },

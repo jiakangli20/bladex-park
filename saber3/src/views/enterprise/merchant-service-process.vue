@@ -1,6 +1,8 @@
 <template>
   <basic-container>
     <div class="merchant-service-process-page">
+      <business-page-intro title="增值服务" subtitle="受理企业增值服务申请，跟进服务过程与处理结果" />
+
       <section class="summary-grid">
         <div v-for="item in summaryCards" :key="item.key" class="summary-card">
           <span>{{ item.label }}</span>

@@ -1,6 +1,11 @@
 <template>
   <basic-container>
     <div class="bills-all-page">
+      <business-page-intro
+        title="所有账单"
+        subtitle="统一管理园区收付款账单、缴费状态与账单明细"
+      />
+
       <section class="bill-overview">
         <div class="bill-direction">
           <button
@@ -1657,12 +1662,14 @@ export default {
 <style lang="scss" scoped>
 .bills-all-page {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .bill-overview {
   display: flex;
   min-height: 112px;
-  margin-bottom: 16px;
   background: #fff;
   border-radius: 10px;
   overflow: hidden;

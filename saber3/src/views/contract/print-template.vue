@@ -1,6 +1,11 @@
 <template>
   <basic-container>
     <div class="print-template-page">
+      <business-page-intro
+        title="合同打印模板"
+        subtitle="维护合同打印模板、版本与启用状态"
+      />
+
       <section class="summary-grid">
         <div v-for="item in summaryCards" :key="item.key" class="summary-card">
           <span>{{ item.label }}</span>

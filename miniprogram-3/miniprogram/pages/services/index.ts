@@ -17,10 +17,12 @@ Page({
     serviceCategories: ['全部'] as string[],
     allValueCards: [] as Record<string, any>[],
     valueCards: [] as Record<string, any>[],
+    searchKeyword: '',
   },
 
   onLoad(options: Record<string, string | undefined>) {
     if (options.tab === 'value') this.setData({ activeTab: 'value' })
+    if (options.keyword) this.setData({ searchKeyword: options.keyword })
     this.loadServices()
   },
 
@@ -46,7 +48,7 @@ Page({
     this.setData({
       propertyCards,
       allValueCards: valueCards,
-      valueCards,
+      valueCards: this.filterValues(valueCards, this.data.activeCategory, this.data.searchKeyword),
       serviceCategories: categories,
       serviceStats: [
         { value: String(propertyCards.length), label: '物业事项' },
@@ -67,8 +69,24 @@ Page({
     const category = String(event.currentTarget.dataset.category || '全部')
     this.setData({
       activeCategory: category,
-      valueCards: category === '全部' ? this.data.allValueCards : this.data.allValueCards.filter(item => item.category === category),
+      valueCards: this.filterValues(this.data.allValueCards, category, this.data.searchKeyword),
     })
+  },
+
+  handleSearchInput(event: WechatMiniprogram.Input) {
+    const searchKeyword = event.detail.value || ''
+    this.setData({ searchKeyword, valueCards: this.filterValues(this.data.allValueCards, this.data.activeCategory, searchKeyword) })
+  },
+
+  clearSearch() {
+    this.setData({ searchKeyword: '', valueCards: this.filterValues(this.data.allValueCards, this.data.activeCategory, '') })
+  },
+
+  filterValues(items: Record<string, any>[], category: string, keyword: string) {
+    const normalized = String(keyword || '').trim().toLowerCase()
+    return items.filter(item => (category === '全部' || item.category === category)
+      && (!normalized || [item.title, item.category, item.desc, item.serviceArea]
+        .some(value => String(value || '').toLowerCase().includes(normalized))))
   },
 
   openPropertyService(event: WechatMiniprogram.TouchEvent) {

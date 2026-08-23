@@ -1,6 +1,8 @@
 <template>
   <basic-container>
     <div class="policy-service-page">
+      <business-page-intro title="政策服务" subtitle="发布园区政策、申报指南与惠企服务内容" />
+
       <section class="policy-search">
         <el-form :inline="true" :model="query">
           <el-form-item label="服务标题">
@@ -17,7 +19,7 @@
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-button icon="el-icon-search" @click="searchChange">搜索</el-button>
+            <el-button type="primary" icon="el-icon-search" @click="searchChange">搜索</el-button>
             <el-button icon="el-icon-refresh" @click="searchReset">重置</el-button>
           </el-form-item>
         </el-form>

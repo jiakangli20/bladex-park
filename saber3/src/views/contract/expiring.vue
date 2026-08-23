@@ -1,6 +1,11 @@
 <template>
   <basic-container>
     <div class="contract-expiring-page">
+      <business-page-intro
+        title="合同到期设置"
+        subtitle="配置合同到期提醒规则及关联楼宇"
+      />
+
       <section class="expiring-search">
         <el-form :inline="true" :model="query">
           <el-form-item label="规则名称">

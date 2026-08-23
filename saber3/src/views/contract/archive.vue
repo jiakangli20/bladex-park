@@ -333,6 +333,11 @@
     </div>
 
     <div v-else class="archive-list-page">
+      <business-page-intro
+        title="合同归档"
+        subtitle="集中查询已归档合同、审批资料与相关附件"
+      />
+
       <section class="archive-search-panel">
         <el-form :inline="true" :model="query">
           <el-form-item label="租客名称">

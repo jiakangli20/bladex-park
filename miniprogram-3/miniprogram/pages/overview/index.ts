@@ -108,25 +108,29 @@ const nowText = () => {
 
 const normalizeTenants = (items: Record<string, any>[]) =>
   items.map((item, index) => {
-    const companyName = String(
-      item.companyName ||
-        item.enterpriseName ||
-        demoTenants[index % demoTenants.length].companyName
-    );
-    const fallback = demoTenants[index % demoTenants.length];
+    const companyName = String(item.companyName || item.enterpriseName || '未命名企业');
     return {
-      ...fallback,
       ...item,
+      id: String(item.id || index),
       companyName,
+      industry: item.industry || '-',
       shortName: companyName.slice(0, 1),
-      leaseEnd:
-        item.leaseEnd ||
-        item.leasePeriod?.split(" - ").pop() ||
-        fallback.leaseEnd,
-      rentStatus:
-        item.rentStatus || (item.status === "1" ? "正常" : fallback.rentStatus),
+      room: item.room || '-',
+      area: item.area ? `${item.area}m²` : '-',
+      leaseEnd: item.leaseEnd || item.leasePeriod?.split(" - ").pop() || '-',
+      rentStatus: item.rentStatus || (['0', '1'].includes(String(item.status)) ? '正常' : '需关注'),
+      occupancy: Number(item.occupancy || 0),
+      tone: ['blue', 'green', 'orange'][index % 3],
     };
   });
+
+const formatArea = (value: unknown) => `${Number(value || 0).toLocaleString('zh-CN', { maximumFractionDigits: 2 })}m²`;
+
+const topIndustryOf = (tenants: Record<string, any>[]) => {
+  const counts = new Map<string, number>();
+  tenants.forEach(item => { if (item.industry) counts.set(item.industry, (counts.get(item.industry) || 0) + 1); });
+  return [...counts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] || '-';
+};
 
 Page({
   data: {
@@ -167,59 +171,43 @@ Page({
   async loadOverview() {
     this.setData({ loading: true });
     try {
-      const [overview, tenantRows] = await Promise.all([
+      const [overview, tenantRows, workOrders] = await Promise.all([
         adminApi.overview(),
         adminApi.tenants(),
+        adminApi.workOrders(),
       ]);
       const room = overview?.roomSummary || {};
       const rent = overview?.rentMetrics || {};
-      const digital = Array.isArray(overview?.digitalOverview)
-        ? overview.digitalOverview
-        : [];
-      const progress = overview?.progress || {
-        ...demoProgress,
-        totalArea: room.totalArea || demoProgress.totalArea,
-        rentedArea: room.occupiedArea || demoProgress.rentedArea,
-        rentRate: Number(rent.rentRate ?? demoProgress.rentRate),
-        monthReceived: digital[0]?.value || demoProgress.monthReceived,
-        monthReceivable: digital[2]?.value || demoProgress.monthReceivable,
-        collectionRate: Number(
-          overview?.collectionRate ?? demoProgress.collectionRate
-        ),
+      const progress = {
+        totalArea: formatArea(room.totalArea || rent.totalArea),
+        rentedArea: formatArea(room.rentedArea || rent.rentedArea),
+        rentRate: Number(rent.rentRate || 0),
+        monthReceived: formatArea(rent.billableArea),
+        monthReceivable: formatArea(rent.totalArea),
+        collectionRate: Number(rent.billingRate || 0),
       };
-      const tenants = normalizeTenants(
-        Array.isArray(tenantRows) && tenantRows.length
-          ? tenantRows
-          : demoTenants
-      );
-      const metrics =
-        Array.isArray(overview?.metrics) && overview.metrics.length
-          ? overview.metrics.map((item, index) => ({
-              ...demoMetrics[index % demoMetrics.length],
-              ...item,
-              icon: item.icon || demoMetrics[index % demoMetrics.length].icon,
-              trend:
-                item.trend || demoMetrics[index % demoMetrics.length].trend,
-            }))
-          : demoMetrics.map((item) =>
-              item.label === "出租率"
-                ? { ...item, value: progress.rentRate }
-                : item
-            );
-      const todos =
-        Array.isArray(overview?.todos) && overview.todos.length
-          ? overview.todos.map((item) => ({
-              ...item,
-              icon: item.icon || "•",
-              desc: item.desc || "待处理事项",
-            }))
-          : demoTodos;
-      const tenantCount = Number(
-        overview?.tenantCount || tenants.length || 128
-      );
+      const tenants = normalizeTenants(Array.isArray(tenantRows) ? tenantRows : []);
+      const pending = (kind: string) => (workOrders || []).filter(item => item.kind === kind && !['2', '3', '4', 'COMPLETED', 'REJECTED', 'CANCELLED'].includes(String(item.status))).length;
+      const pendingTotal = (workOrders || []).filter(item => !['2', '3', '4', 'COMPLETED', 'REJECTED', 'CANCELLED'].includes(String(item.status))).length;
+      const metrics = [
+        { ...demoMetrics[0], value: String(progress.rentRate), trend: `${room.occupiedRooms || 0}/${room.totalRooms || 0} 间` },
+        { ...demoMetrics[1], value: String(tenants.length), trend: topIndustryOf(tenants) },
+        { ...demoMetrics[2], label: '可租房源', value: String(room.vacantRooms || 0), unit: '间', trend: formatArea(room.vacantArea) },
+        { ...demoMetrics[3], value: String(pendingTotal), trend: `${overview?.unreadNotifications || 0} 条未读` },
+      ];
+      const todos = [
+        { label: '物业申请', count: pending('property'), tone: 'blue', icon: '⌂', desc: '待处理物业工单' },
+        { label: '增值服务', count: pending('value'), tone: 'orange', icon: '✦', desc: '待跟进服务申请' },
+        { label: '招商待办', count: pending('appointment') + pending('settlement'), tone: 'green', icon: '◇', desc: '预约与入驻商机' },
+        { label: '通知提醒', count: Number(overview?.unreadNotifications || 0), tone: 'red', icon: '!', desc: '未读服务通知' },
+      ];
+      const rawTrend = Array.isArray(overview?.rentalTrend) ? overview.rentalTrend : [];
+      const trend = rawTrend.map(item => ({ month: String(item.month || '').slice(5) + '月', value: String(item.rentRate || 0), height: Math.max(8, Math.min(100, Number(item.rentRate || 0))) }));
+      const tenantCount = tenants.length;
       this.setData({
         metrics,
         progress,
+        trend,
         todos,
         todoTotal: todos.reduce(
           (total, item) => total + (Number(item.count) || 0),
@@ -228,15 +216,12 @@ Page({
         tenants,
         allTenants: tenants,
         tenantCount,
+        topIndustry: topIndustryOf(tenants),
         normalTenantCount:
-          tenants.filter((item) => item.rentStatus === "正常").length || 126,
+          tenants.filter((item) => item.rentStatus === "正常").length,
         warningTenantCount:
-          tenants.filter((item) => item.rentStatus !== "正常").length || 2,
-        usingDemo: !(
-          overview?.metrics?.length ||
-          room.totalRooms ||
-          tenantRows?.length
-        ),
+          tenants.filter((item) => item.rentStatus !== "正常").length,
+        usingDemo: false,
         lastUpdated: nowText(),
       });
     } catch (error) {
@@ -289,6 +274,7 @@ Page({
       return void wx.navigateTo({
         url: "/pages/admin-work-orders/index?type=value",
       });
+    if (label === '招商待办') return void wx.navigateTo({ url: '/pages/admin-work-orders/index?type=appointment' });
     wx.navigateTo({ url: "/pages/notifications/index" });
   },
 });

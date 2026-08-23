@@ -18,6 +18,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.mp.enums.StatusType;
 import org.springblade.core.redis.cache.BladeRedis;
@@ -27,6 +28,7 @@ import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.DigestUtil;
 import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.business.pojo.entity.*;
+import org.springblade.modules.business.pojo.dto.SettlementTodoActionDTO;
 import org.springblade.modules.business.service.*;
 import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
@@ -45,6 +47,8 @@ import org.springblade.modules.miniapp.pojo.dto.MiniBusinessDTO;
 import org.springblade.modules.miniapp.pojo.entity.*;
 import org.springblade.modules.miniapp.service.IMiniAuthService;
 import org.springblade.modules.miniapp.service.IMiniBusinessService;
+import org.springblade.modules.desk.pojo.entity.Notice;
+import org.springblade.modules.desk.service.INoticeService;
 import org.springblade.modules.park.pojo.entity.Room;
 import org.springblade.modules.park.pojo.vo.RoomVO;
 import org.springblade.modules.park.pojo.entity.Park;
@@ -66,10 +70,12 @@ import java.util.stream.Stream;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MiniBusinessServiceImpl implements IMiniBusinessService {
 
 	private final MiniAppProperties properties;
 	private final IMiniAuthService authService;
+	private final org.springblade.modules.miniapp.service.MiniWechatClient wechatClient;
 	private final IRoomService roomService;
 	private final IParkService parkService;
 	private final IMerchantAdService merchantAdService;
@@ -77,12 +83,13 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 	private final IPropertyServiceService propertyService;
 	private final IMerchantService merchantService;
 	private final ICustomerService customerService;
-	private final IBusinessOpportunityService opportunityService;
+	private final ISettlementTodoService settlementTodoService;
 	private final IPropertyWorkorderService propertyWorkorderService;
 	private final IMerchantServiceOrderService merchantOrderService;
 	private final IContractService contractService;
 	private final IPaymentService paymentService;
 	private final IEnterpriseDataService enterpriseDataService;
+	private final INoticeService noticeService;
 	private final HouseAppointmentMapper appointmentMapper;
 	private final MiniMemberMapper memberMapper;
 	private final MiniInviteMapper inviteMapper;
@@ -94,20 +101,52 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 
 	@Override
 	public Map<String, Object> home() {
-		Long parkId = properties.getDefaultParkId();
-		PolicyService policyQuery = new PolicyService();
-		policyQuery.setParkId(parkId);
-		policyQuery.setOnlineFlag("1");
-		List<Map<String, Object>> banners = merchantAdService.selectPublicAdList(parkId, "miniapp_home")
-			.stream().map(this::adMap).toList();
-		List<Map<String, Object>> policies = policyService.selectPolicyList(policyQuery).stream().limit(6).map(this::policyMap).toList();
+		List<Long> parkIds = publicParkIds();
+		if (parkIds.isEmpty()) {
+			return Kv.create().set("banners", List.of()).set("policies", List.of()).set("activities", List.of())
+				.set("notices", publicNotices()).set("quickEntries", List.of("house", "property", "value", "orders", "settlement"));
+		}
+		List<Map<String, Object>> banners = parkIds.stream()
+			.flatMap(parkId -> merchantAdService.selectPublicAdList(parkId, "miniapp_home").stream())
+			.map(this::adMap).limit(6).toList();
+		List<Map<String, Object>> policies = parkIds.stream().flatMap(parkId -> {
+			PolicyService query = new PolicyService();
+			query.setParkId(parkId);
+			query.setOnlineFlag("1");
+			return policyService.selectPolicyList(query).stream();
+		}).map(this::policyMap).limit(6).toList();
 		List<Map<String, Object>> activities = activityMapper.selectList(Wrappers.<ParkActivity>lambdaQuery()
-			.eq(ParkActivity::getTenantId, properties.getDefaultTenantId()).eq(ParkActivity::getParkId, parkId)
+			.eq(ParkActivity::getTenantId, properties.getDefaultTenantId()).in(!parkIds.isEmpty(), ParkActivity::getParkId, parkIds)
 			.eq(ParkActivity::getPublishStatus, 1).eq(ParkActivity::getStatus, StatusType.ACTIVE.getType())
 			.eq(ParkActivity::getIsDeleted, 0).orderByAsc(ParkActivity::getSortOrder).orderByDesc(ParkActivity::getStartTime))
 			.stream().map(this::activityMap).toList();
 		return Kv.create().set("banners", banners).set("policies", policies).set("activities", activities)
+			.set("notices", publicNotices())
 			.set("quickEntries", List.of("house", "property", "value", "orders", "settlement"));
+	}
+
+	@Override
+	public List<Map<String, Object>> publicNotices() {
+		return noticeService.list(Wrappers.<Notice>lambdaQuery()
+			.eq(Notice::getTenantId, properties.getDefaultTenantId())
+			.eq(Notice::getCategory, 1)
+			.eq(Notice::getStatus, StatusType.ACTIVE.getType())
+			.eq(Notice::getIsDeleted, 0)
+			.and(wrapper -> wrapper.isNull(Notice::getReleaseTime).or().le(Notice::getReleaseTime, new Date()))
+			.orderByDesc(Notice::getReleaseTime).orderByDesc(Notice::getCreateTime).last("limit 20"))
+			.stream().map(item -> noticeMap(item, false)).toList();
+	}
+
+	@Override
+	public Map<String, Object> publicNotice(Long id) {
+		Notice notice = noticeService.getOne(Wrappers.<Notice>lambdaQuery()
+			.eq(Notice::getId, id).eq(Notice::getTenantId, properties.getDefaultTenantId())
+			.eq(Notice::getCategory, 1)
+			.eq(Notice::getStatus, StatusType.ACTIVE.getType()).eq(Notice::getIsDeleted, 0));
+		if (notice == null || (notice.getReleaseTime() != null && notice.getReleaseTime().after(new Date()))) {
+			throw new ServiceException("公告不存在或尚未发布");
+		}
+		return noticeMap(notice, true);
 	}
 
 	@Override
@@ -146,18 +185,22 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 
 	@Override
 	public List<Map<String, Object>> propertyServices() {
-		PropertyService query = new PropertyService();
-		query.setParkId(properties.getDefaultParkId());
-		query.setStatus("0");
-		return propertyService.selectPropertyServiceList(query).stream().map(this::propertyServiceMap).toList();
+		return publicParkIds().stream().flatMap(parkId -> {
+			PropertyService query = new PropertyService();
+			query.setParkId(parkId);
+			query.setStatus("0");
+			return propertyService.selectPropertyServiceList(query).stream();
+		}).map(this::propertyServiceMap).toList();
 	}
 
 	@Override
 	public List<Map<String, Object>> valueServices(String keyword) {
-		Merchant query = new Merchant();
-		query.setParkId(properties.getDefaultParkId());
-		query.setStatus("0");
-		return merchantService.selectMerchantList(query).stream()
+		return publicParkIds().stream().flatMap(parkId -> {
+			Merchant query = new Merchant();
+			query.setParkId(parkId);
+			query.setStatus("0");
+			return merchantService.selectMerchantList(query).stream();
+		})
 			.filter(item -> StringUtil.isBlank(keyword) || contains(item.getMerchantName(), keyword) || contains(item.getBusinessType(), keyword))
 			.map(this::merchantMap).toList();
 	}
@@ -165,7 +208,7 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 	@Override
 	public Map<String, Object> valueService(Long id) {
 		Merchant merchant = merchantService.selectMerchantById(id);
-		if (merchant == null || !Objects.equals(merchant.getParkId(), properties.getDefaultParkId()) || !"0".equals(merchant.getStatus())) {
+		if (merchant == null || !publicParkIds().contains(merchant.getParkId()) || !"0".equals(merchant.getStatus())) {
 			throw new ServiceException("增值服务不存在或已下架");
 		}
 		return merchantMap(merchant);
@@ -224,24 +267,40 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 	public Map<String, Object> createSettlement(String requestId, MiniBusinessDTO.Settlement request) {
 		MiniMember member = authService.requireCustomer();
 		return idempotent(requestId, () -> {
-			BusinessOpportunity opportunity = new BusinessOpportunity();
-			opportunity.setParkId(member.getParkId());
-			opportunity.setCustomerId(member.getCustomerId());
-			opportunity.setSourceRoomId(request.getRoomId());
-			opportunity.setEnterpriseName(request.getEnterpriseName());
-			opportunity.setCreditCode(request.getCreditCode());
-			opportunity.setIndustryType(request.getIndustryType());
-			opportunity.setEnterpriseScale(request.getEnterpriseScale());
-			opportunity.setIntentArea(request.getIntentArea());
-			opportunity.setExpectedEntryDate(request.getExpectedEntryDate());
-			opportunity.setContactName(request.getContactName());
-			opportunity.setContactPhone(request.getContactPhone());
-			opportunity.setChannel("MINIAPP");
-			opportunity.setRemark(request.getDemandDesc());
-			opportunityService.insertBusinessOpportunity(opportunity);
-			notifyAdmins(member, "SETTLEMENT", "新的入驻意向", request.getEnterpriseName(), "settlement", opportunity.getOpportunityId());
-			return Kv.create().set("id", opportunity.getOpportunityId()).set("status", opportunity.getOpportunityStatus());
+			SettlementTodo todo = new SettlementTodo();
+			todo.setTenantId(member.getTenantId());
+			todo.setTodoNo("ZSD" + DateUtil.format(new Date(), "yyyyMMddHHmmss") + randomDigits());
+			todo.setParkId(member.getParkId());
+			todo.setCustomerId(member.getCustomerId());
+			todo.setMemberId(member.getId());
+			todo.setSourceRoomId(request.getRoomId());
+			todo.setEnterpriseName(request.getEnterpriseName());
+			todo.setCreditCode(request.getCreditCode());
+			todo.setIndustryType(request.getIndustryType());
+			todo.setEnterpriseScale(request.getEnterpriseScale());
+			todo.setIntentArea(request.getIntentArea());
+			todo.setExpectedEntryDate(request.getExpectedEntryDate());
+			todo.setContactName(request.getContactName());
+			todo.setContactPhone(request.getContactPhone());
+			todo.setDemandDesc(request.getDemandDesc());
+			todo.setTodoStatus("0");
+			todo.setCreateBy(member.getNickname());
+			todo.setCreateTime(new Date());
+			todo.setDelFlag("0");
+			settlementTodoService.save(todo);
+			notifyAdmins(member, "SETTLEMENT", "新的入驻意向", request.getEnterpriseName(), "settlement", todo.getTodoId());
+			return settlementMap(todo);
 		});
+	}
+
+	@Override
+	public List<Map<String, Object>> settlements() {
+		MiniMember member = authService.requireCustomer();
+		return settlementTodoService.list(Wrappers.<SettlementTodo>lambdaQuery()
+			.eq(SettlementTodo::getTenantId, member.getTenantId()).eq(SettlementTodo::getParkId, member.getParkId())
+			.eq(SettlementTodo::getCustomerId, member.getCustomerId()).eq(SettlementTodo::getDelFlag, "0")
+			.orderByDesc(SettlementTodo::getCreateTime)).stream()
+			.map(this::settlementMap).toList();
 	}
 
 	@Override
@@ -635,8 +694,9 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 				.eq(HouseAppointment::getParkId, admin.getParkId()).eq(HouseAppointment::getIsDeleted, 0)).stream().map(this::appointmentMap);
 		}
 		if (StringUtil.isBlank(type) || "settlement".equals(type)) {
-			BusinessOpportunity query = new BusinessOpportunity(); query.setParkId(admin.getParkId());
-			settlement = opportunityService.selectBusinessOpportunityList(query).stream().map(this::settlementMap);
+			settlement = settlementTodoService.list(Wrappers.<SettlementTodo>lambdaQuery()
+				.eq(SettlementTodo::getTenantId, admin.getTenantId()).eq(SettlementTodo::getParkId, admin.getParkId())
+				.eq(SettlementTodo::getDelFlag, "0").orderByDesc(SettlementTodo::getCreateTime)).stream().map(this::settlementMap);
 		}
 		return Stream.of(property, value, appointment, settlement).flatMap(stream -> stream)
 			.sorted(Comparator.comparing(item -> String.valueOf(item.get("createTime")), Comparator.reverseOrder())).toList();
@@ -662,9 +722,8 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 			}
 			case "appointment" -> appointmentMap(scopedAppointment(id, admin.getParkId(), null));
 			case "settlement" -> {
-				BusinessOpportunity opportunity = opportunityService.selectBusinessOpportunityById(id);
-				assertAdminPark(opportunity == null ? null : opportunity.getParkId(), admin);
-				yield settlementMap(opportunity);
+				SettlementTodo todo = settlementTodoService.requireScoped(id, admin.getParkId(), null);
+				yield settlementMap(todo);
 			}
 			default -> throw new ServiceException("不支持的工单类型");
 		};
@@ -675,7 +734,10 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 		MiniMember admin = authService.requireParkAdmin();
 		adminWorkOrder(type, id);
 		String action = request.getAction().toUpperCase(Locale.ROOT);
+		Long customerId;
 		if ("property".equals(type)) {
+			ServiceWorkorder source = propertyWorkorderService.selectWorkorderById(id);
+			customerId = source.getCustomerId();
 			ServiceWorkorder order = new ServiceWorkorder();
 			order.setOrderId(id); order.setAssignTo(request.getAssignee()); order.setProcessor(admin.getNickname());
 			order.setProcessRemark(request.getContent()); order.setDisposalContent(request.getContent()); order.setRemark(request.getReason());
@@ -687,6 +749,8 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 				default -> throw new ServiceException("不支持的处理动作");
 			}
 		} else if ("value".equals(type)) {
+			MerchantServiceOrder source = merchantOrderService.selectOrderById(id);
+			customerId = source.getCustomerId();
 			MerchantServiceOrder order = new MerchantServiceOrder();
 			order.setOrderId(id); order.setAssignTo(request.getAssignee()); order.setProcessContent(request.getContent());
 			order.setCloseReason(request.getReason()); order.setDealAmount(request.getDealAmount()); order.setNextFollowTime(request.getNextFollowTime());
@@ -699,6 +763,7 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 			}
 		} else if ("appointment".equals(type)) {
 			HouseAppointment appointment = scopedAppointment(id, admin.getParkId(), null);
+			customerId = appointment.getCustomerId();
 			if (!"PENDING".equals(appointment.getAppointmentStatus()) && !"ACCEPTED".equals(appointment.getAppointmentStatus())) {
 				throw new ServiceException("当前预约状态不可处理");
 			}
@@ -711,17 +776,17 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 			appointment.setCancelReason(request.getReason());
 			appointmentMapper.updateById(appointment);
 		} else if ("settlement".equals(type)) {
-			BusinessOpportunity opportunity = opportunityService.selectBusinessOpportunityById(id);
-			assertAdminPark(opportunity == null ? null : opportunity.getParkId(), admin);
-			opportunity.setOpportunityStatus(switch (action) {
-				case "ACCEPT" -> "1"; case "FOLLOW", "ASSIGN" -> "2"; case "COMPLETE", "DEAL" -> "3"; case "REJECT" -> "4";
-				default -> throw new ServiceException("不支持的处理动作");
-			});
-			opportunity.setRemark(request.getContent());
-			opportunityService.updateBusinessOpportunity(opportunity);
+			SettlementTodo todo = settlementTodoService.requireScoped(id, admin.getParkId(), null);
+			customerId = todo.getCustomerId();
+			SettlementTodoActionDTO todoAction = new SettlementTodoActionDTO();
+			todoAction.setAction(action);
+			todoAction.setContent(request.getContent());
+			todoAction.setReason(request.getReason());
+			settlementTodoService.process(id, todoAction);
 		} else {
 			throw new ServiceException("不支持的工单类型");
 		}
+		notifyCustomerMembers(admin, customerId, type, id, action);
 	}
 
 	@Override
@@ -738,7 +803,23 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 	public List<Map<String, Object>> tenants(String keyword) {
 		MiniMember admin = authService.requireParkAdmin();
 		Customer query = new Customer(); query.setParkId(admin.getParkId()); query.setKeyword(keyword);
-		return customerService.selectCustomerList(query).stream().map(item -> customerMap(item, false)).toList();
+		List<Customer> customers = customerService.selectCustomerList(query);
+		if (customers.isEmpty()) return List.of();
+		List<Long> customerIds = customers.stream().map(Customer::getCustomerId).filter(Objects::nonNull).toList();
+		Map<Long, Contract> latestContracts = new LinkedHashMap<>();
+		contractService.list(Wrappers.<Contract>lambdaQuery().in(Contract::getCustomerId, customerIds)
+			.eq(Contract::getParkId, admin.getParkId()).eq(Contract::getDelFlag, "0")
+			.orderByDesc(Contract::getStartDate)).forEach(contract -> latestContracts.putIfAbsent(contract.getCustomerId(), contract));
+		return customers.stream().map(item -> {
+			Map<String, Object> map = customerMap(item, false);
+			Contract contract = latestContracts.get(item.getCustomerId());
+			map.put("room", contract == null ? null : contract.getRoomName());
+			map.put("area", contract == null ? null : contract.getRentArea());
+			map.put("leaseEnd", contract == null ? null : contract.getEndDate());
+			map.put("contractStatus", contract == null ? null : contract.getContractStatus());
+			map.put("rentStatus", "0".equals(item.getStatus()) || "1".equals(item.getStatus()) ? "正常" : "需关注");
+			return map;
+		}).toList();
 	}
 
 	@Override
@@ -747,8 +828,15 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 		Customer customer = requireCustomer(id, admin.getParkId());
 		Map<String, Object> result = customerMap(customer, true);
 		List<Map<String, Object>> contractList = contractService.list(Wrappers.<Contract>lambdaQuery().eq(Contract::getCustomerId, id)
-			.eq(Contract::getParkId, admin.getParkId()).eq(Contract::getDelFlag, "0")).stream().map(item -> contractMap(item, false)).toList();
+			.eq(Contract::getParkId, admin.getParkId()).eq(Contract::getDelFlag, "0")
+			.orderByDesc(Contract::getStartDate)).stream().map(item -> contractMap(item, true)).toList();
+		ContractPayment paymentQuery = new ContractPayment();
+		paymentQuery.setCustomerId(id);
+		paymentQuery.setParkId(admin.getParkId());
+		List<Map<String, Object>> billList = contractService.selectPaymentPage(new Page<>(1, 100), paymentQuery)
+			.getRecords().stream().map(this::billMap).toList();
 		result.put("contracts", contractList);
+		result.put("bills", billList);
 		return result;
 	}
 
@@ -774,7 +862,52 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 			notice.setCustomerId(source.getCustomerId()); notice.setNoticeType(noticeType); notice.setTitle(title); notice.setContent(content);
 			notice.setTargetType(targetType); notice.setTargetId(String.valueOf(targetId)); notice.setReadStatus(0);
 			notice.setStatus(StatusType.ACTIVE.getType()); notice.setIsDeleted(0); notificationMapper.insert(notice);
+			try {
+				wechatClient.sendTodoReminder(admin.getOpenId(), title, content, notificationPage(targetType));
+			} catch (RuntimeException exception) {
+				log.warn("微信小程序待办提醒发送失败，memberId={}, targetType={}, targetId={}", admin.getId(), targetType, targetId, exception);
+			}
 		}
+	}
+
+	private void notifyCustomerMembers(MiniMember admin, Long customerId, String targetType, Long targetId, String action) {
+		if (customerId == null) return;
+		String actionText = switch (action) {
+			case "ACCEPT" -> "已受理";
+			case "ASSIGN" -> "已派单";
+			case "FOLLOW" -> "处理中";
+			case "REJECT" -> "已驳回";
+			case "COMPLETE" -> "已完成";
+			case "DEAL" -> "已成交";
+			default -> "状态已更新";
+		};
+		String title = switch (targetType) {
+			case "property" -> "物业工单";
+			case "value" -> "增值服务";
+			case "appointment" -> "看房预约";
+			case "settlement" -> "入驻意向";
+			default -> "园区服务";
+		};
+		String page = Set.of("property", "value").contains(targetType)
+			? "pages/work-order-detail/index?id=" + targetId + "&type=" + targetType
+			: "pages/my-intentions/index";
+		memberMapper.selectList(Wrappers.<MiniMember>lambdaQuery()
+			.eq(MiniMember::getTenantId, admin.getTenantId()).eq(MiniMember::getParkId, admin.getParkId())
+			.eq(MiniMember::getCustomerId, customerId).eq(MiniMember::getStatus, StatusType.ACTIVE.getType())
+			.eq(MiniMember::getIsDeleted, 0)).forEach(member -> {
+			try {
+				wechatClient.sendServiceNotice(member.getOpenId(), title + actionText, "园区管理员已更新处理进度", page);
+			} catch (RuntimeException exception) {
+				log.warn("微信小程序服务通知发送失败，memberId={}, targetType={}, targetId={}", member.getId(), targetType, targetId, exception);
+			}
+		});
+	}
+
+	private String notificationPage(String targetType) {
+		if (Set.of("property", "value", "appointment", "settlement").contains(targetType)) {
+			return "pages/admin-work-orders/index?type=" + targetType;
+		}
+		return "pages/notifications/index";
 	}
 
 	private HouseAppointment scopedAppointment(Long id, Long parkId, Long customerId) {
@@ -870,10 +1003,11 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 	private Map<String, Object> adMap(MerchantAd item) { return Kv.create().set("id", item.getAdId()).set("title", item.getAdTitle()).set("image", item.getCoverUrl()).set("linkType", item.getLinkType()).set("linkUrl", item.getLinkUrl()); }
 	private Map<String, Object> policyMap(PolicyService item) { return Kv.create().set("id", item.getPolicyId()).set("title", item.getServiceTitle()).set("summary", item.getProjectScope()).set("image", item.getCoverUrl()).set("time", item.getCreateTime()); }
 	private Map<String, Object> activityMap(ParkActivity item) { return Kv.create().set("id", item.getId()).set("title", item.getTitle()).set("image", item.getCoverUrl()).set("summary", item.getSummary()).set("startTime", item.getStartTime()).set("endTime", item.getEndTime()).set("address", item.getAddress()).set("price", item.getPriceText()); }
+	private Map<String, Object> noticeMap(Notice item, boolean detail) { Kv map = Kv.create().set("id", item.getId()).set("title", item.getTitle()).set("category", item.getCategory()).set("releaseTime", item.getReleaseTime()).set("summary", plainText(item.getContent())); if (detail) map.set("content", item.getContent()); return map; }
 	private Map<String, Object> propertyServiceMap(PropertyService item) { return Kv.create().set("id", item.getServiceId()).set("title", item.getServiceName()).set("type", item.getServiceType()).set("desc", item.getServiceDesc()).set("materials", item.getRequiredMaterials()).set("flow", item.getServiceFlow()).set("charge", item.getChargeStandard()); }
 	private Map<String, Object> merchantMap(Merchant item) { return Kv.create().set("id", item.getMerchantId()).set("title", item.getMerchantName()).set("category", item.getBusinessType()).set("desc", item.getServiceScope()).set("serviceArea", item.getServiceArea()).set("contactName", maskName(item.getContactName())).set("contactPhone", maskPhone(item.getContactPhone())).set("address", item.getAddress()); }
 	private Map<String, Object> appointmentMap(HouseAppointment item) { return Kv.create().set("id", item.getId()).set("kind", "appointment").set("no", item.getAppointmentNo()).set("roomId", item.getRoomId()).set("companyName", item.getEnterpriseName()).set("contact", item.getContactName()).set("phone", maskPhone(item.getContactPhone())).set("preferredTime", item.getPreferredTime()).set("description", item.getDemandDesc()).set("status", item.getAppointmentStatus()).set("createTime", item.getCreateTime()); }
-	private Map<String, Object> settlementMap(BusinessOpportunity item) { return Kv.create().set("id", item.getOpportunityId()).set("kind", "settlement").set("title", item.getEnterpriseName()).set("companyName", item.getEnterpriseName()).set("contact", item.getContactName()).set("phone", maskPhone(item.getContactPhone())).set("status", item.getOpportunityStatus()).set("description", item.getRemark()).set("createTime", item.getCreateTime()); }
+	private Map<String, Object> settlementMap(SettlementTodo item) { return Kv.create().set("id", item.getTodoId()).set("kind", "settlement").set("no", item.getTodoNo()).set("title", item.getEnterpriseName()).set("companyName", item.getEnterpriseName()).set("contact", item.getContactName()).set("phone", maskPhone(item.getContactPhone())).set("status", item.getTodoStatus()).set("description", item.getDemandDesc()).set("processRemark", item.getProcessRemark()).set("createTime", item.getCreateTime()); }
 	private Map<String, Object> propertyOrderMap(ServiceWorkorder item) { return Kv.create().set("id", item.getOrderId()).set("kind", "property").set("no", item.getOrderNo()).set("title", item.getServiceName()).set("companyName", item.getCustomerName()).set("room", item.getRoomInfo()).set("contact", item.getContactName()).set("phone", maskPhone(item.getContactPhone())).set("status", item.getOrderStatus()).set("urgency", item.getPriority()).set("handler", item.getAssignTo()).set("description", item.getDemandDesc()).set("createTime", item.getCreateTime()); }
 	private Map<String, Object> valueOrderMap(MerchantServiceOrder item) { return Kv.create().set("id", item.getOrderId()).set("kind", "value").set("no", item.getOrderNo()).set("title", item.getServiceType()).set("companyName", item.getCustomerName()).set("contact", item.getContactName()).set("phone", maskPhone(item.getContactPhone())).set("status", item.getOrderStatus()).set("urgency", item.getPriority()).set("handler", item.getAssignTo()).set("description", item.getDemandDesc()).set("createTime", item.getCreateTime()); }
 	private Map<String, Object> customerMap(Customer item, boolean detail) { Kv map = Kv.create().set("id", item.getCustomerId()).set("companyName", item.getEnterpriseName()).set("industry", item.getIndustry()).set("scale", item.getScale()).set("status", item.getStatus()).set("contact", maskName(item.getContactName())).set("phone", maskPhone(item.getContactPhone())).set("settlementStatus", item.getSettlementStatus()); if (detail) map.set("creditCode", item.getCreditCode()).set("email", item.getContactEmail()).set("address", item.getAddress()).set("businessScope", item.getBusinessScope()); return map; }
@@ -934,6 +1068,7 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 	private String firstImage(String value) { List<String> images = split(value); return images.isEmpty() ? null : images.get(0); }
 	private List<String> split(String value) { return StringUtil.isBlank(value) ? Collections.emptyList() : Arrays.stream(value.split(",")).map(String::trim).filter(StringUtil::isNotBlank).toList(); }
 	private boolean contains(String value, String keyword) { return value != null && value.toLowerCase(Locale.ROOT).contains(keyword.toLowerCase(Locale.ROOT)); }
+	private String plainText(String value) { return StringUtil.isBlank(value) ? "" : value.replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim(); }
 	private String maskPhone(String phone) { return StringUtil.isBlank(phone) || phone.length() < 7 ? phone : phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4); }
 	private String maskName(String name) { return StringUtil.isBlank(name) || name.length() < 2 ? name : name.substring(0, 1) + "**"; }
 	private BigDecimal nullToZero(BigDecimal value) { return value == null ? BigDecimal.ZERO : value; }

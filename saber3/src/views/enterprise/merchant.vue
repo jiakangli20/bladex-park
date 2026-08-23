@@ -1,6 +1,8 @@
 <template>
   <basic-container>
     <div class="merchant-page">
+      <business-page-intro title="园区商户管理" subtitle="维护园区服务商档案、服务范围与小程序展示状态" />
+
       <section class="summary-grid">
         <div v-for="item in summaryCards" :key="item.key" class="summary-card">
           <span>{{ item.label }}</span>
@@ -17,9 +19,6 @@
             <el-select v-model="query.businessType" clearable placeholder="全部类型">
               <el-option v-for="item in businessTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
-          </el-form-item>
-          <el-form-item label="服务区域">
-            <el-input v-model="query.serviceArea" clearable placeholder="请输入服务区域" @keyup.enter="searchChange" />
           </el-form-item>
           <el-form-item label="状态">
             <el-select v-model="query.status" clearable placeholder="全部状态">

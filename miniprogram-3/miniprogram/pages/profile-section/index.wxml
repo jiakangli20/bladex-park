@@ -90,15 +90,30 @@
         </block>
       </view>
 
-      <view wx:elif="{{sectionKey === 'account'}}" class="section-card">
-        <view class="info-grid">
-          <block wx:for="{{accountRows}}" wx:key="label">
-            <view class="info-item">
-              <view class="info-label">{{item.label}}</view>
-              <view class="info-value">{{item.value}}</view>
-            </view>
-          </block>
+      <view wx:elif="{{sectionKey === 'account'}}" class="account-block">
+        <view class="section-card">
+          <view class="info-grid">
+            <block wx:for="{{accountRows}}" wx:key="label"><view class="info-item"><view class="info-label">{{item.label}}</view><view class="info-value">{{item.value}}</view></view></block>
+          </view>
         </view>
+        <block wx:if="{{canManageMembers}}">
+          <view class="section-card member-section">
+            <view class="card-title">企业成员</view>
+            <view wx:if="{{!members.length}}" class="account-empty">暂无企业成员</view>
+            <block wx:for="{{members}}" wx:key="id">
+              <view class="member-row"><view class="member-avatar">{{item.avatarText}}</view><view class="member-main"><view>{{item.nickname || '微信成员'}}</view><text>{{item.mobile || '-'}} · {{item.roleText}}</text></view><view class="member-side"><text>{{item.statusText}}</text><view wx:if="{{item.statusText === '正常'}}" class="disable-link" data-id="{{item.id}}" data-name="{{item.nickname}}" catchtap="disableMember">停用</view></view></view>
+            </block>
+          </view>
+          <view class="section-card invite-section">
+            <view class="card-title">生成企业邀请码</view>
+            <view class="invite-form"><input type="number" maxlength="11" value="{{inviteForm.mobile}}" data-field="mobile" placeholder="限定手机号（可不填）" bindinput="handleInviteInput" /><picker range="{{inviteRoles}}" range-key="label" value="{{inviteRoleIndex}}" bindchange="changeInviteRole"><view class="invite-picker">{{inviteRoles[inviteRoleIndex].label}} 〉</view></picker><input type="number" value="{{inviteForm.validHours}}" data-field="validHours" placeholder="有效小时数" bindinput="handleInviteInput" /><view class="primary-button invite-button" bindtap="createInvite">生成邀请码</view></view>
+          </view>
+          <view class="section-card invite-section">
+            <view class="card-title">邀请记录</view>
+            <view wx:if="{{!invites.length}}" class="account-empty">暂无邀请记录</view>
+            <block wx:for="{{invites}}" wx:key="id"><view class="invite-row"><view><view>{{item.mobile || '不限手机号'}}</view><text>{{item.roleText}} · 使用 {{item.usageText}}</text></view><view>{{item.expireTime}}</view></view></block>
+          </view>
+        </block>
       </view>
 
       <view wx:else class="section-card">

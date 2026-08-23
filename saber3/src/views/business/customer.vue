@@ -1,6 +1,8 @@
 <template>
   <basic-container>
     <div class="customer-page">
+      <business-page-intro title="客户管理" subtitle="维护入驻企业客户档案、状态与标签信息" />
+
       <section class="summary-grid">
           <div v-for="item in summaryCards" :key="item.key" class="summary-card">
             <span>{{ item.label }}</span>

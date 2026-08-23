@@ -133,6 +133,7 @@ export default {
     },
     topMenuIdentityByRoute(path) {
       const routeMap = [
+        { prefix: '/desk/notice', code: 'service', name: '企业服务' },
         { prefix: '/plugin/workflow', code: 'office', name: '协同办公' },
         { prefix: '/settlement', code: 'entry', name: '入驻管理' },
         { prefix: '/enterprise', code: 'service', name: '企业服务' },

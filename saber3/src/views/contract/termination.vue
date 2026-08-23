@@ -1,6 +1,11 @@
 <template>
   <basic-container>
     <div class="termination-page">
+      <business-page-intro
+        title="退租管理"
+        subtitle="跟进企业退租流程、审批状态与费用结算"
+      />
+
       <section class="summary-grid">
         <div v-for="item in summaryCards" :key="item.key" class="summary-card">
           <span>{{ item.label }}</span>

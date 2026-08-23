@@ -2,10 +2,7 @@
   <basic-container>
     <div v-loading="loading" class="enterprise-data-page">
       <header class="dashboard-header">
-        <div class="dashboard-header__title">
-          <strong>在园企业数据</strong>
-          <span>园区经营、合同、房源与设备运行概览</span>
-        </div>
+        <business-page-intro title="在园企业数据" subtitle="园区经营、合同、房源与设备运行概览" />
         <div class="dashboard-header__actions">
           <el-tag type="primary" effect="plain">全部园区</el-tag>
           <el-button circle plain title="刷新数据" :loading="loading" @click="loadData">

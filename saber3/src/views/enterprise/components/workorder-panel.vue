@@ -25,11 +25,6 @@
             <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="优先级">
-          <el-select v-model="query.priority" clearable placeholder="全部优先级">
-            <el-option v-for="item in priorityOptions" :key="item.value" :label="item.label" :value="item.value" />
-          </el-select>
-        </el-form-item>
         <el-form-item>
           <el-button type="primary" icon="el-icon-search" @click="$emit('search')">搜索</el-button>
           <el-button icon="el-icon-delete" @click="$emit('reset')">清空</el-button>

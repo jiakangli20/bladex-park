@@ -1,0 +1,19 @@
+<view class="sub-page notice-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="blue-header plain-header">
+      <view class="nav-row"><view class="nav-action" bindtap="goBack">‹</view><view class="nav-title">园区公告</view><view class="nav-action"></view></view>
+      <view class="intro-title">通知公告</view><view class="intro-sub">查看园区最新通知和运营安排</view>
+    </view>
+    <view class="sub-content notice-content">
+      <view wx:if="{{loading}}" class="state-card">公告加载中...</view>
+      <view wx:elif="{{!notices.length}}" class="state-card">暂无已发布公告</view>
+      <block wx:else>
+        <block wx:for="{{notices}}" wx:key="id">
+          <view class="section-card notice-item" data-id="{{item.id}}" bindtap="openNotice">
+            <view class="notice-item-main"><view class="card-title">{{item.title}}</view><view class="notice-summary">{{item.summary || '点击查看公告详情'}}</view><view class="notice-time">{{item.releaseTime}}</view></view><view class="notice-item-arrow">›</view>
+          </view>
+        </block>
+      </block>
+    </view>
+  </scroll-view>
+</view>

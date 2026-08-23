@@ -56,6 +56,8 @@ import org.springblade.modules.miniapp.pojo.vo.MiniProfileVO;
 import org.springblade.modules.miniapp.service.IMiniAuthService;
 import org.springblade.modules.miniapp.service.MiniTokenIssuer;
 import org.springblade.modules.miniapp.service.MiniWechatClient;
+import org.springblade.modules.park.pojo.entity.Park;
+import org.springblade.modules.park.service.IParkService;
 import org.springblade.modules.system.pojo.entity.User;
 import org.springblade.modules.system.pojo.entity.UserInfo;
 import org.springblade.modules.system.pojo.entity.UserOauth;
@@ -89,6 +91,7 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 	private final ICustomerService customerService;
 	private final IUserService userService;
 	private final IUserOauthService userOauthService;
+	private final IParkService parkService;
 	private final BladeRedis bladeRedis;
 
 	@Override
@@ -113,7 +116,7 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 			login.setNeedBind(true);
 			login.setBindTicket(ticket);
 			login.setTenantId(properties.getDefaultTenantId());
-			login.setParkId(properties.getDefaultParkId());
+			login.setParkId(effectiveDefaultParkId());
 			return login;
 		}
 		assertMemberEnabled(member);
@@ -133,7 +136,7 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 		BindTicketPayload payload = JsonUtil.parse(payloadJson, BindTicketPayload.class);
 		String mobile = wechatClient.exchangePhone(request.getPhoneCode());
 		String tenantId = properties.getDefaultTenantId();
-		Long parkId = properties.getDefaultParkId();
+		Long parkId = effectiveDefaultParkId();
 
 		List<User> users = userService.list(Wrappers.<User>lambdaQuery()
 			.eq(User::getTenantId, tenantId).eq(User::getPhone, mobile)
@@ -141,10 +144,12 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 		User matchedUser = users.size() == 1 ? users.get(0) : null;
 		boolean bladeAdmin = matchedUser != null && isBladeAdmin(matchedUser.getId());
 
-		Customer query = new Customer();
-		query.setParkId(parkId);
-		query.setContactPhone(mobile);
-		List<Customer> customers = customerService.selectCustomerList(query);
+		List<Customer> customers = activeParkIds().stream().flatMap(activeParkId -> {
+			Customer query = new Customer();
+			query.setParkId(activeParkId);
+			query.setContactPhone(mobile);
+			return customerService.selectCustomerList(query).stream();
+		}).toList();
 		Customer matchedCustomer = customers.size() == 1 ? customers.get(0) : null;
 
 		String roleCode;
@@ -155,10 +160,12 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 		} else if (matchedCustomer != null) {
 			roleCode = MiniAppConstant.ROLE_CUSTOMER_ADMIN;
 			customerId = matchedCustomer.getCustomerId();
+			parkId = matchedCustomer.getParkId();
 		} else {
-			invite = requireInvite(request.getInviteCode(), mobile, tenantId, parkId);
+			invite = requireInvite(request.getInviteCode(), mobile, tenantId);
 			roleCode = invite.getRoleCode();
 			customerId = invite.getCustomerId();
+			parkId = invite.getParkId();
 			matchedCustomer = customerService.selectCustomerById(customerId);
 			if (matchedCustomer == null || !Objects.equals(matchedCustomer.getParkId(), parkId)) {
 				throw new ServiceException("邀请码关联企业不存在或已移出当前园区");
@@ -277,15 +284,16 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 		}
 	}
 
-	private MiniInvite requireInvite(String inviteCode, String mobile, String tenantId, Long parkId) {
+	private MiniInvite requireInvite(String inviteCode, String mobile, String tenantId) {
 		if (StringUtil.isBlank(inviteCode)) {
 			throw new ServiceException("手机号无法唯一匹配，请填写企业邀请码");
 		}
 		MiniInvite invite = inviteMapper.selectOne(Wrappers.<MiniInvite>lambdaQuery()
-			.eq(MiniInvite::getTenantId, tenantId).eq(MiniInvite::getParkId, parkId)
+			.eq(MiniInvite::getTenantId, tenantId)
 			.eq(MiniInvite::getCodeHash, DigestUtil.sha256Hex(inviteCode.trim()))
 			.eq(MiniInvite::getStatus, StatusType.ACTIVE.getType()).eq(MiniInvite::getIsDeleted, 0).last("limit 1"));
-		if (invite == null || invite.getExpireTime().before(new Date()) || invite.getUsedCount() >= invite.getMaxUses()) {
+		if (invite == null || !activeParkIds().contains(invite.getParkId())
+			|| invite.getExpireTime().before(new Date()) || invite.getUsedCount() >= invite.getMaxUses()) {
 			throw new ServiceException("企业邀请码无效、已过期或已达使用次数");
 		}
 		if (StringUtil.isNotBlank(invite.getMobile()) && !invite.getMobile().equals(mobile)) {
@@ -353,6 +361,9 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 		login.setCustomerId(member.getCustomerId());
 		login.setRoleCodes(List.of(member.getRoleCode()));
 		login.setCapabilities(capabilities(member.getRoleCode()));
+		String subscribeTemplateId = MiniAppConstant.ROLE_PARK_ADMIN.equals(member.getRoleCode())
+			? properties.getTodoReminderTemplateId() : properties.getServiceNoticeTemplateId();
+		login.setSubscribeTemplateIds(StringUtil.isBlank(subscribeTemplateId) ? List.of() : List.of(subscribeTemplateId));
 		User user = userService.getById(member.getUserId());
 		MiniProfileVO profile = new MiniProfileVO();
 		profile.setUserId(member.getUserId());
@@ -389,6 +400,20 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 
 	private String effectiveAppId() {
 		return StringUtil.isNotBlank(properties.getAppId()) ? properties.getAppId() : "miniapp-dev";
+	}
+
+	private List<Long> activeParkIds() {
+		return parkService.list(Wrappers.<Park>lambdaQuery().eq(Park::getStatus, "0").select(Park::getId))
+			.stream().map(Park::getId).filter(Objects::nonNull).sorted().toList();
+	}
+
+	private Long effectiveDefaultParkId() {
+		List<Long> parkIds = activeParkIds();
+		if (parkIds.isEmpty()) {
+			throw new ServiceException("暂无启用园区，请先在后台启用园区");
+		}
+		Long configured = properties.getDefaultParkId();
+		return configured != null && parkIds.contains(configured) ? configured : parkIds.get(0);
 	}
 
 	@Data

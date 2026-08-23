@@ -1,0 +1,15 @@
+<view class="sub-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="sub-content">
+      <view class="blue-header plain-header"><view class="nav-row"><view class="nav-action" bindtap="goBack">‹</view><view class="nav-title">看房与入驻</view><view class="nav-action"></view></view><view class="intro-title">申请进度</view><view class="intro-sub">查看预约看房和入驻意向的最新处理状态</view></view>
+      <view class="intent-tabs"><view class="intent-tab {{activeTab === 'appointment' ? 'is-active' : ''}}" data-tab="appointment" bindtap="switchTab">看房预约</view><view class="intent-tab {{activeTab === 'settlement' ? 'is-active' : ''}}" data-tab="settlement" bindtap="switchTab">入驻意向</view></view>
+      <view wx:if="{{loading}}" class="state-card">正在加载...</view>
+      <view wx:elif="{{!rows.length}}" class="state-card">暂无申请记录</view>
+      <block wx:else>
+        <block wx:for="{{rows}}" wx:key="id">
+          <view class="section-card intent-card"><view class="intent-head"><view><view class="card-title">{{item.title}}</view><view class="card-sub">{{item.createTime}}</view></view><view class="status-pill status-blue">{{item.statusText}}</view></view><view class="intent-desc">{{item.description || '暂无补充说明'}}</view><view wx:if="{{item.preferredTime}}" class="intent-time">意向时间：{{item.preferredTime}}</view><view wx:if="{{item.canCancel}}" class="intent-action" data-id="{{item.id}}" catchtap="cancelAppointment">取消预约</view></view>
+        </block>
+      </block>
+    </view>
+  </scroll-view>
+</view>

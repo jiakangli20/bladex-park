@@ -1,6 +1,11 @@
 <template>
   <basic-container>
     <div class="building-page">
+      <business-page-intro
+        title="建筑管理"
+        subtitle="维护园区楼宇资料、空间规模与启用状态"
+      />
+
       <section class="summary-grid">
         <div v-for="item in buildingSummaryCards" :key="item.key" class="summary-card">
           <span>{{ item.label }}</span>

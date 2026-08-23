@@ -1,6 +1,8 @@
 <template>
   <basic-container>
     <div class="property-service-config-page">
+      <business-page-intro title="物业服务配置" subtitle="维护服务项目、收费标准、办理流程与小程序上架状态" />
+
       <section class="summary-grid">
         <div v-for="item in serviceSummaryCards" :key="item.key" class="summary-card">
           <span>{{ item.label }}</span>

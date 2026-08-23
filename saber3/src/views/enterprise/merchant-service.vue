@@ -1,10 +1,7 @@
 <template>
   <basic-container>
     <div class="entry-page">
-      <div class="entry-head">
-        <h2>商户管理</h2>
-        <p>统一维护园区服务商档案，后续可继续承载广告管理与服务处理。</p>
-      </div>
+      <business-page-intro title="商户服务" subtitle="统一维护园区服务商档案，并集中管理广告与增值服务" />
       <div class="entry-grid">
         <button type="button" class="entry-card" @click="go('/enterprise/merchant')">
           <span class="entry-icon">商</span>
@@ -42,19 +39,6 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 18px;
-}
-
-.entry-head h2 {
-  margin: 0 0 6px;
-  color: #1f2937;
-  font-size: 22px;
-  font-weight: 600;
-}
-
-.entry-head p {
-  margin: 0;
-  color: #64748b;
-  font-size: 14px;
 }
 
 .entry-grid {

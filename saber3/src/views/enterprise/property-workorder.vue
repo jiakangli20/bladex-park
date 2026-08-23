@@ -1,6 +1,8 @@
 <template>
   <component :is="containerComponent" :class="{ 'property-workorder-embedded': embedded }">
     <div class="property-workorder-page">
+      <business-page-intro v-if="!embedded" title="物业工单处理" subtitle="受理企业物业需求，跟进处置过程并记录完成结果" />
+
       <workorder-panel
         :query="processQuery"
         :page="processPage"

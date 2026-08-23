@@ -1,10 +1,12 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/notices/index",
     "pages/login/index",
     "pages/houses/index",
     "pages/house-detail/index",
     "pages/house-intent/index",
+    "pages/my-intentions/index",
     "pages/overview/index",
     "pages/tenant-detail/index",
     "pages/pass-code/index",
