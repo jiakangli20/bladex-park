@@ -1,5 +1,5 @@
 import { publicApi } from '../../services/miniapp'
-import { requireLogin } from '../../utils/session'
+import { getSession, requireLogin } from '../../utils/session'
 
 const tones = ['green', 'orange', 'blue', 'cyan', 'purple']
 
@@ -28,7 +28,9 @@ Page({
 
   async loadServices() {
     const [properties, values] = await Promise.all([publicApi.propertyServices(), publicApi.valueServices()])
-    const propertyCards = properties.map((item, index) => ({
+    const parkId = getSession()?.parkId
+    const visibleProperties = parkId ? properties.filter(item => String(item.parkId) === String(parkId)) : properties
+    const propertyCards = visibleProperties.map((item, index) => ({
       ...item,
       key: item.type || String(item.id),
       tone: tones[index % tones.length],

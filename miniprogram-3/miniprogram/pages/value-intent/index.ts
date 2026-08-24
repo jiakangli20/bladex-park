@@ -2,10 +2,19 @@ import { customerApi, publicApi } from '../../services/miniapp'
 import { navigateBackOr } from '../../utils/navigation'
 import { getSession, requireLogin } from '../../utils/session'
 
+const formatDate = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 Page({
   data: {
     service: {} as Record<string, any>,
-    form: { contact: '', phone: '', companyName: '', budget: '', needTime: '', content: '' },
+    today: formatDate(new Date()),
+    latestDate: formatDate(new Date(new Date().getFullYear() + 5, 11, 31)),
+    form: { contact: '', phone: '', companyName: '', budget: '', needDate: '', needClock: '', content: '' },
   },
 
   async onLoad(options: Record<string, string | undefined>) {
@@ -23,13 +32,24 @@ Page({
     const field = event.currentTarget.dataset.field as string | undefined
     if (field) this.setData({ [`form.${field}`]: event.detail.value })
   },
+  changeNeedDate(event: WechatMiniprogram.PickerChange) {
+    this.setData({ 'form.needDate': String(event.detail.value) })
+  },
+  changeNeedClock(event: WechatMiniprogram.PickerChange) {
+    this.setData({ 'form.needClock': String(event.detail.value) })
+  },
 
   async submitForm() {
-    const { contact, phone, companyName, budget, needTime, content } = this.data.form
+    const { contact, phone, companyName, budget, needDate, needClock, content } = this.data.form
     if (!contact || !/^1\d{10}$/.test(phone) || !companyName || !content) {
       wx.showToast({ title: '请填写联系人、正确手机号、企业和需求', icon: 'none' })
       return
     }
+    if ((needDate && !needClock) || (!needDate && needClock)) {
+      wx.showToast({ title: '请完整选择期望日期和时间', icon: 'none' })
+      return
+    }
+    const needTime = needDate && needClock ? `${needDate} ${needClock}` : ''
     await customerApi.createValueOrder({
       merchantId: this.data.service.id,
       serviceType: this.data.service.category,

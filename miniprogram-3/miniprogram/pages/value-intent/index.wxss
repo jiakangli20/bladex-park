@@ -1,3 +1,7 @@
 .form-card {
   margin-top: 24rpx;
 }
+
+.datetime-picker { display: flex; align-items: center; justify-content: flex-end; gap: 18rpx; }
+.picker-value { color: #24324a; font-size: 27rpx; white-space: nowrap; }
+.picker-placeholder { color: #9aa5b4; }

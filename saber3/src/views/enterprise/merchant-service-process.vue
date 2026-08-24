@@ -143,13 +143,22 @@
         </el-row>
         <el-row :gutter="18">
           <el-col :span="12">
-            <el-form-item label="客户名称" prop="customerName">
-              <el-input v-model="createForm.customerName" maxlength="200" placeholder="请输入客户名称" />
+            <el-form-item label="客户名称" prop="customerId">
+              <el-select v-model="createForm.customerId" filterable clearable placeholder="请选择客户" style="width: 100%" @change="handleCustomerChange">
+                <el-option
+                  v-for="item in customerOptions"
+                  :key="item.customerId"
+                  :label="item.enterpriseName"
+                  :value="item.customerId"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="园区ID">
-              <el-input-number v-model="createForm.parkId" :min="1" :precision="0" controls-position="right" style="width: 100%" />
+            <el-form-item label="所属园区" prop="parkId">
+              <el-select v-model="createForm.parkId" filterable clearable placeholder="请选择园区" style="width: 100%">
+                <el-option v-for="item in parkOptions" :key="item.id" :label="item.name" :value="item.id" />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -294,6 +303,8 @@ import { mapGetters } from 'vuex';
 import { getUserOptions } from '@/api/system/user';
 import AssigneeSelect from './components/assignee-select.vue';
 import { getMerchantList } from '@/api/business/merchant';
+import { getCustomerList } from '@/api/business/customer';
+import { getList as getParkList } from '@/api/park/park';
 import {
   addServiceOrder,
   closeServiceOrder,
@@ -371,12 +382,15 @@ export default {
       statusOptions,
       priorityOptions,
       merchantOptions: [],
+      customerOptions: [],
+      parkOptions: [],
       userOptions: [],
       createVisible: false,
       createForm: defaultCreateForm(),
       createRules: {
         merchantId: [{ required: true, message: '请选择服务商', trigger: 'change' }],
-        customerName: [{ required: true, message: '请输入客户名称', trigger: 'blur' }],
+        customerId: [{ required: true, message: '请选择客户', trigger: 'change' }],
+        parkId: [{ required: true, message: '请选择园区', trigger: 'change' }],
         contactName: [{ required: true, message: '请输入联系人', trigger: 'blur' }],
         contactPhone: [{ required: true, message: '请输入联系电话', trigger: 'blur' }],
         demandDesc: [{ required: true, message: '请输入需求描述', trigger: 'blur' }],
@@ -421,6 +435,8 @@ export default {
   },
   created() {
     this.loadMerchantOptions();
+    this.loadCustomerOptions();
+    this.loadParkOptions();
     this.loadUserOptions();
     this.loadStatistics();
     this.onLoad(this.page);
@@ -470,6 +486,18 @@ export default {
     loadMerchantOptions() {
       getMerchantList({ status: '0' }).then(res => {
         this.merchantOptions = res.data.data || [];
+      });
+    },
+    loadCustomerOptions() {
+      getCustomerList(1, 999, { status: '0' }).then(res => {
+        const payload = res.data.data || {};
+        this.customerOptions = payload.records || [];
+      });
+    },
+    loadParkOptions() {
+      getParkList(1, 999, { status: '0' }).then(res => {
+        const payload = res.data.data || {};
+        this.parkOptions = payload.records || [];
       });
     },
     loadUserOptions() {
@@ -533,6 +561,17 @@ export default {
       this.createForm.serviceType = merchant.businessType;
       this.createForm.serviceScope = merchant.serviceScope;
       this.createForm.parkId = merchant.parkId;
+    },
+    handleCustomerChange(customerId) {
+      const customer = this.customerOptions.find(item => item.customerId === customerId);
+      if (!customer) {
+        this.createForm.customerName = '';
+        return;
+      }
+      this.createForm.customerName = customer.enterpriseName;
+      this.createForm.contactName = customer.contactName || customer.approvalContactName || '';
+      this.createForm.contactPhone = customer.contactPhone || customer.enterprisePhone || '';
+      this.createForm.parkId = customer.parkId || this.createForm.parkId;
     },
     openCreate() {
       this.createForm = defaultCreateForm();

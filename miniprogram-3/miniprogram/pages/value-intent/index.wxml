@@ -30,7 +30,14 @@
         </view>
         <view class="form-row">
           <view class="form-label">期望时间</view>
-          <input class="form-input" placeholder="例如 2026年8月前" data-field="needTime" value="{{form.needTime}}" bindinput="handleInput" />
+          <view class="datetime-picker">
+            <picker mode="date" value="{{form.needDate}}" start="{{today}}" end="{{latestDate}}" bindchange="changeNeedDate">
+              <view class="picker-value {{form.needDate ? '' : 'picker-placeholder'}}">{{form.needDate || '选择日期'}} 〉</view>
+            </picker>
+            <picker mode="time" value="{{form.needClock}}" bindchange="changeNeedClock">
+              <view class="picker-value {{form.needClock ? '' : 'picker-placeholder'}}">{{form.needClock || '选择时间'}} 〉</view>
+            </picker>
+          </view>
         </view>
         <view class="form-row form-textarea-row">
           <view class="form-label">需求说明</view>

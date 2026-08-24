@@ -11,6 +11,7 @@ const baseActions = [
   { key: 'parking-pay', label: '停车缴费', tone: 'amber' },
   { key: 'service-desk', label: '园区商场', tone: 'cyan', icon: 'mall' },
   { key: 'ad-push', label: '广告推送', tone: 'purple' },
+	{ key: 'ads', label: '广告资讯', tone: 'cyan' },
 ]
 
 const complaintAction = { key: 'complaint', label: '投诉建议', tone: 'purple', icon: 'complaint' }
@@ -115,6 +116,10 @@ Page({
       wx.navigateTo({ url: '/pages/customer-ads/index' })
       return
     }
+	if (key === 'ads') {
+	  wx.navigateTo({ url: '/pages/ads/index' })
+	  return
+	}
     if (key === 'more') {
       if (!requireLogin('/pages/notifications/index')) return
       wx.showActionSheet({
@@ -139,6 +144,14 @@ Page({
   showNotice() {
     wx.navigateTo({ url: '/pages/notices/index' })
   },
+
+	showPolicies() {
+		wx.navigateTo({ url: '/pages/policies/index' })
+	},
+
+	openPolicy(event: WechatMiniprogram.TouchEvent) {
+		wx.navigateTo({ url: `/pages/policy-detail/index?id=${event.currentTarget.dataset.id}` })
+	},
 
   showAdminNotifications() {
     if (hasCapability('admin.notification.view')) wx.navigateTo({ url: '/pages/notifications/index' })

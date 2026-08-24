@@ -107,7 +107,7 @@ public class MerchantAdServiceImpl extends ServiceImpl<MerchantAdMapper, Merchan
 		ad.setAuditUserName(currentUserName());
 		ad.setAuditTime(now);
 		ad.setAuditOpinion("园区后台创建");
-		ad.setStatus(STATUS_OFFLINE);
+		ad.setStatus(STATUS_ONLINE);
 		ad.setSortOrder(Func.isEmpty(ad.getSortOrder()) ? 0 : ad.getSortOrder());
 		ad.setDelFlag(DEL_FLAG_NORMAL);
 		ad.setCreateBy(currentUserName());
@@ -116,7 +116,7 @@ public class MerchantAdServiceImpl extends ServiceImpl<MerchantAdMapper, Merchan
 		ad.setUpdateTime(now);
 		boolean inserted = baseMapper.insertAd(ad) > 0;
 		if (inserted) {
-			addAuditLog(ad, "ADMIN_CREATE", null, AUDIT_APPROVED, null, STATUS_OFFLINE, ad.getAuditOpinion());
+			addAuditLog(ad, "ADMIN_CREATE", null, AUDIT_APPROVED, null, STATUS_ONLINE, ad.getAuditOpinion());
 		}
 		return inserted;
 	}

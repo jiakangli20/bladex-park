@@ -1,0 +1,22 @@
+<view class="sub-page policy-list-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="blue-header plain-header">
+      <view class="nav-row"><view class="nav-action" bindtap="goBack">‹</view><view class="nav-title">政策服务</view><view class="nav-action"></view></view>
+      <view class="intro-title">最新政策</view><view class="intro-sub">查看园区政策、申报指南与惠企服务</view>
+    </view>
+    <view class="sub-content policy-list-content">
+      <view wx:if="{{loading}}" class="state-card">政策加载中...</view>
+      <view wx:elif="{{error}}" class="state-card"><view>{{error}}</view><view class="retry-button" bindtap="retry">重新加载</view></view>
+      <view wx:elif="{{!policies.length}}" class="state-card">暂无已发布政策</view>
+      <block wx:else>
+        <block wx:for="{{policies}}" wx:key="id">
+          <view class="section-card policy-list-item" data-id="{{item.id}}" bindtap="openPolicy">
+            <image wx:if="{{item.image}}" class="policy-list-cover" src="{{item.image}}" mode="aspectFill"></image>
+            <view class="policy-list-main"><view class="card-title">{{item.title}}</view><view class="policy-list-summary">{{item.summary || '园区惠企政策服务'}}</view><view class="policy-list-time">{{item.time}}</view></view>
+            <view class="policy-list-arrow">›</view>
+          </view>
+        </block>
+      </block>
+    </view>
+  </scroll-view>
+</view>

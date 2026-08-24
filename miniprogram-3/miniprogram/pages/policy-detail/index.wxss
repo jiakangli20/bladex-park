@@ -1,0 +1,6 @@
+.policy-detail-content { padding-top: 22rpx; }
+.policy-detail-cover { display: block; width: 100%; margin-bottom: 20rpx; border-radius: 6rpx; background: #eef2f7; }
+.policy-detail-card { padding: 30rpx; }
+.policy-detail-title { color: #172033; font-size: 36rpx; line-height: 1.45; }
+.policy-detail-meta { margin-top: 18rpx; padding-bottom: 22rpx; border-bottom: 1rpx solid #eef1f5; color: #929dac; font-size: 22rpx; }
+.policy-detail-body { display: block; margin-top: 26rpx; color: #3f4b5e; font-size: 27rpx; line-height: 1.8; word-break: break-word; }

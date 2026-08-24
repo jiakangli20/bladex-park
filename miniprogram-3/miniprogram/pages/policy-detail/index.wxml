@@ -1,0 +1,15 @@
+<view class="sub-page policy-detail-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="blue-header plain-header"><view class="nav-row"><view class="nav-action" bindtap="goBack">‹</view><view class="nav-title">政策详情</view><view class="nav-action"></view></view></view>
+    <view wx:if="{{loading}}" class="sub-content"><view class="state-card">详情加载中...</view></view>
+    <view wx:elif="{{error}}" class="sub-content"><view class="state-card">{{error}}</view></view>
+    <view wx:else class="sub-content policy-detail-content">
+      <image wx:if="{{policy.image}}" class="policy-detail-cover" src="{{policy.image}}" mode="widthFix"></image>
+      <view class="section-card policy-detail-card">
+        <view class="policy-detail-title">{{policy.title}}</view>
+        <view class="policy-detail-meta">{{policy.time}} · {{policy.permanent ? '永久有效' : '有效期至 ' + policy.validTime}}</view>
+        <rich-text class="policy-detail-body" nodes="{{policy.content || '暂无政策正文'}}"></rich-text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

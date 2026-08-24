@@ -24,6 +24,10 @@ public interface IMiniBusinessService {
 	Map<String, Object> home();
 	List<Map<String, Object>> publicNotices();
 	Map<String, Object> publicNotice(Long id);
+	List<Map<String, Object>> publicPolicies();
+	Map<String, Object> publicPolicy(Long id);
+	List<Map<String, Object>> publicAds();
+	Map<String, Object> publicAd(Long id);
 	List<Map<String, Object>> houses(String keyword);
 	Map<String, Object> house(Long id);
 	List<Map<String, Object>> propertyServices();

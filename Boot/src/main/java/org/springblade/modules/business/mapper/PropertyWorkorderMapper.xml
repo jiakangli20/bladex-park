@@ -93,6 +93,7 @@
 			w.del_flag = '0'
 			<if test="workorder != null">
 				<if test="workorder.parkId != null">and w.park_id = #{workorder.parkId}</if>
+				<if test="workorder.customerId != null">and w.customer_id = #{workorder.customerId}</if>
 				<if test="workorder.orderNo != null and workorder.orderNo != ''">and w.order_no like concat('%', #{workorder.orderNo}, '%')</if>
 				<if test="workorder.customerName != null and workorder.customerName != ''">and w.customer_name like concat('%', #{workorder.customerName}, '%')</if>
 				<if test="workorder.orderStatus != null and workorder.orderStatus != ''">and w.order_status = #{workorder.orderStatus}</if>

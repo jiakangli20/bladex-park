@@ -256,14 +256,20 @@
         </el-row>
         <el-row :gutter="18">
           <el-col :span="12">
-            <el-form-item label="园区ID">
-              <el-input-number
+            <el-form-item label="所属园区" prop="parkId">
+              <el-select
                 v-model="form.parkId"
-                :min="1"
-                :precision="0"
-                controls-position="right"
+                filterable
+                placeholder="请选择园区"
                 style="width: 100%"
-              />
+              >
+                <el-option
+                  v-for="park in parkOptions"
+                  :key="park.id"
+                  :label="park.name"
+                  :value="park.id"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -285,6 +291,9 @@
               :headers="uploadHeaders"
               :show-file-list="false"
               :on-success="handleCoverSuccess"
+              :on-error="handleCoverError"
+              :before-upload="beforeCoverUpload"
+              accept="image/jpeg,image/png,image/webp"
               :disabled="viewMode"
             >
               <el-image
@@ -474,6 +483,7 @@
 <script>
 import { mapGetters } from 'vuex';
 import { getToken } from '@/utils/auth';
+import { getList as getParkList } from '@/api/park/park';
 import { getMerchantList } from '@/api/business/merchant';
 import {
   addAd,
@@ -566,6 +576,7 @@ export default {
       statusOptions,
       auditStatusOptions,
       merchantOptions: [],
+      parkOptions: [],
       formVisible: false,
       viewMode: false,
       form: defaultForm(),
@@ -576,12 +587,9 @@ export default {
       auditLogsVisible: false,
       auditLogsLoading: false,
       auditLogs: [],
-      uploadHeaders: {
-        'Blade-Auth': `bearer ${getToken()}`,
-        'Blade-Requested-With': 'BladeHttpRequest',
-      },
       rules: {
         adTitle: [{ required: true, message: '请输入广告标题', trigger: 'blur' }],
+        parkId: [{ required: true, message: '请选择园区', trigger: 'change' }],
         adPosition: [{ required: true, message: '请选择广告位置', trigger: 'change' }],
         coverUrl: [{ required: true, message: '请上传或填写封面图', trigger: 'blur' }],
         linkType: [{ required: true, message: '请选择跳转类型', trigger: 'change' }],
@@ -591,7 +599,14 @@ export default {
     };
   },
   computed: {
-    ...mapGetters(['permission']),
+    ...mapGetters(['permission', 'userInfo']),
+    uploadHeaders() {
+      return {
+        'Blade-Auth': `bearer ${getToken()}`,
+        'Blade-Requested-With': 'BladeHttpRequest',
+        'Tenant-Id': this.userInfo?.tenantId || this.userInfo?.tenant_id || '000000',
+      };
+    },
     permissionList() {
       return {
         addBtn: this.validData(this.permission.merchant_service_ad_add, false),
@@ -606,6 +621,7 @@ export default {
     },
   },
   created() {
+    this.loadParkOptions();
     this.loadMerchantOptions();
     this.loadStatistics();
     this.onLoad(this.page);
@@ -665,6 +681,12 @@ export default {
     loadMerchantOptions() {
       getMerchantList({ status: '0' }).then(res => {
         this.merchantOptions = res.data.data || [];
+      });
+    },
+    loadParkOptions() {
+      getParkList(1, 999, { status: '0' }).then(res => {
+        const payload = res.data.data || {};
+        this.parkOptions = payload.records || [];
       });
     },
     loadStatistics() {
@@ -854,7 +876,27 @@ export default {
       }
       const data = response.data || {};
       this.form.coverUrl = data.link || data.url || '';
+      if (!this.form.coverUrl) {
+        this.$message.error('OSS 未返回图片地址');
+        return;
+      }
+      this.$refs.formRef?.clearValidate('coverUrl');
       this.$message.success('上传成功');
+    },
+    handleCoverError() {
+      this.$message.error('图片上传失败，请检查 OSS 配置或重新登录后再试');
+    },
+    beforeCoverUpload(file) {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        this.$message.warning('仅支持 JPG、PNG、WebP 图片');
+        return false;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        this.$message.warning('图片大小不能超过 5MB');
+        return false;
+      }
+      return true;
     },
   },
 };

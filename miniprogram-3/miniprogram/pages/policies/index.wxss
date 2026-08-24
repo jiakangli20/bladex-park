@@ -1,0 +1,7 @@
+.policy-list-content { padding-top: 22rpx; }
+.policy-list-item { display: flex; align-items: center; gap: 20rpx; }
+.policy-list-cover { width: 132rpx; height: 92rpx; flex: none; border-radius: 6rpx; background: #eef2f7; }
+.policy-list-main { flex: 1; min-width: 0; }
+.policy-list-summary { margin-top: 12rpx; color: #6f7c8f; font-size: 24rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.policy-list-time { margin-top: 12rpx; color: #9aa5b4; font-size: 22rpx; }
+.policy-list-arrow { flex: none; color: #aeb8c7; font-size: 38rpx; }

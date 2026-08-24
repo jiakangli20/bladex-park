@@ -6,6 +6,7 @@ package org.springblade.modules.business.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import lombok.RequiredArgsConstructor;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.utils.DateUtil;
@@ -14,6 +15,8 @@ import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.business.mapper.PropertyServiceMapper;
 import org.springblade.modules.business.pojo.entity.PropertyService;
 import org.springblade.modules.business.service.IPropertyServiceService;
+import org.springblade.modules.park.pojo.entity.Park;
+import org.springblade.modules.park.service.IParkService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,11 +29,13 @@ import java.util.stream.Collectors;
  * @author BladeX
  */
 @Service
+@RequiredArgsConstructor
 public class PropertyServiceServiceImpl extends ServiceImpl<PropertyServiceMapper, PropertyService> implements IPropertyServiceService {
 
 	private static final String STATUS_NORMAL = "0";
 	private static final String STATUS_DISABLED = "1";
 	private static final String DEL_FLAG_NORMAL = "0";
+	private final IParkService parkService;
 
 	@Override
 	public PropertyService selectPropertyServiceById(Long serviceId) {
@@ -111,6 +116,10 @@ public class PropertyServiceServiceImpl extends ServiceImpl<PropertyServiceMappe
 	private Long resolveWriteParkId(Long parkId) {
 		if (Func.isEmpty(parkId)) {
 			throw new ServiceException("请选择园区");
+		}
+		Park park = parkService.getById(parkId);
+		if (Func.isEmpty(park) || !STATUS_NORMAL.equals(park.getStatus())) {
+			throw new ServiceException("所选园区不存在或未启用");
 		}
 		return parkId;
 	}

@@ -40,6 +40,14 @@ public class MiniPublicController {
 	public R<List<Map<String, Object>>> notices() { return R.data(businessService.publicNotices()); }
 	@GetMapping("/notices/{id}") @Operation(summary = "公开公告详情")
 	public R<Map<String, Object>> notice(@PathVariable Long id) { return R.data(businessService.publicNotice(id)); }
+	@GetMapping("/policies") @Operation(summary = "公开政策服务")
+	public R<List<Map<String, Object>>> policies() { return R.data(businessService.publicPolicies()); }
+	@GetMapping("/policies/{id}") @Operation(summary = "公开政策服务详情")
+	public R<Map<String, Object>> policy(@PathVariable Long id) { return R.data(businessService.publicPolicy(id)); }
+	@GetMapping("/ads") @Operation(summary = "公开广告")
+	public R<List<Map<String, Object>>> ads() { return R.data(businessService.publicAds()); }
+	@GetMapping("/ads/{id}") @Operation(summary = "公开广告详情")
+	public R<Map<String, Object>> ad(@PathVariable Long id) { return R.data(businessService.publicAd(id)); }
 	@GetMapping("/houses") @Operation(summary = "公开房源")
 	public R<List<Map<String, Object>>> houses(@RequestParam(required = false) String keyword) { return R.data(businessService.houses(keyword)); }
 	@GetMapping("/houses/{id}") @Operation(summary = "公开房源详情")

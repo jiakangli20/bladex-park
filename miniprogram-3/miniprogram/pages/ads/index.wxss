@@ -1,0 +1,7 @@
+.ad-public-content { padding-top: 22rpx; }
+.ad-public-list { display: flex; flex-direction: column; gap: 20rpx; }
+.ad-public-item { padding: 0; overflow: hidden; }
+.ad-public-cover { display: block; width: 100%; height: 300rpx; background: #eef2f7; }
+.ad-public-body { padding: 24rpx; }
+.ad-public-merchant { margin-top: 12rpx; color: #758196; font-size: 24rpx; }
+.ad-public-more { margin-top: 18rpx; color: #2468d8; font-size: 24rpx; }

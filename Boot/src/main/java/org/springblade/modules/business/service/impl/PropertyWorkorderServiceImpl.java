@@ -87,7 +87,7 @@ public class PropertyWorkorderServiceImpl extends ServiceImpl<PropertyWorkorderM
 		workorder.setParkId(targetParkId);
 		workorder.setOrderNo(generateOrderNo());
 		workorder.setOrderStatus(StringUtil.isBlank(workorder.getOrderStatus()) ? STATUS_PENDING : workorder.getOrderStatus());
-		workorder.setPriority(StringUtil.isBlank(workorder.getPriority()) ? PRIORITY_NORMAL : workorder.getPriority());
+		workorder.setPriority(normalizePriority(workorder.getPriority()));
 		workorder.setDelFlag(DEL_FLAG_NORMAL);
 		workorder.setCreateBy(currentUserName());
 		workorder.setCreateTime(now);
@@ -307,6 +307,18 @@ public class PropertyWorkorderServiceImpl extends ServiceImpl<PropertyWorkorderM
 			&& !List.of(STATUS_PENDING, STATUS_PROCESSING, STATUS_FINISHED, STATUS_RATED, STATUS_CLOSED).contains(workorder.getOrderStatus())) {
 			throw new ServiceException("工单状态不正确");
 		}
+	}
+
+	private String normalizePriority(String priority) {
+		if (StringUtil.isBlank(priority)) {
+			return PRIORITY_NORMAL;
+		}
+		return switch (priority.trim().toUpperCase()) {
+			case "0", "URGENT" -> "0";
+			case "1", "NORMAL" -> PRIORITY_NORMAL;
+			case "2", "LOW" -> "2";
+			default -> throw new ServiceException("工单优先级不正确");
+		};
 	}
 
 	private void normalizeProcessFields(ServiceWorkorder workorder, ServiceWorkorder old, Date now) {

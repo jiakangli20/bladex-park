@@ -137,8 +137,10 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="园区ID">
-              <el-input-number v-model="form.parkId" :min="1" :precision="0" controls-position="right" style="width: 100%" />
+            <el-form-item label="所属园区" prop="parkId">
+              <el-select v-model="form.parkId" filterable placeholder="请选择园区" style="width: 100%">
+                <el-option v-for="park in parkOptions" :key="park.id" :label="park.name" :value="park.id" />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -222,6 +224,7 @@
 <script>
 import { mapGetters } from 'vuex';
 import { getToken } from '@/utils/auth';
+import { getList as getParkList } from '@/api/park/park';
 import {
   addPolicy,
   changePolicyOnline,
@@ -286,6 +289,7 @@ export default {
       },
       scopeOptions,
       statusOptions,
+      parkOptions: [],
       formVisible: false,
       form: defaultForm(),
       recordVisible: false,
@@ -296,6 +300,7 @@ export default {
       },
       rules: {
         serviceTitle: [{ required: true, message: '请输入服务标题', trigger: 'blur' }],
+        parkId: [{ required: true, message: '请选择园区', trigger: 'change' }],
         projectScope: [{ required: true, message: '请选择项目范围', trigger: 'change' }],
         serviceStatus: [{ required: true, message: '请选择服务状态', trigger: 'change' }],
         permanentFlag: [{ required: true, message: '请选择有效方式', trigger: 'change' }],
@@ -316,6 +321,7 @@ export default {
     },
   },
   created() {
+    this.loadParkOptions();
     this.onLoad(this.page);
   },
   methods: {
@@ -332,6 +338,12 @@ export default {
     },
     permanentText(value) {
       return value === '1' ? '指定时间' : '永久有效';
+    },
+    loadParkOptions() {
+      getParkList(1, 999, { status: '0' }).then(res => {
+        const payload = res.data.data || {};
+        this.parkOptions = payload.records || [];
+      });
     },
     onLoad(page, params = {}) {
       this.loading = true;

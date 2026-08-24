@@ -1,0 +1,4 @@
+.ad-detail-content { padding-top: 22rpx; }
+.ad-detail-cover { display: block; width: 100%; border-radius: 12rpx; background: #eef2f7; margin-bottom: 20rpx; }
+.ad-detail-merchant { margin-top: 14rpx; color: #758196; font-size: 24rpx; }
+.ad-detail-text { margin-top: 24rpx; color: #445166; font-size: 26rpx; line-height: 1.75; white-space: pre-wrap; }

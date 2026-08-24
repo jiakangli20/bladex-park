@@ -97,6 +97,9 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 	@Override
 	public MiniLoginVO wechatLogin(MiniWechatLoginDTO request) {
 		checkRateLimit("login");
+		if (Boolean.TRUE.equals(properties.getMockEnabled())) {
+			return mockLogin();
+		}
 		MiniWechatClient.WechatSession wechatSession = wechatClient.exchangeCode(request.getCode());
 		MiniMember member = memberMapper.selectOne(Wrappers.<MiniMember>lambdaQuery()
 			.eq(MiniMember::getTenantId, properties.getDefaultTenantId())
@@ -118,6 +121,38 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 			login.setTenantId(properties.getDefaultTenantId());
 			login.setParkId(effectiveDefaultParkId());
 			return login;
+		}
+		assertMemberEnabled(member);
+		member.setLastLoginTime(new Date());
+		memberMapper.updateById(member);
+		return buildLogin(member, tokenIssuer.issue(member.getTenantId(), member.getUserId()));
+	}
+
+	private MiniLoginVO mockLogin() {
+		Long userId = properties.getMockUserId();
+		if (userId == null || userId <= 0) {
+			throw new ServiceException("开发模式固定用户尚未配置");
+		}
+		User user = userService.getById(userId);
+		if (user == null || !properties.getDefaultTenantId().equals(user.getTenantId())
+			|| !Integer.valueOf(StatusType.ACTIVE.getType()).equals(user.getStatus())
+			|| Integer.valueOf(1).equals(user.getIsDeleted())) {
+			throw new ServiceException("开发模式固定用户不存在或已停用");
+		}
+		MiniMember member = findMemberByUser(user.getTenantId(), userId);
+		if (member == null) {
+			member = new MiniMember();
+			member.setTenantId(user.getTenantId());
+			member.setAppId(effectiveAppId());
+			member.setOpenId("mock-fixed-user-" + userId);
+			member.setUserId(userId);
+			member.setParkId(effectiveDefaultParkId());
+			member.setMobile(user.getPhone());
+			member.setRoleCode(MiniAppConstant.ROLE_PARK_ADMIN);
+			member.setNickname(StringUtil.isNotBlank(user.getRealName()) ? user.getRealName() : user.getName());
+			member.setStatus(StatusType.ACTIVE.getType());
+			member.setIsDeleted(0);
+			memberMapper.insert(member);
 		}
 		assertMemberEnabled(member);
 		member.setLastLoginTime(new Date());

@@ -22,6 +22,7 @@ miniapp:
   oauth-client-id: ${MINIAPP_OAUTH_CLIENT_ID:saber}
   oauth-client-secret: ${MINIAPP_OAUTH_CLIENT_SECRET:saber_secret}
   mock-enabled: ${MINIAPP_MOCK_ENABLED:false}
+  mock-user-id: ${MINIAPP_MOCK_USER_ID:}
   bind-ticket-minutes: 5
   rate-limit-per-minute: 30
   # 在微信公众平台“订阅消息”中选用模板后，通过环境变量注入模板 ID。

@@ -121,8 +121,10 @@
                 <el-option v-for="item in serviceTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
-            <el-form-item label="园区ID" prop="parkId">
-              <el-input-number v-model="serviceForm.parkId" :min="1" :precision="0" controls-position="right" style="width: 100%" />
+            <el-form-item label="所属园区" prop="parkId">
+              <el-select v-model="serviceForm.parkId" filterable placeholder="请选择园区" style="width: 100%">
+                <el-option v-for="park in parkOptions" :key="park.id" :label="park.name" :value="park.id" />
+              </el-select>
             </el-form-item>
             <el-form-item label="收费标准">
               <el-input v-model="serviceForm.chargeStandard" maxlength="200" placeholder="如：物业公司代收物业费" />
@@ -161,6 +163,7 @@
 <script>
 import { mapGetters } from 'vuex';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { getList as getParkList } from '@/api/park/park';
 import {
   getServiceList,
   getServicePage,
@@ -190,6 +193,7 @@ export default {
         total: 0,
       },
       serviceData: [],
+      parkOptions: [],
       serviceSummaryData: [],
       serviceLoading: false,
       serviceDialogVisible: false,
@@ -198,6 +202,7 @@ export default {
       serviceRules: {
         serviceName: [{ required: true, message: '请输入服务名称', trigger: 'blur' }],
         serviceType: [{ required: true, message: '请选择服务类型', trigger: 'change' }],
+        parkId: [{ required: true, message: '请选择园区', trigger: 'change' }],
       },
     };
   },
@@ -227,6 +232,7 @@ export default {
     },
   },
   created() {
+    this.loadParkOptions();
     this.loadServicePage();
     this.loadServiceSummary();
   },
@@ -241,6 +247,12 @@ export default {
     serviceTypeText(value) {
       const item = this.serviceTypeOptions.find(option => option.value === value);
       return item ? item.label : value || '-';
+    },
+    loadParkOptions() {
+      getParkList(1, 999, { status: '0' }).then(res => {
+        const payload = this.responseData(res) || {};
+        this.parkOptions = Array.isArray(payload.records) ? payload.records : [];
+      });
     },
     loadServicePage() {
       this.serviceLoading = true;
@@ -282,7 +294,7 @@ export default {
     openServiceDialog(row, view = false) {
       this.serviceView = view;
       this.serviceForm = row ? { ...row } : {
-        parkId: 1,
+        parkId: this.parkOptions.length === 1 ? this.parkOptions[0].id : undefined,
         serviceType: 'property_fee',
         chargeStandard: '物业公司代收物业费',
         serviceFlow: '小程序申请-工单受理-处置完成-用户评价',

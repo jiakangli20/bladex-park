@@ -46,6 +46,7 @@ public class MiniAppProperties {
 	private String oauthClientId = "saber";
 	private String oauthClientSecret = "saber_secret";
 	private Boolean mockEnabled = false;
+	private Long mockUserId;
 	private Integer bindTicketMinutes = 5;
 	private Integer rateLimitPerMinute = 30;
 	private String serviceNoticeTemplateId = "";

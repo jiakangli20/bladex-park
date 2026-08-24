@@ -73,9 +73,9 @@ public class MiniTokenIssuer {
 		request.setClientArgs(Kv.create()
 			.set("client_id", properties.getOauthClientId())
 			.set("client_secret", properties.getOauthClientSecret()));
+		request.setHeaderArgs(Kv.create().set("User-Type", UserType.OTHER.getName()));
 		request.setParameterArgs(Kv.create()
-			.set("grant_type", grantType)
-			.set("user_type", UserType.OTHER.getName()));
+			.set("grant_type", grantType));
 		return request;
 	}
 }

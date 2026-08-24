@@ -1,4 +1,5 @@
 import { authApi } from '../../services/miniapp'
+import { env } from '../../config/env'
 import { MiniSession, saveSession } from '../../utils/session'
 
 const wechatCode = (): Promise<string> => new Promise((resolve, reject) => {
@@ -39,7 +40,7 @@ Page({
     }
     this.setData({ loading: true })
     try {
-      const code = await wechatCode()
+      const code = env().mockLoginEnabled ? 'mock-fixed-user' : await wechatCode()
       const session = await authApi.wechatLogin(code)
       if (session.needBind) {
         this.setData({ needBind: true, bindTicket: session.bindTicket || '' })

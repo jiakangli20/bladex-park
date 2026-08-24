@@ -28,7 +28,7 @@
       <view class="form-card">
         <view class="form-row">
           <view class="form-label">联系人</view>
-          <input class="form-input" placeholder="请输入联系人" data-field="contact" value="{{form.contact}}" bindinput="handleInput" />
+          <input class="form-input" maxlength="30" placeholder="请输入联系人" data-field="contact" value="{{form.contact}}" bindinput="handleInput" />
         </view>
         <view class="form-row">
           <view class="form-label">手机号</view>
@@ -36,7 +36,7 @@
         </view>
         <view class="form-row">
           <view class="form-label">企业名称</view>
-          <input class="form-input" placeholder="请输入企业名称" data-field="companyName" value="{{form.companyName}}" bindinput="handleInput" />
+          <input class="form-input" maxlength="100" placeholder="请输入企业名称" data-field="companyName" value="{{form.companyName}}" bindinput="handleInput" />
         </view>
         <view wx:if="{{mode === 'appointment'}}" class="form-row">
           <view class="form-label">意向时间</view>
@@ -45,28 +45,28 @@
         <block wx:else>
           <view class="form-row">
             <view class="form-label">信用代码</view>
-            <input class="form-input" placeholder="统一社会信用代码" data-field="creditCode" value="{{form.creditCode}}" bindinput="handleInput" />
+            <input class="form-input" maxlength="18" placeholder="18位统一社会信用代码" data-field="creditCode" value="{{form.creditCode}}" bindinput="handleCreditCodeInput" />
           </view>
           <view class="form-row">
             <view class="form-label">意向面积</view>
-            <input class="form-input" placeholder="例如 300m²" data-field="intentArea" value="{{form.intentArea}}" bindinput="handleInput" />
+            <input class="form-input" type="digit" maxlength="8" placeholder="请输入1-99999平方米" data-field="intentArea" value="{{form.intentArea}}" bindinput="handleAreaInput" />
           </view>
           <view class="form-row">
             <view class="form-label">行业类型</view>
-            <input class="form-input" placeholder="例如 软件研发" data-field="industry" value="{{form.industry}}" bindinput="handleInput" />
+            <picker mode="selector" range="{{industryOptions}}" value="{{industryIndex}}" bindchange="changeIndustry"><view class="picker-value {{form.industry ? '' : 'picker-placeholder'}}">{{form.industry || '请选择行业类型'}} 〉</view></picker>
           </view>
           <view class="form-row">
             <view class="form-label">企业规模</view>
-            <input class="form-input" placeholder="例如 50-100人" data-field="scale" value="{{form.scale}}" bindinput="handleInput" />
+            <picker mode="selector" range="{{scaleOptions}}" value="{{scaleIndex}}" bindchange="changeScale"><view class="picker-value {{form.scale ? '' : 'picker-placeholder'}}">{{form.scale || '请选择企业规模'}} 〉</view></picker>
           </view>
           <view class="form-row">
             <view class="form-label">预计入驻</view>
-            <input class="form-input" placeholder="例如 2026年8月" data-field="settleTime" value="{{form.settleTime}}" bindinput="handleInput" />
+            <picker mode="date" value="{{form.settleTime}}" start="{{today}}" end="{{latestDate}}" bindchange="changeSettleDate"><view class="picker-value {{form.settleTime ? '' : 'picker-placeholder'}}">{{form.settleTime || '请选择预计入驻日期'}} 〉</view></picker>
           </view>
         </block>
         <view class="form-row form-textarea-row">
           <view class="form-label">需求说明</view>
-          <textarea class="form-textarea" placeholder="请输入备注或具体需求" data-field="remark" value="{{form.remark}}" bindinput="handleInput"></textarea>
+          <textarea class="form-textarea" maxlength="500" placeholder="请输入备注或具体需求（最多500字）" data-field="remark" value="{{form.remark}}" bindinput="handleInput"></textarea>
         </view>
       </view>
     </view>

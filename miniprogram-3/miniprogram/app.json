@@ -2,6 +2,8 @@
   "pages": [
     "pages/index/index",
     "pages/notices/index",
+	"pages/policies/index",
+	"pages/policy-detail/index",
     "pages/login/index",
     "pages/houses/index",
     "pages/house-detail/index",
@@ -20,6 +22,8 @@
     "pages/utility-bills/index",
     "pages/utility-bill-detail/index",
     "pages/customer-ads/index",
+	"pages/ads/index",
+	"pages/ad-detail/index",
     "pages/customer-ad-detail/index",
     "pages/customer-ad-form/index",
     "pages/profile-section/index",

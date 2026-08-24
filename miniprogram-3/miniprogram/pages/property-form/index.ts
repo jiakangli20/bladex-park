@@ -1,6 +1,6 @@
 import { customerApi, publicApi } from '../../services/miniapp'
 import { navigateBackOr } from '../../utils/navigation'
-import { requireLogin } from '../../utils/session'
+import { getSession, requireLogin } from '../../utils/session'
 
 Page({
   data: {
@@ -12,8 +12,10 @@ Page({
   async onLoad(options: Record<string, string | undefined>) {
     if (!requireLogin(`/pages/property-form/index?id=${options.id || ''}&type=${options.type || ''}`)) return
     const services = await publicApi.propertyServices()
-    const selected: Record<string, any> | undefined = services.find(item => String(item.id) === options.id)
-      || services.find(item => String(item.type).includes(options.type || ''))
+    const parkId = getSession()?.parkId
+    const parkServices = parkId ? services.filter(item => String(item.parkId) === String(parkId)) : services
+    const selected: Record<string, any> | undefined = parkServices.find(item => String(item.id) === options.id)
+      || parkServices.find(item => String(item.type).includes(options.type || ''))
     if (!selected) {
       wx.showToast({ title: '该物业服务暂未配置', icon: 'none' })
       return
@@ -48,7 +50,7 @@ Page({
       contactPhone: phone,
       roomInfo: room,
       demandDesc: extra ? `${content}；${extra}` : content,
-      priority: 'NORMAL',
+      priority: '1',
     })
     wx.showModal({
       title: '提交成功', content: '已生成物业服务申请，可在我的工单查看处理进度。',

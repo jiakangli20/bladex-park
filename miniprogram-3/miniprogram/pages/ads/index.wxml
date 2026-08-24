@@ -1,0 +1,19 @@
+<view class="sub-page ad-public-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="blue-header plain-header">
+      <view class="nav-row"><view class="nav-action" bindtap="goBack">‹</view><view class="nav-title">园区广告</view><view class="nav-action"></view></view>
+      <view class="intro-title">广告资讯</view><view class="intro-sub">查看园区最新商户活动与服务信息</view>
+    </view>
+    <view class="sub-content ad-public-content">
+      <view wx:if="{{loading}}" class="state-card">广告加载中...</view>
+      <view wx:elif="{{error}}" class="state-card"><view>{{error}}</view><view class="retry-button" bindtap="retry">重新加载</view></view>
+      <view wx:elif="{{!ads.length}}" class="state-card">暂无已发布广告</view>
+      <view wx:else class="ad-public-list">
+        <view wx:for="{{ads}}" wx:key="id" class="section-card ad-public-item" data-id="{{item.id}}" bindtap="openAd">
+          <image class="ad-public-cover" src="{{item.image}}" mode="aspectFill"></image>
+          <view class="ad-public-body"><view class="card-title">{{item.title}}</view><view class="ad-public-merchant">{{item.merchantName || '园区发布'}}</view><view class="ad-public-more">查看详情 〉</view></view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

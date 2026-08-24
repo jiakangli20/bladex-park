@@ -1,0 +1,10 @@
+<view class="sub-page ad-detail-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="blue-header plain-header"><view class="nav-row"><view class="nav-action" bindtap="goBack">‹</view><view class="nav-title">广告详情</view><view class="nav-action"></view></view></view>
+    <view wx:if="{{loading}}" class="sub-content"><view class="state-card">详情加载中...</view></view>
+    <view wx:else class="sub-content ad-detail-content">
+      <image class="ad-detail-cover" src="{{ad.image}}" mode="widthFix"></image>
+      <view class="section-card"><view class="card-title">{{ad.title}}</view><view class="ad-detail-merchant">{{ad.merchantName || '园区发布'}}</view><view class="ad-detail-text">{{ad.remark || '暂无更多介绍'}}</view></view>
+    </view>
+  </scroll-view>
+</view>

@@ -1,3 +1,6 @@
 .form-card {
   margin-top: 24rpx;
 }
+
+.picker-value { color: #24324a; text-align: right; font-size: 28rpx; }
+.picker-placeholder { color: #9aa5b4; }

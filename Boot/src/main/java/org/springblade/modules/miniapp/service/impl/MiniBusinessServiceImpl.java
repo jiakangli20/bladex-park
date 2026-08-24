@@ -112,9 +112,10 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 		List<Map<String, Object>> policies = parkIds.stream().flatMap(parkId -> {
 			PolicyService query = new PolicyService();
 			query.setParkId(parkId);
-			query.setOnlineFlag("1");
+			query.setServiceStatus("0");
+			query.setOnlineFlag("0");
 			return policyService.selectPolicyList(query).stream();
-		}).map(this::policyMap).limit(6).toList();
+		}).filter(this::isPolicyEffective).map(this::policyMap).limit(6).toList();
 		List<Map<String, Object>> activities = activityMapper.selectList(Wrappers.<ParkActivity>lambdaQuery()
 			.eq(ParkActivity::getTenantId, properties.getDefaultTenantId()).in(!parkIds.isEmpty(), ParkActivity::getParkId, parkIds)
 			.eq(ParkActivity::getPublishStatus, 1).eq(ParkActivity::getStatus, StatusType.ACTIVE.getType())
@@ -147,6 +148,40 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 			throw new ServiceException("公告不存在或尚未发布");
 		}
 		return noticeMap(notice, true);
+	}
+
+	@Override
+	public List<Map<String, Object>> publicPolicies() {
+		return publicParkIds().stream().flatMap(parkId -> {
+			PolicyService query = new PolicyService();
+			query.setParkId(parkId);
+			query.setServiceStatus("0");
+			query.setOnlineFlag("0");
+			return policyService.selectPolicyList(query).stream();
+		}).filter(this::isPolicyEffective).map(this::policyMap).toList();
+	}
+
+	@Override
+	public Map<String, Object> publicPolicy(Long id) {
+		PolicyService item = policyService.selectMiniAppPolicyById(id);
+		if (!publicParkIds().contains(item.getParkId())) {
+			throw new ServiceException("政策服务不存在或未上架");
+		}
+		return policyDetailMap(item);
+	}
+
+	@Override
+	public List<Map<String, Object>> publicAds() {
+		return publicParkIds().stream()
+			.flatMap(parkId -> merchantAdService.selectPublicAdList(parkId, "miniapp_home").stream())
+			.map(this::adMap).toList();
+	}
+
+	@Override
+	public Map<String, Object> publicAd(Long id) {
+		return publicAds().stream()
+			.filter(item -> Objects.equals(String.valueOf(item.get("id")), String.valueOf(id)))
+			.findFirst().orElseThrow(() -> new ServiceException("广告不存在或已下架"));
 	}
 
 	@Override
@@ -309,6 +344,11 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 		MiniMember member = authService.requireCustomer();
 		return idempotent(requestId, () -> {
 			Customer customer = requireCustomer(member.getCustomerId(), member.getParkId());
+			PropertyService service = propertyService.selectPropertyServiceById(request.getServiceId());
+			if (service == null || !Objects.equals(service.getParkId(), member.getParkId())
+				|| !"0".equals(service.getStatus()) || !"0".equals(service.getDelFlag())) {
+				throw new ServiceException("该物业服务不属于当前企业所在园区或已下架");
+			}
 			ServiceWorkorder order = new ServiceWorkorder();
 			order.setParkId(member.getParkId());
 			order.setServiceId(request.getServiceId());
@@ -1000,11 +1040,13 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 		}
 	}
 
-	private Map<String, Object> adMap(MerchantAd item) { return Kv.create().set("id", item.getAdId()).set("title", item.getAdTitle()).set("image", item.getCoverUrl()).set("linkType", item.getLinkType()).set("linkUrl", item.getLinkUrl()); }
+	private Map<String, Object> adMap(MerchantAd item) { return Kv.create().set("id", item.getAdId()).set("title", item.getAdTitle()).set("image", item.getCoverUrl()).set("linkType", item.getLinkType()).set("linkUrl", item.getLinkUrl()).set("merchantName", item.getMerchantName()).set("remark", item.getRemark()).set("startTime", item.getStartTime()).set("endTime", item.getEndTime()); }
 	private Map<String, Object> policyMap(PolicyService item) { return Kv.create().set("id", item.getPolicyId()).set("title", item.getServiceTitle()).set("summary", item.getProjectScope()).set("image", item.getCoverUrl()).set("time", item.getCreateTime()); }
+	private Map<String, Object> policyDetailMap(PolicyService item) { Map<String, Object> map = policyMap(item); map.put("content", item.getContent()); map.put("validTime", item.getValidTime()); map.put("permanent", "0".equals(item.getPermanentFlag())); map.put("attachments", item.getAttachmentFiles()); return map; }
+	private boolean isPolicyEffective(PolicyService item) { return "0".equals(item.getPermanentFlag()) || (item.getValidTime() != null && !item.getValidTime().before(new Date())); }
 	private Map<String, Object> activityMap(ParkActivity item) { return Kv.create().set("id", item.getId()).set("title", item.getTitle()).set("image", item.getCoverUrl()).set("summary", item.getSummary()).set("startTime", item.getStartTime()).set("endTime", item.getEndTime()).set("address", item.getAddress()).set("price", item.getPriceText()); }
 	private Map<String, Object> noticeMap(Notice item, boolean detail) { Kv map = Kv.create().set("id", item.getId()).set("title", item.getTitle()).set("category", item.getCategory()).set("releaseTime", item.getReleaseTime()).set("summary", plainText(item.getContent())); if (detail) map.set("content", item.getContent()); return map; }
-	private Map<String, Object> propertyServiceMap(PropertyService item) { return Kv.create().set("id", item.getServiceId()).set("title", item.getServiceName()).set("type", item.getServiceType()).set("desc", item.getServiceDesc()).set("materials", item.getRequiredMaterials()).set("flow", item.getServiceFlow()).set("charge", item.getChargeStandard()); }
+	private Map<String, Object> propertyServiceMap(PropertyService item) { return Kv.create().set("id", item.getServiceId()).set("parkId", item.getParkId()).set("title", item.getServiceName()).set("type", item.getServiceType()).set("desc", item.getServiceDesc()).set("materials", item.getRequiredMaterials()).set("flow", item.getServiceFlow()).set("charge", item.getChargeStandard()); }
 	private Map<String, Object> merchantMap(Merchant item) { return Kv.create().set("id", item.getMerchantId()).set("title", item.getMerchantName()).set("category", item.getBusinessType()).set("desc", item.getServiceScope()).set("serviceArea", item.getServiceArea()).set("contactName", maskName(item.getContactName())).set("contactPhone", maskPhone(item.getContactPhone())).set("address", item.getAddress()); }
 	private Map<String, Object> appointmentMap(HouseAppointment item) { return Kv.create().set("id", item.getId()).set("kind", "appointment").set("no", item.getAppointmentNo()).set("roomId", item.getRoomId()).set("companyName", item.getEnterpriseName()).set("contact", item.getContactName()).set("phone", maskPhone(item.getContactPhone())).set("preferredTime", item.getPreferredTime()).set("description", item.getDemandDesc()).set("status", item.getAppointmentStatus()).set("createTime", item.getCreateTime()); }
 	private Map<String, Object> settlementMap(SettlementTodo item) { return Kv.create().set("id", item.getTodoId()).set("kind", "settlement").set("no", item.getTodoNo()).set("title", item.getEnterpriseName()).set("companyName", item.getEnterpriseName()).set("contact", item.getContactName()).set("phone", maskPhone(item.getContactPhone())).set("status", item.getTodoStatus()).set("description", item.getDemandDesc()).set("processRemark", item.getProcessRemark()).set("createTime", item.getCreateTime()); }

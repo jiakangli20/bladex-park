@@ -20,6 +20,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -45,15 +47,15 @@ public interface MiniBusinessDTO {
 	@Data
 	class Settlement {
 		private Long roomId;
-		@NotBlank(message = "企业名称不能为空") private String enterpriseName;
-		@NotBlank(message = "统一社会信用代码不能为空") private String creditCode;
-		private String industryType;
-		private String enterpriseScale;
-		private BigDecimal intentArea;
-		@JsonFormat(pattern = "yyyy-MM-dd") private Date expectedEntryDate;
-		@NotBlank(message = "联系人不能为空") private String contactName;
+		@NotBlank(message = "企业名称不能为空") @Size(max = 100, message = "企业名称不能超过100字") private String enterpriseName;
+		@NotBlank(message = "统一社会信用代码不能为空") @Pattern(regexp = "^[0-9A-Z]{18}$", message = "统一社会信用代码格式不正确") private String creditCode;
+		@NotBlank(message = "行业类型不能为空") @Size(max = 50, message = "行业类型不能超过50字") private String industryType;
+		@NotBlank(message = "企业规模不能为空") @Size(max = 30, message = "企业规模不能超过30字") private String enterpriseScale;
+		@NotNull(message = "意向面积不能为空") @DecimalMin(value = "1", message = "意向面积不能小于1平方米") @DecimalMax(value = "99999", message = "意向面积不能超过99999平方米") private BigDecimal intentArea;
+		@NotNull(message = "预计入驻日期不能为空") @JsonFormat(pattern = "yyyy-MM-dd") private Date expectedEntryDate;
+		@NotBlank(message = "联系人不能为空") @Size(max = 30, message = "联系人不能超过30字") private String contactName;
 		@Pattern(regexp = "^1\\d{10}$", message = "手机号格式不正确") private String contactPhone;
-		private String demandDesc;
+		@Size(max = 500, message = "需求说明不能超过500字") private String demandDesc;
 	}
 
 	@Data
