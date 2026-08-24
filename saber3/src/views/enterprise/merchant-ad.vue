@@ -142,13 +142,6 @@
               }}</span></template
             >
           </el-table-column>
-          <el-table-column prop="status" label="小程序状态" width="116" align="center">
-            <template #default="{ row }">
-              <el-tag :type="statusTagType(row.status)" effect="plain">{{
-                statusText(row.status)
-              }}</el-tag>
-            </template>
-          </el-table-column>
           <el-table-column prop="auditStatus" label="审核状态" width="110" align="center">
             <template #default="{ row }"
               ><el-tag :type="auditStatusTag(row.auditStatus)" effect="plain">{{
@@ -156,12 +149,16 @@
               }}</el-tag></template
             >
           </el-table-column>
-          <el-table-column label="操作" width="210" fixed="right" align="center">
+          <el-table-column prop="status" label="发布状态" width="108" align="center">
+            <template #default="{ row }">
+              <el-tag :type="row.status === '0' ? 'success' : 'info'" effect="plain">{{
+                row.status === '0' ? '已发布' : '未发布'
+              }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="156" fixed="right" align="center">
             <template #default="{ row }">
               <div class="table-actions">
-                <el-button v-if="permissionList.viewBtn" type="primary" text @click="openView(row)"
-                  >查看</el-button
-                >
                 <el-button
                   v-if="permissionList.editBtn && row.auditStatus === 'PENDING'"
                   type="warning"
@@ -177,21 +174,20 @@
                   >编辑</el-button
                 >
                 <el-dropdown
-                  v-if="permissionList.statusBtn || permissionList.delBtn || permissionList.viewBtn"
+                  v-if="
+                    (permissionList.statusBtn && (row.auditStatus === 'APPROVED' || row.status === '0')) ||
+                    permissionList.delBtn ||
+                    permissionList.viewBtn
+                  "
                   trigger="click"
                 >
                   <el-button type="primary" text>更多</el-button>
                   <template #dropdown>
                     <el-dropdown-menu>
                       <el-dropdown-item
-                        v-if="permissionList.statusBtn && row.status !== '0'"
-                        @click="changeStatus(row, '0')"
-                        >上架</el-dropdown-item
-                      >
-                      <el-dropdown-item
-                        v-if="permissionList.statusBtn && row.status !== '1'"
-                        @click="changeStatus(row, '1')"
-                        >下架</el-dropdown-item
+                        v-if="permissionList.statusBtn && (row.auditStatus === 'APPROVED' || row.status === '0')"
+                        @click="changeStatus(row, row.status === '0' ? '1' : '0')"
+                        >{{ row.status === '0' ? '下架' : '发布' }}</el-dropdown-item
                       >
                       <el-dropdown-item v-if="permissionList.viewBtn" @click="openAuditLogs(row)"
                         >操作记录</el-dropdown-item
@@ -224,12 +220,12 @@
 
     <el-dialog
       v-model="formVisible"
-      :title="viewMode ? '查看广告' : form.adId ? '编辑广告' : '新增广告'"
+      :title="form.adId ? '编辑广告' : '新增广告'"
       width="760px"
       append-to-body
       :before-close="closeForm"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" :disabled="viewMode" label-width="104px">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="104px">
         <el-row :gutter="18">
           <el-col :span="12">
             <el-form-item label="广告标题" prop="adTitle">
@@ -294,7 +290,6 @@
               :on-error="handleCoverError"
               :before-upload="beforeCoverUpload"
               accept="image/jpeg,image/png,image/webp"
-              :disabled="viewMode"
             >
               <el-image
                 v-if="form.coverUrl"
@@ -325,15 +320,10 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="状态" prop="status">
-              <el-select v-model="form.status" placeholder="请选择状态" style="width: 100%">
-                <el-option
-                  v-for="item in statusOptions"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-                />
-              </el-select>
+            <el-form-item label="审核状态">
+              <el-tag :type="auditStatusTag(form.auditStatus || 'APPROVED')" effect="plain">
+                {{ auditStatusText(form.auditStatus || 'APPROVED') }}
+              </el-tag>
             </el-form-item>
           </el-col>
         </el-row>
@@ -362,7 +352,7 @@
         </el-form-item>
         <el-row :gutter="18">
           <el-col :span="12">
-            <el-form-item label="开始时间">
+            <el-form-item label="开始时间" prop="startTime">
               <el-date-picker
                 v-model="form.startTime"
                 type="datetime"
@@ -373,7 +363,7 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="结束时间">
+            <el-form-item label="结束时间" prop="endTime">
               <el-date-picker
                 v-model="form.endTime"
                 type="datetime"
@@ -398,7 +388,6 @@
       <template #footer>
         <el-button icon="el-icon-circle-close" @click="closeForm">取消</el-button>
         <el-button
-          v-if="!viewMode"
           type="primary"
           icon="el-icon-circle-check"
           :loading="submitLoading"
@@ -578,7 +567,6 @@ export default {
       merchantOptions: [],
       parkOptions: [],
       formVisible: false,
-      viewMode: false,
       form: defaultForm(),
       auditVisible: false,
       auditSaving: false,
@@ -595,6 +583,8 @@ export default {
         linkType: [{ required: true, message: '请选择跳转类型', trigger: 'change' }],
         merchantId: [{ validator: validateMerchant, trigger: 'change' }],
         linkUrl: [{ validator: validateLinkUrl, trigger: 'blur' }],
+        startTime: [{ required: true, message: '请选择展示开始时间', trigger: 'change' }],
+        endTime: [{ required: true, message: '请选择展示结束时间', trigger: 'change' }],
       },
     };
   },
@@ -748,16 +738,10 @@ export default {
       }
     },
     openAdd() {
-      this.viewMode = false;
       this.form = defaultForm();
       this.formVisible = true;
     },
     openEdit(row) {
-      this.viewMode = false;
-      this.loadDetail(row.adId);
-    },
-    openView(row) {
-      this.viewMode = true;
       this.loadDetail(row.adId);
     },
     openAudit(row) {
@@ -806,13 +790,16 @@ export default {
     },
     closeForm() {
       this.formVisible = false;
-      this.viewMode = false;
       this.submitLoading = false;
       this.form = defaultForm();
     },
     submitForm() {
       this.$refs.formRef.validate(valid => {
         if (!valid) return;
+        if (this.form.endTime <= this.form.startTime) {
+          this.$message.warning('展示结束时间必须晚于开始时间');
+          return;
+        }
         this.submitLoading = true;
         const payload = {
           ...this.form,

@@ -10,7 +10,6 @@ const baseActions = [
   { key: 'settle', label: '入驻申请', tone: 'sky' },
   { key: 'parking-pay', label: '停车缴费', tone: 'amber' },
   { key: 'service-desk', label: '园区商场', tone: 'cyan', icon: 'mall' },
-  { key: 'ad-push', label: '广告推送', tone: 'purple' },
 	{ key: 'ads', label: '广告资讯', tone: 'cyan' },
 ]
 
@@ -27,8 +26,8 @@ const splitActionRows = (actions: Record<string, any>[]) => {
 const serviceCards = [
   { key: 'repair', title: '在线报修', desc: '报修便捷高效', tone: 'purple' },
   { key: 'venue', title: '场地预约', desc: '合理规划使用', tone: 'orange' },
-  { key: 'declare', title: '申报服务', desc: '业务快捷申报', tone: 'cyan' },
-  { key: 'ip', title: '知产服务', desc: '权益保障服务', tone: 'pink' },
+  { key: 'ad-service', title: '广告服务', desc: '企业广告申请', tone: 'cyan' },
+  { key: 'activity', title: '园区活动', desc: '活动发布申请', tone: 'pink' },
 ]
 
 Page({
@@ -52,7 +51,7 @@ Page({
     this.setData({ quickActions, quickActionRows: splitActionRows(quickActions) })
     publicApi.home().then(data => this.setData({
       homePolicies: data.policies || [],
-      homeActivities: data.activities || [],
+      homeActivities: (data.activities || []).slice(0, 2),
       homeBanners: data.banners || [],
       homeNotices: data.notices || [],
       noticeTitle: data.notices?.[0]?.title || '暂无最新公告',
@@ -111,11 +110,6 @@ Page({
       wx.navigateTo({ url: '/pages/property-form/index?type=complaint' })
       return
     }
-    if (key === 'ad-push') {
-      if (!requireLogin('/pages/customer-ads/index')) return
-      wx.navigateTo({ url: '/pages/customer-ads/index' })
-      return
-    }
 	if (key === 'ads') {
 	  wx.navigateTo({ url: '/pages/ads/index' })
 	  return
@@ -153,6 +147,14 @@ Page({
 		wx.navigateTo({ url: `/pages/policy-detail/index?id=${event.currentTarget.dataset.id}` })
 	},
 
+	showActivities() {
+		wx.navigateTo({ url: '/pages/customer-activities/index?mode=public' })
+	},
+
+	openActivity(event: WechatMiniprogram.TouchEvent) {
+		wx.navigateTo({ url: `/pages/customer-activity-detail/index?id=${event.currentTarget.dataset.id}&mode=public` })
+	},
+
   showAdminNotifications() {
     if (hasCapability('admin.notification.view')) wx.navigateTo({ url: '/pages/notifications/index' })
     else this.showNotice()
@@ -170,15 +172,17 @@ Page({
       return
     }
     if (key === 'venue') {
-      wx.navigateTo({ url: '/pages/property-form/index?type=meeting' })
+      wx.showToast({ title: '场地预约暂未开放', icon: 'none' })
       return
     }
-    if (key === 'declare') {
-      wx.redirectTo({ url: '/pages/services/index?tab=value&keyword=申报' })
+    if (key === 'ad-service') {
+      if (!requireLogin('/pages/customer-ads/index')) return
+      wx.navigateTo({ url: '/pages/customer-ads/index' })
       return
     }
-    if (key === 'ip') {
-      wx.redirectTo({ url: '/pages/services/index?tab=value&keyword=知识产权' })
+    if (key === 'activity') {
+      if (!requireLogin('/pages/customer-activities/index')) return
+      wx.navigateTo({ url: '/pages/customer-activities/index' })
       return
     }
     wx.redirectTo({ url: '/pages/services/index?tab=value' })

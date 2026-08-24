@@ -52,13 +52,12 @@ export default {
       loading: true,
       page: {
         pageSize: 10,
+        pageSizes: [10, 20, 30, 40, 50, 100],
         currentPage: 1,
         total: 0,
       },
       selectionList: [],
       option: {
-        height: 'auto',
-        calcHeight: 32,
         dialogWidth: 950,
         tip: false,
         searchShow: true,

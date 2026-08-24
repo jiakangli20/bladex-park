@@ -95,6 +95,28 @@ public class MiniCustomerController {
 		businessService.withdrawCustomerAd(id); return R.success("撤回成功");
 	}
 
+	@GetMapping("/activities") @Operation(summary = "本企业园区活动申请")
+	public R<List<Map<String, Object>>> activities() { return R.data(businessService.customerActivities()); }
+	@GetMapping("/activities/{id}") @Operation(summary = "企业园区活动详情")
+	public R<Map<String, Object>> activity(@PathVariable Long id) { return R.data(businessService.customerActivity(id)); }
+	@PostMapping("/activities") @Operation(summary = "新建园区活动草稿")
+	public R<Map<String, Object>> createActivity(@RequestHeader("X-Request-Id") String requestId,
+		@Valid @RequestBody MiniBusinessDTO.ActivityApplication request) {
+		return R.data(businessService.createCustomerActivity(requestId, request));
+	}
+	@PostMapping("/activities/{id}") @Operation(summary = "修改园区活动草稿")
+	public R<Map<String, Object>> updateActivity(@PathVariable Long id, @Valid @RequestBody MiniBusinessDTO.ActivityApplication request) {
+		return R.data(businessService.updateCustomerActivity(id, request));
+	}
+	@PostMapping("/activities/{id}/submit") @Operation(summary = "提交园区活动审核")
+	public R<Void> submitActivity(@RequestHeader("X-Request-Id") String requestId, @PathVariable Long id) {
+		businessService.submitCustomerActivity(requestId, id); return R.success("提交成功");
+	}
+	@PostMapping("/activities/{id}/withdraw") @Operation(summary = "撤回园区活动审核")
+	public R<Void> withdrawActivity(@PathVariable Long id) {
+		businessService.withdrawCustomerActivity(id); return R.success("撤回成功");
+	}
+
 	@GetMapping("/work-orders") @Operation(summary = "统一工单列表")
 	public R<List<Map<String, Object>>> workOrders() { return R.data(businessService.customerWorkOrders()); }
 	@GetMapping("/work-orders/{type}/{id}") @Operation(summary = "工单详情")

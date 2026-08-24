@@ -18,7 +18,7 @@ Page({
     uploading: false,
     saving: false,
     form: {
-      adTitle: '', coverUrl: '', linkType: 'none', linkUrl: '', startDate: '', endDate: '', remark: '',
+      adTitle: '', coverUrl: '', linkType: 'none', linkUrl: '', startDate: '', startClock: '', endDate: '', endClock: '', remark: '',
     },
   },
 
@@ -48,7 +48,8 @@ Page({
         linkTypeIndex: linkType === 'url' ? 1 : 0,
         form: {
           adTitle: ad.title || '', coverUrl: ad.image || '', linkType, linkUrl: ad.linkUrl || '',
-          startDate: String(ad.startTime || '').slice(0, 10), endDate: String(ad.endTime || '').slice(0, 10), remark: ad.remark || '',
+          startDate: String(ad.startTime || '').slice(0, 10), startClock: String(ad.startTime || '').slice(11, 16),
+          endDate: String(ad.endTime || '').slice(0, 10), endClock: String(ad.endTime || '').slice(11, 16), remark: ad.remark || '',
         },
       })
     } finally { this.setData({ loading: false }) }
@@ -87,14 +88,17 @@ Page({
     if (!form.adTitle.trim()) { wx.showToast({ title: '请输入广告标题', icon: 'none' }); return }
     if (!form.coverUrl) { wx.showToast({ title: '请上传广告封面', icon: 'none' }); return }
     if (form.linkType === 'url' && !form.linkUrl.trim()) { wx.showToast({ title: '请输入跳转链接', icon: 'none' }); return }
-    if (form.startDate && form.endDate && form.endDate < form.startDate) { wx.showToast({ title: '结束日期不能早于开始日期', icon: 'none' }); return }
+    if (!form.startDate || !form.startClock || !form.endDate || !form.endClock) { wx.showToast({ title: '请选择完整展示时间', icon: 'none' }); return }
+    const startTime = `${form.startDate} ${form.startClock}:00`
+    const endTime = `${form.endDate} ${form.endClock}:00`
+    if (endTime <= startTime) { wx.showToast({ title: '结束时间必须晚于开始时间', icon: 'none' }); return }
     this.setData({ saving: true })
     try {
       const payload = {
         adTitle: form.adTitle.trim(), coverUrl: form.coverUrl, linkType: form.linkType,
         linkUrl: form.linkType === 'url' ? form.linkUrl.trim() : '',
-        startTime: form.startDate ? `${form.startDate} 00:00:00` : null,
-        endTime: form.endDate ? `${form.endDate} 23:59:59` : null,
+        startTime,
+        endTime,
         remark: form.remark,
       }
       const result = this.data.id ? await customerApi.updateAd(this.data.id, payload) : await customerApi.createAd(payload)

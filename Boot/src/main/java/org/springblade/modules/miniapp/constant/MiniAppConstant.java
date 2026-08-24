@@ -45,13 +45,14 @@ public interface MiniAppConstant {
 	List<String> CUSTOMER_CAPABILITIES = List.of(
 		"customer.profile.view", "customer.contract.view", "customer.bill.view",
 		"customer.work-order.view", "customer.appointment.create", "customer.service.apply",
-		"customer.utility.view", "customer.ad.view"
+		"customer.utility.view", "customer.ad.view", "customer.activity.view"
 	);
 	List<String> CUSTOMER_ADMIN_CAPABILITIES = List.of(
 		"customer.profile.view", "customer.profile.edit", "customer.contract.view", "customer.bill.view",
 		"customer.work-order.view", "customer.appointment.create", "customer.service.apply",
 		"customer.member.manage", "customer.invite.manage", "customer.utility.view",
-		"customer.utility.submit", "customer.ad.view", "customer.ad.submit"
+		"customer.utility.submit", "customer.ad.view", "customer.ad.submit",
+		"customer.activity.view", "customer.activity.submit"
 	);
 	List<String> PARK_ADMIN_CAPABILITIES = List.of(
 		"admin.notification.view", "admin.work-order.view", "admin.work-order.handle",

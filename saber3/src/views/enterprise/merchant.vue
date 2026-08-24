@@ -73,26 +73,30 @@
           <el-table-column prop="serviceArea" label="服务区域" min-width="160" align="center" show-overflow-tooltip />
           <el-table-column prop="contactName" label="联系人" width="110" align="center" show-overflow-tooltip />
           <el-table-column prop="contactPhone" label="联系电话" width="130" align="center" show-overflow-tooltip />
-          <el-table-column prop="status" label="小程序展示" width="120" align="center">
+          <el-table-column prop="status" label="小程序上架" width="120" align="center">
             <template #default="{ row }">
-              <el-tag :type="statusTagType(row.status)" effect="plain">{{ statusText(row.status) }}</el-tag>
+              <el-switch
+                :model-value="row.status === '0'"
+                :disabled="!permissionList.statusBtn"
+                active-text="上架"
+                inactive-text="下架"
+                inline-prompt
+                @change="checked => changeStatus(row, checked ? '0' : '1')"
+              />
             </template>
           </el-table-column>
           <el-table-column prop="createTime" label="创建时间" width="180" align="center">
             <template #default="{ row }"><span class="single-line-cell">{{ row.createTime || '-' }}</span></template>
           </el-table-column>
-          <el-table-column label="操作" width="210" fixed="right" align="center">
+          <el-table-column label="操作" width="156" fixed="right" align="center">
             <template #default="{ row }">
               <div class="table-actions">
-                <el-button v-if="permissionList.viewBtn" type="primary" text @click="openView(row)">查看</el-button>
                 <el-button v-if="permissionList.editBtn" type="primary" text @click="openEdit(row)">编辑</el-button>
-                <el-dropdown v-if="permissionList.statusBtn || permissionList.delBtn" trigger="click">
+                <el-dropdown v-if="permissionList.viewBtn || permissionList.delBtn" trigger="click">
                   <el-button type="primary" text>更多</el-button>
                   <template #dropdown>
                     <el-dropdown-menu>
-                      <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '0'" @click="changeStatus(row, '0')">上架</el-dropdown-item>
-                      <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '1'" @click="changeStatus(row, '1')">下架</el-dropdown-item>
-                      <el-dropdown-item v-if="permissionList.statusBtn && row.status !== '2'" @click="changeStatus(row, '2')">暂停展示</el-dropdown-item>
+                      <el-dropdown-item v-if="permissionList.viewBtn" @click="openView(row)">查看</el-dropdown-item>
                       <el-dropdown-item v-if="permissionList.delBtn" divided @click="removeRow(row)">删除</el-dropdown-item>
                     </el-dropdown-menu>
                   </template>

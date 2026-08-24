@@ -407,11 +407,13 @@
 
 .category-scroll {
   width: 100%;
-  white-space: nowrap;
+  position: relative;
+  z-index: 1;
 }
 
 .category-list {
   display: flex;
+  flex-wrap: wrap;
   gap: 14rpx;
   padding: 0 30rpx 24rpx;
 }
@@ -438,7 +440,10 @@
 }
 
 .value-line {
-  margin-top: 2rpx;
+  position: relative;
+  z-index: 2;
+  margin-top: 4rpx;
+  margin-bottom: 20rpx;
 }
 
 .value-list {
@@ -448,6 +453,7 @@
 .value-card {
   display: flex;
   gap: 22rpx;
+  min-height: 176rpx;
   padding: 22rpx;
   margin-bottom: 20rpx;
   border: 1rpx solid #e5ebf3;
@@ -457,8 +463,8 @@
 }
 
 .value-image {
-  width: 132rpx;
-  height: 132rpx;
+  width: 144rpx;
+  height: 144rpx;
   flex: none;
   border-radius: 12rpx;
 }
@@ -466,11 +472,13 @@
 .value-copy {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .value-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12rpx;
 }
 
@@ -479,10 +487,11 @@
   min-width: 0;
   color: #172033;
   font-size: 29rpx;
-  line-height: 1.2;
+  line-height: 1.3;
+  display: -webkit-box;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .provider {
@@ -518,6 +527,8 @@
   -webkit-line-clamp: 2;
 }
 
+.value-desc:empty { display: none; }
+
 .value-tags {
   display: flex;
   flex-wrap: wrap;
@@ -541,13 +552,24 @@
   display: flex;
   justify-content: space-between;
   gap: 14rpx;
-  margin-top: 16rpx;
+  margin-top: auto;
+  padding-top: 16rpx;
   color: #98a3b3;
   font-size: 22rpx;
 }
 
 .value-foot text {
   white-space: nowrap;
+}
+
+.value-category {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.value-detail {
+  flex: none;
+  color: #1f63f5;
 }
 
 .empty-panel {

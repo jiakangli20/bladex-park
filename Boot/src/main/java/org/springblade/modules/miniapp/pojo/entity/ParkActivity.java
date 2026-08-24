@@ -6,6 +6,7 @@
 package org.springblade.modules.miniapp.pojo.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
@@ -35,6 +36,10 @@ public class ParkActivity extends TenantEntity {
 
 	@JsonSerialize(using = ToStringSerializer.class)
 	private Long parkId;
+	@JsonSerialize(using = ToStringSerializer.class)
+	private Long customerId;
+	@JsonSerialize(using = ToStringSerializer.class)
+	private Long memberId;
 
 	private String title;
 	private String coverUrl;
@@ -50,6 +55,19 @@ public class ParkActivity extends TenantEntity {
 
 	private String address;
 	private String priceText;
+	private String contactName;
+	private String contactPhone;
+	private String auditStatus;
+	@JsonSerialize(using = ToStringSerializer.class)
+	private Long auditUserId;
+	private String auditUserName;
+	@DateTimeFormat(pattern = DateUtil.PATTERN_DATETIME)
+	@JsonFormat(pattern = DateUtil.PATTERN_DATETIME)
+	private Date auditTime;
+	private String auditOpinion;
 	private Integer publishStatus;
 	private Integer sortOrder;
+
+	@TableField(exist = false)
+	private String customerName;
 }

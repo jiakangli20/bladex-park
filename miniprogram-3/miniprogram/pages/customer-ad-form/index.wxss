@@ -2,6 +2,8 @@
 .form-label { margin: 26rpx 0 12rpx; color: #475467; font-size: 25rpx; }
 .form-label:first-child { margin-top: 0; }
 .form-input, .picker-value { width: 100%; height: 80rpx; padding: 0 22rpx; border: 1rpx solid #dfe5ee; border-radius: 14rpx; background: #fff; color: #172033; font-size: 27rpx; line-height: 80rpx; }
+.picker-row { display: flex; gap: 16rpx; }
+.picker-row picker { flex: 1; min-width: 0; }
 .form-textarea { width: 100%; height: 180rpx; padding: 20rpx 22rpx; border: 1rpx solid #dfe5ee; border-radius: 14rpx; font-size: 27rpx; }
 .upload-cover { height: 240rpx; display: flex; align-items: center; justify-content: center; border: 2rpx dashed #9bbcfb; border-radius: 16rpx; background: #f6f9ff; color: #1f63f5; }
 .cover-box { overflow: hidden; border-radius: 16rpx; background: #f6f8fb; }

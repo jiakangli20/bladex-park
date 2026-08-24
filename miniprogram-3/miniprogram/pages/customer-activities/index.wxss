@@ -1,0 +1,14 @@
+.notice-card { margin: 24rpx 30rpx 0; padding: 22rpx 24rpx; border-radius: 14rpx; background: #eaf3ff; color: #3265ad; font-size: 24rpx; line-height: 1.55; }
+.state-card { margin: 24rpx 30rpx 0; padding: 70rpx 30rpx; border-radius: 18rpx; background: #fff; color: #7d8796; text-align: center; }
+.retry-button { width: 180rpx; margin: 24rpx auto 0; padding: 18rpx 0; border-radius: 999rpx; background: #eef4ff; color: #1f63f5; }
+.activity-list { padding-bottom: 24rpx; }
+.activity-card { margin: 24rpx 30rpx 0; overflow: hidden; border-radius: 20rpx; background: #fff; box-shadow: 0 8rpx 20rpx rgba(38,60,92,.07); }
+.activity-cover { width: 100%; height: 270rpx; display: block; background: #e9edf4; }
+.activity-body { padding: 24rpx 26rpx; }
+.activity-head { display: flex; align-items: center; gap: 18rpx; }
+.activity-title { flex: 1; min-width: 0; color: #172033; font-size: 30rpx; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activity-time, .activity-address { margin-top: 14rpx; color: #7d8796; font-size: 23rpx; line-height: 1.45; }
+.activity-address { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activity-foot { display: flex; justify-content: space-between; margin-top: 20rpx; padding-top: 18rpx; border-top: 1rpx solid #edf0f4; color: #667085; font-size: 23rpx; }
+.fixed-action { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 18rpx 30rpx calc(18rpx + env(safe-area-inset-bottom)); background: rgba(255,255,255,.96); box-shadow: 0 -6rpx 20rpx rgba(35,55,85,.08); }
+.full-button { width: 100%; }

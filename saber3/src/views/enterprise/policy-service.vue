@@ -77,7 +77,7 @@
               <div class="table-row-actions">
                 <el-button v-if="permissionList.editBtn" type="primary" text @click="openEdit(row)">编辑</el-button>
                 <el-dropdown v-if="permissionList.addBtn || permissionList.viewBtn || permissionList.delBtn" trigger="click">
-                  <el-button type="primary" text icon="el-icon-more">更多</el-button>
+                  <el-button type="primary" text>更多</el-button>
                   <template #dropdown>
                     <el-dropdown-menu>
                       <el-dropdown-item v-if="permissionList.addBtn" @click="copyRow(row)">复制</el-dropdown-item>

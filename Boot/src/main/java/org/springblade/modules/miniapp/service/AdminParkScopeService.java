@@ -15,6 +15,8 @@ import org.springblade.modules.miniapp.mapper.MiniMemberMapper;
 import org.springblade.modules.miniapp.pojo.entity.MiniMember;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
  * 园区后台操作范围校验。
  *
@@ -52,5 +54,16 @@ public class AdminParkScopeService {
 		if (count == null || count == 0L) {
 			throw new ServiceException("当前账号没有该园区的管理权限");
 		}
+	}
+
+	/** 当前后台账号可管理的园区；超级管理员返回空列表表示不限制。 */
+	public List<Long> currentParkIds() {
+		if (AuthUtil.isAdministrator()) return List.of();
+		return memberMapper.selectList(Wrappers.<MiniMember>lambdaQuery()
+			.eq(MiniMember::getTenantId, AuthUtil.getTenantId())
+			.eq(MiniMember::getUserId, AuthUtil.getUserId())
+			.eq(MiniMember::getRoleCode, MiniAppConstant.ROLE_PARK_ADMIN)
+			.eq(MiniMember::getStatus, StatusType.ACTIVE.getType())
+			.eq(MiniMember::getIsDeleted, 0)).stream().map(MiniMember::getParkId).distinct().toList();
 	}
 }

@@ -49,7 +49,7 @@ Page({
       }
       saveSession(session)
       await this.requestSubscriptions(session)
-      this.finish()
+      await this.finish()
     } finally {
       this.setData({ loading: false })
     }
@@ -70,7 +70,7 @@ Page({
       )
       saveSession(session)
       await this.requestSubscriptions(session)
-      this.finish()
+      await this.finish()
     } finally {
       this.setData({ loading: false })
     }
@@ -86,8 +86,8 @@ Page({
     await wx.requestSubscribeMessage({ tmplIds: templateIds }).catch(() => undefined)
   },
 
-  finish() {
+  async finish() {
     wx.showToast({ title: '登录成功', icon: 'success' })
-    setTimeout(() => wx.redirectTo({ url: this.data.redirect }), 300)
+    await wx.reLaunch({ url: this.data.redirect })
   },
 })

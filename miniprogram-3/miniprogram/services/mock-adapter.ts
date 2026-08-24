@@ -130,6 +130,8 @@ export const mockRequest = async <T>(path: string, options: MockRequestOptions =
   let data: unknown = null
   if (path.includes('/auth/') || path.endsWith('/me/session')) data = session
   else if (path.endsWith('/public/home')) data = { policies: homePolicies, activities: homeActivities, banners: [] }
+  else if (path.includes('/public/activities/')) data = homeActivities.find(item => String(item.id) === path.split('/').pop()) || homeActivities[0]
+  else if (path.endsWith('/public/activities')) data = homeActivities
   else if (path.includes('/public/houses/')) data = houses.find(item => String(item.id) === path.split('/').pop()) || houses[0]
   else if (path.includes('/public/houses')) data = houses
   else if (path.endsWith('/public/property-services')) data = propertyServices.map((item, index) => ({ id: String(index + 1), title: item.title, type: item.key, desc: '开发环境物业服务' }))

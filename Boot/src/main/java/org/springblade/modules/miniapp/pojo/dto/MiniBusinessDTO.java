@@ -131,6 +131,19 @@ public interface MiniBusinessDTO {
 	}
 
 	@Data
+	class ActivityApplication {
+		@NotBlank(message = "活动标题不能为空") @Size(max = 200, message = "活动标题不能超过200字") private String title;
+		@NotBlank(message = "请上传活动封面") private String coverUrl;
+		@NotBlank(message = "活动简介不能为空") @Size(max = 1000, message = "活动简介不能超过1000字") private String summary;
+		@NotNull(message = "活动开始时间不能为空") @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") private Date startTime;
+		@NotNull(message = "活动结束时间不能为空") @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") private Date endTime;
+		@NotBlank(message = "活动地点不能为空") @Size(max = 500, message = "活动地点不能超过500字") private String address;
+		@Size(max = 100, message = "费用说明不能超过100字") private String priceText;
+		@NotBlank(message = "联系人不能为空") @Size(max = 30, message = "联系人不能超过30字") private String contactName;
+		@Pattern(regexp = "^1\\d{10}$", message = "手机号格式不正确") private String contactPhone;
+	}
+
+	@Data
 	class CustomerAd {
 		@NotBlank(message = "广告标题不能为空") private String adTitle;
 		@NotBlank(message = "请上传广告封面") private String coverUrl;

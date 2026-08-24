@@ -67,7 +67,7 @@
             <div class="table-row-actions">
               <el-button v-if="permissionList.workorderViewBtn" type="primary" text @click="$emit('view', row)">详情</el-button>
               <el-dropdown v-if="canDispose(row) || canRate(row) || permissionList.workorderDelBtn" trigger="click">
-                <el-button type="primary" text icon="el-icon-more">更多</el-button>
+                <el-button type="primary" text>更多</el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
                     <el-dropdown-item v-if="canDispose(row)" @click="$emit('dispose', row)">处置</el-dropdown-item>

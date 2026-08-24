@@ -1,0 +1,31 @@
+<view class="sub-page activity-list-page">
+  <scroll-view class="sub-scroll" scroll-y type="list" show-scrollbar="{{false}}">
+    <view class="sub-content {{canCreate ? 'has-action' : ''}}">
+      <view class="blue-header plain-header">
+        <view class="nav-row"><view class="nav-action" bindtap="goBack">‹</view><view class="nav-title">园区活动</view><view class="nav-action"></view></view>
+        <view class="intro-title">{{publicMode ? '精彩活动' : '企业活动申请'}}</view>
+        <view class="intro-sub">{{publicMode ? '查看园区近期活动与参与信息' : '提交活动素材，由园区管理员审核后发布到小程序首页'}}</view>
+      </view>
+
+      <view wx:if="{{!publicMode}}" class="notice-card">活动提交后由园区管理员审核，审核通过并发布后将在小程序首页展示。</view>
+      <view wx:if="{{loading}}" class="state-card">活动加载中...</view>
+      <view wx:elif="{{error}}" class="state-card"><view>{{error}}</view><view class="retry-button" bindtap="retry">重新加载</view></view>
+      <view wx:elif="{{!activities.length}}" class="state-card">{{publicMode ? '暂无已发布活动' : '暂无活动申请'}}{{canCreate ? '，点击下方按钮新建' : ''}}</view>
+
+      <view wx:else class="activity-list">
+        <block wx:for="{{activities}}" wx:key="id">
+          <view class="activity-card" data-id="{{item.id}}" bindtap="openActivity">
+            <image class="activity-cover" src="{{item.image}}" mode="aspectFill"></image>
+            <view class="activity-body">
+              <view class="activity-head"><view class="activity-title">{{item.title}}</view><view wx:if="{{!publicMode}}" class="status-pill status-{{item.tone}}">{{item.auditText}}</view></view>
+              <view class="activity-time">活动时间：{{item.rangeText}}</view>
+              <view class="activity-address">活动地点：{{item.address || '待定'}}</view>
+              <view class="activity-foot"><text>{{publicMode ? (item.price || '免费') : item.publishText}}</text><text>{{publicMode ? '查看详情' : '查看进度'}} 〉</text></view>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </scroll-view>
+  <view wx:if="{{canCreate}}" class="fixed-action"><view class="primary-button full-button" bindtap="createActivity">新建活动</view></view>
+</view>

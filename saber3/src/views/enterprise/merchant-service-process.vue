@@ -77,15 +77,15 @@
           <el-table-column prop="createTime" label="申请时间" width="180" align="center">
             <template #default="{ row }"><span class="single-line-cell">{{ row.createTime || '-' }}</span></template>
           </el-table-column>
-        <el-table-column label="操作" width="210" fixed="right" align="center">
+        <el-table-column label="操作" width="156" fixed="right" align="center">
           <template #default="{ row }">
             <div class="table-actions">
-              <el-button v-if="permissionList.viewBtn" type="primary" text @click="openDetail(row)">详情</el-button>
               <el-button v-if="canFollow(row)" type="primary" text @click="openFollow(row)">处理</el-button>
-              <el-dropdown v-if="canDeal(row) || canClose(row) || permissionList.delBtn" trigger="click">
-                <el-button type="primary" text icon="el-icon-more">更多</el-button>
+              <el-dropdown v-if="permissionList.viewBtn || canDeal(row) || canClose(row) || permissionList.delBtn" trigger="click">
+                <el-button type="primary" text>更多</el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
+                    <el-dropdown-item v-if="permissionList.viewBtn" @click="openDetail(row)">详情</el-dropdown-item>
                     <el-dropdown-item v-if="canDeal(row)" @click="openDeal(row)">成交</el-dropdown-item>
                     <el-dropdown-item v-if="canClose(row)" @click="openClose(row)">关闭</el-dropdown-item>
                     <el-dropdown-item v-if="permissionList.delBtn" divided @click="removeRow(row)">删除</el-dropdown-item>

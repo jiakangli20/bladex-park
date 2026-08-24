@@ -28,6 +28,8 @@ public interface IMiniBusinessService {
 	Map<String, Object> publicPolicy(Long id);
 	List<Map<String, Object>> publicAds();
 	Map<String, Object> publicAd(Long id);
+	List<Map<String, Object>> publicActivities();
+	Map<String, Object> publicActivity(Long id);
 	List<Map<String, Object>> houses(String keyword);
 	Map<String, Object> house(Long id);
 	List<Map<String, Object>> propertyServices();
@@ -57,6 +59,12 @@ public interface IMiniBusinessService {
 	Map<String, Object> updateCustomerAd(Long id, MiniBusinessDTO.CustomerAd request);
 	void submitCustomerAd(String requestId, Long id);
 	void withdrawCustomerAd(Long id);
+	List<Map<String, Object>> customerActivities();
+	Map<String, Object> customerActivity(Long id);
+	Map<String, Object> createCustomerActivity(String requestId, MiniBusinessDTO.ActivityApplication request);
+	Map<String, Object> updateCustomerActivity(Long id, MiniBusinessDTO.ActivityApplication request);
+	void submitCustomerActivity(String requestId, Long id);
+	void withdrawCustomerActivity(Long id);
 	List<Map<String, Object>> customerWorkOrders();
 	Map<String, Object> customerWorkOrder(String type, Long id);
 	void customerAction(String type, Long id, MiniBusinessDTO.CustomerAction request);

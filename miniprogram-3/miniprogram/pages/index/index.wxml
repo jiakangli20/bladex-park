@@ -79,11 +79,11 @@
 
       <view class="activity-section">
         <view class="section-head-line">
-          <text>物业活动</text>
-          <view>更多 〉</view>
+          <text>园区活动</text>
+          <view bindtap="showActivities">更多 〉</view>
         </view>
         <block wx:for="{{homeActivities}}" wx:key="id">
-          <view class="activity-item">
+          <view class="activity-item" data-id="{{item.id}}" bindtap="openActivity">
             <image class="activity-image" src="{{item.image}}" mode="aspectFill"></image>
             <view class="activity-copy">
               <view class="activity-title">{{item.title}}</view>

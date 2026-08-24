@@ -79,12 +79,19 @@
               />
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="210" fixed="right" align="center">
+          <el-table-column label="操作" width="156" fixed="right" align="center">
             <template #default="{ row }">
               <div class="table-actions">
-                <el-button v-if="permissionList.serviceViewBtn" type="primary" text @click="openServiceDialog(row, true)">查看</el-button>
                 <el-button v-if="permissionList.serviceEditBtn" type="primary" text @click="openServiceDialog(row)">编辑</el-button>
-                <el-button v-if="permissionList.serviceDelBtn" type="danger" text @click="deleteService(row)">删除</el-button>
+                <el-dropdown v-if="permissionList.serviceViewBtn || permissionList.serviceDelBtn" trigger="click">
+                  <el-button type="primary" text>更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item v-if="permissionList.serviceViewBtn" @click="openServiceDialog(row, true)">查看</el-dropdown-item>
+                      <el-dropdown-item v-if="permissionList.serviceDelBtn" divided @click="deleteService(row)">删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </div>
             </template>
           </el-table-column>

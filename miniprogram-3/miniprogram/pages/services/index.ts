@@ -2,6 +2,17 @@ import { publicApi } from '../../services/miniapp'
 import { getSession, requireLogin } from '../../utils/session'
 
 const tones = ['green', 'orange', 'blue', 'cyan', 'purple']
+const categoryLabels: Record<string, string> = {
+  value_added: '综合服务',
+  IT: 'IT服务',
+  clean: '保洁服务',
+  security: '安保服务',
+  catering: '餐饮服务',
+  repair: '维修服务',
+  green: '绿化服务',
+  other: '其他服务',
+}
+const categoryLabel = (value: string) => categoryLabels[value] || value || '其他服务'
 
 Page({
   data: {
@@ -14,7 +25,7 @@ Page({
     ],
     processSteps: ['提交申请', '管理员受理', '进度反馈'],
     propertyCards: [] as Record<string, any>[],
-    serviceCategories: ['全部'] as string[],
+    serviceCategories: [{ value: '全部', label: '全部' }] as Record<string, string>[],
     allValueCards: [] as Record<string, any>[],
     valueCards: [] as Record<string, any>[],
     searchKeyword: '',
@@ -42,11 +53,12 @@ Page({
       image: '/assets/images/service-business.jpg',
       providerType: '园区服务商',
       providerTone: 'blue',
+      categoryLabel: categoryLabel(item.category),
       tags: item.serviceArea ? [item.serviceArea] : [],
-      rating: '-',
-      applied: '-',
     }))
-    const categories = ['全部', ...Array.from(new Set(valueCards.map(item => item.category).filter(Boolean)))]
+    const categoryValues = Array.from(new Set(valueCards.map(item => item.category).filter(Boolean)))
+    const categories = ['全部', ...categoryValues]
+      .map(value => ({ value, label: value === '全部' ? '全部' : categoryLabel(value) }))
     this.setData({
       propertyCards,
       allValueCards: valueCards,

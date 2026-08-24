@@ -41,6 +41,7 @@ import org.springblade.modules.miniapp.mapper.MiniInviteMapper;
 import org.springblade.modules.miniapp.mapper.MiniMemberMapper;
 import org.springblade.modules.miniapp.mapper.MiniNotificationMapper;
 import org.springblade.modules.miniapp.mapper.ParkActivityMapper;
+import org.springblade.modules.miniapp.mapper.ParkActivityAuditLogMapper;
 import org.springblade.modules.miniapp.mapper.MiniPaymentSubmissionMapper;
 import org.springblade.modules.miniapp.mapper.UtilityBillDetailMapper;
 import org.springblade.modules.miniapp.pojo.dto.MiniBusinessDTO;
@@ -95,6 +96,7 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 	private final MiniInviteMapper inviteMapper;
 	private final MiniNotificationMapper notificationMapper;
 	private final ParkActivityMapper activityMapper;
+	private final ParkActivityAuditLogMapper activityAuditLogMapper;
 	private final UtilityBillDetailMapper utilityBillDetailMapper;
 	private final MiniPaymentSubmissionMapper paymentSubmissionMapper;
 	private final BladeRedis bladeRedis;
@@ -118,7 +120,8 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 		}).filter(this::isPolicyEffective).map(this::policyMap).limit(6).toList();
 		List<Map<String, Object>> activities = activityMapper.selectList(Wrappers.<ParkActivity>lambdaQuery()
 			.eq(ParkActivity::getTenantId, properties.getDefaultTenantId()).in(!parkIds.isEmpty(), ParkActivity::getParkId, parkIds)
-			.eq(ParkActivity::getPublishStatus, 1).eq(ParkActivity::getStatus, StatusType.ACTIVE.getType())
+			.eq(ParkActivity::getAuditStatus, "APPROVED").eq(ParkActivity::getPublishStatus, 1)
+			.eq(ParkActivity::getStatus, StatusType.ACTIVE.getType())
 			.eq(ParkActivity::getIsDeleted, 0).orderByAsc(ParkActivity::getSortOrder).orderByDesc(ParkActivity::getStartTime))
 			.stream().map(this::activityMap).toList();
 		return Kv.create().set("banners", banners).set("policies", policies).set("activities", activities)
@@ -182,6 +185,38 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 		return publicAds().stream()
 			.filter(item -> Objects.equals(String.valueOf(item.get("id")), String.valueOf(id)))
 			.findFirst().orElseThrow(() -> new ServiceException("广告不存在或已下架"));
+	}
+
+	@Override
+	public List<Map<String, Object>> publicActivities() {
+		List<Long> parkIds = publicParkIds();
+		if (parkIds.isEmpty()) return List.of();
+		return activityMapper.selectList(Wrappers.<ParkActivity>lambdaQuery()
+			.eq(ParkActivity::getTenantId, properties.getDefaultTenantId())
+			.in(ParkActivity::getParkId, parkIds)
+			.eq(ParkActivity::getAuditStatus, "APPROVED")
+			.eq(ParkActivity::getPublishStatus, 1)
+			.eq(ParkActivity::getStatus, StatusType.ACTIVE.getType())
+			.eq(ParkActivity::getIsDeleted, 0)
+			.orderByAsc(ParkActivity::getSortOrder)
+			.orderByDesc(ParkActivity::getStartTime))
+			.stream().map(this::activityMap).toList();
+	}
+
+	@Override
+	public Map<String, Object> publicActivity(Long id) {
+		List<Long> parkIds = publicParkIds();
+		if (parkIds.isEmpty()) throw new ServiceException("园区活动不存在或已下架");
+		ParkActivity activity = activityMapper.selectOne(Wrappers.<ParkActivity>lambdaQuery()
+			.eq(ParkActivity::getId, id)
+			.eq(ParkActivity::getTenantId, properties.getDefaultTenantId())
+			.in(ParkActivity::getParkId, parkIds)
+			.eq(ParkActivity::getAuditStatus, "APPROVED")
+			.eq(ParkActivity::getPublishStatus, 1)
+			.eq(ParkActivity::getStatus, StatusType.ACTIVE.getType())
+			.eq(ParkActivity::getIsDeleted, 0));
+		if (activity == null) throw new ServiceException("园区活动不存在或已下架");
+		return activityMap(activity);
 	}
 
 	@Override
@@ -581,6 +616,106 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 	public void withdrawCustomerAd(Long id) {
 		MiniMember member = authService.requireCustomerAdmin();
 		merchantAdService.withdrawCustomerAd(id, member.getParkId(), member.getCustomerId());
+	}
+
+	@Override
+	public List<Map<String, Object>> customerActivities() {
+		MiniMember member = authService.requireCustomer();
+		Long parkId = customerParkId(member);
+		return activityMapper.selectList(Wrappers.<ParkActivity>lambdaQuery()
+			.eq(ParkActivity::getTenantId, member.getTenantId())
+			.eq(ParkActivity::getParkId, parkId)
+			.eq(ParkActivity::getCustomerId, member.getCustomerId())
+			.eq(ParkActivity::getIsDeleted, 0)
+			.orderByDesc(ParkActivity::getCreateTime)).stream().map(item -> activityApplicationMap(item, false)).toList();
+	}
+
+	@Override
+	public Map<String, Object> customerActivity(Long id) {
+		MiniMember member = authService.requireCustomer();
+		ParkActivity activity = scopedCustomerActivity(id, member, false);
+		Map<String, Object> result = activityApplicationMap(activity, true);
+		result.put("logs", activityAuditLogMapper.selectList(Wrappers.<ParkActivityAuditLog>lambdaQuery()
+			.eq(ParkActivityAuditLog::getActivityId, id).eq(ParkActivityAuditLog::getIsDeleted, 0)
+			.orderByDesc(ParkActivityAuditLog::getOperateTime)).stream().map(this::activityAuditLogMap).toList());
+		return result;
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public Map<String, Object> createCustomerActivity(String requestId, MiniBusinessDTO.ActivityApplication request) {
+		MiniMember member = authService.requireCustomerAdmin();
+		if (!request.getEndTime().after(request.getStartTime())) {
+			throw new ServiceException("活动结束时间必须晚于开始时间");
+		}
+		return idempotent(requestId, () -> {
+			ParkActivity activity = new ParkActivity();
+			activity.setTenantId(member.getTenantId());
+			activity.setParkId(customerParkId(member));
+			activity.setCustomerId(member.getCustomerId());
+			activity.setMemberId(member.getId());
+			activity.setTitle(request.getTitle().trim());
+			activity.setCoverUrl(request.getCoverUrl());
+			activity.setSummary(request.getSummary().trim());
+			activity.setStartTime(request.getStartTime());
+			activity.setEndTime(request.getEndTime());
+			activity.setAddress(request.getAddress().trim());
+			activity.setPriceText(StringUtil.isBlank(request.getPriceText()) ? "免费" : request.getPriceText().trim());
+			activity.setContactName(request.getContactName().trim());
+			activity.setContactPhone(request.getContactPhone());
+			activity.setAuditStatus("DRAFT");
+			activity.setPublishStatus(0);
+			activity.setSortOrder(0);
+			activity.setStatus(StatusType.ACTIVE.getType());
+			activity.setIsDeleted(0);
+			activity.setCreateUser(member.getUserId());
+			activity.setCreateTime(new Date());
+			activityMapper.insert(activity);
+			addActivityLog(activity, "CREATE_DRAFT", null, "DRAFT", null, 0, null);
+			return activityApplicationMap(activity, true);
+		});
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public Map<String, Object> updateCustomerActivity(Long id, MiniBusinessDTO.ActivityApplication request) {
+		MiniMember member = authService.requireCustomerAdmin();
+		ParkActivity activity = scopedCustomerActivity(id, member, true);
+		if (!List.of("DRAFT", "REJECTED").contains(activity.getAuditStatus())) throw new ServiceException("仅草稿或已驳回活动可以修改");
+		if (!request.getEndTime().after(request.getStartTime())) throw new ServiceException("活动结束时间必须晚于开始时间");
+		fillActivity(activity, request);
+		String before = activity.getAuditStatus();
+		activity.setAuditStatus("DRAFT");
+		activity.setAuditUserId(null); activity.setAuditUserName(null); activity.setAuditTime(null); activity.setAuditOpinion(null);
+		activity.setPublishStatus(0); activity.setUpdateUser(member.getUserId()); activity.setUpdateTime(new Date());
+		activityMapper.updateById(activity);
+		addActivityLog(activity, "UPDATE_DRAFT", before, "DRAFT", 0, 0, null);
+		return activityApplicationMap(activity, true);
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public void submitCustomerActivity(String requestId, Long id) {
+		MiniMember member = authService.requireCustomerAdmin();
+		idempotent(requestId, () -> {
+			ParkActivity activity = scopedCustomerActivity(id, member, true);
+			if (!List.of("DRAFT", "REJECTED").contains(activity.getAuditStatus())) throw new ServiceException("当前活动不能提交审核");
+			String before = activity.getAuditStatus(); activity.setAuditStatus("PENDING"); activity.setPublishStatus(0);
+			activity.setUpdateUser(member.getUserId()); activity.setUpdateTime(new Date()); activityMapper.updateById(activity);
+			addActivityLog(activity, "SUBMIT", before, "PENDING", 0, 0, null);
+			notifyAdmins(member, "PARK_ACTIVITY", "新的园区活动待审核", activity.getTitle(), "park_activity", activity.getId());
+			return Boolean.TRUE;
+		});
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public void withdrawCustomerActivity(Long id) {
+		MiniMember member = authService.requireCustomerAdmin();
+		ParkActivity activity = scopedCustomerActivity(id, member, true);
+		if (!"PENDING".equals(activity.getAuditStatus())) throw new ServiceException("仅待审核活动可以撤回");
+		activity.setAuditStatus("DRAFT"); activity.setPublishStatus(0); activity.setUpdateUser(member.getUserId()); activity.setUpdateTime(new Date());
+		activityMapper.updateById(activity); addActivityLog(activity, "WITHDRAW", "PENDING", "DRAFT", 0, 0, null);
 	}
 
 	@Override
@@ -1044,7 +1179,9 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 	private Map<String, Object> policyMap(PolicyService item) { return Kv.create().set("id", item.getPolicyId()).set("title", item.getServiceTitle()).set("summary", item.getProjectScope()).set("image", item.getCoverUrl()).set("time", item.getCreateTime()); }
 	private Map<String, Object> policyDetailMap(PolicyService item) { Map<String, Object> map = policyMap(item); map.put("content", item.getContent()); map.put("validTime", item.getValidTime()); map.put("permanent", "0".equals(item.getPermanentFlag())); map.put("attachments", item.getAttachmentFiles()); return map; }
 	private boolean isPolicyEffective(PolicyService item) { return "0".equals(item.getPermanentFlag()) || (item.getValidTime() != null && !item.getValidTime().before(new Date())); }
-	private Map<String, Object> activityMap(ParkActivity item) { return Kv.create().set("id", item.getId()).set("title", item.getTitle()).set("image", item.getCoverUrl()).set("summary", item.getSummary()).set("startTime", item.getStartTime()).set("endTime", item.getEndTime()).set("address", item.getAddress()).set("price", item.getPriceText()); }
+	private Map<String, Object> activityMap(ParkActivity item) { return Kv.create().set("id", item.getId()).set("title", item.getTitle()).set("image", item.getCoverUrl()).set("summary", item.getSummary()).set("startTime", item.getStartTime()).set("endTime", item.getEndTime()).set("address", item.getAddress()).set("price", item.getPriceText()).set("sortOrder", item.getSortOrder()); }
+	private Map<String, Object> activityApplicationMap(ParkActivity item, boolean detail) { Map<String, Object> map = new LinkedHashMap<>(activityMap(item)); map.put("auditStatus", item.getAuditStatus()); map.put("auditOpinion", item.getAuditOpinion()); map.put("auditTime", item.getAuditTime()); map.put("auditUserName", item.getAuditUserName()); map.put("publishStatus", item.getPublishStatus()); map.put("contactName", item.getContactName()); map.put("contactPhone", detail ? item.getContactPhone() : maskPhone(item.getContactPhone())); map.put("createTime", item.getCreateTime()); return map; }
+	private Map<String, Object> activityAuditLogMap(ParkActivityAuditLog item) { return Kv.create().set("id", item.getId()).set("action", item.getActionType()).set("beforeAuditStatus", item.getBeforeAuditStatus()).set("afterAuditStatus", item.getAfterAuditStatus()).set("beforePublishStatus", item.getBeforePublishStatus()).set("afterPublishStatus", item.getAfterPublishStatus()).set("operatorName", item.getOperatorName()).set("opinion", item.getOpinion()).set("operateTime", item.getOperateTime()); }
 	private Map<String, Object> noticeMap(Notice item, boolean detail) { Kv map = Kv.create().set("id", item.getId()).set("title", item.getTitle()).set("category", item.getCategory()).set("releaseTime", item.getReleaseTime()).set("summary", plainText(item.getContent())); if (detail) map.set("content", item.getContent()); return map; }
 	private Map<String, Object> propertyServiceMap(PropertyService item) { return Kv.create().set("id", item.getServiceId()).set("parkId", item.getParkId()).set("title", item.getServiceName()).set("type", item.getServiceType()).set("desc", item.getServiceDesc()).set("materials", item.getRequiredMaterials()).set("flow", item.getServiceFlow()).set("charge", item.getChargeStandard()); }
 	private Map<String, Object> merchantMap(Merchant item) { return Kv.create().set("id", item.getMerchantId()).set("title", item.getMerchantName()).set("category", item.getBusinessType()).set("desc", item.getServiceScope()).set("serviceArea", item.getServiceArea()).set("contactName", maskName(item.getContactName())).set("contactPhone", maskPhone(item.getContactPhone())).set("address", item.getAddress()); }
@@ -1095,6 +1232,39 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 				.set("remark", item.getRemark()).set("auditUserName", item.getAuditUserName());
 		}
 		return map;
+	}
+	private Long customerParkId(MiniMember member) {
+		if (member.getParkId() != null && member.getParkId() > 0) return member.getParkId();
+		Customer customer = customerService.selectCustomerById(member.getCustomerId());
+		if (customer != null && customer.getParkId() != null && customer.getParkId() > 0) return customer.getParkId();
+		Long configured = properties.getDefaultParkId();
+		if (configured != null && configured > 0) return configured;
+		return parkService.list(Wrappers.<Park>lambdaQuery().eq(Park::getStatus, "0").orderByAsc(Park::getId).last("limit 1"))
+			.stream().findFirst().map(Park::getId).orElseThrow(() -> new ServiceException("暂无可用园区"));
+	}
+	private ParkActivity scopedCustomerActivity(Long id, MiniMember member, boolean lock) {
+		var wrapper = Wrappers.<ParkActivity>lambdaQuery().eq(ParkActivity::getId, id)
+			.eq(ParkActivity::getTenantId, member.getTenantId()).eq(ParkActivity::getParkId, customerParkId(member))
+			.eq(ParkActivity::getCustomerId, member.getCustomerId()).eq(ParkActivity::getIsDeleted, 0);
+		if (lock) wrapper.last("for update");
+		ParkActivity activity = activityMapper.selectOne(wrapper);
+		if (activity == null) throw new ServiceException("活动不存在或无权访问");
+		return activity;
+	}
+	private void fillActivity(ParkActivity activity, MiniBusinessDTO.ActivityApplication request) {
+		activity.setTitle(request.getTitle().trim()); activity.setCoverUrl(request.getCoverUrl()); activity.setSummary(request.getSummary().trim());
+		activity.setStartTime(request.getStartTime()); activity.setEndTime(request.getEndTime()); activity.setAddress(request.getAddress().trim());
+		activity.setPriceText(StringUtil.isBlank(request.getPriceText()) ? "免费" : request.getPriceText().trim());
+		activity.setContactName(request.getContactName().trim()); activity.setContactPhone(request.getContactPhone());
+	}
+	private void addActivityLog(ParkActivity activity, String action, String beforeAudit, String afterAudit,
+		Integer beforePublish, Integer afterPublish, String opinion) {
+		ParkActivityAuditLog log = new ParkActivityAuditLog(); log.setTenantId(activity.getTenantId()); log.setActivityId(activity.getId());
+		log.setParkId(activity.getParkId()); log.setCustomerId(activity.getCustomerId()); log.setActionType(action);
+		log.setBeforeAuditStatus(beforeAudit); log.setAfterAuditStatus(afterAudit); log.setBeforePublishStatus(beforePublish); log.setAfterPublishStatus(afterPublish);
+		log.setOperatorUserId(AuthUtil.getUserId()); log.setOperatorName(StringUtil.isBlank(AuthUtil.getUserName()) ? "system" : AuthUtil.getUserName());
+		log.setOpinion(StringUtil.isBlank(opinion) ? null : opinion.trim()); log.setOperateTime(new Date()); log.setStatus(StatusType.ACTIVE.getType()); log.setIsDeleted(0);
+		activityAuditLogMapper.insert(log);
 	}
 	private Map<String, Object> adAuditLogMap(MerchantAdAuditLog item) {
 		return Kv.create().set("id", item.getId()).set("action", item.getActionType())

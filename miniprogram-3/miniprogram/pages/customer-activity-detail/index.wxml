@@ -1,0 +1,34 @@
+<view class="sub-page">
+  <scroll-view class="sub-scroll" scroll-y type="list">
+    <view class="sub-content {{canEdit || canSubmit || canWithdraw ? 'has-action' : ''}}">
+      <view class="blue-header plain-header">
+        <view class="nav-row"><view class="nav-action" bindtap="goBack">‹</view><view class="nav-title">活动详情</view><view class="nav-action"></view></view>
+        <view class="intro-title">{{publicMode ? '园区活动' : '审核与发布进度'}}</view>
+        <view class="intro-sub">{{publicMode ? '查看活动时间、地点与参与信息' : '园区审批通过后，由后台发布到首页'}}</view>
+      </view>
+      <view wx:if="{{loading}}" class="state-card">活动加载中...</view>
+      <view wx:elif="{{error}}" class="state-card"><view>{{error}}</view><view class="retry-button" bindtap="retry">重新加载</view></view>
+      <block wx:else>
+        <view class="section-card detail-card">
+          <image class="cover" src="{{activity.image}}" mode="aspectFill" bindtap="preview"></image>
+          <view class="head"><view class="card-title">{{activity.title}}</view><view wx:if="{{!publicMode}}" class="status-pill status-{{activity.tone}}">{{activity.auditText}}</view></view>
+          <view class="line">{{activity.startTime}} 至 {{activity.endTime}}</view>
+          <view class="line">{{activity.address}} · {{activity.price}}</view>
+          <view wx:if="{{!publicMode}}" class="line">发布状态：{{activity.publishText}}</view>
+          <view wx:if="{{!publicMode && activity.auditOpinion}}" class="opinion">审核意见：{{activity.auditOpinion}}</view>
+        </view>
+        <view class="section-card">
+          <view class="card-title">活动说明</view>
+          <view class="summary">{{activity.summary || '暂无活动说明'}}</view>
+          <view wx:if="{{!publicMode && activity.contactName}}" class="line">联系人：{{activity.contactName}} {{activity.contactPhone}}</view>
+        </view>
+        <view wx:if="{{!publicMode}}" class="section-card">
+          <view class="card-title">处理记录</view>
+          <view wx:if="{{!logs.length}}" class="line">暂无处理记录</view>
+          <view wx:for="{{logs}}" wx:key="id" class="log"><view><text>{{item.actionText}}</text><text>{{item.operateTime}}</text></view><view wx:if="{{item.operatorName}}">操作人：{{item.operatorName}}</view><view wx:if="{{item.opinion}}">{{item.opinion}}</view></view>
+        </view>
+      </block>
+    </view>
+  </scroll-view>
+  <view wx:if="{{canEdit || canSubmit || canWithdraw}}" class="fixed-action action-row"><view wx:if="{{canEdit}}" class="secondary-button" bindtap="edit">修改</view><view wx:if="{{canSubmit}}" class="primary-button" bindtap="submit">{{acting ? '处理中...' : '提交审核'}}</view><view wx:if="{{canWithdraw}}" class="primary-button warning" bindtap="withdraw">{{acting ? '处理中...' : '撤回审核'}}</view></view>
+</view>
