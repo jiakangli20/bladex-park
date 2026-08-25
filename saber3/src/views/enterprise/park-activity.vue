@@ -11,8 +11,22 @@
         </el-form>
       </section>
       <section class="activity-table-card">
-        <div class="activity-toolbar"><el-button v-if="permissionList.editBtn" type="primary" icon="el-icon-plus" @click="openAdd">新增活动</el-button><el-tooltip content="刷新" placement="top"><el-button icon="el-icon-refresh" circle @click="load" /></el-tooltip></div>
-        <el-table v-loading="loading" :data="data" border row-key="id" class="activity-table">
+        <div class="activity-toolbar">
+          <div class="toolbar-left">
+            <el-button v-if="permissionList.editBtn" type="primary" icon="el-icon-plus" @click="openAdd">新增活动</el-button>
+            <el-button
+              v-if="permissionList.deleteBtn"
+              type="danger"
+              icon="el-icon-delete"
+              plain
+              :disabled="selectionList.length === 0"
+              @click="handleBatchDelete"
+            >批量删除</el-button>
+          </div>
+          <el-tooltip content="刷新" placement="top"><el-button icon="el-icon-refresh" circle @click="load" /></el-tooltip>
+        </div>
+        <el-table v-loading="loading" :data="data" border row-key="id" class="activity-table" @selection-change="selectionChange">
+          <el-table-column type="selection" width="44" align="center" />
           <el-table-column prop="title" label="活动标题" min-width="180" align="center" show-overflow-tooltip />
           <el-table-column prop="customerName" label="申请企业" min-width="150" align="center" show-overflow-tooltip><template #default="{ row }">{{ row.customerName || '园区后台' }}</template></el-table-column>
           <el-table-column prop="parkId" label="所属园区" width="130" align="center"><template #default="{ row }">{{ parkName(row.parkId) }}</template></el-table-column>
@@ -20,7 +34,30 @@
           <el-table-column label="活动时间" width="320" align="center"><template #default="{ row }"><span class="single-line-cell">{{ row.startTime }} 至 {{ row.endTime }}</span></template></el-table-column>
           <el-table-column prop="auditStatus" label="审核状态" width="110" align="center"><template #default="{ row }"><el-tag :type="auditType(row.auditStatus)" effect="plain">{{ auditText(row.auditStatus) }}</el-tag></template></el-table-column>
           <el-table-column prop="publishStatus" label="发布状态" width="108" align="center"><template #default="{ row }"><el-tag :type="Number(row.publishStatus) === 1 ? 'success' : 'info'" effect="plain">{{ Number(row.publishStatus) === 1 ? '已发布' : '未发布' }}</el-tag></template></el-table-column>
-          <el-table-column label="操作" width="156" fixed="right" align="center"><template #default="{ row }"><div class="table-actions"><el-button v-if="permissionList.auditBtn && row.auditStatus === 'PENDING'" type="warning" text @click="openAudit(row)">审核</el-button><el-button v-else-if="permissionList.editBtn" type="primary" text @click="openEdit(row)">编辑</el-button><el-dropdown v-if="(permissionList.publishBtn && row.auditStatus === 'APPROVED') || permissionList.deleteBtn"><el-button type="primary" text>更多</el-button><template #dropdown><el-dropdown-menu><el-dropdown-item v-if="permissionList.publishBtn && row.auditStatus === 'APPROVED'" @click="togglePublish(row)">{{ Number(row.publishStatus) === 1 ? '下架' : '发布' }}</el-dropdown-item><el-dropdown-item v-if="permissionList.deleteBtn" divided @click="remove(row)">删除</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div></template></el-table-column>
+          <el-table-column label="操作" width="156" fixed="right" align="center">
+            <template #default="{ row }">
+              <div class="table-actions">
+                <el-button
+                  v-if="permissionList.auditBtn && row.auditStatus === 'PENDING'"
+                  type="warning"
+                  text
+                  @click="openAudit(row)"
+                >审核</el-button>
+                <el-button
+                  v-else-if="permissionList.editBtn"
+                  type="primary"
+                  text
+                  @click="openEdit(row)"
+                >编辑</el-button>
+                <el-button
+                  v-if="permissionList.publishBtn && row.auditStatus === 'APPROVED'"
+                  type="primary"
+                  text
+                  @click="togglePublish(row)"
+                >{{ Number(row.publishStatus) === 1 ? '下架' : '发布' }}</el-button>
+              </div>
+            </template>
+          </el-table-column>
         </el-table>
         <div class="activity-pagination"><el-pagination background :current-page="page.currentPage" :page-size="page.pageSize" :page-sizes="[10, 20, 30, 40, 50, 100]" layout="total, sizes, prev, pager, next, jumper" :total="page.total" @size-change="changeSize" @current-change="changePage" /></div>
       </section>
@@ -51,7 +88,7 @@ const defaultForm = () => ({ id: null, parkId: null, title: '', coverUrl: '', su
 const auditOptions = [{ value: 'DRAFT', label: '草稿', type: 'info' }, { value: 'PENDING', label: '待审核', type: 'primary' }, { value: 'APPROVED', label: '已通过', type: 'success' }, { value: 'REJECTED', label: '已驳回', type: 'danger' }];
 export default {
   name: 'EnterpriseParkActivity',
-  data() { return { query: {}, data: [], loading: false, saving: false, page: { currentPage: 1, pageSize: 10, total: 0 }, parkOptions: [], auditOptions, formVisible: false, form: defaultForm(), auditVisible: false, auditRow: {}, auditForm: { status: 'APPROVED', opinion: '' }, rules: { title: [{ required: true, message: '请输入活动标题', trigger: 'blur' }], parkId: [{ required: true, message: '请选择园区', trigger: 'change' }], coverUrl: [{ required: true, message: '请上传活动封面', trigger: 'blur' }], startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }], endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }] } }; },
+  data() { return { query: {}, data: [], selectionList: [], loading: false, saving: false, page: { currentPage: 1, pageSize: 10, total: 0 }, parkOptions: [], auditOptions, formVisible: false, form: defaultForm(), auditVisible: false, auditRow: {}, auditForm: { status: 'APPROVED', opinion: '' }, rules: { title: [{ required: true, message: '请输入活动标题', trigger: 'blur' }], parkId: [{ required: true, message: '请选择园区', trigger: 'change' }], coverUrl: [{ required: true, message: '请上传活动封面', trigger: 'blur' }], startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }], endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }] } }; },
   computed: { ...mapGetters(['permission', 'userInfo']), uploadHeaders() { return { 'Blade-Auth': `bearer ${getToken()}`, 'Blade-Requested-With': 'BladeHttpRequest', 'Tenant-Id': this.userInfo?.tenantId || this.userInfo?.tenant_id || '000000' }; }, permissionList() { const p = this.permission; return { editBtn: Boolean(p.park_activity_edit), auditBtn: Boolean(p.park_activity_audit), publishBtn: Boolean(p.park_activity_publish), deleteBtn: Boolean(p.park_activity_delete) }; } },
   created() { getParkList(1, 999, { status: '0' }).then(res => { this.parkOptions = res.data.data?.records || []; }); this.load(); },
   methods: {
@@ -62,12 +99,27 @@ export default {
     load() { this.loading = true; getActivityPage(this.page.currentPage, this.page.pageSize, this.query).then(res => { const payload = res.data.data || {}; this.data = payload.records || []; this.page.total = Number(payload.total) || 0; }).finally(() => { this.loading = false; }); },
     search() { this.page.currentPage = 1; this.load(); }, reset() { this.query = {}; this.search(); },
     changeSize(size) { this.page.pageSize = size; this.page.currentPage = 1; this.load(); }, changePage(current) { this.page.currentPage = current; this.load(); },
+    selectionChange(selection) { this.selectionList = selection; },
     openAdd() { this.form = defaultForm(); this.formVisible = true; }, openEdit(row) { this.form = { ...defaultForm(), ...row }; this.formVisible = true; },
     submit() { this.$refs.formRef.validate(valid => { if (!valid) return; if (this.form.endTime <= this.form.startTime) { this.$message.warning('结束时间必须晚于开始时间'); return; } this.saving = true; const enterpriseApplication = Boolean(this.form.id && this.form.customerId); submitActivity(this.form).then(() => { this.$message.success(enterpriseApplication ? '内容已更新，活动已下架并重新进入待审核' : '保存成功'); this.formVisible = false; this.load(); }).finally(() => { this.saving = false; }); }); },
     openAudit(row) { this.auditRow = row; this.auditForm = { status: 'APPROVED', opinion: '' }; this.auditVisible = true; },
     submitAudit() { if (this.auditForm.status === 'REJECTED' && !this.auditForm.opinion.trim()) { this.$message.warning('驳回时请填写审核意见'); return; } this.saving = true; auditActivity(this.auditRow.id, this.auditForm.status, this.auditForm.opinion).then(() => { this.$message.success('审核完成'); this.auditVisible = false; this.load(); }).finally(() => { this.saving = false; }); },
     togglePublish(row) { const status = Number(row.publishStatus) === 1 ? 0 : 1; publishActivity(row.id, status).then(() => { this.$message.success(status ? '已发布' : '已下架'); this.load(); }); },
-    remove(row) { this.$confirm('确定删除该活动?').then(() => removeActivity(row.id).then(() => { this.$message.success('删除成功'); this.load(); })); },
+    handleBatchDelete() {
+      if (!this.selectionList.length) {
+        this.$message.warning('请选择至少一条数据');
+        return;
+      }
+      this.$confirm('确定删除选中的园区活动?', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }).then(() => removeActivity(this.selectionList.map(item => item.id).join(',')).then(() => {
+        this.$message.success('删除成功');
+        this.selectionList = [];
+        this.load();
+      }));
+    },
   },
 };
 </script>
@@ -78,6 +130,7 @@ export default {
 .activity-search :deep(.el-form-item) { margin-bottom:12px; }
 .activity-table-card { overflow:hidden; border:1px solid #e5e7eb; border-radius:10px; background:#fff; }
 .activity-toolbar { min-height:58px; display:flex; align-items:center; justify-content:space-between; padding:12px 16px; }
+.toolbar-left { display:flex; align-items:center; gap:10px; }
 .activity-cover { width:64px; height:42px; border-radius:6px; }
 .cover-upload { width:100%; display:flex; align-items:center; gap:12px; }
 .cover-upload :deep(.el-input) { flex:1; }

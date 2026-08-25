@@ -14,6 +14,7 @@ import org.springblade.core.mp.support.Query;
 import org.springblade.core.secure.annotation.PreAuth;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.api.R;
+import org.springblade.core.tool.utils.Func;
 import org.springblade.modules.business.pojo.entity.Customer;
 import org.springblade.modules.business.service.ICustomerService;
 import org.springblade.modules.miniapp.mapper.ParkActivityMapper;
@@ -25,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
+import java.util.List;
 
 /** 园区活动发布与企业活动申请审核。 */
 @RestController
@@ -144,13 +146,19 @@ public class ParkActivityController {
 
 	@PostMapping("/remove")
 	@PreAuth(menu = "park_activity_delete")
-	public R<Void> remove(@RequestParam Long id) {
-		ParkActivity activity = requireActivity(id);
-		parkScopeService.assertAccess(activity.getParkId());
-		activity.setIsDeleted(1);
-		activity.setUpdateUser(AuthUtil.getUserId());
-		activity.setUpdateTime(new Date());
-		activityMapper.updateById(activity);
+	@Transactional(rollbackFor = Exception.class)
+	public R<Void> remove(@RequestParam String id) {
+		List<Long> ids = Func.toLongList(id);
+		if (ids.isEmpty()) throw new ServiceException("请选择要删除的园区活动");
+		Date now = new Date();
+		for (Long activityId : ids) {
+			ParkActivity activity = requireActivity(activityId);
+			parkScopeService.assertAccess(activity.getParkId());
+			activity.setIsDeleted(1);
+			activity.setUpdateUser(AuthUtil.getUserId());
+			activity.setUpdateTime(now);
+			activityMapper.updateById(activity);
+		}
 		return R.success("删除成功");
 	}
 
