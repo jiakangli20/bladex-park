@@ -68,6 +68,20 @@ UPDATE `blade_menu`
 SET parent_id = 1890000000007000000, sort = 6
 WHERE id = 1123598815738675202;
 
+-- 通知公告前端入口统一迁移到企业服务。
+UPDATE `blade_menu`
+SET path = '/enterprise/notice', component = 'views/enterprise/notice'
+WHERE id = 1123598815738675202;
+
+UPDATE `blade_menu`
+SET path = REPLACE(path, '/desk/notice', '/enterprise/notice')
+WHERE parent_id = 1123598815738675202 AND path LIKE '/desk/notice%';
+
+-- 页面已取消删除入口，同步隐藏删除权限菜单。
+UPDATE `blade_menu`
+SET is_deleted = 1
+WHERE id = 1123598815738675221;
+
 INSERT INTO `blade_menu` (`id`, `parent_id`, `code`, `name`, `alias`, `path`, `source`, `component`, `sort`, `category`, `action`, `is_open`, `remark`, `is_deleted`)
 VALUES
   (1890000000007000500, 1890000000007000000, 'settlement_todo', '招商待办', 'menu', '/enterprise/settlement-todo', 'iconfont iconicon_task', 'views/enterprise/settlement-todo', 5, 1, 0, 1, '小程序入驻意向处理', 0),

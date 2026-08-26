@@ -192,6 +192,12 @@ RouterPlugin.install = function (option = {}) {
 };
 export const formatPath = (ele, first) => {
   const propsDefault = website.menu;
+  // Keep menus from older deployments working until the database migration is applied.
+  const menuPath = ele[propsDefault.path];
+  if (typeof menuPath === 'string' && menuPath.startsWith('/desk/notice')) {
+    ele[propsDefault.path] = menuPath.replace('/desk/notice', '/enterprise/notice');
+    if (ele.component) ele.component = ele.component.replace('views/desk/notice', 'views/enterprise/notice');
+  }
   const icon = ele[propsDefault.icon];
   ele[propsDefault.icon] = !icon ? propsDefault.iconDefault : icon;
   ele.meta = {

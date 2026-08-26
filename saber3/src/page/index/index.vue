@@ -211,7 +211,6 @@ export default {
     },
     topMenuCodeByRoute(path) {
       const routeMap = [
-        { prefix: '/desk/notice', code: 'service' },
         { prefix: '/plugin/workflow', code: 'office' },
         { prefix: '/settlement', code: 'entry' },
         { prefix: '/enterprise', code: 'service' },
