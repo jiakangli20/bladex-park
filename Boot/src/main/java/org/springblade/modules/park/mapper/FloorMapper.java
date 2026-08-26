@@ -48,7 +48,7 @@ public interface FloorMapper extends BaseMapper<Floor> {
 	 * @param floor 查询条件
 	 * @return 楼层集合
 	 */
-	List<Floor> selectFloorList(@Param("floor") Floor floor);
+	List<Floor> selectFloorList(@Param("floor") Floor floor, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 查询楼层结构列表，不附带房态统计
@@ -56,7 +56,7 @@ public interface FloorMapper extends BaseMapper<Floor> {
 	 * @param floor 查询条件
 	 * @return 楼层集合
 	 */
-	List<Floor> selectFloorStructureList(@Param("floor") Floor floor);
+	List<Floor> selectFloorStructureList(@Param("floor") Floor floor, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 查询楼层分页
@@ -65,7 +65,7 @@ public interface FloorMapper extends BaseMapper<Floor> {
 	 * @param floor 查询条件
 	 * @return 楼层集合
 	 */
-	List<Floor> selectFloorPage(IPage<Floor> page, @Param("floor") Floor floor);
+	List<Floor> selectFloorPage(IPage<Floor> page, @Param("floor") Floor floor, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 查询楼层详情

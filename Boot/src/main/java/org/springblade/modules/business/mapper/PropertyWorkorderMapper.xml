@@ -91,6 +91,12 @@
 	<sql id="workorderWhere">
 		<where>
 			w.del_flag = '0'
+			<if test="authorizedParkIds != null">
+				<choose>
+					<when test="authorizedParkIds.size() > 0">and w.park_id in <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when>
+					<otherwise>and 1 = 0</otherwise>
+				</choose>
+			</if>
 			<if test="workorder != null">
 				<if test="workorder.parkId != null">and w.park_id = #{workorder.parkId}</if>
 				<if test="workorder.customerId != null">and w.customer_id = #{workorder.customerId}</if>

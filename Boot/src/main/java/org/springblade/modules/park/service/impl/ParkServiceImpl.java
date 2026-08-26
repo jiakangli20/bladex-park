@@ -36,6 +36,7 @@ import org.springblade.modules.park.mapper.ParkMapper;
 import org.springblade.modules.park.pojo.entity.Park;
 import org.springblade.modules.park.pojo.vo.ParkVO;
 import org.springblade.modules.park.service.IParkService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -50,15 +51,17 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class ParkServiceImpl extends ServiceImpl<ParkMapper, Park> implements IParkService {
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public IPage<ParkVO> selectParkPage(IPage<ParkVO> page, ParkVO park) {
-		return page.setRecords(baseMapper.selectParkPage(page, park));
+		return page.setRecords(baseMapper.selectParkPage(page, park, parkPermissionService.authorizedParkIds()));
 	}
 
 	@Override
 	public Map<String, Object> selectParkStatistics(Long parkId) {
-		return baseMapper.selectParkStatistics(parkId);
+		if (parkId != null) parkPermissionService.requirePark(parkId);
+		return baseMapper.selectParkStatistics(parkId, parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
@@ -66,6 +69,10 @@ public class ParkServiceImpl extends ServiceImpl<ParkMapper, Park> implements IP
 		if (park == null) {
 			throw new ServiceException("园区数据不能为空");
 		}
+		if (park.getId() == null && !parkPermissionService.hasAllParkAccess()) {
+			throw new ServiceException("只有全园区管理员可以新增园区");
+		}
+		if (park.getId() != null) parkPermissionService.requirePark(park.getId());
 		if (StringUtil.isBlank(park.getName()) || StringUtil.isBlank(park.getCode())) {
 			throw new ServiceException("园区名称和园区编码不能为空");
 		}
@@ -109,6 +116,7 @@ public class ParkServiceImpl extends ServiceImpl<ParkMapper, Park> implements IP
 			throw new ServiceException("请选择需要删除的园区");
 		}
 		for (Long id : idList) {
+			parkPermissionService.requirePark(id);
 			Park park = getById(id);
 			if (park == null) {
 				throw new ServiceException("园区不存在");

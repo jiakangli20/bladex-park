@@ -21,7 +21,7 @@ import org.springblade.modules.miniapp.mapper.ParkActivityMapper;
 import org.springblade.modules.miniapp.mapper.ParkActivityAuditLogMapper;
 import org.springblade.modules.miniapp.pojo.entity.ParkActivity;
 import org.springblade.modules.miniapp.pojo.entity.ParkActivityAuditLog;
-import org.springblade.modules.miniapp.service.AdminParkScopeService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,15 +38,16 @@ public class ParkActivityController {
 	private final ParkActivityMapper activityMapper;
 	private final ParkActivityAuditLogMapper auditLogMapper;
 	private final ICustomerService customerService;
-	private final AdminParkScopeService parkScopeService;
+	private final IParkPermissionService parkPermissionService;
 
 	@GetMapping("/page")
 	@PreAuth(menu = "park_activity_view")
 	public R<IPage<ParkActivity>> page(ParkActivity query, Query pageQuery) {
-		if (query.getParkId() != null) parkScopeService.assertAccess(query.getParkId());
-		var scopedParkIds = parkScopeService.currentParkIds();
+		if (query.getParkId() != null) parkPermissionService.requirePark(query.getParkId());
+		var scopedParkIds = parkPermissionService.authorizedParkIds();
 		IPage<ParkActivity> page = activityMapper.selectPage(Condition.getPage(pageQuery), Wrappers.<ParkActivity>lambdaQuery()
-			.in(!AuthUtil.isAdministrator(), ParkActivity::getParkId, scopedParkIds.isEmpty() ? java.util.List.of(-1L) : scopedParkIds)
+			.in(scopedParkIds != null, ParkActivity::getParkId,
+				scopedParkIds == null || scopedParkIds.isEmpty() ? java.util.List.of(-1L) : scopedParkIds)
 			.eq(query.getParkId() != null, ParkActivity::getParkId, query.getParkId())
 			.eq(query.getPublishStatus() != null, ParkActivity::getPublishStatus, query.getPublishStatus())
 			.eq(query.getAuditStatus() != null && !query.getAuditStatus().isBlank(), ParkActivity::getAuditStatus, query.getAuditStatus())
@@ -61,7 +62,7 @@ public class ParkActivityController {
 	@Transactional(rollbackFor = Exception.class)
 	public R<Void> submit(@RequestBody ParkActivity activity) {
 		validate(activity);
-		parkScopeService.assertAccess(activity.getParkId());
+		parkPermissionService.requirePark(activity.getParkId());
 		Date now = new Date();
 		if (activity.getId() == null) {
 			activity.setTenantId(AuthUtil.getTenantId());
@@ -78,7 +79,7 @@ public class ParkActivityController {
 			activityMapper.insert(activity);
 		} else {
 			ParkActivity old = requireActivity(activity.getId());
-			parkScopeService.assertAccess(old.getParkId());
+			parkPermissionService.requirePark(old.getParkId());
 			copyEditableFields(activity, old);
 			if (old.getCustomerId() != null) {
 				String beforeAuditStatus = old.getAuditStatus();
@@ -110,7 +111,7 @@ public class ParkActivityController {
 	@Transactional(rollbackFor = Exception.class)
 	public R<Void> audit(@PathVariable Long id, @RequestParam String status, @RequestParam(required = false) String opinion) {
 		ParkActivity activity = requireActivity(id);
-		parkScopeService.assertAccess(activity.getParkId());
+		parkPermissionService.requirePark(activity.getParkId());
 		if (!"PENDING".equals(activity.getAuditStatus())) throw new ServiceException("仅待审核活动可以审核");
 		if (!"APPROVED".equals(status) && !"REJECTED".equals(status)) throw new ServiceException("审核状态不正确");
 		Integer beforePublishStatus = activity.getPublishStatus();
@@ -132,7 +133,7 @@ public class ParkActivityController {
 	@Transactional(rollbackFor = Exception.class)
 	public R<Void> publish(@PathVariable Long id, @RequestParam Integer status) {
 		ParkActivity activity = requireActivity(id);
-		parkScopeService.assertAccess(activity.getParkId());
+		parkPermissionService.requirePark(activity.getParkId());
 		if (status != 0 && status != 1) throw new ServiceException("发布状态不正确");
 		if (status == 1 && !"APPROVED".equals(activity.getAuditStatus())) throw new ServiceException("审核通过后才能发布");
 		Integer beforePublishStatus = activity.getPublishStatus();
@@ -153,7 +154,7 @@ public class ParkActivityController {
 		Date now = new Date();
 		for (Long activityId : ids) {
 			ParkActivity activity = requireActivity(activityId);
-			parkScopeService.assertAccess(activity.getParkId());
+			parkPermissionService.requirePark(activity.getParkId());
 			activity.setIsDeleted(1);
 			activity.setUpdateUser(AuthUtil.getUserId());
 			activity.setUpdateTime(now);

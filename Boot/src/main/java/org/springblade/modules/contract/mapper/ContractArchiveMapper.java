@@ -47,7 +47,8 @@ public interface ContractArchiveMapper {
 	 * @param contract 查询条件
 	 * @return 合同归档列表
 	 */
-	List<ContractArchiveVO> selectArchivePage(IPage<ContractArchiveVO> page, @Param("contract") ContractArchiveVO contract);
+	List<ContractArchiveVO> selectArchivePage(IPage<ContractArchiveVO> page, @Param("contract") ContractArchiveVO contract,
+												 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 合同归档详情

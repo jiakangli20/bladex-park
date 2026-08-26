@@ -41,6 +41,7 @@ import org.springblade.modules.park.pojo.vo.RoomVO;
 import org.springblade.modules.park.service.IBuildingService;
 import org.springblade.modules.park.service.IFloorService;
 import org.springblade.modules.park.service.IRoomService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -64,21 +65,23 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements IR
 
 	private final IBuildingService buildingService;
 	private final IFloorService floorService;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public RoomVO selectRoomById(Long id) {
 		RoomVO room = baseMapper.selectRoomById(id);
+		if (room != null) parkPermissionService.requirePark(room.getParkId());
 		return room;
 	}
 
 	@Override
 	public List<RoomVO> selectRoomList(Room room) {
-		return baseMapper.selectRoomList(room);
+		return baseMapper.selectRoomList(room, parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
 	public IPage<RoomVO> selectRoomPage(IPage<RoomVO> page, Room room) {
-		return page.setRecords(baseMapper.selectRoomPage(page, room));
+		return page.setRecords(baseMapper.selectRoomPage(page, room, parkPermissionService.authorizedParkIds()));
 	}
 
 	@Override
@@ -175,6 +178,7 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements IR
 			throw new ServiceException("所属建筑不存在");
 		}
 		room.setParkId(building.getParkId());
+		parkPermissionService.requirePark(room.getParkId());
 		if (StringUtil.isBlank(room.getName())) {
 			throw new ServiceException("请输入房间名称");
 		}

@@ -56,6 +56,7 @@ import org.springblade.modules.system.pojo.entity.*;
 import org.springblade.modules.system.pojo.vo.UserVO;
 import org.springblade.modules.system.service.IRoleService;
 import org.springblade.modules.system.service.IUserDeptService;
+import org.springblade.modules.system.service.IUserParkService;
 import org.springblade.modules.system.service.IUserOauthService;
 import org.springblade.modules.system.service.IUserService;
 import org.springblade.modules.system.wrapper.UserWrapper;
@@ -82,6 +83,7 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, User> implement
 	private static final String GUEST_NAME = "guest";
 
 	private final IUserDeptService userDeptService;
+	private final IUserParkService userParkService;
 	private final IUserOauthService userOauthService;
 	private final IRoleService roleService;
 	private final BladeTenantProperties tenantProperties;
@@ -118,7 +120,8 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, User> implement
 			throw new ServiceException(StringUtil.format("当前手机 [{}] 已存在!", user.getPhone()));
 		}
 		CacheUtil.clear(USER_CACHE);
-		return save(user) && submitUserDept(user);
+		validateParkAssignment(user, true);
+		return save(user) && submitUserDept(user) && submitUserPark(user);
 	}
 
 	@Override
@@ -144,7 +147,8 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, User> implement
 			throw new ServiceException(StringUtil.format("当前手机 [{}] 已存在!", user.getPhone()));
 		}
 		CacheUtil.clear(USER_CACHE);
-		return submitUserInfo(user) && submitUserDept(user);
+		validateParkAssignment(user, false);
+		return submitUserInfo(user) && submitUserDept(user) && submitUserPark(user);
 	}
 
 	@Override
@@ -186,6 +190,28 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, User> implement
 		});
 		userDeptService.remove(Wrappers.<UserDept>update().lambda().eq(UserDept::getUserId, user.getId()));
 		return userDeptService.saveBatch(userDeptList);
+	}
+
+	private boolean submitUserPark(User user) {
+		if (user.getParkIds() == null) return true;
+		return userParkService.saveUserParks(user.getId(), user.getTenantId(), user.getParkIds(), user.getDefaultParkId());
+	}
+
+	private void validateParkAssignment(User user, boolean creating) {
+		if (user.getParkIds() == null) {
+			if (creating && !isAdministratorRole(user.getRoleId())) {
+				throw new ServiceException("普通后台用户必须至少授权一个园区");
+			}
+			return;
+		}
+		if (user.getParkIds().isEmpty() && !isAdministratorRole(user.getRoleId())) {
+			throw new ServiceException("普通后台用户必须至少授权一个园区");
+		}
+	}
+
+	private boolean isAdministratorRole(String roleIds) {
+		return roleService.getRoleAliases(roleIds).stream()
+			.anyMatch(alias -> RoleConstant.ADMINISTRATOR.equals(alias) || RoleConstant.ADMIN.equals(alias));
 	}
 
 	@Override

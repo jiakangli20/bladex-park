@@ -20,6 +20,7 @@ import org.springblade.modules.business.pojo.entity.Customer;
 import org.springblade.modules.business.service.ICustomerService;
 import org.springblade.modules.business.service.ITenantEntryWorkflowService;
 import org.springblade.modules.approval.service.impl.WorkflowApprovalTraceService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springblade.plugin.workflow.core.constant.WfProcessConstant;
 import org.springblade.plugin.workflow.core.user.WfUser;
 import org.springblade.plugin.workflow.core.user.WfUserService;
@@ -35,6 +36,7 @@ import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.springblade.plugin.workflow.process.entity.WfNotice.Type.*;
@@ -66,6 +68,7 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 	private final WorkflowApprovalTraceService workflowApprovalTraceService;
 	private final ObjectProvider<IWfCopyService> wfCopyServiceProvider;
 	private final IPermissionHandler permissionHandler;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public boolean supports(WfNoticeDTO notice) {
@@ -93,6 +96,7 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 		if (opportunity == null || opportunity.getOpportunityId() == null) {
 			throw new ServiceException("入驻流程关联商机不存在");
 		}
+		validateParkAccess(notice, opportunity);
 		WfNotice.Type type = notice.getType();
 		Task task = notice.getTask();
 		String processInsId = processInstance.getId();
@@ -185,6 +189,21 @@ public class TenantEntryWorkflowServiceImpl implements ITenantEntryWorkflowServi
 		WfUser startUser = notice.getStartUser();
 		if (startUser == null) {
 			throw new ServiceException("无法识别入驻流程发起人");
+		}
+	}
+
+	private void validateParkAccess(WfNoticeDTO notice, BusinessOpportunity opportunity) {
+		Long parkId = opportunity.getParkId();
+		if (parkId == null) {
+			throw new ServiceException("入驻流程关联商机未设置所属园区");
+		}
+		parkPermissionService.requirePark(parkId);
+		Long suppliedParkId = getLong(notice.getVariables(), "parkId");
+		if (START == notice.getType() && suppliedParkId == null) {
+			throw new ServiceException("入驻流程缺少所属园区");
+		}
+		if (suppliedParkId != null && !Objects.equals(suppliedParkId, parkId)) {
+			throw new ServiceException("入驻流程园区与关联商机不一致");
 		}
 	}
 

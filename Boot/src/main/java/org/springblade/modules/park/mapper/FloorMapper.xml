@@ -115,6 +115,12 @@
 
     <sql id="floorWhere">
         <where>
+            <if test="authorizedParkIds != null">
+                <choose>
+                    <when test="authorizedParkIds.size() > 0">AND f.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when>
+                    <otherwise>AND 1 = 0</otherwise>
+                </choose>
+            </if>
             <if test="floor.id != null">AND f.id = #{floor.id}</if>
             <if test="floor.parkId != null">AND f.park_id = #{floor.parkId}</if>
             <if test="floor.buildingId != null">AND f.building_id = #{floor.buildingId}</if>

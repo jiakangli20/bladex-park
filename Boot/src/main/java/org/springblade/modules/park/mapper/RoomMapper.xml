@@ -91,6 +91,12 @@
 
     <sql id="roomWhere">
         <where>
+            <if test="authorizedParkIds != null">
+                <choose>
+                    <when test="authorizedParkIds.size() > 0">AND r.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when>
+                    <otherwise>AND 1 = 0</otherwise>
+                </choose>
+            </if>
             <if test="room.id != null">AND r.id = #{room.id}</if>
             <if test="room.parkId != null">AND r.park_id = #{room.parkId}</if>
             <if test="room.buildingId != null">AND r.building_id = #{room.buildingId}</if>

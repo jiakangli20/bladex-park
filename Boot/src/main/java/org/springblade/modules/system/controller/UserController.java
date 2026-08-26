@@ -55,8 +55,10 @@ import org.springblade.core.tool.utils.StringPool;
 import org.springblade.modules.system.excel.UserExcel;
 import org.springblade.modules.system.excel.UserImporter;
 import org.springblade.modules.system.pojo.entity.User;
+import org.springblade.modules.system.pojo.entity.UserPark;
 import org.springblade.modules.system.pojo.vo.UserVO;
 import org.springblade.modules.system.service.IUserService;
+import org.springblade.modules.system.service.IUserParkService;
 import org.springblade.modules.system.wrapper.UserWrapper;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -64,6 +66,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * 控制器
@@ -78,6 +82,7 @@ import java.util.Map;
 public class UserController {
 
 	private final IUserService userService;
+	private final IUserParkService userParkService;
 
 	/**
 	 * 查询单条
@@ -89,7 +94,7 @@ public class UserController {
 	@Operation(summary = "查看详情", description = "传入id")
 	public R<UserVO> detail(User user) {
 		User detail = userService.getOne(Condition.getQueryWrapper(user));
-		return R.data(UserWrapper.build().entityVO(detail));
+		return R.data(withParkPermissions(UserWrapper.build().entityVO(detail)));
 	}
 
 	/**
@@ -101,7 +106,7 @@ public class UserController {
 	@Operation(summary = "查看详情", description = "传入id")
 	public R<UserVO> info(BladeUser user) {
 		User detail = userService.getById(user.getUserId());
-		return R.data(UserWrapper.build().entityVO(detail));
+		return R.data(withParkPermissions(UserWrapper.build().entityVO(detail)));
 	}
 
 	/**
@@ -119,7 +124,9 @@ public class UserController {
 	public R<IPage<UserVO>> list(@Parameter(hidden = true) @RequestParam Map<String, Object> user, Query query, BladeUser bladeUser) {
 		QueryWrapper<User> queryWrapper = Condition.getQueryWrapper(user, User.class);
 		IPage<User> pages = userService.page(Condition.getPage(query), (!bladeUser.getTenantId().equals(BladeConstant.ADMIN_TENANT_ID)) ? queryWrapper.lambda().eq(User::getTenantId, bladeUser.getTenantId()) : queryWrapper);
-		return R.data(UserWrapper.build().pageVO(pages));
+		IPage<UserVO> result = UserWrapper.build().pageVO(pages);
+		withParkPermissions(result.getRecords());
+		return R.data(result);
 	}
 
 	/**
@@ -136,7 +143,33 @@ public class UserController {
 	@Operation(summary = "列表", description = "传入account和realName")
 	public R<IPage<UserVO>> page(@Parameter(hidden = true) User user, Query query, Long deptId, BladeUser bladeUser) {
 		IPage<User> pages = userService.selectUserPage(Condition.getPage(query), user, deptId, (bladeUser.getTenantId().equals(BladeConstant.ADMIN_TENANT_ID) ? StringPool.EMPTY : bladeUser.getTenantId()));
-		return R.data(UserWrapper.build().pageVO(pages));
+		IPage<UserVO> result = UserWrapper.build().pageVO(pages);
+		withParkPermissions(result.getRecords());
+		return R.data(result);
+	}
+
+	private void withParkPermissions(List<UserVO> users) {
+		if (users == null || users.isEmpty()) return;
+		List<Long> userIds = users.stream().map(UserVO::getId).filter(Objects::nonNull).toList();
+		Map<String, List<UserPark>> assignments = userParkService.userParks(userIds).stream()
+			.collect(Collectors.groupingBy(row -> userParkKey(row.getTenantId(), row.getUserId())));
+		for (UserVO user : users) {
+			List<UserPark> rows = assignments.getOrDefault(userParkKey(user.getTenantId(), user.getId()), List.of());
+			user.setParkIds(rows.stream().map(UserPark::getParkId).toList());
+			user.setDefaultParkId(rows.stream().filter(row -> Objects.equals(row.getIsDefault(), 1))
+				.map(UserPark::getParkId).findFirst().orElse(null));
+		}
+	}
+
+	private String userParkKey(String tenantId, Long userId) {
+		return String.valueOf(tenantId) + ':' + userId;
+	}
+
+	private UserVO withParkPermissions(UserVO user) {
+		if (user == null || user.getId() == null) return user;
+		user.setParkIds(userParkService.parkIds(user.getId(), user.getTenantId()));
+		user.setDefaultParkId(userParkService.defaultParkId(user.getId(), user.getTenantId()));
+		return user;
 	}
 
 	/**

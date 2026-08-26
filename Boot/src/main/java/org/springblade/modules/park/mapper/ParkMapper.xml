@@ -111,6 +111,15 @@
             GROUP BY park_id
         ) rs ON rs.park_id = p.id
         <where>
+            <if test="authorizedParkIds != null">
+                <choose>
+                    <when test="authorizedParkIds.size() > 0">
+                        AND p.id IN
+                        <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+                    </when>
+                    <otherwise>AND 1 = 0</otherwise>
+                </choose>
+            </if>
             <if test="park.id != null">AND p.id = #{park.id}</if>
             <if test="park.name != null and park.name != ''">AND p.name LIKE CONCAT('%', #{park.name}, '%')</if>
             <if test="park.code != null and park.code != ''">AND p.code LIKE CONCAT('%', #{park.code}, '%')</if>
@@ -128,7 +137,17 @@
         FROM (
             SELECT SUM(area) AS management_area
             FROM ics_floor
-            <where><if test="parkId != null">park_id = #{parkId}</if></where>
+            <where>
+                <if test="parkId != null">park_id = #{parkId}</if>
+                <if test="parkId == null and authorizedParkIds != null">
+                    <choose>
+                        <when test="authorizedParkIds.size() > 0">
+                            AND park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+                        </when>
+                        <otherwise>AND 1 = 0</otherwise>
+                    </choose>
+                </if>
+            </where>
         ) fs
         CROSS JOIN (
             SELECT COUNT(1) AS total_room_count,
@@ -147,7 +166,17 @@
                        END AS display_status
                 FROM ics_room r
                 <include refid="roomContractStatusJoin"/>
-                <where><if test="parkId != null">r.park_id = #{parkId}</if></where>
+                <where>
+                    <if test="parkId != null">r.park_id = #{parkId}</if>
+                    <if test="parkId == null and authorizedParkIds != null">
+                        <choose>
+                            <when test="authorizedParkIds.size() > 0">
+                                AND r.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+                            </when>
+                            <otherwise>AND 1 = 0</otherwise>
+                        </choose>
+                    </if>
+                </where>
             ) room_status
         ) rs
     </select>

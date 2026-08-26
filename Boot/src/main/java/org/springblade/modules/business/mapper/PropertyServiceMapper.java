@@ -20,10 +20,12 @@ public interface PropertyServiceMapper extends BaseMapper<PropertyService> {
 
 	PropertyService selectPropertyServiceById(@Param("serviceId") Long serviceId);
 
-	List<PropertyService> selectPropertyServiceList(@Param("service") PropertyService service);
+	List<PropertyService> selectPropertyServiceList(@Param("service") PropertyService service,
+												  @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	IPage<PropertyService> selectPropertyServicePage(IPage<PropertyService> page,
-													 @Param("service") PropertyService service);
+												 @Param("service") PropertyService service,
+												 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	int insertPropertyService(PropertyService service);
 

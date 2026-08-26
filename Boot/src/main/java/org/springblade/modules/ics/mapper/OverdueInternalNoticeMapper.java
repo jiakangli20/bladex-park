@@ -28,13 +28,14 @@ public interface OverdueInternalNoticeMapper extends BaseMapper<OverdueInternalN
 
 	int insertReminderRecord(OverdueReminderRecord record);
 
-	Long countUnread(@Param("userId") Long userId);
+	Long countUnread(@Param("userId") Long userId, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	List<OverdueInternalNoticeVO> selectNoticePage(IPage<OverdueInternalNoticeVO> page,
 												 @Param("userId") Long userId,
 												 @Param("customerName") String customerName,
 												 @Param("readStatus") String readStatus,
-												 @Param("recordType") String recordType);
+												 @Param("recordType") String recordType,
+												 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	int markRead(@Param("paymentId") Long paymentId, @Param("userId") Long userId);
 

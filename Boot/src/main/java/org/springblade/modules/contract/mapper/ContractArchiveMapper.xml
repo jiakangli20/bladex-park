@@ -174,6 +174,12 @@
 
     <sql id="archiveWhere">
         c.del_flag = '0'
+        <if test="authorizedParkIds != null">
+            <choose>
+                <when test="authorizedParkIds.size() > 0">AND c.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when>
+                <otherwise>AND 1 = 0</otherwise>
+            </choose>
+        </if>
         <if test="contract.contractId != null">
             AND c.contract_id = #{contract.contractId}
         </if>

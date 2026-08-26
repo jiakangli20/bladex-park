@@ -46,7 +46,7 @@ public interface BuildingMapper extends BaseMapper<Building> {
 	 * @param building 查询条件
 	 * @return 建筑集合
 	 */
-	List<Building> selectBuildingList(@Param("building") Building building);
+	List<Building> selectBuildingList(@Param("building") Building building, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 查询建筑分页
@@ -55,7 +55,7 @@ public interface BuildingMapper extends BaseMapper<Building> {
 	 * @param building 查询条件
 	 * @return 建筑集合
 	 */
-	List<BuildingVO> selectBuildingPage(IPage page, @Param("building") Building building);
+	List<BuildingVO> selectBuildingPage(IPage page, @Param("building") Building building, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 查询建筑详情

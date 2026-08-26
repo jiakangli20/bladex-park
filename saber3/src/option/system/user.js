@@ -316,6 +316,26 @@ export const userOption = safe => {
             ],
           },
           {
+            label: '所属园区',
+            prop: 'parkIds',
+            type: 'select',
+            multiple: true,
+            filterable: true,
+            dicUrl: '/blade-park/park/list?current=1&size=999&status=0',
+            dicFormatter: res => res.data.records,
+            props: {
+              label: 'name',
+              value: 'id',
+            },
+            rules: [
+              {
+                required: true,
+                message: '请选择所属园区',
+                trigger: 'change',
+              },
+            ],
+          },
+          {
             label: '直属主管',
             prop: 'leaderId',
             type: 'tree',

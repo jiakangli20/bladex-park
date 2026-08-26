@@ -51,6 +51,7 @@ import org.springblade.modules.ics.pojo.vo.PaymentSummaryVO;
 import org.springblade.modules.ics.service.IPaymentService;
 import org.springblade.modules.ics.service.PaymentEmailTemplateService;
 import org.springblade.modules.park.pojo.entity.Room;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springblade.modules.system.pojo.entity.Dept;
 import org.springblade.modules.system.pojo.entity.Role;
 import org.springblade.modules.system.pojo.entity.User;
@@ -125,6 +126,7 @@ public class PaymentServiceImpl implements IPaymentService {
 	private final IUserService userService;
 	private final IDeptService deptService;
 	private final IRoleService roleService;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public IPage<ContractPayment> selectPaymentPage(IPage<ContractPayment> page, ContractPayment payment, String scope) {
@@ -133,7 +135,8 @@ public class PaymentServiceImpl implements IPaymentService {
 			page,
 			query,
 			SCOPE_OVERDUE.equals(scope),
-			SCOPE_OVERDUE_HISTORY.equals(scope)
+			SCOPE_OVERDUE_HISTORY.equals(scope),
+			parkPermissionService.authorizedParkIds()
 		));
 		return page;
 	}
@@ -160,18 +163,18 @@ public class PaymentServiceImpl implements IPaymentService {
 		ContractPayment query = new ContractPayment();
 		query.setContractId(contractId);
 		query = normalizeQuery(query);
-		return paymentMapper.selectPaymentPage(null, query, false, false);
+		return paymentMapper.selectPaymentPage(null, query, false, false, parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
 	public PaymentSummaryVO summary(ContractPayment payment) {
-		PaymentSummaryVO summary = paymentMapper.selectSummary(normalizeQuery(payment), false);
+		PaymentSummaryVO summary = paymentMapper.selectSummary(normalizeQuery(payment), false, parkPermissionService.authorizedParkIds());
 		return summary == null ? new PaymentSummaryVO() : summary;
 	}
 
 	@Override
 	public PaymentSummaryVO overdueReminderSummary(ContractPayment payment) {
-		PaymentSummaryVO summary = paymentMapper.selectSummary(normalizeQuery(payment), true);
+		PaymentSummaryVO summary = paymentMapper.selectSummary(normalizeQuery(payment), true, parkPermissionService.authorizedParkIds());
 		return summary == null ? new PaymentSummaryVO() : summary;
 	}
 
@@ -185,6 +188,7 @@ public class PaymentServiceImpl implements IPaymentService {
 		if (contract == null) {
 			throw new ServiceException("关联合同不存在");
 		}
+		parkPermissionService.requirePark(contract.getParkId());
 		String direction = normalizeDirection(payment.getDirection());
 		if (DIRECTION_PAYABLE.equals(direction)
 			&& FEE_TYPE_DEPOSIT_REFUND.equals(Func.toStr(payment.getFeeType(), "").trim())) {
@@ -230,7 +234,8 @@ public class PaymentServiceImpl implements IPaymentService {
 
 	@Override
 	public List<Contract> contractOptions(String keyword) {
-		List<Contract> contracts = paymentMapper.selectContractOptions(StringUtil.isBlank(keyword) ? null : keyword.trim(), null);
+		List<Contract> contracts = paymentMapper.selectContractOptions(StringUtil.isBlank(keyword) ? null : keyword.trim(), null,
+			parkPermissionService.authorizedParkIds());
 		attachContractRooms(contracts);
 		return contracts;
 	}
@@ -466,7 +471,8 @@ public class PaymentServiceImpl implements IPaymentService {
 		}
 		ContractPayment query = new ContractPayment();
 		query.setContractId(contractId);
-		List<ContractPayment> payments = paymentMapper.selectPaymentPage(null, normalizeQuery(query), false, false);
+		List<ContractPayment> payments = paymentMapper.selectPaymentPage(null, normalizeQuery(query), false, false,
+			parkPermissionService.authorizedParkIds());
 		if (payments.isEmpty()) {
 			return List.of();
 		}
@@ -498,7 +504,7 @@ public class PaymentServiceImpl implements IPaymentService {
 		if (Func.isEmpty(userId)) {
 			return 0L;
 		}
-		Long count = overdueInternalNoticeMapper.countUnread(userId);
+		Long count = overdueInternalNoticeMapper.countUnread(userId, parkPermissionService.authorizedParkIds());
 		return count == null ? 0L : count;
 	}
 
@@ -678,7 +684,8 @@ public class PaymentServiceImpl implements IPaymentService {
 			page.setRecords(List.of());
 			return page;
 		}
-		page.setRecords(overdueInternalNoticeMapper.selectNoticePage(page, userId, customerName, readStatus, "notice"));
+		page.setRecords(overdueInternalNoticeMapper.selectNoticePage(page, userId, customerName, readStatus, "notice",
+			parkPermissionService.authorizedParkIds()));
 		return page;
 	}
 
@@ -694,19 +701,20 @@ public class PaymentServiceImpl implements IPaymentService {
 	@Override
 	public IPage<PaymentNoticeVO> selectNoticePage(IPage<PaymentNoticeVO> page, PaymentNoticeVO query) {
 		PaymentNoticeVO normalized = normalizeNoticeQuery(query);
-		page.setRecords(paymentNoticeMapper.selectNoticePage(page, normalized));
+		page.setRecords(paymentNoticeMapper.selectNoticePage(page, normalized, parkPermissionService.authorizedParkIds()));
 		return page;
 	}
 
 	@Override
 	public PaymentNoticeSummaryVO noticeSummary(PaymentNoticeVO query) {
-		PaymentNoticeSummaryVO summary = paymentNoticeMapper.selectNoticeSummary(normalizeNoticeQuery(query));
+		PaymentNoticeSummaryVO summary = paymentNoticeMapper.selectNoticeSummary(normalizeNoticeQuery(query),
+			parkPermissionService.authorizedParkIds());
 		return summary == null ? new PaymentNoticeSummaryVO() : summary;
 	}
 
 	@Override
 	public List<String> noticeBuildingOptions(PaymentNoticeVO query) {
-		return paymentNoticeMapper.selectBuildingOptions(normalizeNoticeQuery(query));
+		return paymentNoticeMapper.selectBuildingOptions(normalizeNoticeQuery(query), parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
@@ -1564,7 +1572,7 @@ public class PaymentServiceImpl implements IPaymentService {
 	}
 
 	private void assertAccessible(ContractPayment payment) {
-		// 账单可见范围不再与用户部门绑定，操作权限由菜单和按钮权限控制。
+		parkPermissionService.requirePark(payment == null ? null : payment.getParkId());
 	}
 
 	private PaymentNotice getOrCreateNotice(Long paymentId, String noticeType) {

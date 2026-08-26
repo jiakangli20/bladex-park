@@ -39,6 +39,7 @@ import org.springblade.modules.park.pojo.entity.Building;
 import org.springblade.modules.park.pojo.entity.Floor;
 import org.springblade.modules.park.pojo.entity.Room;
 import org.springblade.modules.park.service.IFloorService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,22 +63,23 @@ import java.util.stream.Collectors;
 public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements IFloorService {
 
 	private final BuildingMapper buildingMapper;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public List<Floor> selectFloorList(Floor floor) {
-		List<Floor> floors = baseMapper.selectFloorList(floor);
+		List<Floor> floors = baseMapper.selectFloorList(floor, parkPermissionService.authorizedParkIds());
 		attachFloorDetail(floors, floor == null ? null : floor.getRoomStatus());
 		return floors;
 	}
 
 	@Override
 	public List<Floor> selectFloorStructureList(Floor floor) {
-		return baseMapper.selectFloorStructureList(floor);
+		return baseMapper.selectFloorStructureList(floor, parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
 	public IPage<Floor> selectFloorPage(IPage<Floor> page, Floor floor) {
-		page.setRecords(baseMapper.selectFloorPage(page, floor));
+		page.setRecords(baseMapper.selectFloorPage(page, floor, parkPermissionService.authorizedParkIds()));
 		attachFloorDetail(page.getRecords(), floor == null ? null : floor.getRoomStatus());
 		return page;
 	}
@@ -88,6 +90,7 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 		if (floor == null) {
 			throw new ServiceException("楼层不存在");
 		}
+		parkPermissionService.requirePark(floor.getParkId());
 		attachFloorDetail(List.of(floor), roomStatus);
 		return floor;
 	}
@@ -245,7 +248,7 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 
 	@Override
 	public Map<String, Object> selectFloorStatistics(Floor floor) {
-		List<Floor> floors = baseMapper.selectFloorList(floor);
+		List<Floor> floors = baseMapper.selectFloorList(floor, parkPermissionService.authorizedParkIds());
 		BigDecimal totalArea = BigDecimal.ZERO;
 		BigDecimal usedArea = BigDecimal.ZERO;
 		BigDecimal rentedArea = BigDecimal.ZERO;

@@ -18,6 +18,7 @@ import org.springblade.modules.business.pojo.entity.ServiceWorkorder;
 import org.springblade.modules.business.pojo.entity.WorkorderLog;
 import org.springblade.modules.business.service.IPropertyServiceService;
 import org.springblade.modules.business.service.IPropertyWorkorderService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +48,7 @@ public class PropertyWorkorderServiceImpl extends ServiceImpl<PropertyWorkorderM
 	private static final String SERVICE_STATUS_NORMAL = "0";
 
 	private final IPropertyServiceService propertyServiceService;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public ServiceWorkorder selectWorkorderById(Long orderId) {
@@ -54,22 +56,23 @@ public class PropertyWorkorderServiceImpl extends ServiceImpl<PropertyWorkorderM
 		if (Func.isEmpty(workorder)) {
 			throw new ServiceException("工单不存在");
 		}
+		parkPermissionService.requirePark(workorder.getParkId());
 		return workorder;
 	}
 
 	@Override
 	public List<ServiceWorkorder> selectWorkorderList(ServiceWorkorder workorder) {
-		return baseMapper.selectWorkorderList(normalizeQuery(workorder));
+		return baseMapper.selectWorkorderList(normalizeQuery(workorder), parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
 	public IPage<ServiceWorkorder> selectWorkorderPage(IPage<ServiceWorkorder> page, ServiceWorkorder workorder) {
-		return baseMapper.selectWorkorderPage(page, normalizeQuery(workorder));
+		return baseMapper.selectWorkorderPage(page, normalizeQuery(workorder), parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
 	public Map<String, Object> selectWorkorderStatistics(ServiceWorkorder workorder) {
-		Map<String, Object> statistics = baseMapper.selectWorkorderStatistics(normalizeQuery(workorder));
+		Map<String, Object> statistics = baseMapper.selectWorkorderStatistics(normalizeQuery(workorder), parkPermissionService.authorizedParkIds());
 		return Func.isEmpty(statistics) ? Collections.emptyMap() : statistics;
 	}
 
@@ -139,6 +142,7 @@ public class PropertyWorkorderServiceImpl extends ServiceImpl<PropertyWorkorderM
 		if (orderIds.isEmpty()) {
 			throw new ServiceException("请选择需要删除的工单");
 		}
+		orderIds.forEach(this::requireWritableWorkorder);
 		return baseMapper.deleteWorkorderByIds(orderIds, null) > 0;
 	}
 
@@ -267,6 +271,7 @@ public class PropertyWorkorderServiceImpl extends ServiceImpl<PropertyWorkorderM
 		if (Func.isEmpty(workorder)) {
 			throw new ServiceException("工单不存在");
 		}
+		parkPermissionService.requirePark(workorder.getParkId());
 		return workorder;
 	}
 
@@ -377,6 +382,7 @@ public class PropertyWorkorderServiceImpl extends ServiceImpl<PropertyWorkorderM
 		if (Func.isEmpty(parkId)) {
 			throw new ServiceException("请选择园区");
 		}
+		parkPermissionService.requirePark(parkId);
 		return parkId;
 	}
 

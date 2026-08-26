@@ -138,6 +138,12 @@
 
     <sql id="recordWhere">
         cwr.del_flag = '0'
+        <if test="authorizedParkIds != null">
+            <choose>
+                <when test="authorizedParkIds.size() > 0">AND cwr.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when>
+                <otherwise>AND 1 = 0</otherwise>
+            </choose>
+        </if>
         <if test="record != null">
             <if test="record.recordId != null">
                 AND cwr.record_id = #{record.recordId}

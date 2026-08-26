@@ -24,6 +24,7 @@ import org.springblade.modules.business.pojo.entity.Tag;
 import org.springblade.modules.business.service.ICustomerService;
 import org.springblade.modules.business.service.ITagService;
 import org.springblade.modules.park.pojo.entity.Park;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,31 +60,33 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 
 	private final ITagService tagService;
 	private final BusinessOpportunityMapper businessOpportunityMapper;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public Customer selectCustomerById(Long customerId) {
 		Customer customer = baseMapper.selectCustomerById(customerId);
+		if (customer != null) parkPermissionService.requirePark(customer.getParkId());
 		fillTags(customer);
 		return customer;
 	}
 
 	@Override
 	public List<Customer> selectCustomerList(Customer customer) {
-		List<Customer> list = baseMapper.selectCustomerList(normalizeQuery(customer));
+		List<Customer> list = baseMapper.selectCustomerList(normalizeQuery(customer), parkPermissionService.authorizedParkIds());
 		list.forEach(this::fillTags);
 		return list;
 	}
 
 	@Override
 	public IPage<Customer> selectCustomerPage(IPage<Customer> page, Customer customer) {
-		IPage<Customer> result = baseMapper.selectCustomerPage(page, normalizeQuery(customer));
+		IPage<Customer> result = baseMapper.selectCustomerPage(page, normalizeQuery(customer), parkPermissionService.authorizedParkIds());
 		result.getRecords().forEach(this::fillTags);
 		return result;
 	}
 
 	@Override
 	public Kv selectCustomerStatistics(Customer customer) {
-		Map<String, Object> statistics = baseMapper.selectCustomerStatistics(normalizeQuery(customer));
+		Map<String, Object> statistics = baseMapper.selectCustomerStatistics(normalizeQuery(customer), parkPermissionService.authorizedParkIds());
 		return Kv.create()
 			.set("totalCount", toLong(statistics, "totalCount"))
 			.set("settledCount", toLong(statistics, "settledCount"))
@@ -134,6 +137,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		if (Func.isEmpty(customer)) {
 			throw new ServiceException("客户信息不能为空");
 		}
+		parkPermissionService.requirePark(customer.getParkId());
 		normalizeCustomer(customer);
 		validateCustomer(customer, null);
 		customer.setCreateBy(currentUserName());
@@ -171,6 +175,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		if (Func.isEmpty(old)) {
 			throw new ServiceException("客户不存在");
 		}
+		parkPermissionService.requirePark(old.getParkId());
 		// 园区归属不允许通过普通编辑迁移，避免已关联商机、审批、合同产生跨园区关系。
 		customer.setParkId(old.getParkId());
 		normalizeCustomer(customer);
@@ -521,7 +526,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 	}
 
 	private List<Park> listPark() {
-		return baseMapper.selectListPark(null);
+		return baseMapper.selectListPark(null, parkPermissionService.authorizedParkIds());
 	}
 
 	private void validateCustomer(Customer customer, Long excludeCustomerId) {
@@ -770,6 +775,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		if (Func.isEmpty(customer)) {
 			throw new ServiceException("客户不存在");
 		}
+		parkPermissionService.requirePark(customer.getParkId());
 		return customer;
 	}
 

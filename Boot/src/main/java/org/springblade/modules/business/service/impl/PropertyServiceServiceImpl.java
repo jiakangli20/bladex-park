@@ -17,6 +17,7 @@ import org.springblade.modules.business.pojo.entity.PropertyService;
 import org.springblade.modules.business.service.IPropertyServiceService;
 import org.springblade.modules.park.pojo.entity.Park;
 import org.springblade.modules.park.service.IParkService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,7 @@ public class PropertyServiceServiceImpl extends ServiceImpl<PropertyServiceMappe
 	private static final String STATUS_DISABLED = "1";
 	private static final String DEL_FLAG_NORMAL = "0";
 	private final IParkService parkService;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public PropertyService selectPropertyServiceById(Long serviceId) {
@@ -43,17 +45,23 @@ public class PropertyServiceServiceImpl extends ServiceImpl<PropertyServiceMappe
 		if (Func.isEmpty(service)) {
 			throw new ServiceException("服务项不存在");
 		}
+		parkPermissionService.requirePark(service.getParkId());
 		return service;
 	}
 
 	@Override
 	public List<PropertyService> selectPropertyServiceList(PropertyService service) {
-		return baseMapper.selectPropertyServiceList(normalizeQuery(service));
+		return baseMapper.selectPropertyServiceList(normalizeQuery(service), parkPermissionService.authorizedParkIds());
+	}
+
+	@Override
+	public List<PropertyService> selectPublicPropertyServiceList(PropertyService service) {
+		return baseMapper.selectPropertyServiceList(normalizeQuery(service), null);
 	}
 
 	@Override
 	public IPage<PropertyService> selectPropertyServicePage(IPage<PropertyService> page, PropertyService service) {
-		return baseMapper.selectPropertyServicePage(page, normalizeQuery(service));
+		return baseMapper.selectPropertyServicePage(page, normalizeQuery(service), parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
@@ -97,6 +105,7 @@ public class PropertyServiceServiceImpl extends ServiceImpl<PropertyServiceMappe
 		if (serviceIds.isEmpty()) {
 			throw new ServiceException("请选择需要删除的服务项");
 		}
+		serviceIds.forEach(this::requireWritableService);
 		return baseMapper.deletePropertyServiceByIds(serviceIds, null) > 0;
 	}
 
@@ -105,6 +114,7 @@ public class PropertyServiceServiceImpl extends ServiceImpl<PropertyServiceMappe
 		if (Func.isEmpty(service)) {
 			throw new ServiceException("服务项不存在");
 		}
+		parkPermissionService.requirePark(service.getParkId());
 		return service;
 	}
 
@@ -117,6 +127,7 @@ public class PropertyServiceServiceImpl extends ServiceImpl<PropertyServiceMappe
 		if (Func.isEmpty(parkId)) {
 			throw new ServiceException("请选择园区");
 		}
+		parkPermissionService.requirePark(parkId);
 		Park park = parkService.getById(parkId);
 		if (Func.isEmpty(park) || !STATUS_NORMAL.equals(park.getStatus())) {
 			throw new ServiceException("所选园区不存在或未启用");

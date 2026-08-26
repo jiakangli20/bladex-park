@@ -115,6 +115,12 @@
 
     <sql id="buildingWhere">
         <where>
+            <if test="authorizedParkIds != null">
+                <choose>
+                    <when test="authorizedParkIds.size() > 0">AND b.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when>
+                    <otherwise>AND 1 = 0</otherwise>
+                </choose>
+            </if>
             <if test="building.id != null">AND b.id = #{building.id}</if>
             <if test="building.parkId != null">AND b.park_id = #{building.parkId}</if>
             <if test="building.name != null and building.name != ''">AND b.name LIKE CONCAT('%', #{building.name}, '%')</if>

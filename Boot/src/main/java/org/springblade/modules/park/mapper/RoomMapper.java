@@ -55,7 +55,7 @@ public interface RoomMapper extends BaseMapper<Room> {
 	 * @param room 查询条件
 	 * @return 房源集合
 	 */
-	List<RoomVO> selectRoomList(@Param("room") Room room);
+	List<RoomVO> selectRoomList(@Param("room") Room room, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 查询房源分页
@@ -64,7 +64,7 @@ public interface RoomMapper extends BaseMapper<Room> {
 	 * @param room 查询条件
 	 * @return 房源集合
 	 */
-	List<RoomVO> selectRoomPage(IPage page, @Param("room") Room room);
+	List<RoomVO> selectRoomPage(IPage page, @Param("room") Room room, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 汇总指定楼层房源面积

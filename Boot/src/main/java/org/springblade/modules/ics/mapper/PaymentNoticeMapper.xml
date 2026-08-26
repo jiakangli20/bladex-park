@@ -167,6 +167,15 @@
 
 	<sql id="noticeConditions">
 		AND COALESCE(p.direction, 'receivable') = 'receivable'
+		<if test="authorizedParkIds != null">
+			<choose>
+				<when test="authorizedParkIds.size() > 0">
+					AND p.park_id IN
+					<foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+				</when>
+				<otherwise>AND 1 = 0</otherwise>
+			</choose>
+		</if>
 		<if test="query != null and query.categoryQuery != null and query.categoryQuery == 'payment'">
 			AND (p.pay_deadline &gt;= CURDATE() OR p.pay_status = '1')
 		</if>

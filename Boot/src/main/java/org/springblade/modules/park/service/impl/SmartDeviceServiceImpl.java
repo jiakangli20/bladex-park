@@ -19,6 +19,7 @@ import org.springblade.modules.park.pojo.entity.SmartDevice;
 import org.springblade.modules.park.service.IBuildingService;
 import org.springblade.modules.park.service.IRoomService;
 import org.springblade.modules.park.service.ISmartDeviceService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,21 +43,23 @@ public class SmartDeviceServiceImpl extends ServiceImpl<SmartDeviceMapper, Smart
 
 	private final IBuildingService buildingService;
 	private final IRoomService roomService;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public SmartDevice selectDeviceById(Long deviceId) {
 		SmartDevice device = baseMapper.selectDeviceById(deviceId);
+		if (device != null) parkPermissionService.requirePark(device.getParkId());
 		return device;
 	}
 
 	@Override
 	public IPage<SmartDevice> selectDevicePage(IPage<SmartDevice> page, SmartDevice device) {
-		return page.setRecords(baseMapper.selectDevicePage(page, device));
+		return page.setRecords(baseMapper.selectDevicePage(page, device, parkPermissionService.authorizedParkIds()));
 	}
 
 	@Override
 	public Kv selectDeviceStatistics(SmartDevice device) {
-		Map<String, Object> statistics = baseMapper.selectDeviceStatistics(device);
+		Map<String, Object> statistics = baseMapper.selectDeviceStatistics(device, parkPermissionService.authorizedParkIds());
 		return Kv.create()
 			.set("totalCount", toLong(statistics, "totalCount"))
 			.set("onlineCount", toLong(statistics, "onlineCount"))
@@ -66,12 +69,12 @@ public class SmartDeviceServiceImpl extends ServiceImpl<SmartDeviceMapper, Smart
 
 	@Override
 	public List<Map<String, Object>> selectDeviceTypeStatistics() {
-		return baseMapper.selectDeviceTypeStatistics(null);
+		return baseMapper.selectDeviceTypeStatistics(null, parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
 	public List<Map<String, Object>> selectAllParkDeviceTypeStatistics() {
-		return baseMapper.selectDeviceTypeStatistics(null);
+		return baseMapper.selectDeviceTypeStatistics(null, parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
@@ -154,6 +157,7 @@ public class SmartDeviceServiceImpl extends ServiceImpl<SmartDeviceMapper, Smart
 			throw new ServiceException("设备编码已存在");
 		}
 		resolveLocation(device);
+		parkPermissionService.requirePark(device.getParkId());
 	}
 
 	private void normalizeDevice(SmartDevice device) {

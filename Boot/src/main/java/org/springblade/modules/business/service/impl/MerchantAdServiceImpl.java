@@ -21,7 +21,7 @@ import org.springblade.modules.business.service.IMerchantAdService;
 import org.springblade.modules.business.service.IMerchantService;
 import org.springblade.modules.miniapp.mapper.MerchantAdAuditLogMapper;
 import org.springblade.modules.miniapp.pojo.entity.MerchantAdAuditLog;
-import org.springblade.modules.miniapp.service.AdminParkScopeService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,7 +52,7 @@ public class MerchantAdServiceImpl extends ServiceImpl<MerchantAdMapper, Merchan
 
 	private final IMerchantService merchantService;
 	private final MerchantAdAuditLogMapper auditLogMapper;
-	private final AdminParkScopeService adminParkScopeService;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public MerchantAd selectAdById(Long adId) {
@@ -60,12 +60,13 @@ public class MerchantAdServiceImpl extends ServiceImpl<MerchantAdMapper, Merchan
 		if (Func.isEmpty(ad)) {
 			throw new ServiceException("广告不存在");
 		}
+		parkPermissionService.requirePark(ad.getParkId());
 		return ad;
 	}
 
 	@Override
 	public List<MerchantAd> selectAdList(MerchantAd ad) {
-		return baseMapper.selectAdList(normalizeQuery(ad));
+		return baseMapper.selectAdList(normalizeQuery(ad), parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
@@ -78,12 +79,12 @@ public class MerchantAdServiceImpl extends ServiceImpl<MerchantAdMapper, Merchan
 
 	@Override
 	public IPage<MerchantAd> selectAdPage(IPage<MerchantAd> page, MerchantAd ad) {
-		return baseMapper.selectAdPage(page, normalizeQuery(ad));
+		return baseMapper.selectAdPage(page, normalizeQuery(ad), parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
 	public Kv selectAdStatistics(MerchantAd ad) {
-		Map<String, Object> statistics = baseMapper.selectAdStatistics(normalizeQuery(ad));
+		Map<String, Object> statistics = baseMapper.selectAdStatistics(normalizeQuery(ad), parkPermissionService.authorizedParkIds());
 		return Kv.create()
 			.set("totalCount", toLong(statistics, "totalCount"))
 			.set("onlineCount", toLong(statistics, "onlineCount"))
@@ -184,7 +185,7 @@ public class MerchantAdServiceImpl extends ServiceImpl<MerchantAdMapper, Merchan
 			throw new ServiceException("广告状态不正确");
 		}
 		MerchantAd old = lockAd(adId);
-		adminParkScopeService.assertAccess(old.getParkId());
+		parkPermissionService.requirePark(old.getParkId());
 		if (Objects.equals(old.getStatus(), status)) {
 			throw new ServiceException(STATUS_ONLINE.equals(status) ? "广告已上架" : "广告已下架");
 		}
@@ -210,7 +211,7 @@ public class MerchantAdServiceImpl extends ServiceImpl<MerchantAdMapper, Merchan
 			throw new ServiceException("请填写驳回原因");
 		}
 		MerchantAd old = lockAd(adId);
-		adminParkScopeService.assertAccess(old.getParkId());
+		parkPermissionService.requirePark(old.getParkId());
 		if (!AUDIT_PENDING.equals(old.getAuditStatus())) {
 			throw new ServiceException("仅待审核广告可以执行审核");
 		}
@@ -353,12 +354,12 @@ public class MerchantAdServiceImpl extends ServiceImpl<MerchantAdMapper, Merchan
 		MerchantAd query = new MerchantAd();
 		query.setParkId(parkId);
 		query.setCustomerId(customerId);
-		return baseMapper.selectAdList(query);
+		return baseMapper.selectAdList(query, null);
 	}
 
 	@Override
 	public MerchantAd selectCustomerAdById(Long adId, Long parkId, Long customerId) {
-		MerchantAd ad = selectAdById(adId);
+		MerchantAd ad = baseMapper.selectAdById(adId);
 		if (!Objects.equals(ad.getParkId(), parkId) || !Objects.equals(ad.getCustomerId(), customerId)) {
 			throw new ServiceException("广告不存在或无权访问");
 		}
@@ -370,7 +371,7 @@ public class MerchantAdServiceImpl extends ServiceImpl<MerchantAdMapper, Merchan
 		if (Func.isEmpty(ad)) {
 			throw new ServiceException("广告不存在");
 		}
-		adminParkScopeService.assertAccess(ad.getParkId());
+		parkPermissionService.requirePark(ad.getParkId());
 		return ad;
 	}
 
@@ -432,7 +433,7 @@ public class MerchantAdServiceImpl extends ServiceImpl<MerchantAdMapper, Merchan
 			if (Func.isEmpty(ad.getMerchantId())) {
 				throw new ServiceException("请选择关联商户");
 			}
-			Merchant merchant = merchantService.selectMerchantById(ad.getMerchantId());
+			Merchant merchant = merchantService.selectPublicMerchantById(ad.getMerchantId());
 			if (Func.isEmpty(merchant)) {
 				throw new ServiceException("关联商户不存在");
 			}
@@ -474,7 +475,7 @@ public class MerchantAdServiceImpl extends ServiceImpl<MerchantAdMapper, Merchan
 		if (Func.isEmpty(parkId)) {
 			throw new ServiceException("请选择园区");
 		}
-		adminParkScopeService.assertAccess(parkId);
+		parkPermissionService.requirePark(parkId);
 		return parkId;
 	}
 

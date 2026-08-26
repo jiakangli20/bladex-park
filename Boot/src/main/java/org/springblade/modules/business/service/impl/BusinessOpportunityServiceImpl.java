@@ -5,7 +5,9 @@
 package org.springblade.modules.business.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ import org.springblade.modules.business.pojo.entity.Tag;
 import org.springblade.modules.business.pojo.entity.Customer;
 import org.springblade.modules.business.service.IBusinessOpportunityService;
 import org.springblade.modules.business.service.ITagService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springblade.modules.approval.service.impl.WorkflowApprovalTraceService;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractTemplateRenderService;
@@ -96,6 +99,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	private final ContractDocumentPreviewService contractDocumentPreviewService;
 	private final BackgroundInvestigationMapper backgroundInvestigationMapper;
 	private final CustomerMapper customerMapper;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public BusinessOpportunity selectBusinessOpportunityById(Long opportunityId) {
@@ -113,26 +117,27 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 
 	@Override
 	public List<BusinessOpportunity> selectBusinessOpportunityList(BusinessOpportunity opportunity) {
-		List<BusinessOpportunity> list = baseMapper.selectBusinessOpportunityList(normalizeQuery(opportunity));
+		List<BusinessOpportunity> list = baseMapper.selectBusinessOpportunityList(normalizeQuery(opportunity), parkPermissionService.authorizedParkIds());
 		list.forEach(item -> item.setTags(selectTagsByOpportunityId(item.getOpportunityId())));
 		return list;
 	}
 
 	@Override
 	public IPage<BusinessOpportunity> selectBusinessOpportunityPage(IPage<BusinessOpportunity> page, BusinessOpportunity opportunity) {
-		IPage<BusinessOpportunity> result = baseMapper.selectBusinessOpportunityPage(page, normalizeQuery(opportunity));
+		IPage<BusinessOpportunity> result = baseMapper.selectBusinessOpportunityPage(page, normalizeQuery(opportunity), parkPermissionService.authorizedParkIds());
 		result.getRecords().forEach(item -> item.setTags(selectTagsByOpportunityId(item.getOpportunityId())));
 		return result;
 	}
 
 	@Override
 	public IPage<BusinessOpportunity> selectBackgroundInvestigationPage(IPage<BusinessOpportunity> page, BusinessOpportunity opportunity) {
-		return baseMapper.selectBackgroundInvestigationPage(page, normalizeQuery(opportunity));
+		return baseMapper.selectBackgroundInvestigationPage(page, normalizeQuery(opportunity), parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean insertBusinessOpportunity(BusinessOpportunity opportunity) {
+		parkPermissionService.requirePark(opportunity == null ? null : opportunity.getParkId());
 		validateRequiredContactMaterials(opportunity);
 		validateUniqueEnterpriseName(opportunity);
 		opportunity.setCreateBy(currentUserName());
@@ -426,13 +431,17 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (StringUtil.isBlank(enterpriseName)) {
 			throw new ServiceException("请先填写企业名称");
 		}
+		if (parkId != null) parkPermissionService.requirePark(parkId);
+		List<Long> authorizedParkIds = parkPermissionService.authorizedParkIds();
 		Long scopedParkId = parkId;
-		BusinessOpportunity opportunity = baseMapper.selectOne(Wrappers.<BusinessOpportunity>lambdaQuery()
+		var opportunityQuery = Wrappers.<BusinessOpportunity>lambdaQuery()
 			.eq(BusinessOpportunity::getEnterpriseName, enterpriseName.trim())
 			.eq(Func.isNotEmpty(scopedParkId), BusinessOpportunity::getParkId, scopedParkId)
 			.eq(BusinessOpportunity::getDelFlag, DEL_FLAG_NORMAL)
 			.orderByDesc(BusinessOpportunity::getCreateTime)
-			.last("limit 1"));
+			.last("limit 1");
+		applyParkScope(opportunityQuery, BusinessOpportunity::getParkId, authorizedParkIds);
+		BusinessOpportunity opportunity = baseMapper.selectOne(opportunityQuery);
 		if (opportunity != null) {
 			scopedParkId = opportunity.getParkId();
 		}
@@ -447,15 +456,19 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		}
 		String enterpriseName = investigation.getEnterpriseName().trim();
 		Long scopedParkId = investigation.getParkId();
+		if (scopedParkId != null) parkPermissionService.requirePark(scopedParkId);
+		List<Long> authorizedParkIds = parkPermissionService.authorizedParkIds();
 		BusinessOpportunity opportunity = investigation.getOpportunityId() == null ? null
 			: requireAccessibleOpportunity(investigation.getOpportunityId());
 		if (opportunity == null) {
-			opportunity = baseMapper.selectOne(Wrappers.<BusinessOpportunity>lambdaQuery()
+			var opportunityQuery = Wrappers.<BusinessOpportunity>lambdaQuery()
 				.eq(BusinessOpportunity::getEnterpriseName, enterpriseName)
 				.eq(Func.isNotEmpty(scopedParkId), BusinessOpportunity::getParkId, scopedParkId)
 				.eq(BusinessOpportunity::getDelFlag, DEL_FLAG_NORMAL)
 				.orderByDesc(BusinessOpportunity::getCreateTime)
-				.last("limit 1"));
+				.last("limit 1");
+			applyParkScope(opportunityQuery, BusinessOpportunity::getParkId, authorizedParkIds);
+			opportunity = baseMapper.selectOne(opportunityQuery);
 		}
 		if (opportunity != null) {
 			scopedParkId = opportunity.getParkId();
@@ -471,18 +484,21 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 			if (customer == null || !DEL_FLAG_NORMAL.equals(customer.getDelFlag())) {
 				throw new ServiceException("关联客户不存在");
 			}
+			parkPermissionService.requirePark(customer.getParkId());
 			if (opportunity != null && !java.util.Objects.equals(opportunity.getParkId(), customer.getParkId())) {
 				throw new ServiceException("商机与关联客户必须属于同一园区");
 			}
 			scopedParkId = customer.getParkId();
 		}
 		if (investigation.getCustomerId() == null) {
-			Customer customer = customerMapper.selectOne(Wrappers.<Customer>lambdaQuery()
+			var customerQuery = Wrappers.<Customer>lambdaQuery()
 				.eq(Customer::getEnterpriseName, enterpriseName)
 				.eq(Func.isNotEmpty(scopedParkId), Customer::getParkId, scopedParkId)
 				.eq(Customer::getDelFlag, DEL_FLAG_NORMAL)
 				.orderByDesc(Customer::getCreateTime)
-				.last("limit 1"));
+				.last("limit 1");
+			applyParkScope(customerQuery, Customer::getParkId, authorizedParkIds);
+			Customer customer = customerMapper.selectOne(customerQuery);
 			if (customer != null) {
 				scopedParkId = customer.getParkId();
 				investigation.setCustomerId(customer.getCustomerId());
@@ -491,6 +507,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (Func.isEmpty(scopedParkId)) {
 			throw new ServiceException("未找到该企业所属园区，无法保存核验记录");
 		}
+		parkPermissionService.requirePark(scopedParkId);
 		investigation.setInvestigationId(null);
 		investigation.setParkId(scopedParkId);
 		investigation.setEnterpriseName(enterpriseName);
@@ -523,11 +540,13 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 	}
 
 	private Map<String, Object> buildBackgroundInvestigationResult(String enterpriseName, Long parkId, BusinessOpportunity opportunity) {
-		List<BackgroundInvestigation> history = backgroundInvestigationMapper.selectList(
-			Wrappers.<BackgroundInvestigation>lambdaQuery()
-				.eq(BackgroundInvestigation::getEnterpriseName, enterpriseName)
-				.eq(Func.isNotEmpty(parkId), BackgroundInvestigation::getParkId, parkId)
-				.orderByDesc(BackgroundInvestigation::getCreateTime, BackgroundInvestigation::getInvestigationId));
+		if (parkId != null) parkPermissionService.requirePark(parkId);
+		var historyQuery = Wrappers.<BackgroundInvestigation>lambdaQuery()
+			.eq(BackgroundInvestigation::getEnterpriseName, enterpriseName)
+			.eq(Func.isNotEmpty(parkId), BackgroundInvestigation::getParkId, parkId)
+			.orderByDesc(BackgroundInvestigation::getCreateTime, BackgroundInvestigation::getInvestigationId);
+		applyParkScope(historyQuery, BackgroundInvestigation::getParkId, parkPermissionService.authorizedParkIds());
+		List<BackgroundInvestigation> history = backgroundInvestigationMapper.selectList(historyQuery);
 		BackgroundInvestigation latest = history.isEmpty() ? null : history.get(0);
 		Map<String, Object> result = new LinkedHashMap<>();
 		result.put("found", latest != null);
@@ -548,6 +567,14 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		result.put("safetySupervisionList", safetySupervisionList);
 		result.put("relatedRiskList", safetySupervisionList);
 		return result;
+	}
+
+	private <T> void applyParkScope(LambdaQueryWrapper<T> query,
+								 SFunction<T, Long> parkColumn,
+								 List<Long> authorizedParkIds) {
+		if (authorizedParkIds == null) return;
+		if (authorizedParkIds.isEmpty()) query.apply("1 = 0");
+		else query.in(parkColumn, authorizedParkIds);
 	}
 
 	private String normalizeRiskFlag(String value) {
@@ -894,6 +921,7 @@ public class BusinessOpportunityServiceImpl extends ServiceImpl<BusinessOpportun
 		if (Func.isEmpty(opportunity)) {
 			throw new ServiceException("商机不存在");
 		}
+		parkPermissionService.requirePark(opportunity.getParkId());
 		return opportunity;
 	}
 

@@ -25,13 +25,15 @@ public interface BusinessOpportunityMapper extends BaseMapper<BusinessOpportunit
 
 	BusinessOpportunity selectBusinessOpportunityByIdForUpdate(@Param("opportunityId") Long opportunityId);
 
-	List<BusinessOpportunity> selectBusinessOpportunityList(@Param("opportunity") BusinessOpportunity opportunity);
+	List<BusinessOpportunity> selectBusinessOpportunityList(@Param("opportunity") BusinessOpportunity opportunity, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	IPage<BusinessOpportunity> selectBusinessOpportunityPage(IPage<BusinessOpportunity> page,
-														 @Param("opportunity") BusinessOpportunity opportunity);
+												 @Param("opportunity") BusinessOpportunity opportunity,
+												 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	IPage<BusinessOpportunity> selectBackgroundInvestigationPage(IPage<BusinessOpportunity> page,
-															 @Param("opportunity") BusinessOpportunity opportunity);
+													 @Param("opportunity") BusinessOpportunity opportunity,
+													 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	int insertBusinessOpportunity(BusinessOpportunity opportunity);
 

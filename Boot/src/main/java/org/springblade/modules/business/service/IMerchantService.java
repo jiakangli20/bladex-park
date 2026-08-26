@@ -20,7 +20,11 @@ public interface IMerchantService extends IService<Merchant> {
 
 	Merchant selectMerchantById(Long merchantId);
 
+	Merchant selectPublicMerchantById(Long merchantId);
+
 	List<Merchant> selectMerchantList(Merchant merchant);
+
+	List<Merchant> selectPublicMerchantList(Merchant merchant);
 
 	IPage<Merchant> selectMerchantPage(IPage<Merchant> page, Merchant merchant);
 

@@ -57,6 +57,7 @@ import org.springblade.modules.contract.service.IContractService;
 import org.springblade.modules.park.mapper.RoomMapper;
 import org.springblade.modules.park.mapper.BuildingMapper;
 import org.springblade.modules.park.mapper.ParkMapper;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springblade.modules.park.pojo.entity.Building;
 import org.springblade.modules.park.pojo.entity.Park;
 import org.springblade.modules.park.pojo.entity.Room;
@@ -133,15 +134,16 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	private final BuildingMapper buildingMapper;
 	private final CustomerMapper customerMapper;
 	private final TaskService taskService;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public IPage<Contract> selectContractPage(IPage<Contract> page, Contract contract) {
-		return page.setRecords(baseMapper.selectContractPage(page, contract));
+		return page.setRecords(baseMapper.selectContractPage(page, contract, parkPermissionService.authorizedParkIds()));
 	}
 
 	@Override
 	public List<ContractExcel> exportContract(Contract contract) {
-		return baseMapper.selectContractList(contract).stream()
+		return baseMapper.selectContractList(contract, parkPermissionService.authorizedParkIds()).stream()
 			.map(this::toContractExcel)
 			.toList();
 	}
@@ -350,6 +352,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 	@Override
 	public Contract selectContractById(Long contractId) {
 		Contract contract = baseMapper.selectContractById(contractId);
+		if (contract != null) parkPermissionService.requirePark(contract.getParkId());
 		return contract;
 	}
 
@@ -561,18 +564,19 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 
 	@Override
 	public IPage<Contract> selectExpiringPage(IPage<Contract> page, Contract contract) {
-		return page.setRecords(baseMapper.selectExpiringPage(page, contract));
+		return page.setRecords(baseMapper.selectExpiringPage(page, contract, parkPermissionService.authorizedParkIds()));
 	}
 
 	@Override
 	public ContractExpirySummaryVO expiringSummary(Contract contract) {
-		ContractExpirySummaryVO summary = baseMapper.selectExpiringSummary(contract);
+		ContractExpirySummaryVO summary = baseMapper.selectExpiringSummary(contract, parkPermissionService.authorizedParkIds());
 		return summary == null ? new ContractExpirySummaryVO() : summary;
 	}
 
 	@Override
 	public ContractStatsVO stats(Long parkId) {
-		ContractStatsVO stats = baseMapper.selectStats(parkId);
+		if (parkId != null) parkPermissionService.requirePark(parkId);
+		ContractStatsVO stats = baseMapper.selectStats(parkId, parkPermissionService.authorizedParkIds());
 		return normalizeStats(stats);
 	}
 
@@ -607,7 +611,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 
 	@Override
 	public IPage<ContractPayment> selectPaymentPage(IPage<ContractPayment> page, ContractPayment payment) {
-		return page.setRecords(contractPaymentMapper.selectPaymentPage(page, payment));
+		return page.setRecords(contractPaymentMapper.selectPaymentPage(page, payment, parkPermissionService.authorizedParkIds()));
 	}
 
 	@Override
@@ -892,6 +896,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		if (contract == null) {
 			throw new ServiceException("合同不存在");
 		}
+		parkPermissionService.requirePark(contract.getParkId());
 		return contract;
 	}
 
@@ -1188,6 +1193,7 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
 		if (contract.getParkId() == null || contract.getParkId() <= 0) {
 			throw new ServiceException("请选择所属园区");
 		}
+		parkPermissionService.requirePark(contract.getParkId());
 		if (emptyCount(baseMapper.existsPark(contract.getParkId()))) {
 			throw new ServiceException("所属园区不存在");
 		}

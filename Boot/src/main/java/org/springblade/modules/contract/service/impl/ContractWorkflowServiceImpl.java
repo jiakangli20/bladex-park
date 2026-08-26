@@ -51,6 +51,7 @@ import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractNoticeService;
 import org.springblade.modules.contract.service.IContractService;
 import org.springblade.modules.contract.service.IContractWorkflowService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springblade.plugin.workflow.core.constant.WfProcessConstant;
 import org.springblade.plugin.workflow.core.user.WfUser;
 import org.springblade.plugin.workflow.process.dto.WfNoticeDTO;
@@ -161,10 +162,11 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 	private final IContractNoticeService contractNoticeService;
 	private final IContractService contractService;
 	private final TaskService taskService;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public IPage<ContractWorkflowRecord> selectRecordPage(IPage<ContractWorkflowRecord> page, ContractWorkflowRecord record) {
-		return page.setRecords(baseMapper.selectRecordPage(page, record).stream()
+		return page.setRecords(baseMapper.selectRecordPage(page, record, parkPermissionService.authorizedParkIds()).stream()
 			.map(this::enrichProcessAttachments)
 			.toList());
 	}
@@ -295,6 +297,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		if (record == null) {
 			return;
 		}
+		validateParkAccess(record, notice);
 		WfNotice.Type type = notice.getType();
 		if (START == type) {
 			validatePaymentApplicationPrerequisites(record);
@@ -408,6 +411,21 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 	private void assertSameBusinessId(String businessName, Long suppliedId, Long authoritativeId) {
 		if (suppliedId != null && authoritativeId != null && !suppliedId.equals(authoritativeId)) {
 			throw new ServiceException("流程" + businessName + "ID与业务主键不一致");
+		}
+	}
+
+	private void validateParkAccess(ContractWorkflowRecord record, WfNoticeDTO notice) {
+		Long parkId = record.getParkId();
+		if (parkId == null) {
+			throw new ServiceException("合同流程关联业务未设置所属园区");
+		}
+		parkPermissionService.requirePark(parkId);
+		Long suppliedParkId = getLong(notice.getVariables(), "parkId");
+		if (START == notice.getType() && suppliedParkId == null) {
+			throw new ServiceException("合同流程缺少所属园区");
+		}
+		if (suppliedParkId != null && !Objects.equals(suppliedParkId, parkId)) {
+			throw new ServiceException("合同流程园区与关联业务不一致");
 		}
 	}
 
@@ -1360,6 +1378,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 		if (contract == null) {
 			throw new ServiceException("合同不存在");
 		}
+		parkPermissionService.requirePark(contract.getParkId());
 	}
 
 	private void assertRecordAccessible(ContractWorkflowRecord record) {
@@ -1370,6 +1389,7 @@ public class ContractWorkflowServiceImpl extends ServiceImpl<ContractWorkflowRec
 			assertContractAccessible(record.getContractId());
 			return;
 		}
+		parkPermissionService.requirePark(record.getParkId());
 	}
 
 	private String currentUserName(WfNoticeDTO notice) {

@@ -20,9 +20,11 @@ public interface ApprovalFlowMapper extends BaseMapper<ApprovalFlow> {
 
 	ApprovalFlow selectApprovalFlowById(@Param("flowId") Long flowId);
 
-	List<ApprovalFlow> selectApprovalFlowList(@Param("flow") ApprovalFlow flow);
+	List<ApprovalFlow> selectApprovalFlowList(@Param("flow") ApprovalFlow flow,
+											 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	IPage<ApprovalFlow> selectApprovalFlowPage(IPage<ApprovalFlow> page, @Param("flow") ApprovalFlow flow);
+	IPage<ApprovalFlow> selectApprovalFlowPage(IPage<ApprovalFlow> page, @Param("flow") ApprovalFlow flow,
+											 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	int insertApprovalFlow(ApprovalFlow flow);
 

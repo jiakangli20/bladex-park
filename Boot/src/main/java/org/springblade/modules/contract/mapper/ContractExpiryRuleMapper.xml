@@ -17,6 +17,23 @@
                   AND FIND_IN_SET(CAST(b.id AS CHAR), REPLACE(COALESCE(er.building_ids, ''), 'building_', '')) &gt; 0
             )
         </if>
+        <if test="authorizedParkIds != null">
+            <choose>
+                <when test="authorizedParkIds.size() > 0">
+                    AND EXISTS (
+                        SELECT 1 FROM ics_building b
+                        WHERE b.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+                          AND FIND_IN_SET(CAST(b.id AS CHAR), REPLACE(COALESCE(er.building_ids, ''), 'building_', '')) &gt; 0
+                    )
+                    AND NOT EXISTS (
+                        SELECT 1 FROM ics_building b
+                        WHERE b.park_id NOT IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+                          AND FIND_IN_SET(CAST(b.id AS CHAR), REPLACE(COALESCE(er.building_ids, ''), 'building_', '')) &gt; 0
+                    )
+                </when>
+                <otherwise>AND 1 = 0</otherwise>
+            </choose>
+        </if>
         ORDER BY er.create_time DESC, er.rule_id DESC
     </select>
 

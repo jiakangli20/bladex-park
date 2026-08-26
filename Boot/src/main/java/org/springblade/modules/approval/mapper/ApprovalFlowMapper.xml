@@ -36,6 +36,16 @@
 	<sql id="approvalFlowWhere">
 		<where>
 			status != '9'
+			<if test="authorizedParkIds != null">
+				<choose>
+					<when test="authorizedParkIds.size() > 0">
+						and (park_id in <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+						<if test="flow != null and flow.includeGlobal != null and flow.includeGlobal">or park_id = 0 or park_id is null</if>)
+					</when>
+					<when test="flow != null and flow.includeGlobal != null and flow.includeGlobal">and (park_id = 0 or park_id is null)</when>
+					<otherwise>and 1 = 0</otherwise>
+				</choose>
+			</if>
 			<if test="flow != null">
 				<choose>
 					<when test="flow.includeGlobal != null and flow.includeGlobal and flow.parkId != null">

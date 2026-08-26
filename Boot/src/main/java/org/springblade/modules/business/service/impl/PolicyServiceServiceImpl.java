@@ -6,6 +6,7 @@ package org.springblade.modules.business.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import lombok.RequiredArgsConstructor;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.support.Kv;
@@ -15,6 +16,7 @@ import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.business.mapper.PolicyServiceMapper;
 import org.springblade.modules.business.pojo.entity.PolicyService;
 import org.springblade.modules.business.service.IPolicyServiceService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +31,7 @@ import java.util.stream.Collectors;
  * @author BladeX
  */
 @Service
+@RequiredArgsConstructor
 public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, PolicyService> implements IPolicyServiceService {
 
 	private static final String STATUS_PUBLISHED = "0";
@@ -39,6 +42,7 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 	private static final String PERMANENT_YES = "0";
 	private static final String PERMANENT_NO = "1";
 	private static final String DEL_FLAG_NORMAL = "0";
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public PolicyService selectPolicyById(Long policyId) {
@@ -46,13 +50,14 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 		if (Func.isEmpty(policy)) {
 			throw new ServiceException("政策服务不存在");
 		}
+		parkPermissionService.requirePark(policy.getParkId());
 		return policy;
 	}
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public PolicyService selectMiniAppPolicyById(Long policyId) {
-		PolicyService policy = selectPolicyById(policyId);
+		PolicyService policy = baseMapper.selectPolicyById(policyId);
 		if (Func.isEmpty(policy) || !STATUS_PUBLISHED.equals(policy.getServiceStatus()) || !ONLINE_YES.equals(policy.getOnlineFlag())) {
 			throw new ServiceException("政策服务不存在或未上架");
 		}
@@ -65,18 +70,23 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 	}
 
 	@Override
+	public List<PolicyService> selectPublicPolicyList(PolicyService policy) {
+		return baseMapper.selectPolicyList(normalizeQuery(policy), null);
+	}
+
+	@Override
 	public List<PolicyService> selectPolicyList(PolicyService policy) {
-		return baseMapper.selectPolicyList(normalizeQuery(policy));
+		return baseMapper.selectPolicyList(normalizeQuery(policy), parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
 	public IPage<PolicyService> selectPolicyPage(IPage<PolicyService> page, PolicyService policy) {
-		return baseMapper.selectPolicyPage(page, normalizeQuery(policy));
+		return baseMapper.selectPolicyPage(page, normalizeQuery(policy), parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
 	public Kv selectPolicyStatistics(PolicyService policy) {
-		Map<String, Object> statistics = baseMapper.selectPolicyStatistics(normalizeQuery(policy));
+		Map<String, Object> statistics = baseMapper.selectPolicyStatistics(normalizeQuery(policy), parkPermissionService.authorizedParkIds());
 		return Kv.create()
 			.set("totalCount", toLong(statistics, "totalCount"))
 			.set("publishedCount", toLong(statistics, "publishedCount"))
@@ -132,6 +142,7 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 		if (policyIds.isEmpty()) {
 			throw new ServiceException("请选择需要删除的政策服务");
 		}
+		policyIds.forEach(this::requireWritablePolicy);
 		return baseMapper.deletePolicyByIds(policyIds, null, currentUserName()) > 0;
 	}
 
@@ -174,6 +185,7 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 		if (Func.isEmpty(policy)) {
 			throw new ServiceException("政策服务不存在");
 		}
+		parkPermissionService.requirePark(policy.getParkId());
 		return policy;
 	}
 
@@ -214,6 +226,7 @@ public class PolicyServiceServiceImpl extends ServiceImpl<PolicyServiceMapper, P
 		if (Func.isEmpty(parkId)) {
 			throw new ServiceException("请选择园区");
 		}
+		parkPermissionService.requirePark(parkId);
 		return parkId;
 	}
 

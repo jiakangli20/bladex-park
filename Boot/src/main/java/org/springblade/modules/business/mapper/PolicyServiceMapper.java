@@ -21,11 +21,14 @@ public interface PolicyServiceMapper extends BaseMapper<PolicyService> {
 
 	PolicyService selectPolicyById(@Param("policyId") Long policyId);
 
-	List<PolicyService> selectPolicyList(@Param("policy") PolicyService policy);
+	List<PolicyService> selectPolicyList(@Param("policy") PolicyService policy,
+										 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	IPage<PolicyService> selectPolicyPage(IPage<PolicyService> page, @Param("policy") PolicyService policy);
+	IPage<PolicyService> selectPolicyPage(IPage<PolicyService> page, @Param("policy") PolicyService policy,
+										 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	Map<String, Object> selectPolicyStatistics(@Param("policy") PolicyService policy);
+	Map<String, Object> selectPolicyStatistics(@Param("policy") PolicyService policy,
+											  @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	int insertPolicy(PolicyService policy);
 

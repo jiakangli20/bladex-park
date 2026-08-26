@@ -20,6 +20,7 @@ import org.springblade.modules.home.pojo.vo.HomeTodoVO;
 import org.springblade.modules.home.pojo.vo.HomeWorkbenchVO;
 import org.springblade.modules.home.service.IHomeService;
 import org.springblade.modules.ics.service.IPaymentService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springblade.plugin.workflow.core.constant.WfProcessConstant;
 import org.springblade.plugin.workflow.process.model.WfProcess;
 import org.springblade.plugin.workflow.process.service.IWfProcessService;
@@ -28,6 +29,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 首页聚合服务实现.
@@ -37,25 +39,28 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class HomeServiceImpl implements IHomeService {
+	private static final int WORKFLOW_PAGE_SIZE = 500;
 
 	private final HomeMapper homeMapper;
 	private final IPaymentService paymentService;
 	private final IPolicyServiceService policyServiceService;
 	private final IWfProcessService wfProcessService;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public HomeWorkbenchVO workbench() {
 		Long parkId = null;
 		String currentUser = currentUserName();
 		Boolean admin = AuthUtil.isAdministrator();
+		List<Long> authorizedParkIds = parkPermissionService.authorizedParkIds();
 
-		Long roomCount = zeroIfNull(homeMapper.countRooms(parkId));
-		Long customerCount = zeroIfNull(homeMapper.countCustomers(parkId));
-		Long expiringContractCount = zeroIfNull(homeMapper.countExpiringContracts(parkId));
-		Long approvalTodoCount = countWorkflowTodos();
-		Long workorderTodoCount = zeroIfNull(homeMapper.countWorkorderTodos(parkId, currentUser, admin));
+		Long roomCount = zeroIfNull(homeMapper.countRooms(parkId, authorizedParkIds));
+		Long customerCount = zeroIfNull(homeMapper.countCustomers(parkId, authorizedParkIds));
+		Long expiringContractCount = zeroIfNull(homeMapper.countExpiringContracts(parkId, authorizedParkIds));
+		Long approvalTodoCount = countWorkflowTodos(authorizedParkIds);
+		Long workorderTodoCount = zeroIfNull(homeMapper.countWorkorderTodos(parkId, currentUser, admin, authorizedParkIds));
 		Long overdueNoticeCount = zeroIfNull(paymentService.unreadOverdueNoticeCount());
-		List<HomeTodoItemVO> workorderItems = homeMapper.selectWorkorderTodos(parkId, currentUser, admin).stream()
+		List<HomeTodoItemVO> workorderItems = homeMapper.selectWorkorderTodos(parkId, currentUser, admin, authorizedParkIds).stream()
 			.map(this::toTodoItem)
 			.toList();
 
@@ -77,7 +82,7 @@ public class HomeServiceImpl implements IHomeService {
 		workbench.setOverview(overview);
 		workbench.setTodos(todos);
 		workbench.setPolicyNotices(policyNotices());
-		workbench.setEnterprises(homeMapper.selectEnterprises(parkId));
+		workbench.setEnterprises(homeMapper.selectEnterprises(parkId, authorizedParkIds));
 		workbench.setMissingApis(missingApis());
 		return workbench;
 	}
@@ -116,11 +121,37 @@ public class HomeServiceImpl implements IHomeService {
 		return StringUtil.isBlank(userName) ? AuthUtil.getNickName() : userName;
 	}
 
-	private Long countWorkflowTodos() {
+	private Long countWorkflowTodos(List<Long> authorizedParkIds) {
 		WfProcess process = new WfProcess();
 		process.setStatus(WfProcessConstant.STATUS_TODO);
-		Query query = new Query().setCurrent(1).setSize(1);
-		return wfProcessService.selectTaskPage(process, query).getTotal();
+		int current = 1;
+		long count = 0L;
+		do {
+			Query query = new Query().setCurrent(current).setSize(WORKFLOW_PAGE_SIZE);
+			var page = wfProcessService.selectTaskPage(process, query);
+			if (authorizedParkIds == null) return page.getTotal();
+			count += page.getRecords().stream().filter(item -> {
+				Long parkId = workflowParkId(item.getVariables());
+				return parkId != null && authorizedParkIds.contains(parkId);
+			}).count();
+			if (page.getRecords().isEmpty() || current >= page.getPages()) break;
+			current++;
+		} while (true);
+		return count;
+	}
+
+	private Long workflowParkId(Map<String, Object> variables) {
+		if (variables == null) return null;
+		for (String key : List.of("parkId", "park_id")) {
+			Object value = variables.get(key);
+			if (value == null) continue;
+			try {
+				return Long.valueOf(String.valueOf(value));
+			} catch (NumberFormatException ignored) {
+				// Try the next conventional variable name.
+			}
+		}
+		return null;
 	}
 
 	private Long zeroIfNull(Long value) {

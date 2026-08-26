@@ -21,11 +21,11 @@ public interface ApprovalProjectMapper extends BaseMapper<ApprovalProject> {
 
 	ApprovalProject selectApprovalProjectById(@Param("projectId") Long projectId);
 
-	List<ApprovalProject> selectApprovalProjectList(@Param("project") ApprovalProject project);
+	List<ApprovalProject> selectApprovalProjectList(@Param("project") ApprovalProject project, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	IPage<ApprovalProject> selectApprovalProjectPage(IPage<ApprovalProject> page, @Param("project") ApprovalProject project);
+	IPage<ApprovalProject> selectApprovalProjectPage(IPage<ApprovalProject> page, @Param("project") ApprovalProject project, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	List<Map<String, Object>> selectApprovalProjectStatistics(@Param("project") ApprovalProject project);
+	List<Map<String, Object>> selectApprovalProjectStatistics(@Param("project") ApprovalProject project, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	int insertApprovalProject(ApprovalProject project);
 

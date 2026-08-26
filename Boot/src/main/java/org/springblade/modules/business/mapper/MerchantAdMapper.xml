@@ -73,6 +73,12 @@
 	<sql id="adWhere">
 		<where>
 			a.del_flag = '0'
+			<if test="authorizedParkIds != null">
+				<choose>
+					<when test="authorizedParkIds.size() > 0">and a.park_id in <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when>
+					<otherwise>and 1 = 0</otherwise>
+				</choose>
+			</if>
 			<if test="ad != null">
 				<if test="ad.parkId != null and ad.parkId != 0">and a.park_id = #{ad.parkId}</if>
 				<if test="ad.customerId != null and ad.customerId != 0">and a.customer_id = #{ad.customerId}</if>

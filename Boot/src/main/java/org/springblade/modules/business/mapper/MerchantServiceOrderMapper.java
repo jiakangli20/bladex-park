@@ -22,11 +22,14 @@ public interface MerchantServiceOrderMapper extends BaseMapper<MerchantServiceOr
 
 	MerchantServiceOrder selectOrderById(@Param("orderId") Long orderId);
 
-	List<MerchantServiceOrder> selectOrderList(@Param("order") MerchantServiceOrder order);
+	List<MerchantServiceOrder> selectOrderList(@Param("order") MerchantServiceOrder order,
+												 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	IPage<MerchantServiceOrder> selectOrderPage(IPage<MerchantServiceOrder> page, @Param("order") MerchantServiceOrder order);
+	IPage<MerchantServiceOrder> selectOrderPage(IPage<MerchantServiceOrder> page, @Param("order") MerchantServiceOrder order,
+												 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	Map<String, Object> selectOrderStatistics(@Param("order") MerchantServiceOrder order);
+	Map<String, Object> selectOrderStatistics(@Param("order") MerchantServiceOrder order,
+												 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	int insertOrder(MerchantServiceOrder order);
 

@@ -16,24 +16,24 @@ import java.util.Map;
  */
 public interface EnterpriseDataMapper {
 
-	Map<String, Object> selectFinanceOverview(@Param("parkId") Long parkId);
+	Map<String, Object> selectFinanceOverview(@Param("parkId") Long parkId, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	Map<String, Object> selectContractExecution(@Param("parkId") Long parkId);
+	Map<String, Object> selectContractExecution(@Param("parkId") Long parkId, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	Map<String, Object> selectRoomSummary(@Param("parkId") Long parkId);
+	Map<String, Object> selectRoomSummary(@Param("parkId") Long parkId, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	List<Map<String, Object>> selectVacancyWarning(@Param("parkId") Long parkId);
+	List<Map<String, Object>> selectVacancyWarning(@Param("parkId") Long parkId, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	List<Map<String, Object>> selectRentalTrend(@Param("parkId") Long parkId);
+	List<Map<String, Object>> selectRentalTrend(@Param("parkId") Long parkId, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	List<Map<String, Object>> selectContractDealTrend(@Param("parkId") Long parkId);
+	List<Map<String, Object>> selectContractDealTrend(@Param("parkId") Long parkId, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	List<Map<String, Object>> selectNoticeTenantList(@Param("parkId") Long parkId);
+	List<Map<String, Object>> selectNoticeTenantList(@Param("parkId") Long parkId, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	List<Map<String, Object>> selectOpportunityReminderList(@Param("parkId") Long parkId);
+	List<Map<String, Object>> selectOpportunityReminderList(@Param("parkId") Long parkId, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	List<Map<String, Object>> selectOpportunityStatusSummary(@Param("parkId") Long parkId);
+	List<Map<String, Object>> selectOpportunityStatusSummary(@Param("parkId") Long parkId, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	List<Map<String, Object>> selectRunningApprovalProjectList(@Param("parkId") Long parkId);
+	List<Map<String, Object>> selectRunningApprovalProjectList(@Param("parkId") Long parkId, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 }

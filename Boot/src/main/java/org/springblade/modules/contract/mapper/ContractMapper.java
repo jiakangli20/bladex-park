@@ -44,7 +44,7 @@ public interface ContractMapper extends BaseMapper<Contract> {
 	/**
 	 * 合同列表（用于导出）.
 	 */
-	List<Contract> selectContractList(@Param("contract") Contract contract);
+	List<Contract> selectContractList(@Param("contract") Contract contract, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 合同分页列表
@@ -53,7 +53,7 @@ public interface ContractMapper extends BaseMapper<Contract> {
 	 * @param contract 查询条件
 	 * @return 合同列表
 	 */
-	List<Contract> selectContractPage(IPage<Contract> page, @Param("contract") Contract contract);
+	List<Contract> selectContractPage(IPage<Contract> page, @Param("contract") Contract contract, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 合同详情
@@ -78,7 +78,7 @@ public interface ContractMapper extends BaseMapper<Contract> {
 	 * @param contract 查询条件
 	 * @return 合同列表
 	 */
-	List<Contract> selectExpiringPage(IPage<Contract> page, @Param("contract") Contract contract);
+	List<Contract> selectExpiringPage(IPage<Contract> page, @Param("contract") Contract contract, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 到期提醒汇总.
@@ -86,7 +86,7 @@ public interface ContractMapper extends BaseMapper<Contract> {
 	 * @param contract 查询条件
 	 * @return 汇总
 	 */
-	ContractExpirySummaryVO selectExpiringSummary(@Param("contract") Contract contract);
+	ContractExpirySummaryVO selectExpiringSummary(@Param("contract") Contract contract, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	int updateRenewalRemindDaysByBuildingIds(@Param("buildingIds") List<Long> buildingIds,
 			@Param("remindDays") Integer remindDays, @Param("updateBy") String updateBy,
@@ -98,7 +98,7 @@ public interface ContractMapper extends BaseMapper<Contract> {
 	 * @param parkId 园区ID
 	 * @return 统计
 	 */
-	ContractStatsVO selectStats(@Param("parkId") Long parkId);
+	ContractStatsVO selectStats(@Param("parkId") Long parkId, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 逻辑删除合同

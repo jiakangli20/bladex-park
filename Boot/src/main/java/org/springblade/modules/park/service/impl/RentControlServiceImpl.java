@@ -49,6 +49,7 @@ import org.springblade.modules.park.service.IRentControlService;
 import org.springblade.modules.park.service.IRoomService;
 import org.springblade.modules.park.pojo.entity.Park;
 import org.springblade.modules.park.service.IParkService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -81,9 +82,11 @@ public class RentControlServiceImpl implements IRentControlService {
 	private final ICustomerService customerService;
 	private final IContractService contractService;
 	private final IPaymentService paymentService;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public Map<String, Object> getBoard(Long parkId, Long buildingId, Integer floorNo, String keyword, String searchType, String status, String orientation, boolean includeTree) {
+		if (parkId != null) parkPermissionService.requirePark(parkId);
 		Building buildingQuery = new Building();
 		buildingQuery.setParkId(parkId);
 		if ("building".equals(searchType) && hasText(keyword)) {

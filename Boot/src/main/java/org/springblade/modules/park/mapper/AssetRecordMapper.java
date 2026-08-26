@@ -20,7 +20,8 @@ public interface AssetRecordMapper extends BaseMapper<AssetRecord> {
 
 	AssetRecord selectAssetById(@Param("assetId") Long assetId);
 
-	List<AssetRecord> selectAssetPage(IPage<AssetRecord> page, @Param("asset") AssetRecord asset);
+	List<AssetRecord> selectAssetPage(IPage<AssetRecord> page, @Param("asset") AssetRecord asset,
+										 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	int countAssetCode(@Param("assetCode") String assetCode, @Param("excludeId") Long excludeId);
 

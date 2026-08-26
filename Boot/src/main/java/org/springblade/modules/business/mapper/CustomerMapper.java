@@ -22,13 +22,13 @@ public interface CustomerMapper extends BaseMapper<Customer> {
 
 	Customer selectCustomerById(@Param("customerId") Long customerId);
 
-	List<Customer> selectCustomerList(@Param("customer") Customer customer);
+	List<Customer> selectCustomerList(@Param("customer") Customer customer, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	IPage<Customer> selectCustomerPage(IPage<Customer> page, @Param("customer") Customer customer);
+	IPage<Customer> selectCustomerPage(IPage<Customer> page, @Param("customer") Customer customer, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	Map<String, Object> selectCustomerStatistics(@Param("customer") Customer customer);
+	Map<String, Object> selectCustomerStatistics(@Param("customer") Customer customer, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	List<Park> selectListPark(@Param("parkId") Long parkId);
+	List<Park> selectListPark(@Param("parkId") Long parkId, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	Long selectCustomerIdByCreditCode(@Param("creditCode") String creditCode, @Param("parkId") Long parkId);
 

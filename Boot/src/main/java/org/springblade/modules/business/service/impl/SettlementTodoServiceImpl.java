@@ -15,6 +15,7 @@ import org.springblade.modules.business.mapper.SettlementTodoMapper;
 import org.springblade.modules.business.pojo.dto.SettlementTodoActionDTO;
 import org.springblade.modules.business.pojo.entity.SettlementTodo;
 import org.springblade.modules.business.service.ISettlementTodoService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,14 +25,18 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 /**
  * 招商待办服务实现。
  */
 @Service
+@RequiredArgsConstructor
 public class SettlementTodoServiceImpl extends ServiceImpl<SettlementTodoMapper, SettlementTodo> implements ISettlementTodoService {
 
 	private static final Set<String> FINISHED_STATUSES = Set.of("3", "4");
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public IPage<SettlementTodo> selectPage(IPage<SettlementTodo> page, SettlementTodo query) {
@@ -51,15 +56,23 @@ public class SettlementTodoServiceImpl extends ServiceImpl<SettlementTodoMapper,
 	}
 
 	private LambdaQueryWrapper<SettlementTodo> queryWrapper(SettlementTodo query) {
-		return Wrappers.<SettlementTodo>lambdaQuery()
+		SettlementTodo normalizedQuery = query == null ? new SettlementTodo() : query;
+		if (normalizedQuery.getParkId() != null) parkPermissionService.requirePark(normalizedQuery.getParkId());
+		List<Long> authorizedParkIds = parkPermissionService.authorizedParkIds();
+		LambdaQueryWrapper<SettlementTodo> wrapper = Wrappers.<SettlementTodo>lambdaQuery()
 			.eq(SettlementTodo::getTenantId, tenantId())
-			.eq(query.getParkId() != null, SettlementTodo::getParkId, query.getParkId())
-			.eq(StringUtil.isNotBlank(query.getTodoStatus()), SettlementTodo::getTodoStatus, query.getTodoStatus())
-			.and(StringUtil.isNotBlank(query.getKeyword()), wrapper -> wrapper
-				.like(SettlementTodo::getEnterpriseName, query.getKeyword())
-				.or().like(SettlementTodo::getContactName, query.getKeyword())
-				.or().like(SettlementTodo::getContactPhone, query.getKeyword()))
+			.eq(normalizedQuery.getParkId() != null, SettlementTodo::getParkId, normalizedQuery.getParkId())
+			.eq(StringUtil.isNotBlank(normalizedQuery.getTodoStatus()), SettlementTodo::getTodoStatus, normalizedQuery.getTodoStatus())
+			.and(StringUtil.isNotBlank(normalizedQuery.getKeyword()), nested -> nested
+				.like(SettlementTodo::getEnterpriseName, normalizedQuery.getKeyword())
+				.or().like(SettlementTodo::getContactName, normalizedQuery.getKeyword())
+				.or().like(SettlementTodo::getContactPhone, normalizedQuery.getKeyword()))
 			.eq(SettlementTodo::getDelFlag, "0");
+		if (authorizedParkIds != null) {
+			if (authorizedParkIds.isEmpty()) wrapper.apply("1 = 0");
+			else wrapper.in(SettlementTodo::getParkId, authorizedParkIds);
+		}
+		return wrapper;
 	}
 
 	@Override
@@ -70,6 +83,7 @@ public class SettlementTodoServiceImpl extends ServiceImpl<SettlementTodoMapper,
 			.eq(customerId != null, SettlementTodo::getCustomerId, customerId)
 			.eq(SettlementTodo::getDelFlag, "0"));
 		if (todo == null) throw new ServiceException("招商待办不存在或无权访问");
+		parkPermissionService.requirePark(todo.getParkId());
 		return todo;
 	}
 

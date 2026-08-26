@@ -43,9 +43,11 @@ import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.Func;
 import org.springblade.modules.contract.pojo.entity.ExpenseSettings;
 import org.springblade.modules.contract.service.IExpenseSettingsService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.List;
 
 /**
  * 费项配置控制器
@@ -62,6 +64,7 @@ import java.util.Map;
 public class ExpenseSettingsController extends BladeController {
 
 	private final IExpenseSettingsService expenseSettingsService;
+	private final IParkPermissionService parkPermissionService;
 
 	/**
 	 * 详情
@@ -70,7 +73,9 @@ public class ExpenseSettingsController extends BladeController {
 	@ApiOperationSupport(order = 1)
 	@Operation(summary = "详情", description = "传入expenseSettings")
 	public R<ExpenseSettings> detail(ExpenseSettings expenseSettings) {
-		return R.data(expenseSettingsService.getOne(Condition.getQueryWrapper(expenseSettings)));
+		ExpenseSettings detail = expenseSettingsService.getOne(Condition.getQueryWrapper(expenseSettings));
+		if (detail != null) parkPermissionService.requirePark(detail.getParkId());
+		return R.data(detail);
 	}
 
 	/**
@@ -80,7 +85,13 @@ public class ExpenseSettingsController extends BladeController {
 	@ApiOperationSupport(order = 2)
 	@Operation(summary = "分页", description = "传入expenseSettings")
 	public R<IPage<ExpenseSettings>> list(@Parameter(hidden = true) @RequestParam Map<String, Object> expenseSettings, Query query) {
-		IPage<ExpenseSettings> pages = expenseSettingsService.page(Condition.getPage(query), Condition.getQueryWrapper(expenseSettings, ExpenseSettings.class));
+		var wrapper = Condition.getQueryWrapper(expenseSettings, ExpenseSettings.class);
+		List<Long> authorizedParkIds = parkPermissionService.authorizedParkIds();
+		if (authorizedParkIds != null) {
+			if (authorizedParkIds.isEmpty()) wrapper.apply("1 = 0");
+			else wrapper.in("park_id", authorizedParkIds);
+		}
+		IPage<ExpenseSettings> pages = expenseSettingsService.page(Condition.getPage(query), wrapper);
 		return R.data(pages);
 	}
 
@@ -101,6 +112,9 @@ public class ExpenseSettingsController extends BladeController {
 	@ApiOperationSupport(order = 4)
 	@Operation(summary = "启用或停用", description = "传入expenseSettings")
 	public R status(@RequestBody ExpenseSettings expenseSettings) {
+		ExpenseSettings existing = expenseSettingsService.getById(expenseSettings.getId());
+		if (existing == null) return R.fail("费项不存在");
+		parkPermissionService.requirePark(existing.getParkId());
 		ExpenseSettings update = new ExpenseSettings();
 		update.setId(expenseSettings.getId());
 		update.setIsEnabled(expenseSettings.getIsEnabled());
@@ -116,7 +130,13 @@ public class ExpenseSettingsController extends BladeController {
 	@ApiOperationSupport(order = 5)
 	@Operation(summary = "删除", description = "传入ids")
 	public R remove(@Parameter(description = "主键集合") @RequestParam String ids) {
-		return R.status(expenseSettingsService.removeByIds(Func.toLongList(ids)));
+		List<Long> idList = Func.toLongList(ids);
+		for (Long id : idList) {
+			ExpenseSettings existing = expenseSettingsService.getById(id);
+			if (existing == null) return R.fail("费项不存在");
+			parkPermissionService.requirePark(existing.getParkId());
+		}
+		return R.status(expenseSettingsService.removeByIds(idList));
 	}
 
 }

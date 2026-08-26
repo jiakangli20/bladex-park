@@ -51,7 +51,7 @@ export default {
   },
   //水印配置
   watermark: {
-    mode: false,
+    mode: true,
     text: '吴中金控企业服务平台',
   },
   //oauth2配置

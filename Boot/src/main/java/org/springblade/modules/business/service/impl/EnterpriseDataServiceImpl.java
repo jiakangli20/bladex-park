@@ -13,6 +13,7 @@ import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.business.mapper.EnterpriseDataMapper;
 import org.springblade.modules.business.service.IEnterpriseDataService;
 import org.springblade.modules.park.service.ISmartDeviceService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springblade.plugin.workflow.core.constant.WfProcessConstant;
 import org.springblade.plugin.workflow.process.model.WfProcess;
 import org.springblade.plugin.workflow.process.service.IWfProcessService;
@@ -23,6 +24,7 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 在园企业数据看板服务实现.
@@ -36,13 +38,16 @@ public class EnterpriseDataServiceImpl implements IEnterpriseDataService {
 	private final EnterpriseDataMapper enterpriseDataMapper;
 	private final IWfProcessService wfProcessService;
 	private final ISmartDeviceService smartDeviceService;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public Kv overview(Long parkId) {
 		Long scopedParkId = parkId;
-		Map<String, Object> finance = mapOrEmpty(enterpriseDataMapper.selectFinanceOverview(scopedParkId));
-		Map<String, Object> contract = mapOrEmpty(enterpriseDataMapper.selectContractExecution(scopedParkId));
-		Map<String, Object> room = mapOrEmpty(enterpriseDataMapper.selectRoomSummary(scopedParkId));
+		if (scopedParkId != null) parkPermissionService.requirePark(scopedParkId);
+		List<Long> authorizedParkIds = parkPermissionService.authorizedParkIds();
+		Map<String, Object> finance = mapOrEmpty(enterpriseDataMapper.selectFinanceOverview(scopedParkId, authorizedParkIds));
+		Map<String, Object> contract = mapOrEmpty(enterpriseDataMapper.selectContractExecution(scopedParkId, authorizedParkIds));
+		Map<String, Object> room = mapOrEmpty(enterpriseDataMapper.selectRoomSummary(scopedParkId, authorizedParkIds));
 
 		return Kv.create()
 			.set("digitalOverview", buildDigitalOverview(finance))
@@ -50,13 +55,13 @@ public class EnterpriseDataServiceImpl implements IEnterpriseDataService {
 			.set("deviceSummary", buildDeviceSummary())
 			.set("roomSummary", buildRoomSummary(room))
 			.set("rentMetrics", buildRentMetrics(room))
-			.set("vacancyWarning", enterpriseDataMapper.selectVacancyWarning(scopedParkId))
-			.set("rentalTrend", enterpriseDataMapper.selectRentalTrend(scopedParkId))
-			.set("contractDealTrend", enterpriseDataMapper.selectContractDealTrend(scopedParkId))
-			.set("approvalList", runningApprovalList(scopedParkId))
-			.set("noticeTenantList", enterpriseDataMapper.selectNoticeTenantList(scopedParkId))
-			.set("opportunityStatusSummary", enterpriseDataMapper.selectOpportunityStatusSummary(scopedParkId))
-			.set("opportunityReminderList", enterpriseDataMapper.selectOpportunityReminderList(scopedParkId));
+			.set("vacancyWarning", enterpriseDataMapper.selectVacancyWarning(scopedParkId, authorizedParkIds))
+			.set("rentalTrend", enterpriseDataMapper.selectRentalTrend(scopedParkId, authorizedParkIds))
+			.set("contractDealTrend", enterpriseDataMapper.selectContractDealTrend(scopedParkId, authorizedParkIds))
+			.set("approvalList", runningApprovalList(scopedParkId, authorizedParkIds))
+			.set("noticeTenantList", enterpriseDataMapper.selectNoticeTenantList(scopedParkId, authorizedParkIds))
+			.set("opportunityStatusSummary", enterpriseDataMapper.selectOpportunityStatusSummary(scopedParkId, authorizedParkIds))
+			.set("opportunityReminderList", enterpriseDataMapper.selectOpportunityReminderList(scopedParkId, authorizedParkIds));
 	}
 
 	private List<Kv> buildDigitalOverview(Map<String, Object> finance) {
@@ -146,9 +151,9 @@ public class EnterpriseDataServiceImpl implements IEnterpriseDataService {
 			.orElse(Map.of());
 	}
 
-	private List<Kv> runningApprovalList(Long parkId) {
+	private List<Kv> runningApprovalList(Long parkId, List<Long> authorizedParkIds) {
 		List<Kv> result = new ArrayList<>();
-		enterpriseDataMapper.selectRunningApprovalProjectList(parkId).forEach(item -> result.add(Kv.create()
+		enterpriseDataMapper.selectRunningApprovalProjectList(parkId, authorizedParkIds).forEach(item -> result.add(Kv.create()
 			.set("id", value(item, "id"))
 			.set("title", value(item, "title"))
 			.set("currentNode", value(item, "currentNode"))
@@ -160,7 +165,7 @@ public class EnterpriseDataServiceImpl implements IEnterpriseDataService {
 		WfProcess process = new WfProcess();
 		process.setProcessIsFinished(WfProcessConstant.STATUS_UNFINISHED);
 		IPage<WfProcess> page = wfProcessService.selectProcessPage(process, new Query().setCurrent(1).setSize(8));
-		page.getRecords().forEach(item -> {
+		page.getRecords().stream().filter(item -> workflowInParkScope(item, parkId, authorizedParkIds)).forEach(item -> {
 			Map<String, Object> variables = item.getVariables();
 			String businessName = firstVariable(variables, "enterpriseName", "customerName", "tenantName", "companyName");
 			result.add(Kv.create()
@@ -180,6 +185,28 @@ public class EnterpriseDataServiceImpl implements IEnterpriseDataService {
 			.sorted((left, right) -> String.valueOf(right.get("createTime")).compareTo(String.valueOf(left.get("createTime"))))
 			.limit(8)
 			.toList();
+	}
+
+	private boolean workflowInParkScope(WfProcess process, Long parkId, List<Long> authorizedParkIds) {
+		if (authorizedParkIds == null && parkId == null) return true;
+		Long workflowParkId = variableLong(process.getVariables(), "parkId", "park_id");
+		if (workflowParkId == null) return false;
+		if (parkId != null && !Objects.equals(parkId, workflowParkId)) return false;
+		return authorizedParkIds == null || authorizedParkIds.contains(workflowParkId);
+	}
+
+	private Long variableLong(Map<String, Object> variables, String... keys) {
+		if (variables == null) return null;
+		for (String key : keys) {
+			Object value = variables.get(key);
+			if (value == null) continue;
+			try {
+				return Long.valueOf(String.valueOf(value));
+			} catch (NumberFormatException ignored) {
+				// Continue with the next conventional variable name.
+			}
+		}
+		return null;
 	}
 
 	private String firstVariable(Map<String, Object> variables, String... keys) {

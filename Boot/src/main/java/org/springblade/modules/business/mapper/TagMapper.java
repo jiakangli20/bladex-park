@@ -21,9 +21,10 @@ public interface TagMapper extends BaseMapper<Tag> {
 
 	Tag selectTagById(@Param("tagId") Long tagId);
 
-	List<Tag> selectTagList(@Param("tag") Tag tag);
+	List<Tag> selectTagList(@Param("tag") Tag tag, @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	IPage<Tag> selectTagPage(IPage<Tag> page, @Param("tag") Tag tag);
+	IPage<Tag> selectTagPage(IPage<Tag> page, @Param("tag") Tag tag,
+							 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	Tag selectSameNameTag(@Param("tagName") String tagName, @Param("tagType") Integer tagType, @Param("excludeTagId") Long excludeTagId);
 
@@ -43,7 +44,8 @@ public interface TagMapper extends BaseMapper<Tag> {
 
 	int deleteTagByIds(@Param("tagIds") List<Long> tagIds);
 
-	List<Tag> selectTagByType(@Param("tagType") Integer tagType, @Param("parkId") Long parkId);
+	List<Tag> selectTagByType(@Param("tagType") Integer tagType, @Param("parkId") Long parkId,
+							   @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	List<Tag> selectTagsByCustomerId(@Param("customerId") Long customerId);
 

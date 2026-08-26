@@ -22,12 +22,15 @@ public interface PropertyWorkorderMapper extends BaseMapper<ServiceWorkorder> {
 
 	ServiceWorkorder selectWorkorderById(@Param("orderId") Long orderId);
 
-	List<ServiceWorkorder> selectWorkorderList(@Param("workorder") ServiceWorkorder workorder);
+	List<ServiceWorkorder> selectWorkorderList(@Param("workorder") ServiceWorkorder workorder,
+											 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	IPage<ServiceWorkorder> selectWorkorderPage(IPage<ServiceWorkorder> page,
-												@Param("workorder") ServiceWorkorder workorder);
+												@Param("workorder") ServiceWorkorder workorder,
+												@Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	Map<String, Object> selectWorkorderStatistics(@Param("workorder") ServiceWorkorder workorder);
+	Map<String, Object> selectWorkorderStatistics(@Param("workorder") ServiceWorkorder workorder,
+												 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	int insertWorkorder(ServiceWorkorder workorder);
 

@@ -21,14 +21,17 @@ public interface MerchantAdMapper extends BaseMapper<MerchantAd> {
 
 	MerchantAd selectAdById(@Param("adId") Long adId);
 
-	List<MerchantAd> selectAdList(@Param("ad") MerchantAd ad);
+	List<MerchantAd> selectAdList(@Param("ad") MerchantAd ad,
+								 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	List<MerchantAd> selectPublicAdList(@Param("parkId") Long parkId,
 		@Param("adPosition") String adPosition, @Param("now") java.util.Date now);
 
-	IPage<MerchantAd> selectAdPage(IPage<MerchantAd> page, @Param("ad") MerchantAd ad);
+	IPage<MerchantAd> selectAdPage(IPage<MerchantAd> page, @Param("ad") MerchantAd ad,
+								 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	Map<String, Object> selectAdStatistics(@Param("ad") MerchantAd ad);
+	Map<String, Object> selectAdStatistics(@Param("ad") MerchantAd ad,
+											 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	int insertAd(MerchantAd ad);
 

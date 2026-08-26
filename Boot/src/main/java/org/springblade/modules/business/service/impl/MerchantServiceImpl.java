@@ -6,6 +6,7 @@ package org.springblade.modules.business.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import lombok.RequiredArgsConstructor;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.support.Kv;
@@ -15,6 +16,7 @@ import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.business.mapper.MerchantMapper;
 import org.springblade.modules.business.pojo.entity.Merchant;
 import org.springblade.modules.business.service.IMerchantService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,12 +30,14 @@ import java.util.stream.Collectors;
  * @author BladeX
  */
 @Service
+@RequiredArgsConstructor
 public class MerchantServiceImpl extends ServiceImpl<MerchantMapper, Merchant> implements IMerchantService {
 
 	private static final String STATUS_NORMAL = "0";
 	private static final String STATUS_DISABLED = "1";
 	private static final String STATUS_SUSPENDED = "2";
 	private static final String DEL_FLAG_NORMAL = "0";
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public Merchant selectMerchantById(Long merchantId) {
@@ -41,22 +45,35 @@ public class MerchantServiceImpl extends ServiceImpl<MerchantMapper, Merchant> i
 		if (Func.isEmpty(merchant)) {
 			throw new ServiceException("商户不存在");
 		}
+		parkPermissionService.requirePark(merchant.getParkId());
+		return merchant;
+	}
+
+	@Override
+	public Merchant selectPublicMerchantById(Long merchantId) {
+		Merchant merchant = baseMapper.selectMerchantById(merchantId);
+		if (Func.isEmpty(merchant)) throw new ServiceException("商户不存在");
 		return merchant;
 	}
 
 	@Override
 	public List<Merchant> selectMerchantList(Merchant merchant) {
-		return baseMapper.selectMerchantList(normalizeQuery(merchant));
+		return baseMapper.selectMerchantList(normalizeQuery(merchant), parkPermissionService.authorizedParkIds());
+	}
+
+	@Override
+	public List<Merchant> selectPublicMerchantList(Merchant merchant) {
+		return baseMapper.selectMerchantList(normalizeQuery(merchant), null);
 	}
 
 	@Override
 	public IPage<Merchant> selectMerchantPage(IPage<Merchant> page, Merchant merchant) {
-		return baseMapper.selectMerchantPage(page, normalizeQuery(merchant));
+		return baseMapper.selectMerchantPage(page, normalizeQuery(merchant), parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
 	public Kv selectMerchantStatistics(Merchant merchant) {
-		Map<String, Object> statistics = baseMapper.selectMerchantStatistics(normalizeQuery(merchant));
+		Map<String, Object> statistics = baseMapper.selectMerchantStatistics(normalizeQuery(merchant), parkPermissionService.authorizedParkIds());
 		return Kv.create()
 			.set("totalCount", toLong(statistics, "totalCount"))
 			.set("normalCount", toLong(statistics, "normalCount"))
@@ -106,6 +123,7 @@ public class MerchantServiceImpl extends ServiceImpl<MerchantMapper, Merchant> i
 		if (merchantIds.isEmpty()) {
 			throw new ServiceException("请选择需要删除的商户");
 		}
+		merchantIds.forEach(this::requireWritableMerchant);
 		return baseMapper.deleteMerchantByIds(merchantIds, null, currentUserName()) > 0;
 	}
 
@@ -127,6 +145,7 @@ public class MerchantServiceImpl extends ServiceImpl<MerchantMapper, Merchant> i
 		if (Func.isEmpty(merchant)) {
 			throw new ServiceException("商户不存在");
 		}
+		parkPermissionService.requirePark(merchant.getParkId());
 		return merchant;
 	}
 
@@ -139,6 +158,7 @@ public class MerchantServiceImpl extends ServiceImpl<MerchantMapper, Merchant> i
 		if (Func.isEmpty(parkId)) {
 			throw new ServiceException("请选择园区");
 		}
+		parkPermissionService.requirePark(parkId);
 		return parkId;
 	}
 

@@ -29,6 +29,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.apache.ibatis.annotations.Param;
 import org.springblade.modules.contract.pojo.entity.ContractExpiryRule;
+import java.util.List;
 
 /**
  * 合同到期提醒规则 Mapper 接口
@@ -38,5 +39,6 @@ import org.springblade.modules.contract.pojo.entity.ContractExpiryRule;
 public interface ContractExpiryRuleMapper extends BaseMapper<ContractExpiryRule> {
 
 	IPage<ContractExpiryRule> selectRulePage(IPage<ContractExpiryRule> page,
-			@Param("ruleName") String ruleName, @Param("parkId") Long parkId);
+			@Param("ruleName") String ruleName, @Param("parkId") Long parkId,
+			@Param("authorizedParkIds") List<Long> authorizedParkIds);
 }

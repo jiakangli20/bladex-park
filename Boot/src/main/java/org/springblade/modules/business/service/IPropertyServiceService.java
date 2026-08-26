@@ -21,6 +21,8 @@ public interface IPropertyServiceService extends IService<PropertyService> {
 
 	List<PropertyService> selectPropertyServiceList(PropertyService service);
 
+	List<PropertyService> selectPublicPropertyServiceList(PropertyService service);
+
 	IPage<PropertyService> selectPropertyServicePage(IPage<PropertyService> page, PropertyService service);
 
 	boolean insertPropertyService(PropertyService service);

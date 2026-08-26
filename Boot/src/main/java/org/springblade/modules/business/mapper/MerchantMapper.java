@@ -21,11 +21,14 @@ public interface MerchantMapper extends BaseMapper<Merchant> {
 
 	Merchant selectMerchantById(@Param("merchantId") Long merchantId);
 
-	List<Merchant> selectMerchantList(@Param("merchant") Merchant merchant);
+	List<Merchant> selectMerchantList(@Param("merchant") Merchant merchant,
+									 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	IPage<Merchant> selectMerchantPage(IPage<Merchant> page, @Param("merchant") Merchant merchant);
+	IPage<Merchant> selectMerchantPage(IPage<Merchant> page, @Param("merchant") Merchant merchant,
+									 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	Map<String, Object> selectMerchantStatistics(@Param("merchant") Merchant merchant);
+	Map<String, Object> selectMerchantStatistics(@Param("merchant") Merchant merchant,
+												 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	int insertMerchant(Merchant merchant);
 

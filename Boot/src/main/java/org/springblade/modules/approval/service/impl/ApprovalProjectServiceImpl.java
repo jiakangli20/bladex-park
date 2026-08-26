@@ -29,6 +29,7 @@ import org.springblade.modules.approval.service.IApprovalProjectService;
 import org.springblade.modules.business.mapper.BusinessOpportunityMapper;
 import org.springblade.modules.business.pojo.entity.BusinessOpportunity;
 import org.springblade.modules.business.service.ICustomerService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springblade.modules.contract.pojo.vo.ContractNoticeFileVO;
 import org.springblade.modules.contract.service.IContractTemplateRenderService;
 import org.springframework.stereotype.Service;
@@ -74,6 +75,7 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 	private final ICustomerService customerService;
 	private final BusinessOpportunityMapper businessOpportunityMapper;
 	private final IContractTemplateRenderService contractTemplateRenderService;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public ApprovalProject selectApprovalProjectById(Long projectId) {
@@ -82,12 +84,12 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 
 	@Override
 	public List<ApprovalProject> selectApprovalProjectList(ApprovalProject project) {
-		return baseMapper.selectApprovalProjectList(normalizeQuery(project));
+		return baseMapper.selectApprovalProjectList(normalizeQuery(project), parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
 	public IPage<ApprovalProject> selectApprovalProjectPage(IPage<ApprovalProject> page, ApprovalProject project) {
-		return baseMapper.selectApprovalProjectPage(page, normalizeQuery(project));
+		return baseMapper.selectApprovalProjectPage(page, normalizeQuery(project), parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
@@ -101,7 +103,7 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 			.set("rejected", 0L)
 			.set("archived", 0L)
 			.set("total", 0L);
-		for (Map<String, Object> row : baseMapper.selectApprovalProjectStatistics(query)) {
+		for (Map<String, Object> row : baseMapper.selectApprovalProjectStatistics(query, parkPermissionService.authorizedParkIds())) {
 			String status = Func.toStr(firstValue(row, "processStatus", "process_status"));
 			long total = toLong(firstValue(row, "total", "TOTAL"));
 			result.set(statKey(status), total);
@@ -155,6 +157,7 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 		if (idList.isEmpty()) {
 			throw new ServiceException("请选择需要删除的审批项目");
 		}
+		idList.forEach(this::requireAccessibleProject);
 		return baseMapper.deleteApprovalProjectByIds(idList, null, currentUserName()) > 0;
 	}
 
@@ -303,12 +306,20 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 	@Override
 	public List<ApprovalMaterial> selectApprovalMaterialList(ApprovalMaterial material) {
 		ApprovalMaterial query = Func.isEmpty(material) ? new ApprovalMaterial() : material;
+		if (query.getProjectId() == null) {
+			throw new ServiceException("审批项目不能为空");
+		}
+		query.setParkId(requireAccessibleProject(query.getProjectId()).getParkId());
 		return approvalMaterialMapper.selectApprovalMaterialList(query);
 	}
 
 	@Override
 	public List<ApprovalLog> selectApprovalLogList(ApprovalLog log) {
 		ApprovalLog query = Func.isEmpty(log) ? new ApprovalLog() : log;
+		if (query.getProjectId() == null) {
+			throw new ServiceException("审批项目不能为空");
+		}
+		query.setParkId(requireAccessibleProject(query.getProjectId()).getParkId());
 		return approvalLogMapper.selectApprovalLogList(query);
 	}
 
@@ -475,6 +486,7 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 		if (Func.isEmpty(project) || STATUS_DELETED.equals(project.getProcessStatus()) || "1".equals(project.getDelFlag())) {
 			throw new ServiceException("审批项目不存在");
 		}
+		parkPermissionService.requirePark(project.getParkId());
 		return project;
 	}
 
@@ -615,6 +627,7 @@ public class ApprovalProjectServiceImpl extends ServiceImpl<ApprovalProjectMappe
 		if (Func.isEmpty(parkId)) {
 			throw new ServiceException("所属园区不能为空");
 		}
+		parkPermissionService.requirePark(parkId);
 		return parkId;
 	}
 

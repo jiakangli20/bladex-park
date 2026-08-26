@@ -18,6 +18,7 @@ import org.springblade.modules.park.pojo.entity.Room;
 import org.springblade.modules.park.service.IAssetRecordService;
 import org.springblade.modules.park.service.IBuildingService;
 import org.springblade.modules.park.service.IRoomService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,16 +40,18 @@ public class AssetRecordServiceImpl extends ServiceImpl<AssetRecordMapper, Asset
 
 	private final IBuildingService buildingService;
 	private final IRoomService roomService;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public AssetRecord selectAssetById(Long assetId) {
 		AssetRecord asset = baseMapper.selectAssetById(assetId);
+		if (asset != null) parkPermissionService.requirePark(asset.getParkId());
 		return asset;
 	}
 
 	@Override
 	public IPage<AssetRecord> selectAssetPage(IPage<AssetRecord> page, AssetRecord asset) {
-		return page.setRecords(baseMapper.selectAssetPage(page, asset));
+		return page.setRecords(baseMapper.selectAssetPage(page, asset, parkPermissionService.authorizedParkIds()));
 	}
 
 	@Override
@@ -115,6 +118,7 @@ public class AssetRecordServiceImpl extends ServiceImpl<AssetRecordMapper, Asset
 			throw new ServiceException("资产编号已存在");
 		}
 		resolveLocation(asset);
+		parkPermissionService.requirePark(asset.getParkId());
 	}
 
 	private void resolveLocation(AssetRecord asset) {

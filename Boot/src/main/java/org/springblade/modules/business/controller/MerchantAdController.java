@@ -21,7 +21,7 @@ import org.springblade.modules.business.pojo.entity.MerchantAd;
 import org.springblade.modules.business.pojo.dto.MerchantAdAuditDTO;
 import org.springblade.modules.business.service.IMerchantAdService;
 import org.springblade.modules.miniapp.pojo.entity.MerchantAdAuditLog;
-import org.springblade.modules.miniapp.service.AdminParkScopeService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -40,7 +40,7 @@ import java.util.List;
 public class MerchantAdController extends BladeController {
 
 	private final IMerchantAdService merchantAdService;
-	private final AdminParkScopeService adminParkScopeService;
+	private final IParkPermissionService parkPermissionService;
 
 	@GetMapping("/detail")
 	@PreAuth(menu = "merchant_service_ad_view")
@@ -48,7 +48,6 @@ public class MerchantAdController extends BladeController {
 	@Operation(summary = "详情", description = "传入adId")
 	public R<MerchantAd> detail(@Parameter(description = "广告ID") @RequestParam Long adId) {
 		MerchantAd ad = merchantAdService.selectAdById(adId);
-		adminParkScopeService.assertAccess(ad.getParkId());
 		return R.data(ad);
 	}
 
@@ -129,7 +128,7 @@ public class MerchantAdController extends BladeController {
 	@ApiOperationSupport(order = 11)
 	@Operation(summary = "广告审核日志")
 	public R<List<MerchantAdAuditLog>> auditLogs(@PathVariable Long adId) {
-		adminParkScopeService.assertAccess(merchantAdService.selectAdById(adId).getParkId());
+		merchantAdService.selectAdById(adId);
 		return R.data(merchantAdService.auditLogs(adId));
 	}
 
@@ -138,6 +137,7 @@ public class MerchantAdController extends BladeController {
 	@ApiOperationSupport(order = 20)
 	@Operation(summary = "小程序广告列表接口", description = "待小程序鉴权接入后开放，当前仅后台联调使用")
 	public R<List<MerchantAd>> miniAppList(MerchantAd ad) {
+		parkPermissionService.requirePark(ad.getParkId());
 		return R.data(merchantAdService.selectPublicAdList(ad.getParkId(), ad.getAdPosition()));
 	}
 

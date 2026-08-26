@@ -46,7 +46,8 @@ public interface ContractWorkflowRecordMapper extends BaseMapper<ContractWorkflo
 	 * @param record 查询条件
 	 * @return 记录列表
 	 */
-	List<ContractWorkflowRecord> selectRecordPage(IPage<ContractWorkflowRecord> page, @Param("record") ContractWorkflowRecord record);
+	List<ContractWorkflowRecord> selectRecordPage(IPage<ContractWorkflowRecord> page, @Param("record") ContractWorkflowRecord record,
+													 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 合同流程记录列表

@@ -8,6 +8,25 @@
 		<if test="parkId != null">
 			AND park_id = #{parkId}
 		</if>
+		<if test="authorizedParkIds != null">
+			<choose>
+				<when test="authorizedParkIds.size() > 0">AND park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when>
+				<otherwise>AND 1 = 0</otherwise>
+			</choose>
+		</if>
+	</sql>
+
+	<sql id="paymentParkPermission">
+		<if test="authorizedParkIds != null"><choose><when test="authorizedParkIds.size() > 0">AND p.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when><otherwise>AND 1 = 0</otherwise></choose></if>
+	</sql>
+	<sql id="roomParkPermission">
+		<if test="authorizedParkIds != null"><choose><when test="authorizedParkIds.size() > 0">AND r.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when><otherwise>AND 1 = 0</otherwise></choose></if>
+	</sql>
+	<sql id="contractParkPermission">
+		<if test="authorizedParkIds != null"><choose><when test="authorizedParkIds.size() > 0">AND c.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when><otherwise>AND 1 = 0</otherwise></choose></if>
+	</sql>
+	<sql id="projectParkPermission">
+		<if test="authorizedParkIds != null"><choose><when test="authorizedParkIds.size() > 0">AND p.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when><otherwise>AND 1 = 0</otherwise></choose></if>
 	</sql>
 
 	<sql id="roomDisplayStatus">
@@ -115,6 +134,7 @@
 		<if test="parkId != null">
 			AND p.park_id = #{parkId}
 		</if>
+		<include refid="paymentParkPermission"/>
 	</select>
 
 	<select id="selectContractExecution" resultType="java.util.HashMap">
@@ -148,6 +168,7 @@
 			<include refid="contractRoomStatusJoin"/>
 			WHERE 1 = 1
 			<if test="parkId != null">AND r.park_id = #{parkId}</if>
+			<include refid="roomParkPermission"/>
 		) room_status
 	</select>
 
@@ -168,6 +189,7 @@
 			WHERE <include refid="roomDisplayStatus"/> = '0'
 			  AND r.vacant_since IS NOT NULL
 			<if test="parkId != null">AND r.park_id = #{parkId}</if>
+			<include refid="roomParkPermission"/>
 		) vacancy ON vacancy.vacant_days &gt;= buckets.min_days
 			AND (buckets.max_days IS NULL OR vacancy.vacant_days &lt;= buckets.max_days)
 		GROUP BY buckets.label, buckets.sortNo
@@ -205,6 +227,7 @@
 		) seq
 		LEFT JOIN ics_room r ON 1 = 1
 		<if test="parkId != null">AND r.park_id = #{parkId}</if>
+		<include refid="roomParkPermission"/>
 		GROUP BY seq.n
 		ORDER BY seq.n DESC
 	</select>
@@ -224,6 +247,7 @@
 			<if test="parkId != null">
 				AND c.park_id = #{parkId}
 			</if>
+			<include refid="contractParkPermission"/>
 		GROUP BY seq.n
 		ORDER BY seq.n DESC
 	</select>
@@ -255,6 +279,7 @@
 		<if test="parkId != null">
 			AND p.park_id = #{parkId}
 		</if>
+		<include refid="paymentParkPermission"/>
 		ORDER BY p.pay_deadline ASC, p.payment_id DESC
 		LIMIT 8
 	</select>
@@ -300,6 +325,7 @@
 		<if test="parkId != null">
 			AND p.park_id = #{parkId}
 		</if>
+		<include refid="projectParkPermission"/>
 		ORDER BY p.create_time DESC, p.project_id DESC
 		LIMIT 8
 	</select>

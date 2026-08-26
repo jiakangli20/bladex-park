@@ -45,6 +45,7 @@ import org.springblade.modules.park.service.IBuildingService;
 import org.springblade.modules.park.service.IFloorService;
 import org.springblade.modules.park.pojo.entity.Park;
 import org.springblade.modules.park.service.IParkService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -69,15 +70,16 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 	private final IParkService parkService;
 	private final IFloorService floorService;
 	private final FloorMapper floorMapper;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public List<Building> selectBuildingList(Building building) {
-		return baseMapper.selectBuildingList(building);
+		return baseMapper.selectBuildingList(building, parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
 	public IPage<BuildingVO> selectBuildingPage(IPage<BuildingVO> page, Building building) {
-		page.setRecords(baseMapper.selectBuildingPage(page, building));
+		page.setRecords(baseMapper.selectBuildingPage(page, building, parkPermissionService.authorizedParkIds()));
 		return page;
 	}
 
@@ -85,6 +87,7 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 	public BuildingVO selectBuildingById(Long id) {
 		BuildingVO building = baseMapper.selectBuildingById(id);
 		if (building != null) {
+			parkPermissionService.requirePark(building.getParkId());
 			building.setFloorAreas(floorMapper.selectFloorAreaListByBuildingId(id));
 		}
 		return building;
@@ -178,6 +181,7 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 	}
 
 	private void validateBuilding(Building building) {
+		parkPermissionService.requirePark(building.getParkId());
 		if (building.getParkId() == null) {
 			throw new ServiceException("请选择所属园区");
 		}

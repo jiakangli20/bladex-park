@@ -48,7 +48,8 @@ public interface ParkMapper extends BaseMapper<Park> {
 	 * @param park 园区
 	 * @return List<ParkVO>
 	 */
-	List<ParkVO> selectParkPage(IPage page, @Param("park") ParkVO park);
+	List<ParkVO> selectParkPage(IPage page, @Param("park") ParkVO park,
+		@Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 园区统计
@@ -56,7 +57,8 @@ public interface ParkMapper extends BaseMapper<Park> {
 	 * @param parkId 园区ID
 	 * @return Map
 	 */
-	Map<String, Object> selectParkStatistics(@Param("parkId") Long parkId);
+	Map<String, Object> selectParkStatistics(@Param("parkId") Long parkId,
+		@Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	int countDuplicate(@Param("name") String name, @Param("code") String code, @Param("excludeId") Long excludeId);
 

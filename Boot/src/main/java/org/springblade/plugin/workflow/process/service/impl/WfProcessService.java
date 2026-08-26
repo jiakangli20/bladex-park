@@ -31,6 +31,7 @@ import org.flowable.task.api.history.HistoricTaskInstance;
 import org.flowable.task.api.history.HistoricTaskInstanceQuery;
 import org.flowable.variable.api.history.HistoricVariableInstance;
 import org.flowable.variable.api.history.HistoricVariableInstanceQuery;
+import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.mp.support.Query;
 import org.springblade.core.redis.lock.RedisLock;
 import org.springblade.core.secure.utils.AuthUtil;
@@ -56,6 +57,7 @@ import org.springblade.plugin.workflow.process.entity.WfNotice;
 import org.springblade.plugin.workflow.process.model.WfNode;
 import org.springblade.plugin.workflow.process.model.WfProcess;
 import org.springblade.plugin.workflow.process.model.WfTaskUser;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springblade.plugin.workflow.process.service.*;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.AsyncResult;
@@ -84,6 +86,7 @@ public class WfProcessService implements IWfProcessService {
 	private final IWfExpressionService wfExpressionService;
 	private final IWfTaskService wfTaskService;
 	private final IWfFormVariableService wfFormVariableService;
+	private final IParkPermissionService parkPermissionService;
 
 	// 流程图或流转信息的人名假如超过几个人后显示 xx 共xx人
 	// 用户1/用户2/用户3/用户4/用户5/用户6 => 用户1/用户2/用户3 等共6人
@@ -213,6 +216,7 @@ public class WfProcessService implements IWfProcessService {
 						.taskCandidateGroupIn(Func.toStrList(taskGroup));
 				}
 				WfSearchUtil.buildSearchQuery(taskQuery, process); // 搜索条件
+				applyParkScope(taskQuery);
 				count = taskQuery.count();
 				if (count > 0) {
 					List<WfProcess> list = new LinkedList<>();
@@ -228,6 +232,7 @@ public class WfProcessService implements IWfProcessService {
 					.finished()
 					.taskTenantId(WfTaskUtil.getTenantId());
 				WfSearchUtil.buildSearchQuery(historicTaskInstanceQuery, process); // 搜索条件
+				applyParkScope(historicTaskInstanceQuery);
 				count = historicTaskInstanceQuery.count();
 				if (count > 0) {
 					List<WfProcess> list = new LinkedList<>();
@@ -271,6 +276,7 @@ public class WfProcessService implements IWfProcessService {
 			}
 		}
 		WfSearchUtil.buildSearchQuery(historyQuery, process); // 搜索条件
+		applyParkScope(historyQuery);
 
 		long count = historyQuery.count();
 		if (count > 0) {
@@ -507,6 +513,7 @@ public class WfProcessService implements IWfProcessService {
 		process.setHistoryTaskEndTime(task.getEndTime());
 		Map<String, Object> variables = task.getProcessVariables();
 		variables.putAll(task.getTaskLocalVariables());
+		requireParkAccess(variables);
 
 		// 删除历史固定变量字段，防止提交时重复序列化
 		if (variables.containsKey(WfProcessConstant.TASK_VARIABLE_FORM_OPTION)) {
@@ -603,6 +610,57 @@ public class WfProcessService implements IWfProcessService {
 		}
 
 		return new AsyncResult<>(process);
+	}
+
+	void applyParkScope(TaskQuery query) {
+		List<Long> parkIds = parkPermissionService.authorizedParkIds();
+		if (parkIds == null) {
+			return;
+		}
+		query.or().processVariableNotExists("businessType");
+		for (Long parkId : parkIds) {
+			query.processVariableValueEquals("parkId", parkId);
+			query.processVariableValueEquals("parkId", String.valueOf(parkId));
+		}
+		query.endOr();
+	}
+
+	void applyParkScope(HistoricTaskInstanceQuery query) {
+		List<Long> parkIds = parkPermissionService.authorizedParkIds();
+		if (parkIds == null) {
+			return;
+		}
+		query.or().processVariableNotExists("businessType");
+		for (Long parkId : parkIds) {
+			query.processVariableValueEquals("parkId", parkId);
+			query.processVariableValueEquals("parkId", String.valueOf(parkId));
+		}
+		query.endOr();
+	}
+
+	void applyParkScope(HistoricProcessInstanceQuery query) {
+		List<Long> parkIds = parkPermissionService.authorizedParkIds();
+		if (parkIds == null) {
+			return;
+		}
+		query.or().variableNotExists("businessType");
+		for (Long parkId : parkIds) {
+			query.variableValueEquals("parkId", parkId);
+			query.variableValueEquals("parkId", String.valueOf(parkId));
+		}
+		query.endOr();
+	}
+
+	void requireParkAccess(Map<String, Object> variables) {
+		if (variables == null || !variables.containsKey("parkId")) {
+			return;
+		}
+		Object value = variables.get("parkId");
+		try {
+			parkPermissionService.requirePark(Long.valueOf(String.valueOf(value)));
+		} catch (NumberFormatException exception) {
+			throw new ServiceException("审批流程所属园区格式不正确");
+		}
 	}
 
 	@Override

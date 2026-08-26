@@ -56,6 +56,7 @@
 	<sql id="deviceWhere">
 		<where>
 			d.del_flag = '0'
+			<if test="authorizedParkIds != null"><choose><when test="authorizedParkIds.size() > 0">AND d.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when><otherwise>AND 1 = 0</otherwise></choose></if>
 			<if test="device != null">
 				<if test="device.parkId != null">AND d.park_id = #{device.parkId}</if>
 				<if test="device.buildingId != null">AND d.building_id = #{device.buildingId}</if>
@@ -99,6 +100,7 @@
 		FROM biz_smart_device d
 		WHERE d.del_flag = '0' AND d.enabled_status = '0'
 		<if test="parkId != null">AND d.park_id = #{parkId}</if>
+		<if test="authorizedParkIds != null"><choose><when test="authorizedParkIds.size() > 0">AND d.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when><otherwise>AND 1 = 0</otherwise></choose></if>
 		GROUP BY d.device_type
 	</select>
 

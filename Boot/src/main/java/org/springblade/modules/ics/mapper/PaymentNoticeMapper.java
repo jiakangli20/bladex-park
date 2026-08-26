@@ -27,7 +27,8 @@ public interface PaymentNoticeMapper extends BaseMapper<PaymentNotice> {
 	 * @param query 查询条件
 	 * @return 收款通知列表
 	 */
-	List<PaymentNoticeVO> selectNoticePage(IPage<PaymentNoticeVO> page, @Param("query") PaymentNoticeVO query);
+	List<PaymentNoticeVO> selectNoticePage(IPage<PaymentNoticeVO> page, @Param("query") PaymentNoticeVO query,
+												 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 收款通知汇总.
@@ -35,7 +36,8 @@ public interface PaymentNoticeMapper extends BaseMapper<PaymentNotice> {
 	 * @param query 查询条件
 	 * @return 汇总
 	 */
-	PaymentNoticeSummaryVO selectNoticeSummary(@Param("query") PaymentNoticeVO query);
+	PaymentNoticeSummaryVO selectNoticeSummary(@Param("query") PaymentNoticeVO query,
+											 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 按账单查询通知记录.
@@ -51,7 +53,8 @@ public interface PaymentNoticeMapper extends BaseMapper<PaymentNotice> {
 	 * @param query 查询条件
 	 * @return 楼宇名称
 	 */
-	List<String> selectBuildingOptions(@Param("query") PaymentNoticeVO query);
+	List<String> selectBuildingOptions(@Param("query") PaymentNoticeVO query,
+									 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 查询通知详情.

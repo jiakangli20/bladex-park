@@ -21,11 +21,14 @@ public interface SmartDeviceMapper extends BaseMapper<SmartDevice> {
 
 	SmartDevice selectDeviceById(@Param("deviceId") Long deviceId);
 
-	List<SmartDevice> selectDevicePage(IPage<SmartDevice> page, @Param("device") SmartDevice device);
+	List<SmartDevice> selectDevicePage(IPage<SmartDevice> page, @Param("device") SmartDevice device,
+										 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	Map<String, Object> selectDeviceStatistics(@Param("device") SmartDevice device);
+	Map<String, Object> selectDeviceStatistics(@Param("device") SmartDevice device,
+											 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
-	List<Map<String, Object>> selectDeviceTypeStatistics(@Param("parkId") Long parkId);
+	List<Map<String, Object>> selectDeviceTypeStatistics(@Param("parkId") Long parkId,
+												   @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	int countDeviceCode(@Param("deviceCode") String deviceCode, @Param("excludeId") Long excludeId);
 

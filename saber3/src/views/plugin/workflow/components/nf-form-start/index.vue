@@ -267,7 +267,7 @@ export default {
         return pick(['applicantDept', 'deptName', 'createDeptName']);
       }
       if (label.includes('合同甲方') || label.includes('甲方')) {
-        return pick(['contractPartyA', 'partyA', 'lessorName', 'ownerName', 'parkName']);
+        return pick(['contractPartyA', 'partyA', 'lessorName', 'ownerName']);
       }
       if (
         label.includes('退租申请单位') ||

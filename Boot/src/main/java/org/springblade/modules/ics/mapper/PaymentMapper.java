@@ -32,7 +32,8 @@ public interface PaymentMapper {
 	List<ContractPayment> selectPaymentPage(IPage<ContractPayment> page,
 											  @Param("payment") ContractPayment payment,
 											  @Param("overdue") Boolean overdue,
-											  @Param("overdueHistory") Boolean overdueHistory);
+											  @Param("overdueHistory") Boolean overdueHistory,
+											  @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 账单汇总.
@@ -41,7 +42,8 @@ public interface PaymentMapper {
 	 * @return 汇总
 	 */
 	PaymentSummaryVO selectSummary(@Param("payment") ContractPayment payment,
-									 @Param("overdueHistory") Boolean overdueHistory);
+									 @Param("overdueHistory") Boolean overdueHistory,
+									 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 账单详情.
@@ -58,7 +60,9 @@ public interface PaymentMapper {
 	 * @param parkId  园区ID
 	 * @return 合同选项
 	 */
-	List<Contract> selectContractOptions(@Param("keyword") String keyword, @Param("parkId") Long parkId);
+	List<Contract> selectContractOptions(@Param("keyword") String keyword,
+									 @Param("parkId") Long parkId,
+									 @Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 根据房源ID查询房源明细.

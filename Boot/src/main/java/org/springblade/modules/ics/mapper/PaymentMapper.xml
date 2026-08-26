@@ -235,6 +235,15 @@
 	</sql>
 
 	<sql id="paymentConditions">
+		<if test="authorizedParkIds != null">
+			<choose>
+				<when test="authorizedParkIds.size() > 0">
+					AND p.park_id IN
+					<foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+				</when>
+				<otherwise>AND 1 = 0</otherwise>
+			</choose>
+		</if>
 		<if test="payment != null and payment.direction != null and payment.direction != ''">
 			AND p.direction = #{payment.direction}
 		</if>
@@ -418,6 +427,15 @@
 		FROM biz_contract c
 		LEFT JOIN ics_park p ON p.id = c.park_id
 		WHERE c.del_flag = '0'
+		<if test="authorizedParkIds != null">
+			<choose>
+				<when test="authorizedParkIds.size() > 0">
+					AND c.park_id IN
+					<foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+				</when>
+				<otherwise>AND 1 = 0</otherwise>
+			</choose>
+		</if>
 		<if test="parkId != null">
 			AND c.park_id = #{parkId}
 		</if>

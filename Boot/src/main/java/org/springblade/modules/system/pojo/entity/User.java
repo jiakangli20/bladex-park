@@ -26,14 +26,17 @@
 package org.springblade.modules.system.pojo.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableField;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springblade.core.tenant.mp.TenantEntity;
 import org.springblade.core.tool.jackson.Sensitive;
 import org.springblade.core.tool.sensitive.SensitiveType;
 
 import java.io.Serial;
 import java.util.Date;
+import java.util.List;
 
 /**
  * 实体类
@@ -114,6 +117,14 @@ public class User extends TenantEntity {
 	 * 是否主管
 	 */
 	private Integer isLeader;
+
+	@TableField(exist = false)
+	@Schema(description = "授权园区ID集合")
+	private List<Long> parkIds;
+
+	@TableField(exist = false)
+	@Schema(description = "默认园区ID")
+	private Long defaultParkId;
 
 
 }

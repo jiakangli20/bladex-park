@@ -18,6 +18,7 @@ import org.springblade.modules.business.pojo.entity.MerchantServiceOrder;
 import org.springblade.modules.business.pojo.entity.MerchantServiceOrderLog;
 import org.springblade.modules.business.service.IMerchantService;
 import org.springblade.modules.business.service.IMerchantServiceOrderService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,9 +44,11 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 	private static final String PRIORITY_NORMAL = "1";
 
 	private final IMerchantService merchantService;
+	private final IParkPermissionService parkPermissionService;
 
-	public MerchantServiceOrderServiceImpl(IMerchantService merchantService) {
+	public MerchantServiceOrderServiceImpl(IMerchantService merchantService, IParkPermissionService parkPermissionService) {
 		this.merchantService = merchantService;
+		this.parkPermissionService = parkPermissionService;
 	}
 
 	@Override
@@ -54,22 +57,23 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 		if (Func.isEmpty(order)) {
 			throw new ServiceException("服务单不存在");
 		}
+		parkPermissionService.requirePark(order.getParkId());
 		return order;
 	}
 
 	@Override
 	public List<MerchantServiceOrder> selectOrderList(MerchantServiceOrder order) {
-		return baseMapper.selectOrderList(normalizeQuery(order));
+		return baseMapper.selectOrderList(normalizeQuery(order), parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
 	public IPage<MerchantServiceOrder> selectOrderPage(IPage<MerchantServiceOrder> page, MerchantServiceOrder order) {
-		return baseMapper.selectOrderPage(page, normalizeQuery(order));
+		return baseMapper.selectOrderPage(page, normalizeQuery(order), parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
 	public Kv selectOrderStatistics(MerchantServiceOrder order) {
-		Map<String, Object> statistics = baseMapper.selectOrderStatistics(normalizeQuery(order));
+		Map<String, Object> statistics = baseMapper.selectOrderStatistics(normalizeQuery(order), parkPermissionService.authorizedParkIds());
 		return Kv.create()
 			.set("totalCount", toLong(statistics, "totalCount"))
 			.set("pendingCount", toLong(statistics, "pendingCount"))
@@ -140,6 +144,7 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 		if (orderIds.isEmpty()) {
 			throw new ServiceException("请选择需要删除的服务单");
 		}
+		orderIds.forEach(this::requireWritableOrder);
 		return baseMapper.deleteOrderByIds(orderIds, null, currentUserName()) > 0;
 	}
 
@@ -258,6 +263,7 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 		if (Func.isEmpty(order)) {
 			throw new ServiceException("服务单不存在");
 		}
+		parkPermissionService.requirePark(order.getParkId());
 		return baseMapper.selectLogByOrderId(orderId);
 	}
 
@@ -266,6 +272,7 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 		if (Func.isEmpty(order)) {
 			throw new ServiceException("服务单不存在");
 		}
+		parkPermissionService.requirePark(order.getParkId());
 		return order;
 	}
 
@@ -369,6 +376,7 @@ public class MerchantServiceOrderServiceImpl extends ServiceImpl<MerchantService
 		if (Func.isEmpty(parkId)) {
 			throw new ServiceException("请选择园区");
 		}
+		parkPermissionService.requirePark(parkId);
 		return parkId;
 	}
 

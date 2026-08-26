@@ -20,6 +20,7 @@ import org.springblade.modules.business.pojo.entity.Customer;
 import org.springblade.modules.business.pojo.entity.Tag;
 import org.springblade.modules.business.pojo.entity.TagType;
 import org.springblade.modules.business.service.ITagService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +46,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 
 	private final CustomerMapper customerMapper;
 	private final BusinessOpportunityMapper businessOpportunityMapper;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public Tag selectTagById(Long tagId) {
@@ -53,12 +55,12 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 
 	@Override
 	public List<Tag> selectTagList(Tag tag) {
-		return baseMapper.selectTagList(normalizeQuery(tag));
+		return baseMapper.selectTagList(normalizeQuery(tag), parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
 	public IPage<Tag> selectTagPage(IPage<Tag> page, Tag tag) {
-		return baseMapper.selectTagPage(page, normalizeQuery(tag));
+		return baseMapper.selectTagPage(page, normalizeQuery(tag), parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
@@ -67,6 +69,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 		if (Func.isEmpty(tag.getParkId())) {
 			throw new ServiceException("所属园区不能为空");
 		}
+		parkPermissionService.requirePark(tag.getParkId());
 		validateTag(tag, null);
 		tag.setCreateBy(currentUserName());
 		tag.setCreateTime(DateUtil.now());
@@ -121,7 +124,8 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 
 	@Override
 	public List<Tag> selectTagByType(Integer tagType, Long parkId) {
-		return baseMapper.selectTagByType(tagType, parkId);
+		if (parkId != null) parkPermissionService.requirePark(parkId);
+		return baseMapper.selectTagByType(tagType, parkId, parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
@@ -216,6 +220,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 		if (tag == null || !DEL_FLAG_NORMAL.equals(tag.getDelFlag())) {
 			throw new ServiceException("标签不存在");
 		}
+		parkPermissionService.requirePark(tag.getParkId());
 		return tag;
 	}
 
@@ -224,6 +229,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 		if (customer == null || !DEL_FLAG_NORMAL.equals(customer.getDelFlag())) {
 			throw new ServiceException("客户不存在");
 		}
+		parkPermissionService.requirePark(customer.getParkId());
 		return customer;
 	}
 
@@ -233,6 +239,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 		if (opportunity == null || !DEL_FLAG_NORMAL.equals(opportunity.getDelFlag())) {
 			throw new ServiceException("商机不存在");
 		}
+		parkPermissionService.requirePark(opportunity.getParkId());
 		return opportunity;
 	}
 

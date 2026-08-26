@@ -20,6 +20,7 @@ import org.springblade.modules.approval.mapper.ApprovalNodeMapper;
 import org.springblade.modules.approval.pojo.entity.ApprovalFlow;
 import org.springblade.modules.approval.pojo.entity.ApprovalNode;
 import org.springblade.modules.approval.service.IApprovalFlowService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,11 +49,13 @@ public class ApprovalFlowServiceImpl extends ServiceImpl<ApprovalFlowMapper, App
 	private static final String DEFAULT_COMPLETE_CONDITION = "all";
 
 	private final ApprovalNodeMapper approvalNodeMapper;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public ApprovalFlow selectApprovalFlowById(Long flowId) {
 		ApprovalFlow flow = baseMapper.selectApprovalFlowById(flowId);
 		if (Func.isNotEmpty(flow)) {
+			requireFlowPark(flow, false);
 			flow.setNodes(loadNodesWithFallback(flow));
 		}
 		return flow;
@@ -60,12 +63,12 @@ public class ApprovalFlowServiceImpl extends ServiceImpl<ApprovalFlowMapper, App
 
 	@Override
 	public List<ApprovalFlow> selectApprovalFlowList(ApprovalFlow flow) {
-		return fillNodes(baseMapper.selectApprovalFlowList(normalizeQuery(flow)));
+		return fillNodes(baseMapper.selectApprovalFlowList(normalizeQuery(flow), parkPermissionService.authorizedParkIds()));
 	}
 
 	@Override
 	public IPage<ApprovalFlow> selectApprovalFlowPage(IPage<ApprovalFlow> page, ApprovalFlow flow) {
-		IPage<ApprovalFlow> result = baseMapper.selectApprovalFlowPage(page, normalizeQuery(flow));
+		IPage<ApprovalFlow> result = baseMapper.selectApprovalFlowPage(page, normalizeQuery(flow), parkPermissionService.authorizedParkIds());
 		result.setRecords(fillNodes(result.getRecords()));
 		return result;
 	}
@@ -121,6 +124,7 @@ public class ApprovalFlowServiceImpl extends ServiceImpl<ApprovalFlowMapper, App
 		if (idList.isEmpty()) {
 			throw new ServiceException("请选择需要删除的审批流程");
 		}
+		idList.forEach(this::requireWritableFlow);
 		return baseMapper.deleteApprovalFlowByIds(idList, null, currentUserName()) > 0;
 	}
 
@@ -202,16 +206,27 @@ public class ApprovalFlowServiceImpl extends ServiceImpl<ApprovalFlowMapper, App
 		if (Func.isEmpty(flow) || STATUS_DISABLED.equals(flow.getStatus())) {
 			throw new ServiceException("审批流程不存在");
 		}
+		requireFlowPark(flow, false);
 		return flow;
 	}
 
 	private ApprovalFlow requireWritableFlow(Long flowId) {
 		ApprovalFlow flow = requireReadableFlow(flowId);
+		requireFlowPark(flow, true);
 		return flow;
+	}
+
+	private void requireFlowPark(ApprovalFlow flow, boolean write) {
+		if (flow.getParkId() != null && flow.getParkId() > 0) {
+			parkPermissionService.requirePark(flow.getParkId());
+		} else if (write && !parkPermissionService.hasAllParkAccess()) {
+			throw new ServiceException("全局审批流程仅管理员可以维护");
+		}
 	}
 
 	private Long resolveWriteParkId(Long parkId) {
 		if (Func.isNotEmpty(parkId)) {
+			parkPermissionService.requirePark(parkId);
 			return parkId;
 		}
 		throw new ServiceException("所属园区不能为空");

@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.tool.utils.StringUtil;
 import org.springframework.boot.autoconfigure.mail.MailProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -22,6 +23,7 @@ import java.util.Properties;
  */
 @Service
 @RequiredArgsConstructor
+@EnableConfigurationProperties(MailProperties.class)
 public class SmtpMailService implements MailService {
 
 	private final MailProperties mailProperties;

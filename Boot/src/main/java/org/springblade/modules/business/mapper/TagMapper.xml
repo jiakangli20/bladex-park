@@ -36,6 +36,7 @@
 	<sql id="tagWhere">
 		<where>
 			del_flag = '0'
+			<if test="authorizedParkIds != null"><choose><when test="authorizedParkIds.size() > 0">and park_id in <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when><otherwise>and 1 = 0</otherwise></choose></if>
 			<if test="tag != null">
 				<if test="tag.parkId != null and tag.parkId != 0">and park_id = #{tag.parkId}</if>
 				<if test="tag.tagName != null and tag.tagName != ''">and tag_name like concat('%', #{tag.tagName}, '%')</if>
@@ -109,6 +110,7 @@
 		  and status = '0'
 		  and del_flag = '0'
 		<if test="parkId != null and parkId != 0">and park_id = #{parkId}</if>
+		<if test="authorizedParkIds != null"><choose><when test="authorizedParkIds.size() > 0">and park_id in <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when><otherwise>and 1 = 0</otherwise></choose></if>
 		order by sort_order asc, tag_id asc
 	</select>
 

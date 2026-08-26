@@ -22,6 +22,8 @@ public interface IPolicyServiceService extends IService<PolicyService> {
 
 	PolicyService selectMiniAppPolicyById(Long policyId);
 
+	List<PolicyService> selectPublicPolicyList(PolicyService policy);
+
 	List<PolicyService> selectPolicyList(PolicyService policy);
 
 	IPage<PolicyService> selectPolicyPage(IPage<PolicyService> page, PolicyService policy);

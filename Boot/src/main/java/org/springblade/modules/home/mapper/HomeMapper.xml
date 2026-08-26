@@ -9,6 +9,7 @@
 		<if test="parkId != null">
 			AND r.park_id = #{parkId}
 		</if>
+		<if test="authorizedParkIds != null"><choose><when test="authorizedParkIds.size() > 0">AND r.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when><otherwise>AND 1 = 0</otherwise></choose></if>
 	</select>
 
 	<select id="countCustomers" resultType="java.lang.Long">
@@ -19,6 +20,7 @@
 		<if test="parkId != null">
 			AND c.park_id = #{parkId}
 		</if>
+		<if test="authorizedParkIds != null"><choose><when test="authorizedParkIds.size() > 0">AND c.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when><otherwise>AND 1 = 0</otherwise></choose></if>
 	</select>
 
 	<select id="countExpiringContracts" resultType="java.lang.Long">
@@ -45,6 +47,7 @@
 		<if test="parkId != null">
 			AND c.park_id = #{parkId}
 		</if>
+		<if test="authorizedParkIds != null"><choose><when test="authorizedParkIds.size() > 0">AND c.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when><otherwise>AND 1 = 0</otherwise></choose></if>
 	</select>
 
 	<select id="countWorkorderTodos" resultType="java.lang.Long">
@@ -55,6 +58,7 @@
 		<if test="parkId != null">
 			AND w.park_id = #{parkId}
 		</if>
+		<if test="authorizedParkIds != null"><choose><when test="authorizedParkIds.size() > 0">AND w.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when><otherwise>AND 1 = 0</otherwise></choose></if>
 		<if test="admin == null or admin == false">
 			AND (w.create_by = #{currentUser} OR w.assign_to = #{currentUser})
 		</if>
@@ -87,6 +91,7 @@
 		<if test="parkId != null">
 			AND w.park_id = #{parkId}
 		</if>
+		<if test="authorizedParkIds != null"><choose><when test="authorizedParkIds.size() > 0">AND w.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when><otherwise>AND 1 = 0</otherwise></choose></if>
 		<if test="admin == null or admin == false">
 			AND (w.create_by = #{currentUser} OR w.assign_to = #{currentUser})
 		</if>
@@ -106,6 +111,7 @@
 		<if test="parkId != null">
 			AND c.park_id = #{parkId}
 		</if>
+		<if test="authorizedParkIds != null"><choose><when test="authorizedParkIds.size() > 0">AND c.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when><otherwise>AND 1 = 0</otherwise></choose></if>
 		ORDER BY c.create_time DESC, c.customer_id DESC
 		LIMIT 12
 	</select>

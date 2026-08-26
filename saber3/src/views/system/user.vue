@@ -485,6 +485,7 @@ export default {
       });
     },
     rowSave(row, done, loading) {
+      this.normalizeParkAssignment(row);
       row.deptId = func.join(row.deptId);
       row.roleId = func.join(row.roleId);
       row.postId = func.join(row.postId);
@@ -506,6 +507,7 @@ export default {
       );
     },
     rowUpdate(row, index, done, loading) {
+      this.normalizeParkAssignment(row);
       row.deptId = func.join(row.deptId);
       row.roleId = func.join(row.roleId);
       row.postId = func.join(row.postId);
@@ -527,6 +529,16 @@ export default {
           loading();
         }
       );
+    },
+    normalizeParkAssignment(row) {
+      const parkIds = Array.isArray(row.parkIds) ? row.parkIds : [];
+      if (!parkIds.length) {
+        row.defaultParkId = null;
+        return;
+      }
+      if (!parkIds.some(id => String(id) === String(row.defaultParkId))) {
+        row.defaultParkId = parkIds[0];
+      }
     },
     rowDel(row) {
       this.$confirm('确定将选择数据删除?', {
@@ -797,6 +809,9 @@ export default {
           }
           if (this.form.hasOwnProperty('postId')) {
             this.form.postId = func.split(this.form.postId);
+          }
+          if (Array.isArray(this.form.parkIds)) {
+            this.form.parkIds = this.form.parkIds.map(String);
           }
           if (this.form.hasOwnProperty('leaderId')) {
             this.form.leaderId = func.split(this.form.leaderId);

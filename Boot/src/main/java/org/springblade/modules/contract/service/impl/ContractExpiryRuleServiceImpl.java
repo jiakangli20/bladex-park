@@ -38,6 +38,8 @@ import org.springblade.modules.contract.mapper.ContractMapper;
 import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractExpiryRule;
 import org.springblade.modules.contract.service.IContractExpiryRuleService;
+import org.springblade.modules.park.service.IBuildingService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,10 +59,13 @@ public class ContractExpiryRuleServiceImpl extends ServiceImpl<ContractExpiryRul
 	private static final String DELETED_FLAG = "1";
 
 	private final ContractMapper contractMapper;
+	private final IBuildingService buildingService;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public IPage<ContractExpiryRule> selectRulePage(IPage<ContractExpiryRule> page, ContractExpiryRule rule) {
-		return baseMapper.selectRulePage(page, rule == null ? null : rule.getRuleName(), null);
+		return baseMapper.selectRulePage(page, rule == null ? null : rule.getRuleName(), null,
+			parkPermissionService.authorizedParkIds());
 	}
 
 	@Override
@@ -136,6 +141,7 @@ public class ContractExpiryRuleServiceImpl extends ServiceImpl<ContractExpiryRul
 			throw new ServiceException("请选择有效的关联楼宇");
 		}
 		for (Long buildingId : buildingIds) {
+			buildingService.selectBuildingById(buildingId);
 			Long count = contractMapper.existsBuilding(buildingId);
 			if (count == null || count == 0) {
 				throw new ServiceException("存在无效的关联楼宇");

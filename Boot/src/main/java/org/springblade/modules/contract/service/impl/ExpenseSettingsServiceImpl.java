@@ -26,12 +26,15 @@
 package org.springblade.modules.contract.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import lombok.RequiredArgsConstructor;
+import org.springblade.core.log.exception.ServiceException;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.utils.DateUtil;
 import org.springblade.core.tool.utils.Func;
 import org.springblade.modules.contract.mapper.ExpenseSettingsMapper;
 import org.springblade.modules.contract.pojo.entity.ExpenseSettings;
 import org.springblade.modules.contract.service.IExpenseSettingsService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.stereotype.Service;
 
 /**
@@ -40,10 +43,20 @@ import org.springframework.stereotype.Service;
  * @author Chill
  */
 @Service
+@RequiredArgsConstructor
 public class ExpenseSettingsServiceImpl extends ServiceImpl<ExpenseSettingsMapper, ExpenseSettings> implements IExpenseSettingsService {
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public boolean submit(ExpenseSettings expenseSettings) {
+		if (expenseSettings == null) throw new ServiceException("费项不能为空");
+		if (Func.isNotEmpty(expenseSettings.getId())) {
+			ExpenseSettings existing = getById(expenseSettings.getId());
+			if (existing == null) throw new ServiceException("费项不存在");
+			parkPermissionService.requirePark(existing.getParkId());
+			if (expenseSettings.getParkId() == null) expenseSettings.setParkId(existing.getParkId());
+		}
+		parkPermissionService.requirePark(expenseSettings.getParkId());
 		String userName = AuthUtil.getUserName();
 		if (Func.isEmpty(expenseSettings.getId())) {
 			expenseSettings.setCreateBy(userName);

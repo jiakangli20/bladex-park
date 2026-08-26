@@ -48,7 +48,8 @@ public interface ContractPaymentMapper extends BaseMapper<ContractPayment> {
 	 * @param payment 查询条件
 	 * @return 缴费列表
 	 */
-	List<ContractPayment> selectPaymentPage(IPage<ContractPayment> page, @Param("payment") ContractPayment payment);
+	List<ContractPayment> selectPaymentPage(IPage<ContractPayment> page, @Param("payment") ContractPayment payment,
+		@Param("authorizedParkIds") List<Long> authorizedParkIds);
 
 	/**
 	 * 合同缴费计划

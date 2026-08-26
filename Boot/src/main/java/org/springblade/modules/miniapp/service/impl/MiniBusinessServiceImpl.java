@@ -116,7 +116,7 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 			query.setParkId(parkId);
 			query.setServiceStatus("0");
 			query.setOnlineFlag("0");
-			return policyService.selectPolicyList(query).stream();
+			return policyService.selectPublicPolicyList(query).stream();
 		}).filter(this::isPolicyEffective).map(this::policyMap).limit(6).toList();
 		List<Map<String, Object>> activities = activityMapper.selectList(Wrappers.<ParkActivity>lambdaQuery()
 			.eq(ParkActivity::getTenantId, properties.getDefaultTenantId()).in(!parkIds.isEmpty(), ParkActivity::getParkId, parkIds)
@@ -160,7 +160,7 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 			query.setParkId(parkId);
 			query.setServiceStatus("0");
 			query.setOnlineFlag("0");
-			return policyService.selectPolicyList(query).stream();
+			return policyService.selectPublicPolicyList(query).stream();
 		}).filter(this::isPolicyEffective).map(this::policyMap).toList();
 	}
 
@@ -259,7 +259,7 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 			PropertyService query = new PropertyService();
 			query.setParkId(parkId);
 			query.setStatus("0");
-			return propertyService.selectPropertyServiceList(query).stream();
+			return propertyService.selectPublicPropertyServiceList(query).stream();
 		}).map(this::propertyServiceMap).toList();
 	}
 
@@ -269,7 +269,7 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 			Merchant query = new Merchant();
 			query.setParkId(parkId);
 			query.setStatus("0");
-			return merchantService.selectMerchantList(query).stream();
+			return merchantService.selectPublicMerchantList(query).stream();
 		})
 			.filter(item -> StringUtil.isBlank(keyword) || contains(item.getMerchantName(), keyword) || contains(item.getBusinessType(), keyword))
 			.map(this::merchantMap).toList();
@@ -277,7 +277,7 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 
 	@Override
 	public Map<String, Object> valueService(Long id) {
-		Merchant merchant = merchantService.selectMerchantById(id);
+		Merchant merchant = merchantService.selectPublicMerchantById(id);
 		if (merchant == null || !publicParkIds().contains(merchant.getParkId()) || !"0".equals(merchant.getStatus())) {
 			throw new ServiceException("增值服务不存在或已下架");
 		}

@@ -175,6 +175,12 @@
     <select id="selectPaymentPage" resultMap="paymentResultMap">
         <include refid="selectPaymentVo"/>
         <where>
+            <if test="authorizedParkIds != null">
+                <choose>
+                    <when test="authorizedParkIds.size() > 0">AND p.park_id IN <foreach collection="authorizedParkIds" item="id" open="(" separator="," close=")">#{id}</foreach></when>
+                    <otherwise>AND 1 = 0</otherwise>
+                </choose>
+            </if>
             <if test="payment.contractId != null">
                 AND p.contract_id = #{payment.contractId}
             </if>

@@ -1,5 +1,11 @@
 <template>
-  <el-watermark :content="watermark" style="height: 100%">
+  <el-watermark
+    :content="watermark"
+    :font="watermarkFont"
+    :gap="[180, 120]"
+    :rotate="-18"
+    style="height: 100%"
+  >
     <div class="avue-contail" :class="{ 'avue--collapse': isCollapse }">
       <div class="avue-layout" :class="{ 'avue-layout--horizontal': isHorizontal }">
         <!-- 顶部一级菜单 -->
@@ -70,6 +76,7 @@ export default {
       'menuAll',
       'setting',
       'tagWel',
+      'userInfo',
     ]),
     validSidebar() {
       return !(
@@ -77,11 +84,55 @@ export default {
       );
     },
     watermark() {
-      return website.watermark.mode ? website.watermark.text : '';
+      if (!website.watermark.mode) return '';
+      const user = this.userInfo || {};
+      const username =
+        user.account ||
+        user.userName ||
+        user.user_name ||
+        user.realName ||
+        user.real_name ||
+        website.watermark.text;
+      return `${username}  ${this.watermarkDate}`;
     },
+    watermarkFont() {
+      return {
+        color: 'rgba(16, 89, 198, 0.1)',
+        fontSize: 15,
+        fontWeight: 400,
+        fontFamily: 'Arial, "Microsoft YaHei", sans-serif',
+      };
+    },
+  },
+  data() {
+    return {
+      watermarkDate: this.formatWatermarkDate(),
+      watermarkTimer: null,
+    };
+  },
+  mounted() {
+    this.scheduleWatermarkDateRefresh();
+  },
+  beforeUnmount() {
+    if (this.watermarkTimer) window.clearTimeout(this.watermarkTimer);
   },
   props: [],
   methods: {
+    formatWatermarkDate(date = new Date()) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    },
+    scheduleWatermarkDateRefresh() {
+      if (this.watermarkTimer) window.clearTimeout(this.watermarkTimer);
+      const now = new Date();
+      const nextDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      this.watermarkTimer = window.setTimeout(() => {
+        this.watermarkDate = this.formatWatermarkDate();
+        this.scheduleWatermarkDateRefresh();
+      }, nextDay.getTime() - now.getTime() + 1000);
+    },
     //打开菜单
     openMenu(item = {}, skipMainMenu = false) {
       const doOpen = menuItem => {
@@ -123,7 +174,10 @@ export default {
                 this.$refs.top.setActiveMenu(activeTopMenu && activeTopMenu.id);
               }
               if (data.length !== 0) {
-                this.$router.$avueRouter.formatRoutes(this.menuAll.length ? this.menuAll : data, true);
+                this.$router.$avueRouter.formatRoutes(
+                  this.menuAll.length ? this.menuAll : data,
+                  true
+                );
               }
             });
           })
@@ -166,9 +220,8 @@ export default {
         { prefix: '/park', code: 'park' },
         { prefix: '/system', code: 'system' },
       ];
-      return routeMap.find(
-        item => path === item.prefix || path.indexOf(`${item.prefix}/`) === 0
-      )?.code;
+      return routeMap.find(item => path === item.prefix || path.indexOf(`${item.prefix}/`) === 0)
+        ?.code;
     },
     findFirstPagePath(menuList = []) {
       for (const menuItem of menuList) {

@@ -27,6 +27,7 @@ import org.springblade.modules.contract.service.IContractNoticeService;
 import org.springblade.modules.contract.service.IContractPrintTemplateService;
 import org.springblade.modules.contract.service.IContractTemplateRenderService;
 import org.springblade.modules.resource.builder.OssBuilder;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springblade.modules.system.pojo.entity.User;
 import org.springframework.stereotype.Service;
 
@@ -82,6 +83,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 	private final IContractTemplateRenderService contractTemplateRenderService;
 	private final ContractDocumentPreviewService contractDocumentPreviewService;
 	private final IContractPrintTemplateService contractPrintTemplateService;
+	private final IParkPermissionService parkPermissionService;
 
 	@Override
 	public ContractNoticeFileVO buildNotice(String noticeType, Long paymentId, Long contractId) {
@@ -197,6 +199,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		if (contract == null) {
 			throw new ServiceException("合同不存在");
 		}
+		parkPermissionService.requirePark(contract.getParkId());
 		Map<String, String> fileMap = new LinkedHashMap<>();
 		ContractNoticeFileVO approval = uploadDocument(buildNotice(NOTICE_CONTRACT_APPROVAL, null, contractId));
 		fileMap.put(NOTICE_CONTRACT_APPROVAL, approval.getFileUrl());
@@ -244,6 +247,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		if (payment == null) {
 			throw new ServiceException("账单不存在");
 		}
+		parkPermissionService.requirePark(payment.getParkId());
 		String direction = Func.toStr(payment.getDirection(), "receivable").trim();
 		if (!"receivable".equals(direction)) {
 			throw new ServiceException("仅应收账单可以生成逾期法务文书");
@@ -712,6 +716,7 @@ public class ContractNoticeServiceImpl implements IContractNoticeService {
 		if (contract == null) {
 			throw new ServiceException("合同不存在");
 		}
+		parkPermissionService.requirePark(contract.getParkId());
 		if (needsPayment(normalized) && payment == null) {
 			throw new ServiceException("账单不存在");
 		}
