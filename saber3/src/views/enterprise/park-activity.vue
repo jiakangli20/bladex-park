@@ -31,7 +31,7 @@
           <el-table-column prop="customerName" label="申请企业" min-width="150" align="center" show-overflow-tooltip><template #default="{ row }">{{ row.customerName || '园区后台' }}</template></el-table-column>
           <el-table-column prop="parkId" label="所属园区" width="130" align="center"><template #default="{ row }">{{ parkName(row.parkId) }}</template></el-table-column>
           <el-table-column prop="coverUrl" label="封面" width="100" align="center"><template #default="{ row }"><el-image v-if="row.coverUrl" :src="row.coverUrl" :preview-src-list="[row.coverUrl]" fit="cover" class="activity-cover" preview-teleported /><span v-else>-</span></template></el-table-column>
-          <el-table-column label="活动时间" width="320" align="center"><template #default="{ row }"><span class="single-line-cell">{{ row.startTime }} 至 {{ row.endTime }}</span></template></el-table-column>
+          <el-table-column label="活动时间" width="240" align="center"><template #default="{ row }"><span class="single-line-cell">{{ dateText(row.startTime) }} 至 {{ dateText(row.endTime) }}</span></template></el-table-column>
           <el-table-column prop="auditStatus" label="审核状态" width="110" align="center"><template #default="{ row }"><el-tag :type="auditType(row.auditStatus)" effect="plain">{{ auditText(row.auditStatus) }}</el-tag></template></el-table-column>
           <el-table-column prop="publishStatus" label="发布状态" width="108" align="center"><template #default="{ row }"><el-tag :type="Number(row.publishStatus) === 1 ? 'success' : 'info'" effect="plain">{{ Number(row.publishStatus) === 1 ? '已发布' : '未发布' }}</el-tag></template></el-table-column>
           <el-table-column label="操作" width="156" fixed="right" align="center">
@@ -92,6 +92,7 @@ export default {
   computed: { ...mapGetters(['permission', 'userInfo']), uploadHeaders() { return { 'Blade-Auth': `bearer ${getToken()}`, 'Blade-Requested-With': 'BladeHttpRequest', 'Tenant-Id': this.userInfo?.tenantId || this.userInfo?.tenant_id || '000000' }; }, permissionList() { const p = this.permission; return { editBtn: Boolean(p.park_activity_edit), auditBtn: Boolean(p.park_activity_audit), publishBtn: Boolean(p.park_activity_publish), deleteBtn: Boolean(p.park_activity_delete) }; } },
   created() { getParkList(1, 999, { status: '0' }).then(res => { this.parkOptions = res.data.data?.records || []; }); this.load(); },
   methods: {
+    dateText(value) { return value ? String(value).slice(0, 10) : '-'; },
     parkName(id) { return this.parkOptions.find(item => String(item.id) === String(id))?.name || id || '-'; },
     auditText(value) { return this.auditOptions.find(item => item.value === value)?.label || value || '已通过'; },
     auditType(value) { return this.auditOptions.find(item => item.value === value)?.type || 'success'; },

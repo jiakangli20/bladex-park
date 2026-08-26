@@ -135,7 +135,7 @@
             <template #default="{ row }">{{ row.merchantName || row.linkUrl || '-' }}</template>
           </el-table-column>
           <el-table-column prop="sortOrder" label="排序" width="76" align="center" />
-          <el-table-column prop="startTime" label="展示时间" width="320" align="center">
+          <el-table-column prop="startTime" label="展示时间" width="240" align="center">
             <template #default="{ row }"
               ><span class="single-line-cell">{{
                 formatRange(row.startTime, row.endTime)
@@ -665,8 +665,11 @@ export default {
     },
     formatRange(start, end) {
       if (!start && !end) return '长期展示';
-      if (start && end) return `${start} 至 ${end}`;
-      return start ? `${start} 起` : `至 ${end}`;
+      const formatDate = value => (value ? String(value).slice(0, 10) : '');
+      const startDate = formatDate(start);
+      const endDate = formatDate(end);
+      if (startDate && endDate) return `${startDate} 至 ${endDate}`;
+      return startDate ? `${startDate} 起` : `至 ${endDate}`;
     },
     loadMerchantOptions() {
       getMerchantList({ status: '0' }).then(res => {
