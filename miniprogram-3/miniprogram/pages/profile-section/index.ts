@@ -2,10 +2,6 @@ import { customerApi } from '../../services/miniapp'
 import { getSession, hasCapability, requireLogin } from '../../utils/session'
 
 type SectionKey = 'company' | 'contracts' | 'payments' | 'account' | 'contact'
-const inviteRoles = [
-  { label: '普通成员', value: 'mini_customer_member' },
-  { label: '企业管理员', value: 'mini_customer_admin' },
-]
 const sectionMeta: Record<SectionKey, { title: string; sub: string }> = {
   company: { title: '企业信息', sub: '维护企业基础资料和入驻信息' },
   contracts: { title: '我的合同', sub: '查看租赁合同、物业协议和合同周期' },
@@ -21,10 +17,6 @@ Page({
     accountRows: [] as Array<{ label: string; value: string }>, contactRows: [] as Array<{ label: string; value: string }>,
     canManageMembers: false,
     members: [] as Record<string, any>[],
-    invites: [] as Record<string, any>[],
-    inviteRoles,
-    inviteRoleIndex: 0,
-    inviteForm: { mobile: '', validHours: '72' },
   },
 
   onLoad(options: Record<string, string | undefined>) {
@@ -52,11 +44,12 @@ Page({
       this.setData({ bills })
     }
     if (this.data.sectionKey === 'account') {
-      const canManageMembers = hasCapability('customer.member.manage') && hasCapability('customer.invite.manage')
+      const canManageMembers = hasCapability('customer.member.manage')
+      const roleText: Record<string, string> = { mini_user: '微信用户', mini_customer_member: '企业成员', mini_customer_admin: '企业管理员', mini_park_admin: '园区管理员' }
       this.setData({ accountRows: [
         { label: '绑定手机号', value: session?.profile?.mobile || '-' },
         { label: '微信绑定', value: '已绑定' },
-        { label: '企业角色', value: session?.roleCodes.join(', ') || '-' },
+        { label: '账号身份', value: roleText[session?.roleCodes[0] || ''] || '微信用户' },
         { label: '企业', value: session?.profile?.enterpriseName || '-' },
       ], canManageMembers })
       if (canManageMembers) await this.loadMembers()
@@ -66,28 +59,12 @@ Page({
   normalizeSection(type?: string): SectionKey { return ['contracts', 'payments', 'account', 'contact'].includes(type || '') ? type as SectionKey : 'company' },
   goBack() { wx.navigateBack() },
   handleInput(event: WechatMiniprogram.Input) { const field = event.currentTarget.dataset.field as string | undefined; if (field) this.setData({ [`company.${field}`]: event.detail.value }) },
-  handleInviteInput(event: WechatMiniprogram.Input) {
-    const field = String(event.currentTarget.dataset.field || '')
-    if (field) this.setData({ [`inviteForm.${field}`]: event.detail.value })
-  },
-  changeInviteRole(event: WechatMiniprogram.PickerChange) { this.setData({ inviteRoleIndex: Number(event.detail.value || 0) }) },
   async loadMembers() {
-    const [members, invites] = await Promise.all([customerApi.members(), customerApi.invites()])
+    const members = await customerApi.members()
     const roleText: Record<string, string> = { mini_customer_member: '普通成员', mini_customer_admin: '企业管理员' }
     this.setData({
       members: members.map(item => ({ ...item, avatarText: String(item.nickname || '企').slice(0, 1), roleText: roleText[item.roleCode] || item.roleCode, statusText: Number(item.status) === 1 ? '正常' : '已停用' })),
-      invites: invites.map(item => ({ ...item, roleText: roleText[item.roleCode] || item.roleCode, usageText: `${item.usedCount || 0}/${item.maxUses || 1}` })),
     })
-  },
-  async createInvite() {
-    const mobile = this.data.inviteForm.mobile.trim()
-    if (mobile && !/^1\d{10}$/.test(mobile)) { wx.showToast({ title: '请输入正确的11位手机号', icon: 'none' }); return }
-    const validHours = Number(this.data.inviteForm.validHours)
-    if (!Number.isInteger(validHours) || validHours < 1 || validHours > 720) { wx.showToast({ title: '有效期应为1至720小时', icon: 'none' }); return }
-    const created = await customerApi.createInvite({ mobile: mobile || null, validHours, maxUses: 1, roleCode: this.data.inviteRoles[this.data.inviteRoleIndex].value })
-    await wx.showModal({ title: '邀请码已生成', content: `${created.code}\n\n邀请码仅在本次生成时展示，请发送给对应企业成员。`, showCancel: false, confirmText: '知道了' })
-    this.setData({ inviteForm: { mobile: '', validHours: '72' }, inviteRoleIndex: 0 })
-    await this.loadMembers()
   },
   async disableMember(event: WechatMiniprogram.TouchEvent) {
     const modal = await wx.showModal({ title: '停用成员', content: `确定停用成员 ${event.currentTarget.dataset.name || ''} 吗？` })

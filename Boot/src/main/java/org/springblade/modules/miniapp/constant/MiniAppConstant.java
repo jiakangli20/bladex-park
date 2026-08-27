@@ -34,6 +34,7 @@ import java.util.List;
  */
 public interface MiniAppConstant {
 
+	String ROLE_USER = "mini_user";
 	String ROLE_CUSTOMER_MEMBER = "mini_customer_member";
 	String ROLE_CUSTOMER_ADMIN = "mini_customer_admin";
 	String ROLE_PARK_ADMIN = "mini_park_admin";
@@ -50,7 +51,7 @@ public interface MiniAppConstant {
 	List<String> CUSTOMER_ADMIN_CAPABILITIES = List.of(
 		"customer.profile.view", "customer.profile.edit", "customer.contract.view", "customer.bill.view",
 		"customer.work-order.view", "customer.appointment.create", "customer.service.apply",
-		"customer.member.manage", "customer.invite.manage", "customer.utility.view",
+		"customer.member.manage", "customer.utility.view",
 		"customer.utility.submit", "customer.ad.view", "customer.ad.submit",
 		"customer.activity.view", "customer.activity.submit"
 	);

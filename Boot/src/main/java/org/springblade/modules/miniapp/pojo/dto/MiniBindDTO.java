@@ -28,6 +28,5 @@ public class MiniBindDTO {
 	private String bindTicket;
 	@NotBlank(message = "微信手机号凭证不能为空")
 	private String phoneCode;
-	private String inviteCode;
 	private String nickname;
 }

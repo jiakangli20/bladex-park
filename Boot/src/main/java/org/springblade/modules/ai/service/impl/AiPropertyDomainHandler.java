@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springblade.core.log.exception.ServiceException;
+import org.springblade.modules.ai.pojo.dto.AiAccessContext;
 import org.springblade.modules.ai.pojo.entity.AiMessage;
 import org.springblade.modules.ai.service.AiDomainHandler;
 import org.springblade.modules.ai.service.DeepSeekChatClient;
@@ -61,15 +62,15 @@ public class AiPropertyDomainHandler implements AiDomainHandler {
 	}
 
 	@Override
-	public String answer(String question, List<AiMessage> recentMessages) {
-		Map<String, Object> snapshot = buildSnapshot();
+	public String answer(String question, List<AiMessage> recentMessages, AiAccessContext accessContext) {
+		Map<String, Object> snapshot = buildSnapshot(accessContext.authorizedParkIds());
 		String prompt = buildAnswerPrompt(snapshot);
 		return deepSeekChatClient.complete(prompt, recentMessages, question).orElseGet(() -> fallbackAnswer(question, snapshot));
 	}
 
 	@Override
-	public void streamAnswer(String question, List<AiMessage> recentMessages, Consumer<String> chunkConsumer) {
-		Map<String, Object> snapshot = buildSnapshot();
+	public void streamAnswer(String question, List<AiMessage> recentMessages, AiAccessContext accessContext, Consumer<String> chunkConsumer) {
+		Map<String, Object> snapshot = buildSnapshot(accessContext.authorizedParkIds());
 		DeepSeekChatClient.StreamResult result = deepSeekChatClient.stream(
 			buildAnswerPrompt(snapshot), recentMessages, question, chunkConsumer
 		);
@@ -84,11 +85,11 @@ public class AiPropertyDomainHandler implements AiDomainHandler {
 		return OUT_OF_SCOPE_REPLY;
 	}
 
-	private Map<String, Object> buildSnapshot() {
-		Map<String, Object> board = rentControlService.getBoard(null, null, null, null, "room", null, null, false);
+	private Map<String, Object> buildSnapshot(List<Long> authorizedParkIds) {
+		Map<String, Object> board = rentControlService.getBoard(null, null, null, null, "room", null, null, false, authorizedParkIds);
 		Object overviewObject = board.get("overview");
 		Map<String, Object> overview = overviewObject instanceof Map ? (Map<String, Object>) overviewObject : Map.of();
-		List<RoomVO> rooms = roomService.selectRoomList(new Room());
+		List<RoomVO> rooms = roomService.selectRoomList(new Room(), authorizedParkIds);
 		List<Map<String, Object>> rentedRooms = new ArrayList<>();
 		for (RoomVO room : rooms) {
 			if (!"7".equals(room.getStatus())) {

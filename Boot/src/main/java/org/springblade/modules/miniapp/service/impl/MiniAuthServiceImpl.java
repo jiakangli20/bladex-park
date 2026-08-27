@@ -36,7 +36,6 @@ import org.springblade.core.oauth2.provider.OAuth2Token;
 import org.springblade.core.redis.cache.BladeRedis;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tool.jackson.JsonUtil;
-import org.springblade.core.tool.utils.DigestUtil;
 import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.core.tool.utils.WebUtil;
 import org.springblade.modules.auth.provider.UserType;
@@ -44,12 +43,10 @@ import org.springblade.modules.business.pojo.entity.Customer;
 import org.springblade.modules.business.service.ICustomerService;
 import org.springblade.modules.miniapp.config.MiniAppProperties;
 import org.springblade.modules.miniapp.constant.MiniAppConstant;
-import org.springblade.modules.miniapp.mapper.MiniInviteMapper;
 import org.springblade.modules.miniapp.mapper.MiniMemberMapper;
 import org.springblade.modules.miniapp.pojo.dto.MiniBindDTO;
 import org.springblade.modules.miniapp.pojo.dto.MiniRefreshDTO;
 import org.springblade.modules.miniapp.pojo.dto.MiniWechatLoginDTO;
-import org.springblade.modules.miniapp.pojo.entity.MiniInvite;
 import org.springblade.modules.miniapp.pojo.entity.MiniMember;
 import org.springblade.modules.miniapp.pojo.vo.MiniLoginVO;
 import org.springblade.modules.miniapp.pojo.vo.MiniProfileVO;
@@ -87,7 +84,6 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 	private final MiniWechatClient wechatClient;
 	private final MiniTokenIssuer tokenIssuer;
 	private final MiniMemberMapper memberMapper;
-	private final MiniInviteMapper inviteMapper;
 	private final ICustomerService customerService;
 	private final IUserService userService;
 	private final IUserOauthService userOauthService;
@@ -97,9 +93,6 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 	@Override
 	public MiniLoginVO wechatLogin(MiniWechatLoginDTO request) {
 		checkRateLimit("login");
-		if (Boolean.TRUE.equals(properties.getMockEnabled())) {
-			return mockLogin();
-		}
 		MiniWechatClient.WechatSession wechatSession = wechatClient.exchangeCode(request.getCode());
 		MiniMember member = memberMapper.selectOne(Wrappers.<MiniMember>lambdaQuery()
 			.eq(MiniMember::getTenantId, properties.getDefaultTenantId())
@@ -128,43 +121,12 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 		return buildLogin(member, tokenIssuer.issue(member.getTenantId(), member.getUserId()));
 	}
 
-	private MiniLoginVO mockLogin() {
-		Long userId = properties.getMockUserId();
-		if (userId == null || userId <= 0) {
-			throw new ServiceException("开发模式固定用户尚未配置");
-		}
-		User user = userService.getById(userId);
-		if (user == null || !properties.getDefaultTenantId().equals(user.getTenantId())
-			|| !Integer.valueOf(StatusType.ACTIVE.getType()).equals(user.getStatus())
-			|| Integer.valueOf(1).equals(user.getIsDeleted())) {
-			throw new ServiceException("开发模式固定用户不存在或已停用");
-		}
-		MiniMember member = findMemberByUser(user.getTenantId(), userId);
-		if (member == null) {
-			member = new MiniMember();
-			member.setTenantId(user.getTenantId());
-			member.setAppId(effectiveAppId());
-			member.setOpenId("mock-fixed-user-" + userId);
-			member.setUserId(userId);
-			member.setParkId(effectiveDefaultParkId());
-			member.setMobile(user.getPhone());
-			member.setRoleCode(MiniAppConstant.ROLE_PARK_ADMIN);
-			member.setNickname(StringUtil.isNotBlank(user.getRealName()) ? user.getRealName() : user.getName());
-			member.setStatus(StatusType.ACTIVE.getType());
-			member.setIsDeleted(0);
-			memberMapper.insert(member);
-		}
-		assertMemberEnabled(member);
-		member.setLastLoginTime(new Date());
-		memberMapper.updateById(member);
-		return buildLogin(member, tokenIssuer.issue(member.getTenantId(), member.getUserId()));
-	}
-
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public MiniLoginVO bind(MiniBindDTO request) {
 		checkRateLimit("bind");
-		String payloadJson = bladeRedis.getAndDel(MiniAppConstant.BIND_TICKET_PREFIX + request.getBindTicket());
+		String ticketKey = MiniAppConstant.BIND_TICKET_PREFIX + request.getBindTicket();
+		String payloadJson = bladeRedis.get(ticketKey);
 		if (StringUtil.isBlank(payloadJson)) {
 			throw new ServiceException("绑定票据无效或已过期，请重新登录");
 		}
@@ -189,7 +151,6 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 
 		String roleCode;
 		Long customerId = null;
-		MiniInvite invite = null;
 		if (bladeAdmin) {
 			roleCode = MiniAppConstant.ROLE_PARK_ADMIN;
 		} else if (matchedCustomer != null) {
@@ -197,25 +158,24 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 			customerId = matchedCustomer.getCustomerId();
 			parkId = matchedCustomer.getParkId();
 		} else {
-			invite = requireInvite(request.getInviteCode(), mobile, tenantId);
-			roleCode = invite.getRoleCode();
-			customerId = invite.getCustomerId();
-			parkId = invite.getParkId();
-			matchedCustomer = customerService.selectCustomerById(customerId);
-			if (matchedCustomer == null || !Objects.equals(matchedCustomer.getParkId(), parkId)) {
-				throw new ServiceException("邀请码关联企业不存在或已移出当前园区");
-			}
+			roleCode = MiniAppConstant.ROLE_USER;
 		}
 
+		String nickname = StringUtil.isNotBlank(request.getNickname()) ? request.getNickname() : payload.getNickname();
+		if (StringUtil.isBlank(nickname) && matchedCustomer != null) {
+			nickname = matchedCustomer.getContactName();
+		}
 		if (matchedUser == null) {
-			matchedUser = createLightweightUser(tenantId, mobile,
-				StringUtil.isNotBlank(request.getNickname()) ? request.getNickname() : matchedCustomer.getContactName());
+			matchedUser = createLightweightUser(tenantId, mobile, nickname);
 		}
 		MiniMember duplicate = memberMapper.selectOne(Wrappers.<MiniMember>lambdaQuery()
 			.eq(MiniMember::getTenantId, tenantId).eq(MiniMember::getAppId, effectiveAppId())
 			.eq(MiniMember::getOpenId, payload.getOpenId()).eq(MiniMember::getIsDeleted, 0).last("limit 1"));
 		if (duplicate != null) {
 			throw new ServiceException("该微信已完成绑定，请直接登录");
+		}
+		if (StringUtil.isBlank(bladeRedis.getAndDel(ticketKey))) {
+			throw new ServiceException("绑定票据已被使用或已过期，请重新登录");
 		}
 
 		MiniMember member = new MiniMember();
@@ -228,16 +188,12 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 		member.setParkId(parkId);
 		member.setMobile(mobile);
 		member.setRoleCode(roleCode);
-		member.setNickname(StringUtil.isNotBlank(request.getNickname()) ? request.getNickname() : payload.getNickname());
+		member.setNickname(nickname);
 		member.setStatus(StatusType.ACTIVE.getType());
 		member.setIsDeleted(0);
 		member.setLastLoginTime(new Date());
 		memberMapper.insert(member);
 		bindOauth(member, matchedUser);
-		if (invite != null) {
-			invite.setUsedCount(invite.getUsedCount() + 1);
-			inviteMapper.updateById(invite);
-		}
 		return buildLogin(member, tokenIssuer.issue(tenantId, matchedUser.getId()));
 	}
 
@@ -319,24 +275,6 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 		}
 	}
 
-	private MiniInvite requireInvite(String inviteCode, String mobile, String tenantId) {
-		if (StringUtil.isBlank(inviteCode)) {
-			throw new ServiceException("手机号无法唯一匹配，请填写企业邀请码");
-		}
-		MiniInvite invite = inviteMapper.selectOne(Wrappers.<MiniInvite>lambdaQuery()
-			.eq(MiniInvite::getTenantId, tenantId)
-			.eq(MiniInvite::getCodeHash, DigestUtil.sha256Hex(inviteCode.trim()))
-			.eq(MiniInvite::getStatus, StatusType.ACTIVE.getType()).eq(MiniInvite::getIsDeleted, 0).last("limit 1"));
-		if (invite == null || !activeParkIds().contains(invite.getParkId())
-			|| invite.getExpireTime().before(new Date()) || invite.getUsedCount() >= invite.getMaxUses()) {
-			throw new ServiceException("企业邀请码无效、已过期或已达使用次数");
-		}
-		if (StringUtil.isNotBlank(invite.getMobile()) && !invite.getMobile().equals(mobile)) {
-			throw new ServiceException("企业邀请码与当前手机号不匹配");
-		}
-		return invite;
-	}
-
 	private boolean isBladeAdmin(Long userId) {
 		UserInfo userInfo = userService.userInfo(userId);
 		List<String> roles = userInfo == null || userInfo.getRoles() == null ? Collections.emptyList() : userInfo.getRoles();
@@ -397,7 +335,9 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 		login.setRoleCodes(List.of(member.getRoleCode()));
 		login.setCapabilities(capabilities(member.getRoleCode()));
 		String subscribeTemplateId = MiniAppConstant.ROLE_PARK_ADMIN.equals(member.getRoleCode())
-			? properties.getTodoReminderTemplateId() : properties.getServiceNoticeTemplateId();
+			? properties.getTodoReminderTemplateId()
+			: Set.of(MiniAppConstant.ROLE_CUSTOMER_MEMBER, MiniAppConstant.ROLE_CUSTOMER_ADMIN).contains(member.getRoleCode())
+				? properties.getServiceNoticeTemplateId() : null;
 		login.setSubscribeTemplateIds(StringUtil.isBlank(subscribeTemplateId) ? List.of() : List.of(subscribeTemplateId));
 		User user = userService.getById(member.getUserId());
 		MiniProfileVO profile = new MiniProfileVO();

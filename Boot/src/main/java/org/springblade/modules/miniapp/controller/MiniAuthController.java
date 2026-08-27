@@ -52,7 +52,7 @@ public class MiniAuthController extends BladeController {
 	@PermitAll
 	@PostMapping("/bind")
 	@ApiOperationSupport(order = 2)
-	@Operation(summary = "绑定手机号或企业邀请码")
+	@Operation(summary = "授权手机号并完成微信登录")
 	public R<MiniLoginVO> bind(@Valid @RequestBody MiniBindDTO request) {
 		return R.data(authService.bind(request));
 	}

@@ -1,9 +1,4 @@
 #数据源配置
-miniapp:
-  # 本地联调临时跳过微信和手机号授权，使用固定企业客户签发真实登录态。
-  mock-enabled: true
-  mock-user-id: 2091500000000000101
-
 spring:
   data:
     redis:

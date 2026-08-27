@@ -27,6 +27,7 @@ node_modules/
 # Local env and logs
 .env.local
 .env.*.local
+Boot/config/miniapp-local.properties
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

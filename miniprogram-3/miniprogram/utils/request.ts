@@ -53,7 +53,12 @@ const rawRequest = <T>(path: string, options: RequestOptions): Promise<T> => {
           return
         }
         if (result.statusCode < 200 || result.statusCode >= 300 || body?.success === false || (body?.code && body.code !== 200)) {
-          reject({ statusCode: result.statusCode, message: body?.msg || body?.message || '请求失败' })
+          const message = body?.msg || body?.message || '请求失败'
+          const isDevelop = wx.getAccountInfoSync().miniProgram.envVersion === 'develop'
+          reject({
+            statusCode: result.statusCode,
+            message: isDevelop ? `${message} [${result.statusCode} ${path}]` : message,
+          })
           return
         }
         resolve(body.data)

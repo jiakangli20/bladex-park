@@ -1,5 +1,6 @@
 package org.springblade.modules.ai.service;
 
+import org.springblade.modules.ai.pojo.dto.AiAccessContext;
 import org.springblade.modules.ai.pojo.dto.AiChatRequest;
 import org.springblade.modules.ai.pojo.entity.AiConversation;
 import org.springblade.modules.ai.pojo.vo.AiChatMessageVO;
@@ -14,6 +15,6 @@ public interface IAiChatService {
 	List<AiConversation> conversations();
 	List<AiChatMessageVO> messages(Long conversationId);
 	void removeConversation(Long conversationId);
-	AiChatResponseVO send(AiChatRequest request);
-	void sendStream(AiChatRequest request, Long userId, String tenantId, Consumer<AiStreamEvent> eventConsumer);
+	AiChatResponseVO send(AiChatRequest request, AiAccessContext accessContext);
+	void sendStream(AiChatRequest request, AiAccessContext accessContext, Consumer<AiStreamEvent> eventConsumer);
 }

@@ -1,5 +1,6 @@
 package org.springblade.modules.ai.service;
 
+import org.springblade.modules.ai.pojo.dto.AiAccessContext;
 import org.springblade.modules.ai.pojo.entity.AiMessage;
 
 import java.util.List;
@@ -14,9 +15,9 @@ public interface AiDomainHandler {
 
 	boolean supports(String question, List<AiMessage> recentMessages);
 
-	String answer(String question, List<AiMessage> recentMessages);
+	String answer(String question, List<AiMessage> recentMessages, AiAccessContext accessContext);
 
-	default void streamAnswer(String question, List<AiMessage> recentMessages, Consumer<String> chunkConsumer) {
-		chunkConsumer.accept(answer(question, recentMessages));
+	default void streamAnswer(String question, List<AiMessage> recentMessages, AiAccessContext accessContext, Consumer<String> chunkConsumer) {
+		chunkConsumer.accept(answer(question, recentMessages, accessContext));
 	}
 }

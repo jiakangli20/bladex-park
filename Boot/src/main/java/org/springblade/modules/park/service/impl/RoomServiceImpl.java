@@ -76,7 +76,12 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements IR
 
 	@Override
 	public List<RoomVO> selectRoomList(Room room) {
-		return baseMapper.selectRoomList(room, parkPermissionService.authorizedParkIds());
+		return selectRoomList(room, parkPermissionService.authorizedParkIds());
+	}
+
+	@Override
+	public List<RoomVO> selectRoomList(Room room, List<Long> authorizedParkIds) {
+		return baseMapper.selectRoomList(room, authorizedParkIds);
 	}
 
 	@Override

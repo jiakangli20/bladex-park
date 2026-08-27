@@ -74,7 +74,12 @@ public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> i
 
 	@Override
 	public List<Building> selectBuildingList(Building building) {
-		return baseMapper.selectBuildingList(building, parkPermissionService.authorizedParkIds());
+		return selectBuildingList(building, parkPermissionService.authorizedParkIds());
+	}
+
+	@Override
+	public List<Building> selectBuildingList(Building building, List<Long> authorizedParkIds) {
+		return baseMapper.selectBuildingList(building, authorizedParkIds);
 	}
 
 	@Override

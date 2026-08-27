@@ -22,10 +22,17 @@ import org.springblade.core.tool.jackson.JsonUtil;
 import org.springblade.core.tool.utils.StringUtil;
 import org.springblade.modules.miniapp.config.MiniAppProperties;
 import org.springblade.modules.miniapp.constant.MiniAppConstant;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -42,13 +49,14 @@ public class MiniWechatClient {
 
 	private static final String WECHAT_API_BASE_URL = "https://api.weixin.qq.com";
 	private static final String CODE_SESSION_PATH = "/sns/jscode2session";
-	private static final String ACCESS_TOKEN_PATH = "/cgi-bin/token";
+	private static final String STABLE_TOKEN_PATH = "/cgi-bin/stable_token";
 	private static final String PHONE_PATH = "/wxa/business/getuserphonenumber";
 	private static final String SUBSCRIBE_SEND_PATH = "/cgi-bin/message/subscribe/send";
 
 	private final MiniAppProperties properties;
 	private final BladeRedis bladeRedis;
 	private final RestClient restClient = RestClient.builder().baseUrl(WECHAT_API_BASE_URL).build();
+	private final OkHttpClient okHttpClient = new OkHttpClient();
 
 	public WechatSession exchangeCode(String code) {
 		if (Boolean.TRUE.equals(properties.getMockEnabled())) {
@@ -82,21 +90,34 @@ public class MiniWechatClient {
 			return phoneCode;
 		}
 		assertWechatConfigured();
-		String accessToken = accessToken();
-		String response;
-		try {
-			response = restClient.post().uri(uriBuilder -> uriBuilder.path(PHONE_PATH)
-				.queryParam("access_token", accessToken).build())
-				.body(java.util.Map.of("code", phoneCode)).retrieve().body(String.class);
-		} catch (RestClientException exception) {
-			throw new ServiceException("微信手机号服务暂时不可用，请稍后重试");
+		String response = exchangePhoneCode(phoneCode, accessToken());
+		JsonNode root = JsonUtil.readTree(response);
+		if (root != null && root.path("errcode").asInt() == 40001) {
+			bladeRedis.del(wechatTokenCacheKey());
+			response = exchangePhoneCode(phoneCode, accessToken());
 		}
-		JsonNode root = requireSuccess(response, "微信手机号授权失败");
+		root = requireSuccess(response, "微信手机号授权失败");
 		String phone = root.path("phone_info").path("purePhoneNumber").asText();
 		if (StringUtil.isBlank(phone)) {
 			throw new ServiceException("微信未返回手机号");
 		}
 		return phone;
+	}
+
+	private String exchangePhoneCode(String phoneCode, String accessToken) {
+		HttpUrl url = HttpUrl.get(WECHAT_API_BASE_URL + PHONE_PATH).newBuilder()
+			.addQueryParameter("access_token", accessToken).build();
+		Request request = new Request.Builder().url(url).post(RequestBody.create(
+			JsonUtil.toJson(Map.of("code", phoneCode)), okhttp3.MediaType.get(MediaType.APPLICATION_JSON_VALUE))).build();
+		try (Response httpResponse = okHttpClient.newCall(request).execute()) {
+			String response = httpResponse.body() == null ? "" : httpResponse.body().string();
+			if (!httpResponse.isSuccessful()) {
+				throw wechatHttpException(httpResponse.code(), response, "微信手机号授权失败");
+			}
+			return response;
+		} catch (IOException exception) {
+			throw new ServiceException("微信手机号服务暂时不可用，请稍后重试");
+		}
 	}
 
 	public void sendTodoReminder(String openId, String title, String content, String page) {
@@ -131,18 +152,25 @@ public class MiniWechatClient {
 	}
 
 	private String accessToken() {
-		String cacheKey = MiniAppConstant.WECHAT_TOKEN_KEY_PREFIX + properties.getAppId();
+		String cacheKey = wechatTokenCacheKey();
 		String cachedToken = bladeRedis.get(cacheKey);
 		if (StringUtil.isNotBlank(cachedToken)) {
 			return cachedToken;
 		}
+		Request request = new Request.Builder().url(WECHAT_API_BASE_URL + STABLE_TOKEN_PATH)
+			.post(RequestBody.create(JsonUtil.toJson(Map.of(
+				"grant_type", "client_credential",
+				"appid", properties.getAppId(),
+				"secret", properties.getAppSecret(),
+				"force_refresh", false
+			)), okhttp3.MediaType.get(MediaType.APPLICATION_JSON_VALUE))).build();
 		String response;
-		try {
-			response = restClient.get().uri(uriBuilder -> uriBuilder.path(ACCESS_TOKEN_PATH)
-				.queryParam("grant_type", "client_credential")
-				.queryParam("appid", properties.getAppId())
-				.queryParam("secret", properties.getAppSecret()).build()).retrieve().body(String.class);
-		} catch (RestClientException exception) {
+		try (Response httpResponse = okHttpClient.newCall(request).execute()) {
+			response = httpResponse.body() == null ? "" : httpResponse.body().string();
+			if (!httpResponse.isSuccessful()) {
+				throw wechatHttpException(httpResponse.code(), response, "微信服务凭证获取失败");
+			}
+		} catch (IOException exception) {
 			throw new ServiceException("微信服务凭证暂时不可用，请稍后重试");
 		}
 		JsonNode root = requireSuccess(response, "微信服务凭证获取失败");
@@ -155,13 +183,34 @@ public class MiniWechatClient {
 		return token;
 	}
 
+	private String wechatTokenCacheKey() {
+		return MiniAppConstant.WECHAT_TOKEN_KEY_PREFIX + properties.getAppId();
+	}
+
 	private JsonNode requireSuccess(String response, String message) {
 		JsonNode root = JsonUtil.readTree(response);
 		if (root == null || (root.has("errcode") && root.path("errcode").asInt() != 0)) {
 			String detail = root == null ? "" : root.path("errmsg").asText();
-			throw new ServiceException(message + (StringUtil.isBlank(detail) ? "" : "：" + detail));
+			String errorCode = root == null ? "" : root.path("errcode").asText();
+			String suffix = StringUtil.isBlank(detail) ? "" : "：" + detail;
+			if (StringUtil.isNotBlank(errorCode)) {
+				suffix += "（微信错误码：" + errorCode + "）";
+			}
+			throw new ServiceException(message + suffix);
 		}
 		return root;
+	}
+
+	private ServiceException wechatHttpException(int statusCode, String responseBody, String message) {
+		JsonNode root = JsonUtil.readTree(responseBody);
+		if (root != null) {
+			String detail = root.path("errmsg").asText();
+			String errorCode = root.path("errcode").asText();
+			if (StringUtil.isNotBlank(detail) || StringUtil.isNotBlank(errorCode)) {
+				return new ServiceException(message + "：" + detail + "（微信错误码：" + errorCode + "）");
+			}
+		}
+		return new ServiceException(message + "（HTTP " + statusCode + "）");
 	}
 
 	private void assertWechatConfigured() {

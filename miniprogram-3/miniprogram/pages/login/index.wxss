@@ -70,10 +70,6 @@
 
 .panel-title { color: #172033; font-size: 40rpx; font-weight: 650; }
 .panel-sub { margin-top: 14rpx; color: #7c8798; font-size: 26rpx; line-height: 1.6; }
-.invite-field { margin-top: 34rpx; }
-.field-label { display: block; margin-bottom: 14rpx; color: #5f6b7c; font-size: 25rpx; }
-.invite-field input { height: 84rpx; padding: 0 22rpx; border: 1rpx solid #dfe5ee; border-radius: 14rpx; background: #f8faff; font-size: 28rpx; }
-
 .agreement-row {
   display: flex;
   align-items: center;

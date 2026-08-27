@@ -74,7 +74,12 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
 
 	@Override
 	public List<Floor> selectFloorStructureList(Floor floor) {
-		return baseMapper.selectFloorStructureList(floor, parkPermissionService.authorizedParkIds());
+		return selectFloorStructureList(floor, parkPermissionService.authorizedParkIds());
+	}
+
+	@Override
+	public List<Floor> selectFloorStructureList(Floor floor, List<Long> authorizedParkIds) {
+		return baseMapper.selectFloorStructureList(floor, authorizedParkIds);
 	}
 
 	@Override

@@ -12,13 +12,8 @@
   </view>
 
   <view class="login-panel">
-    <view class="panel-title">{{needBind ? '绑定园区身份' : '欢迎登录'}}</view>
-    <view class="panel-sub">{{needBind ? '授权微信手机号，自动匹配企业或管理员账号' : '使用微信身份安全登录园区小程序'}}</view>
-
-    <view wx:if="{{needBind}}" class="invite-field">
-      <text class="field-label">企业邀请码（无法自动匹配时必填）</text>
-      <input value="{{inviteCode}}" maxlength="32" placeholder="请输入企业邀请码" bindinput="onInviteInput" />
-    </view>
+    <view class="panel-title">{{needBind ? '完善登录' : '欢迎登录'}}</view>
+    <view class="panel-sub">{{needBind ? '授权微信手机号，完成账号登录' : '使用微信身份安全登录园区小程序'}}</view>
 
     <view class="agreement-row" bindtap="toggleAgreement">
       <view class="agreement-check {{agreed ? 'checked' : ''}}">{{agreed ? '✓' : ''}}</view>
@@ -29,10 +24,10 @@
       微信一键登录
     </button>
     <button wx:else class="wechat-button" loading="{{loading}}" disabled="{{loading || !agreed}}" open-type="getPhoneNumber" bindgetphonenumber="getPhoneNumber">
-      授权手机号并绑定
+      授权手机号并登录
     </button>
     <button class="browse-button" disabled="{{loading}}" bindtap="browseFirst">先浏览</button>
 
-    <view class="security-tip">登录后仅展示与当前企业及园区授权范围相关的数据</view>
+    <view class="security-tip">登录后根据当前账号权限展示园区服务</view>
   </view>
 </view>

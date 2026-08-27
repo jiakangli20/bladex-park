@@ -49,6 +49,9 @@ public interface IBuildingService extends IService<Building> {
 	 */
 	List<Building> selectBuildingList(Building building);
 
+	/** 按已捕获的园区范围查询，null 表示全部园区，空集合表示无权限。 */
+	List<Building> selectBuildingList(Building building, List<Long> authorizedParkIds);
+
 	/**
 	 * 查询建筑分页
 	 *

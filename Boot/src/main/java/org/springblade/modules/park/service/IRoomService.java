@@ -55,6 +55,9 @@ public interface IRoomService extends IService<Room> {
 	 */
 	List<RoomVO> selectRoomList(Room room);
 
+	/** 按已捕获的园区范围查询，null 表示全部园区，空集合表示无权限。 */
+	List<RoomVO> selectRoomList(Room room, List<Long> authorizedParkIds);
+
 	/**
 	 * 查询房源分页
 	 *

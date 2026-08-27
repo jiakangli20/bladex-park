@@ -56,6 +56,9 @@ public interface IFloorService extends IService<Floor> {
 	 */
 	List<Floor> selectFloorStructureList(Floor floor);
 
+	/** 按已捕获的园区范围查询，null 表示全部园区，空集合表示无权限。 */
+	List<Floor> selectFloorStructureList(Floor floor, List<Long> authorizedParkIds);
+
 	/**
 	 * 查询楼层分页
 	 *

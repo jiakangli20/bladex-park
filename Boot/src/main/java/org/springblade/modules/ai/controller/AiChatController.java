@@ -9,11 +9,13 @@ import org.springblade.core.secure.annotation.PreAuth;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.core.tenant.annotation.NonDS;
 import org.springblade.core.tool.api.R;
+import org.springblade.modules.ai.pojo.dto.AiAccessContext;
 import org.springblade.modules.ai.pojo.dto.AiChatRequest;
 import org.springblade.modules.ai.pojo.entity.AiConversation;
 import org.springblade.modules.ai.pojo.vo.AiChatMessageVO;
 import org.springblade.modules.ai.pojo.vo.AiChatResponseVO;
 import org.springblade.modules.ai.service.IAiChatService;
+import org.springblade.modules.park.service.IParkPermissionService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,6 +40,7 @@ import java.util.Map;
 public class AiChatController extends BladeController {
 
 	private final IAiChatService chatService;
+	private final IParkPermissionService parkPermissionService;
 
 	@GetMapping("/conversations")
 	@Operation(summary = "当前用户会话列表")
@@ -61,7 +64,7 @@ public class AiChatController extends BladeController {
 	@PostMapping("/send")
 	@Operation(summary = "发送房源问答消息")
 	public R<AiChatResponseVO> send(@Valid @RequestBody AiChatRequest request) {
-		return R.data(chatService.send(request));
+		return R.data(chatService.send(request, captureAccessContext()));
 	}
 
 	@PostMapping(value = "/send/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -69,12 +72,11 @@ public class AiChatController extends BladeController {
 	public SseEmitter sendStream(@Valid @RequestBody AiChatRequest request, HttpServletResponse response) {
 		response.setHeader("Cache-Control", "no-cache");
 		response.setHeader("X-Accel-Buffering", "no");
-		Long userId = AuthUtil.getUserId();
-		String tenantId = AuthUtil.getTenantId();
+		AiAccessContext accessContext = captureAccessContext();
 		SseEmitter emitter = new SseEmitter(120000L);
 		CompletableFuture.runAsync(() -> {
 			try {
-				chatService.sendStream(request, userId, tenantId, event -> {
+				chatService.sendStream(request, accessContext, event -> {
 					try {
 						emitter.send(SseEmitter.event().name(event.type()).data(event.data()));
 					} catch (Exception exception) {
@@ -92,5 +94,9 @@ public class AiChatController extends BladeController {
 			}
 		});
 		return emitter;
+	}
+
+	AiAccessContext captureAccessContext() {
+		return new AiAccessContext(AuthUtil.getUserId(), AuthUtil.getTenantId(), parkPermissionService.authorizedParkIds());
 	}
 }

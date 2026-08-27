@@ -17,15 +17,20 @@ Page({
   data: { loggedIn: false, companyName: '游客', companyMeta: '登录后查看企业与园区服务', businessMenus: [] as Record<string, any>[], accountMenus: [] as Record<string, any>[] },
   onShow() {
     const session = getSession()
+    const isCustomer = hasCapability('customer.profile.view')
     const adminMenus = hasCapability('admin.overview.view') ? [
       { key: 'overview', label: '园区概览', tone: 'blue' },
       { key: 'notifications', label: '管理通知', tone: 'orange' },
     ] : []
     this.setData({
       loggedIn: Boolean(session?.accessToken), companyName: session?.profile?.enterpriseName || session?.profile?.nickname || '游客',
-      companyMeta: session?.roleCodes.join(' · ') || '登录后查看企业与园区服务',
-      businessMenus: session ? (adminMenus.length ? adminMenus : customerMenus) : [], accountMenus: session ? accountMenus : [],
+      companyMeta: session ? this.roleText(session.roleCodes[0]) : '登录后查看企业与园区服务',
+      businessMenus: adminMenus.length ? adminMenus : (isCustomer ? customerMenus : []),
+      accountMenus: session ? (isCustomer ? accountMenus : accountMenus.filter(item => item.key === 'account')) : [],
     })
+  },
+  roleText(roleCode?: string) {
+    return ({ mini_user: '微信用户', mini_customer_member: '企业成员', mini_customer_admin: '企业管理员', mini_park_admin: '园区管理员' } as Record<string, string>)[roleCode || ''] || '微信用户'
   },
   openMenu(event: WechatMiniprogram.TouchEvent) {
     if (!requireLogin('/pages/mine/index')) return

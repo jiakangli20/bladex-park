@@ -7,8 +7,8 @@ export const authApi = {
   wechatLogin: (code: string, nickname = '') => request<MiniSession>('/blade-miniapp/auth/wechat-login', {
     method: 'POST', auth: false, data: { code, nickname },
   }),
-  bind: (bindTicket: string, phoneCode: string, inviteCode: string, nickname = '') => request<MiniSession>('/blade-miniapp/auth/bind', {
-    method: 'POST', auth: false, data: { bindTicket, phoneCode, inviteCode, nickname },
+  bind: (bindTicket: string, phoneCode: string, nickname = '') => request<MiniSession>('/blade-miniapp/auth/bind', {
+    method: 'POST', auth: false, data: { bindTicket, phoneCode, nickname },
   }),
   session: () => request<MiniSession>('/blade-miniapp/me/session'),
   logout: () => request<void>('/blade-miniapp/auth/logout', { method: 'POST' }),
@@ -70,8 +70,6 @@ export const customerApi = {
   workOrderAction: (type: string, id: string, data: JsonMap) => request<void>(`/blade-miniapp/customer/work-orders/${type}/${id}/actions`, { method: 'POST', data }),
   members: () => request<JsonMap[]>('/blade-miniapp/customer/members'),
   disableMember: (id: string) => request<void>(`/blade-miniapp/customer/members/${id}/disable`, { method: 'POST' }),
-  invites: () => request<JsonMap[]>('/blade-miniapp/customer/invites'),
-  createInvite: (data: JsonMap) => request<JsonMap>('/blade-miniapp/customer/invites', { method: 'POST', data }),
 }
 
 export const adminApi = {

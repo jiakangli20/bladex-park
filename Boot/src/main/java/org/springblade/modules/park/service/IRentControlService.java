@@ -30,6 +30,7 @@ import org.springblade.modules.business.pojo.entity.ServiceWorkorder;
 import org.springblade.modules.contract.pojo.entity.Contract;
 import org.springblade.modules.contract.pojo.entity.ContractPayment;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -53,6 +54,10 @@ public interface IRentControlService {
 	 * @return 看板数据
 	 */
 	Map<String, Object> getBoard(Long parkId, Long buildingId, Integer floorNo, String keyword, String searchType, String status, String orientation, boolean includeTree);
+
+	/** 按已捕获的园区范围查询，null 表示全部园区，空集合表示无权限。 */
+	Map<String, Object> getBoard(Long parkId, Long buildingId, Integer floorNo, String keyword, String searchType,
+		String status, String orientation, boolean includeTree, List<Long> authorizedParkIds);
 
 	/**
 	 * 查询房源关联合同
