@@ -1,6 +1,6 @@
 import { customerApi, publicApi } from '../../services/miniapp'
 import { navigateBackOr } from '../../utils/navigation'
-import { getSession, requireLogin } from '../../utils/session'
+import { getSession, hasCapability, requireLogin } from '../../utils/session'
 
 const formatDate = (date: Date) => {
   const year = date.getFullYear()
@@ -19,6 +19,11 @@ Page({
 
   async onLoad(options: Record<string, string | undefined>) {
     if (!requireLogin(`/pages/value-intent/index?id=${options.id || ''}`) || !options.id) return
+    if (!hasCapability('customer.profile.view')) {
+      wx.showToast({ title: '当前账号暂无增值服务权限', icon: 'none' })
+      navigateBackOr('/pages/index/index')
+      return
+    }
     const service = await publicApi.valueService(options.id)
     this.setData({
       service,

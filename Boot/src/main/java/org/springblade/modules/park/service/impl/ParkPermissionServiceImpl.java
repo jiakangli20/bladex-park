@@ -28,6 +28,9 @@ public class ParkPermissionServiceImpl implements IParkPermissionService {
 
 	@Override
 	public List<Long> authorizedParkIds() {
+		if (isMiniAppPublicRequest()) {
+			return null;
+		}
 		if (isMiniAppRequest()) {
 			return miniMemberMapper.selectList(Wrappers.<MiniMember>lambdaQuery()
 				.eq(MiniMember::getTenantId, AuthUtil.getTenantId())
@@ -55,5 +58,10 @@ public class ParkPermissionServiceImpl implements IParkPermissionService {
 	private boolean isMiniAppRequest() {
 		String requestUri = WebUtil.getRequestURI();
 		return requestUri != null && requestUri.startsWith("/blade-miniapp/");
+	}
+
+	private boolean isMiniAppPublicRequest() {
+		String requestUri = WebUtil.getRequestURI();
+		return requestUri != null && requestUri.startsWith("/blade-miniapp/public/");
 	}
 }

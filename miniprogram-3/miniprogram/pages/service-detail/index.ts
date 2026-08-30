@@ -1,6 +1,6 @@
 import { publicApi } from '../../services/miniapp'
 import { navigateBackOr } from '../../utils/navigation'
-import { requireLogin } from '../../utils/session'
+import { hasCapability, requireLogin } from '../../utils/session'
 
 Page({
   data: {
@@ -9,6 +9,12 @@ Page({
   },
 
   async onLoad(options: Record<string, string | undefined>) {
+    if (!requireLogin(`/pages/service-detail/index?id=${options.id || ''}`)) return
+    if (!hasCapability('customer.profile.view')) {
+      wx.showToast({ title: '当前账号暂无增值服务权限', icon: 'none' })
+      navigateBackOr('/pages/index/index')
+      return
+    }
     if (!options.id) return
     const service = await publicApi.valueService(options.id)
     this.setData({

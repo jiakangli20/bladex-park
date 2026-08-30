@@ -1,5 +1,5 @@
 import { publicApi } from '../../services/miniapp'
-import { getSession, requireLogin } from '../../utils/session'
+import { getSession, hasCapability, requireLogin } from '../../utils/session'
 
 const tones = ['green', 'orange', 'blue', 'cyan', 'purple']
 const categoryLabels: Record<string, string> = {
@@ -32,6 +32,12 @@ Page({
   },
 
   onLoad(options: Record<string, string | undefined>) {
+    if (!requireLogin(`/pages/services/index?tab=${options.tab || 'property'}`)) return
+    if (!hasCapability('customer.profile.view')) {
+      wx.showToast({ title: '当前账号暂无企业服务权限', icon: 'none' })
+      wx.redirectTo({ url: '/pages/index/index' })
+      return
+    }
     if (options.tab === 'value') this.setData({ activeTab: 'value' })
     if (options.keyword) this.setData({ searchKeyword: options.keyword })
     this.loadServices()
@@ -104,6 +110,10 @@ Page({
   },
 
   openPropertyService(event: WechatMiniprogram.TouchEvent) {
+    if (!hasCapability('customer.profile.view')) {
+      wx.showToast({ title: '当前账号暂无物业服务权限', icon: 'none' })
+      return
+    }
     if (!requireLogin('/pages/services/index?tab=property')) return
     const id = event.currentTarget.dataset.id
     const type = event.currentTarget.dataset.key

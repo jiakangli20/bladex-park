@@ -28,9 +28,8 @@ Page({
   },
 
   applySettle() {
-    if (!requireLogin(`/pages/house-intent/index?mode=settlement&id=${this.data.house.id}`)) return
     wx.navigateTo({
-      url: `/pages/house-intent/index?mode=settlement&id=${this.data.house.id}`,
+      url: `/pages/house-intent/index?mode=settlement&public=1&id=${this.data.house.id}`,
     })
   },
 })

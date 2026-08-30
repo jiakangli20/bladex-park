@@ -38,6 +38,9 @@ public interface MiniAppConstant {
 	String ROLE_CUSTOMER_MEMBER = "mini_customer_member";
 	String ROLE_CUSTOMER_ADMIN = "mini_customer_admin";
 	String ROLE_PARK_ADMIN = "mini_park_admin";
+	String WEB_ROLE_GUEST = "mini_guest";
+	String WEB_DEPT_GUEST = "游客";
+	String WEB_POST_MINIAPP = "miniapp_user";
 	String OAUTH_SOURCE = "WECHAT_MINI";
 	String BIND_TICKET_PREFIX = "miniapp:bind:";
 	String RATE_LIMIT_PREFIX = "miniapp:rate:";

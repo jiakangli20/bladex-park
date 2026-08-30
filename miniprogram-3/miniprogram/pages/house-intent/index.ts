@@ -1,5 +1,5 @@
 import { customerApi, publicApi } from '../../services/miniapp'
-import { requireLogin } from '../../utils/session'
+import { getSession, hasCapability, requireLogin } from '../../utils/session'
 
 const industryOptions = ['软件与信息技术', '人工智能', '金融服务', '文化创意', '智能制造', '商务服务', '批发零售', '其他']
 const scaleOptions = ['1-20人', '21-50人', '51-100人', '101-300人', '301-500人', '500人以上']
@@ -13,6 +13,7 @@ const formatDate = (date: Date) => {
 Page({
   data: {
     mode: 'appointment',
+    publicMode: false,
     title: '预约看房',
     submitText: '提交预约',
     today: formatDate(new Date()),
@@ -37,16 +38,18 @@ Page({
   },
 
   async onLoad(options: Record<string, string | undefined>) {
-    if (!requireLogin(`/pages/house-intent/index?mode=${options.mode || 'appointment'}&id=${options.id || ''}`)) return
+    const publicMode = options.public === '1'
+    if (!publicMode && !requireLogin(`/pages/house-intent/index?mode=${options.mode || 'appointment'}&id=${options.id || ''}`)) return
     const isSettlement = options.mode === 'settlement'
     const house = options.id ? await publicApi.house(options.id) : {}
     this.setData({
       mode: isSettlement ? 'settlement' : 'appointment',
+      publicMode,
       title: isSettlement ? '入驻意向' : '预约看房',
       submitText: isSettlement ? '提交意向' : '提交预约',
       house,
     })
-    if (isSettlement) {
+    if (isSettlement && getSession()?.accessToken && hasCapability('customer.profile.view')) {
       try {
         const company = await customerApi.company()
         this.setData({
@@ -106,6 +109,7 @@ Page({
   },
 
   async submitForm() {
+    if (this.data.publicMode && !requireLogin(`/pages/house-intent/index?mode=${this.data.mode}`)) return
     const { contact, phone, companyName } = this.data.form
     if (!contact || !phone || !companyName) {
       wx.showToast({

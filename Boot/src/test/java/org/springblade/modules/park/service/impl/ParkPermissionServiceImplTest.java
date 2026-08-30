@@ -68,6 +68,18 @@ class ParkPermissionServiceImplTest {
 		}
 	}
 
+	@Test
+	void miniappPublicRequestCanReadAllPublicParksWithoutMemberIdentity() {
+		try (MockedStatic<AuthUtil> auth = mockStatic(AuthUtil.class);
+			 MockedStatic<WebUtil> web = mockStatic(WebUtil.class)) {
+			web.when(WebUtil::getRequestURI).thenReturn("/blade-miniapp/public/houses");
+
+			assertNull(service.authorizedParkIds());
+			verify(miniMemberMapper, never()).selectList(any());
+			verify(userParkService, never()).parkIds(any());
+		}
+	}
+
 	private MiniMember member(Long parkId) {
 		MiniMember member = new MiniMember();
 		member.setParkId(parkId);

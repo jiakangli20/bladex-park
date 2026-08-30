@@ -51,6 +51,10 @@ import org.springblade.core.tool.support.Kv;
 import org.springblade.core.tool.utils.*;
 import org.springblade.modules.auth.provider.UserType;
 import org.springblade.modules.system.excel.UserExcel;
+import org.springblade.modules.miniapp.mapper.MiniCustomerMemberMapper;
+import org.springblade.modules.miniapp.mapper.MiniMemberMapper;
+import org.springblade.modules.miniapp.pojo.entity.MiniCustomerMember;
+import org.springblade.modules.miniapp.pojo.entity.MiniMember;
 import org.springblade.modules.system.mapper.UserMapper;
 import org.springblade.modules.system.pojo.entity.*;
 import org.springblade.modules.system.pojo.vo.UserVO;
@@ -81,12 +85,15 @@ import static org.springblade.core.cache.constant.CacheConstant.USER_CACHE;
 @AllArgsConstructor
 public class UserServiceImpl extends BaseServiceImpl<UserMapper, User> implements IUserService {
 	private static final String GUEST_NAME = "guest";
+	private static final String MINIAPP_GUEST_ROLE = "mini_guest";
 
 	private final IUserDeptService userDeptService;
 	private final IUserParkService userParkService;
 	private final IUserOauthService userOauthService;
 	private final IRoleService roleService;
 	private final BladeTenantProperties tenantProperties;
+	private final MiniMemberMapper miniMemberMapper;
+	private final MiniCustomerMemberMapper miniCustomerMemberMapper;
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
@@ -198,6 +205,10 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, User> implement
 	}
 
 	private void validateParkAssignment(User user, boolean creating) {
+		if (user.getUserType() != null && UserType.OTHER.getCategory() == user.getUserType()
+			&& roleService.getRoleAliases(user.getRoleId()).contains(MINIAPP_GUEST_ROLE)) {
+			return;
+		}
 		if (user.getParkIds() == null) {
 			if (creating && !isAdministratorRole(user.getRoleId())) {
 				throw new ServiceException("普通后台用户必须至少授权一个园区");
@@ -388,20 +399,27 @@ public class UserServiceImpl extends BaseServiceImpl<UserMapper, User> implement
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public boolean removeUser(String userIds) {
+		List<Long> ids = Func.toLongList(userIds);
 		if (Func.contains(Func.toLongArray(userIds), AuthUtil.getUserId())) {
 			throw new ServiceException("不能删除本账号!");
 		}
-		boolean tempUser = this.deleteLogic(Func.toLongList(userIds));
-		boolean tempUserDept = userDeptService.remove(Wrappers.<UserDept>lambdaQuery().in(UserDept::getUserId, Func.toLongList(userIds)));
+		boolean tempUser = this.deleteLogic(ids);
+		boolean tempUserDept = userDeptService.remove(Wrappers.<UserDept>lambdaQuery().in(UserDept::getUserId, ids));
 		if (tempUser && tempUserDept) {
+			List<MiniMember> activeMiniMembers = miniMemberMapper.selectList(Wrappers.<MiniMember>lambdaQuery()
+				.in(MiniMember::getUserId, ids).eq(MiniMember::getIsDeleted, 0));
+			for (MiniMember member : activeMiniMembers) {
+				miniMemberMapper.purgeDeletedByAppOpen(member.getAppId(), member.getOpenId());
+				miniCustomerMemberMapper.purgeDeletedByMemberId(member.getId());
+			}
 			UserOauth userOauth = new UserOauth();
-			userOauth.delete(Wrappers.<UserOauth>lambdaQuery().in(UserOauth::getUserId, Func.toLongList(userIds)));
-			UserWeb userWeb = new UserWeb();
-			userWeb.delete(Wrappers.<UserWeb>lambdaQuery().in(UserWeb::getUserId, Func.toLongList(userIds)));
-			UserApp userApp = new UserApp();
-			userApp.delete(Wrappers.<UserApp>lambdaQuery().in(UserApp::getUserId, Func.toLongList(userIds)));
-			UserOther userOther = new UserOther();
-			userOther.delete(Wrappers.<UserOther>lambdaQuery().in(UserOther::getUserId, Func.toLongList(userIds)));
+			userOauth.delete(Wrappers.<UserOauth>lambdaQuery().in(UserOauth::getUserId, ids));
+			new UserWeb().delete(Wrappers.<UserWeb>lambdaQuery().in(UserWeb::getUserId, ids));
+			new UserApp().delete(Wrappers.<UserApp>lambdaQuery().in(UserApp::getUserId, ids));
+			new UserOther().delete(Wrappers.<UserOther>lambdaQuery().in(UserOther::getUserId, ids));
+			// 小程序绑定依赖 blade_user，用户删除时必须同步注销，避免旧 open_id 继续签发失效用户 token。
+			miniCustomerMemberMapper.delete(Wrappers.<MiniCustomerMember>lambdaQuery().in(MiniCustomerMember::getUserId, ids));
+			miniMemberMapper.delete(Wrappers.<MiniMember>lambdaQuery().in(MiniMember::getUserId, ids));
 			CacheUtil.clear(USER_CACHE);
 			return true;
 		} else {

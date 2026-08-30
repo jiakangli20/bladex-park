@@ -335,7 +335,11 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public Map<String, Object> createSettlement(String requestId, MiniBusinessDTO.Settlement request) {
-		MiniMember member = authService.requireCustomer();
+		MiniMember member = authService.currentMember();
+		if (!Set.of(MiniAppConstant.ROLE_USER, MiniAppConstant.ROLE_CUSTOMER_MEMBER,
+			MiniAppConstant.ROLE_CUSTOMER_ADMIN).contains(member.getRoleCode())) {
+			throw new ServiceException("当前账号不支持提交入驻申请");
+		}
 		return idempotent(requestId, () -> {
 			SettlementTodo todo = new SettlementTodo();
 			todo.setTenantId(member.getTenantId());

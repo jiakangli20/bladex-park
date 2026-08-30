@@ -30,6 +30,12 @@ const serviceCards = [
   { key: 'activity', title: '园区活动', desc: '活动发布申请', tone: 'pink' },
 ]
 
+const ensureCustomerServiceAccess = () => {
+  if (hasCapability('customer.profile.view')) return true
+  wx.showToast({ title: '请先登录并完成企业认证', icon: 'none' })
+  return false
+}
+
 Page({
   data: {
     quickActions: [...baseActions, complaintAction],
@@ -74,10 +80,12 @@ Page({
       return
     }
     if (key === 'property') {
+      if (!ensureCustomerServiceAccess()) return
       wx.redirectTo({ url: '/pages/services/index?tab=property' })
       return
     }
     if (key === 'value') {
+      if (!ensureCustomerServiceAccess()) return
       wx.redirectTo({ url: '/pages/services/index?tab=value' })
       return
     }
@@ -92,8 +100,7 @@ Page({
       return
     }
     if (key === 'settle') {
-      if (!requireLogin('/pages/house-intent/index?mode=settlement')) return
-      wx.navigateTo({ url: '/pages/house-intent/index?mode=settlement' })
+      wx.navigateTo({ url: '/pages/house-intent/index?mode=settlement&public=1' })
       return
     }
     if (key === 'parking-pay') {
@@ -168,21 +175,21 @@ Page({
   openServiceCard(event: WechatMiniprogram.TouchEvent) {
     const key = event.currentTarget.dataset.key
     if (key === 'repair') {
+      if (!ensureCustomerServiceAccess()) return
       wx.navigateTo({ url: '/pages/property-form/index?type=repair' })
       return
     }
     if (key === 'venue') {
+      if (!ensureCustomerServiceAccess()) return
       wx.showToast({ title: '场地预约暂未开放', icon: 'none' })
       return
     }
     if (key === 'ad-service') {
-      if (!requireLogin('/pages/customer-ads/index')) return
-      wx.navigateTo({ url: '/pages/customer-ads/index' })
+      wx.navigateTo({ url: '/pages/ads/index' })
       return
     }
     if (key === 'activity') {
-      if (!requireLogin('/pages/customer-activities/index')) return
-      wx.navigateTo({ url: '/pages/customer-activities/index' })
+      wx.navigateTo({ url: '/pages/customer-activities/index?mode=public' })
       return
     }
     wx.redirectTo({ url: '/pages/services/index?tab=value' })

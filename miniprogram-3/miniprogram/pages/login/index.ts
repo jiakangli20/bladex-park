@@ -12,8 +12,6 @@ Page({
   data: {
     agreed: false,
     loading: false,
-    needBind: false,
-    bindTicket: '',
     redirect: '/pages/index/index',
   },
 
@@ -27,37 +25,22 @@ Page({
     this.setData({ agreed: !this.data.agreed })
   },
 
-  async startLogin() {
-    if (!this.data.agreed) {
-      wx.showToast({ title: '请先阅读并同意隐私协议', icon: 'none' })
-      return
-    }
-    this.setData({ loading: true })
-    try {
-      const code = await wechatCode()
-      const session = await authApi.wechatLogin(code)
-      if (session.needBind) {
-        this.setData({ needBind: true, bindTicket: session.bindTicket || '' })
-        wx.showToast({ title: '请授权手机号完成登录', icon: 'none' })
-        return
-      }
-      saveSession(session)
-      await this.requestSubscriptions(session)
-      await this.finish()
-    } finally {
-      this.setData({ loading: false })
-    }
-  },
-
-  async getPhoneNumber(event: WechatMiniprogram.CustomEvent<{ code?: string; errMsg?: string }>) {
+  async quickLogin(event: WechatMiniprogram.CustomEvent<{ code?: string; errMsg?: string }>) {
     const phoneCode = event.detail.code
     if (!phoneCode) {
-      wx.showToast({ title: '需要手机号授权才能完成登录', icon: 'none' })
+      wx.showToast({ title: '未获取到手机号，请允许授权后重试', icon: 'none' })
       return
     }
     this.setData({ loading: true })
     try {
-      const session = await authApi.bind(this.data.bindTicket, phoneCode)
+      // 手机号授权和 wx.login 必须在用户点击回调中串联，未绑定用户再换取一次性绑定票据。
+      const code = await wechatCode()
+      const login = await authApi.wechatLogin(code)
+      let session = login
+      if (login.needBind) {
+        if (!login.bindTicket) throw new Error('登录票据无效，请重试')
+        session = await authApi.bind(login.bindTicket, phoneCode)
+      }
       saveSession(session)
       await this.requestSubscriptions(session)
       await this.finish()

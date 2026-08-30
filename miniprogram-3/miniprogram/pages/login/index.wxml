@@ -12,22 +12,19 @@
   </view>
 
   <view class="login-panel">
-    <view class="panel-title">{{needBind ? '完善登录' : '欢迎登录'}}</view>
-    <view class="panel-sub">{{needBind ? '授权微信手机号，完成账号登录' : '使用微信身份安全登录园区小程序'}}</view>
+    <view class="panel-title">欢迎登录</view>
+    <view class="panel-sub">授权手机号，快捷登录园区小程序</view>
 
     <view class="agreement-row" bindtap="toggleAgreement">
       <view class="agreement-check {{agreed ? 'checked' : ''}}">{{agreed ? '✓' : ''}}</view>
       <text>我已阅读并同意《用户协议》和《隐私保护指引》</text>
     </view>
 
-    <button wx:if="{{!needBind}}" class="wechat-button" loading="{{loading}}" disabled="{{loading}}" bindtap="startLogin">
-      微信一键登录
-    </button>
-    <button wx:else class="wechat-button" loading="{{loading}}" disabled="{{loading || !agreed}}" open-type="getPhoneNumber" bindgetphonenumber="getPhoneNumber">
-      授权手机号并登录
+    <button class="wechat-button" loading="{{loading}}" disabled="{{loading || !agreed}}" open-type="getPhoneNumber" bindgetphonenumber="quickLogin">
+      手机号快捷登录
     </button>
     <button class="browse-button" disabled="{{loading}}" bindtap="browseFirst">先浏览</button>
 
-    <view class="security-tip">登录后根据当前账号权限展示园区服务</view>
+    <view class="security-tip">首次登录完成后将创建游客账号</view>
   </view>
 </view>

@@ -1,6 +1,6 @@
 import { customerApi, publicApi } from '../../services/miniapp'
 import { navigateBackOr } from '../../utils/navigation'
-import { getSession, requireLogin } from '../../utils/session'
+import { getSession, hasCapability, requireLogin } from '../../utils/session'
 
 Page({
   data: {
@@ -11,6 +11,11 @@ Page({
 
   async onLoad(options: Record<string, string | undefined>) {
     if (!requireLogin(`/pages/property-form/index?id=${options.id || ''}&type=${options.type || ''}`)) return
+    if (!hasCapability('customer.profile.view')) {
+      wx.showToast({ title: '当前账号暂无物业服务权限', icon: 'none' })
+      navigateBackOr('/pages/index/index')
+      return
+    }
     const services = await publicApi.propertyServices()
     const parkId = getSession()?.parkId
     const parkServices = parkId ? services.filter(item => String(item.parkId) === String(parkId)) : services

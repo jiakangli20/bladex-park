@@ -30,7 +30,7 @@ Page({
     })
   },
   roleText(roleCode?: string) {
-    return ({ mini_user: '微信用户', mini_customer_member: '企业成员', mini_customer_admin: '企业管理员', mini_park_admin: '园区管理员' } as Record<string, string>)[roleCode || ''] || '微信用户'
+    return ({ mini_user: '游客', mini_customer_member: '企业用户', mini_customer_admin: '企业用户' } as Record<string, string>)[roleCode || ''] || '游客'
   },
   openMenu(event: WechatMiniprogram.TouchEvent) {
     if (!requireLogin('/pages/mine/index')) return

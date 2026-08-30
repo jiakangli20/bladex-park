@@ -45,7 +45,7 @@ Page({
     }
     if (this.data.sectionKey === 'account') {
       const canManageMembers = hasCapability('customer.member.manage')
-      const roleText: Record<string, string> = { mini_user: '微信用户', mini_customer_member: '企业成员', mini_customer_admin: '企业管理员', mini_park_admin: '园区管理员' }
+      const roleText: Record<string, string> = { mini_user: '游客', mini_customer_member: '企业用户', mini_customer_admin: '企业用户' }
       this.setData({ accountRows: [
         { label: '绑定手机号', value: session?.profile?.mobile || '-' },
         { label: '微信绑定', value: '已绑定' },
