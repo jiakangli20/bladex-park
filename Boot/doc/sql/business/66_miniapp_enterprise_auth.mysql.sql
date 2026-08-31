@@ -106,8 +106,50 @@ SET @idx_exists := (SELECT COUNT(*) FROM information_schema.statistics WHERE tab
 SET @sql := IF(@idx_exists > 0, 'ALTER TABLE biz_mini_customer_member DROP INDEX uk_mini_customer_member_active', 'SELECT 1'); PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
 SET @col_exists := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='biz_mini_customer_member' AND column_name='enterprise_subject_id');
 SET @sql := IF(@col_exists = 0, 'ALTER TABLE biz_mini_customer_member ADD COLUMN enterprise_subject_id bigint NULL COMMENT ''企业主体ID'' AFTER customer_id', 'SELECT 1'); PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+-- 旧库可能仍保留 mini_customer_member 默认值；新关系统一使用 OWNER/MEMBER。
+ALTER TABLE `biz_mini_customer_member`
+  MODIFY COLUMN `role_code` varchar(64) NOT NULL DEFAULT 'MEMBER' COMMENT '企业成员角色：OWNER/MEMBER';
 SET @uk_exists := (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='biz_mini_customer_member' AND index_name='uk_mini_customer_member_scope');
 SET @sql := IF(@uk_exists = 0, 'ALTER TABLE biz_mini_customer_member ADD UNIQUE KEY uk_mini_customer_member_scope (member_id,enterprise_subject_id,park_id,is_deleted)', 'SELECT 1'); PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+SET @idx_exists := (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='biz_mini_customer_member' AND index_name='idx_mini_customer_member_subject');
+SET @sql := IF(@idx_exists = 0, 'ALTER TABLE biz_mini_customer_member ADD KEY idx_mini_customer_member_subject (tenant_id,enterprise_subject_id,park_id,status)', 'SELECT 1'); PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- 企业管理员和企业员工必须同时归属“园区企业”主部门及用户部门关系。
+SET @park_enterprise_dept_id := (
+  SELECT `id` FROM `blade_dept`
+  WHERE `tenant_id` = '000000' AND `dept_name` = '园区企业' AND `status` = 1 AND `is_deleted` = 0
+  ORDER BY `id` LIMIT 1
+);
+
+UPDATE `blade_user` u
+JOIN `biz_mini_customer_member` r
+  ON r.`user_id` = u.`id` AND r.`status` = 1 AND r.`is_deleted` = 0
+SET u.`dept_id` = CAST(@park_enterprise_dept_id AS CHAR), u.`update_time` = NOW()
+WHERE @park_enterprise_dept_id IS NOT NULL AND u.`is_deleted` = 0;
+
+UPDATE `blade_user_dept` ud
+JOIN `biz_mini_customer_member` r
+  ON r.`user_id` = ud.`user_id` AND r.`status` = 1 AND r.`is_deleted` = 0
+SET ud.`is_deleted` = 1
+WHERE @park_enterprise_dept_id IS NOT NULL AND ud.`is_deleted` = 0 AND ud.`dept_id` <> @park_enterprise_dept_id;
+
+UPDATE `blade_user_dept` ud
+JOIN `biz_mini_customer_member` r
+  ON r.`user_id` = ud.`user_id` AND r.`status` = 1 AND r.`is_deleted` = 0
+SET ud.`status` = 1, ud.`is_deleted` = 0
+WHERE @park_enterprise_dept_id IS NOT NULL AND ud.`dept_id` = @park_enterprise_dept_id;
+
+INSERT INTO `blade_user_dept` (`id`, `user_id`, `dept_id`, `status`, `is_deleted`)
+SELECT CAST(CONV(SUBSTRING(MD5(CONCAT('mini-park-enterprise-dept:', r.`user_id`)), 1, 15), 16, 10) AS UNSIGNED),
+       r.`user_id`, @park_enterprise_dept_id, 1, 0
+FROM `biz_mini_customer_member` r
+JOIN `blade_user` u ON u.`id` = r.`user_id` AND u.`is_deleted` = 0
+WHERE @park_enterprise_dept_id IS NOT NULL AND r.`status` = 1 AND r.`is_deleted` = 0
+  AND NOT EXISTS (
+    SELECT 1 FROM `blade_user_dept` ud
+    WHERE ud.`user_id` = r.`user_id` AND ud.`dept_id` = @park_enterprise_dept_id AND ud.`is_deleted` = 0
+  )
+GROUP BY r.`user_id`;
 
 INSERT INTO `blade_menu` (`id`,`parent_id`,`code`,`name`,`alias`,`path`,`source`,`component`,`sort`,`category`,`action`,`is_open`,`remark`,`is_deleted`)
 VALUES (2095000000007000300,1890000000007000000,'enterprise_auth','企业认证审核','menu','/enterprise/enterprise-auth','iconfont iconicon_audit','views/enterprise/enterprise-auth',30,1,0,1,'企业认证及新增园区申请审核',0)

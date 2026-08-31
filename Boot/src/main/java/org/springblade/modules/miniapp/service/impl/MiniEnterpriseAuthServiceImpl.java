@@ -32,7 +32,9 @@ import org.springblade.modules.park.pojo.entity.Park;
 import org.springblade.modules.park.service.IParkService;
 import org.springblade.modules.system.pojo.entity.Dept;
 import org.springblade.modules.system.pojo.entity.User;
+import org.springblade.modules.system.pojo.entity.UserDept;
 import org.springblade.modules.system.service.IDeptService;
+import org.springblade.modules.system.service.IUserDeptService;
 import org.springblade.modules.system.service.IUserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,6 +72,7 @@ public class MiniEnterpriseAuthServiceImpl implements IMiniEnterpriseAuthService
     private final ICustomerService customerService;
     private final IParkService parkService;
     private final IDeptService deptService;
+    private final IUserDeptService userDeptService;
     private final IUserService userService;
 
     private String tenant() {
@@ -488,7 +491,7 @@ public class MiniEnterpriseAuthServiceImpl implements IMiniEnterpriseAuthService
         if (applicant.getCustomerId() == null) {
             applyMemberContext(applicant, relation);
         }
-        markTenant(application.getApplicantUserId());
+        markParkEnterprise(application.getApplicantUserId());
     }
 
     @Override
@@ -629,7 +632,7 @@ public class MiniEnterpriseAuthServiceImpl implements IMiniEnterpriseAuthService
         if (member.getCustomerId() == null && firstRelation != null) {
             applyMemberContext(member, firstRelation);
         }
-        markTenant(certification.getApplicantUserId());
+        markParkEnterprise(certification.getApplicantUserId());
     }
 
     private List<MiniCustomerMember> activeRelations(Long uid) {
@@ -783,10 +786,11 @@ public class MiniEnterpriseAuthServiceImpl implements IMiniEnterpriseAuthService
         throw new ServiceException("审核结果不正确");
     }
 
-    private void markTenant(Long uid) {
+    private void markParkEnterprise(Long uid) {
         Dept dept = deptService.getOne(Wrappers.<Dept>lambdaQuery()
             .eq(Dept::getTenantId, tenant())
-            .eq(Dept::getDeptName, "租户")
+            .eq(Dept::getDeptName, "园区企业")
+            .eq(Dept::getStatus, 1)
             .eq(Dept::getIsDeleted, 0)
             .last("limit 1"));
         if (dept != null && userService.getById(uid) != null) {
@@ -794,6 +798,25 @@ public class MiniEnterpriseAuthServiceImpl implements IMiniEnterpriseAuthService
             update.setId(uid);
             update.setDeptId(String.valueOf(dept.getId()));
             userService.updateById(update);
+
+            boolean hasParkEnterpriseDept = userDeptService.count(Wrappers.<UserDept>lambdaQuery()
+                .eq(UserDept::getUserId, uid)
+                .eq(UserDept::getDeptId, dept.getId())
+                .eq(UserDept::getStatus, 1)
+                .eq(UserDept::getIsDeleted, 0)) > 0;
+            boolean hasOtherDept = userDeptService.count(Wrappers.<UserDept>lambdaQuery()
+                .eq(UserDept::getUserId, uid)
+                .ne(UserDept::getDeptId, dept.getId())
+                .eq(UserDept::getIsDeleted, 0)) > 0;
+            if (!hasParkEnterpriseDept || hasOtherDept) {
+                userDeptService.remove(Wrappers.<UserDept>lambdaQuery().eq(UserDept::getUserId, uid));
+                UserDept userDept = new UserDept();
+                userDept.setUserId(uid);
+                userDept.setDeptId(dept.getId());
+                userDept.setStatus(1);
+                userDept.setIsDeleted(0);
+                userDeptService.save(userDept);
+            }
         }
     }
 

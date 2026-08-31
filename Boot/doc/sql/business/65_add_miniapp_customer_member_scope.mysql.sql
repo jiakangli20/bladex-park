@@ -1,4 +1,4 @@
--- 小程序游客身份与企业成员关系（可重复执行）。
+-- 小程序游客身份与多企业、多园区成员关系（可重复执行）。
 SET NAMES utf8mb4;
 
 SET @guest_dept_seed_id := 2093000000000000101;
@@ -78,8 +78,9 @@ CREATE TABLE IF NOT EXISTS `biz_mini_customer_member` (
   `member_id` bigint NOT NULL COMMENT '小程序成员ID',
   `user_id` bigint NOT NULL COMMENT 'BladeX用户ID',
   `customer_id` bigint NOT NULL COMMENT '企业客户ID',
+  `enterprise_subject_id` bigint NOT NULL COMMENT '企业主体ID',
   `park_id` bigint NOT NULL COMMENT '企业所属园区ID',
-  `role_code` varchar(64) NOT NULL DEFAULT 'mini_customer_member' COMMENT '小程序企业角色',
+  `role_code` varchar(64) NOT NULL DEFAULT 'MEMBER' COMMENT '企业成员角色：OWNER/MEMBER',
   `mobile` varchar(32) DEFAULT NULL COMMENT '加入时手机号快照',
   `join_source` varchar(32) NOT NULL DEFAULT 'ADMIN' COMMENT '加入来源',
   `certification_id` bigint DEFAULT NULL COMMENT '企业认证申请ID',
@@ -93,38 +94,11 @@ CREATE TABLE IF NOT EXISTS `biz_mini_customer_member` (
   `status` int NOT NULL DEFAULT 1 COMMENT '状态',
   `is_deleted` int NOT NULL DEFAULT 0 COMMENT '逻辑删除',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_mini_customer_member_active` (`member_id`, `is_deleted`),
+  UNIQUE KEY `uk_mini_customer_member_scope` (`member_id`, `enterprise_subject_id`, `park_id`, `is_deleted`),
   KEY `idx_mini_customer_member_customer` (`tenant_id`, `customer_id`, `status`),
+  KEY `idx_mini_customer_member_subject` (`tenant_id`, `enterprise_subject_id`, `park_id`, `status`),
   KEY `idx_mini_customer_member_user` (`tenant_id`, `user_id`, `status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='小程序企业成员关系';
-
--- 历史 customer_id 仅用于一次性回填，后续身份只认本关系表。
-INSERT IGNORE INTO `biz_mini_customer_member` (
-  `id`, `tenant_id`, `member_id`, `user_id`, `customer_id`, `park_id`, `role_code`,
-  `mobile`, `join_source`, `join_time`, `create_user`, `create_dept`, `create_time`,
-  `update_user`, `update_time`, `status`, `is_deleted`
-)
-SELECT
-  m.`id`, m.`tenant_id`, m.`id`, m.`user_id`, m.`customer_id`, m.`park_id`,
-  'mini_customer_member', m.`mobile`, 'ADMIN', COALESCE(m.`create_time`, NOW()),
-  m.`create_user`, m.`create_dept`, COALESCE(m.`create_time`, NOW()),
-  m.`update_user`, NOW(), 1, 0
-FROM `biz_mini_member` m
-JOIN `biz_customer` c
-  ON c.`customer_id` = m.`customer_id` AND c.`status` = '0' AND c.`del_flag` = '0'
-WHERE m.`customer_id` IS NOT NULL AND m.`user_id` IS NOT NULL AND m.`is_deleted` = 0
-  AND NOT EXISTS (
-    SELECT 1 FROM `biz_mini_customer_member` existing
-    WHERE existing.`member_id` = m.`id`
-  );
-
--- 历史企业管理员在小程序中按普通企业用户处理。
-UPDATE `biz_mini_member` m
-JOIN `biz_mini_customer_member` r
-  ON r.`member_id` = m.`id` AND r.`status` = 1 AND r.`is_deleted` = 0
-SET m.`customer_id` = r.`customer_id`, m.`park_id` = r.`park_id`,
-    m.`role_code` = 'mini_customer_member', m.`update_time` = NOW()
-WHERE m.`is_deleted` = 0;
 
 -- 没有企业关系的外部账号统一归入游客。
 UPDATE `blade_user` u
