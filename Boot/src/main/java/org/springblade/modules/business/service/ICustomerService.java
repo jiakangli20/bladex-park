@@ -35,6 +35,8 @@ public interface ICustomerService extends IService<Customer> {
 
 	Customer insertCustomer(Customer customer);
 
+	Customer insertCertifiedCustomer(Customer customer);
+
 	boolean updateCustomer(Customer customer);
 
 	boolean submitCustomer(Customer customer);

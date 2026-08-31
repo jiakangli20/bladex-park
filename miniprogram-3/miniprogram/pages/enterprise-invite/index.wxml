@@ -1,0 +1,28 @@
+<view class="sub-page invite-page">
+  <scroll-view class="sub-scroll" scroll-y show-scrollbar="false">
+    <view class="sub-content has-action">
+      <view class="blue-header plain-header"><view class="nav-row"><view class="nav-action" catchtap="goBack">‹</view><view class="nav-title">员工邀请</view><view class="nav-action"></view></view></view>
+
+      <view wx:if="{{invite}}" class="section-card context-card">
+        <view class="context-label">当前企业与园区</view>
+        <view class="context-name">{{invite.enterpriseName}}</view>
+        <view class="context-park">{{invite.parkName}}</view>
+      </view>
+
+      <view wx:if="{{invite && invite.code}}" class="section-card code-card">
+        <view class="code-head"><view><view class="card-title">当前邀请码</view><view class="card-sub">仅用于加入当前园区</view></view><text class="status-pill {{invite.status === 'ACTIVE' ? 'status-green' : 'status-orange'}}">{{invite.statusText}}</text></view>
+        <view class="invite-code" bindtap="copyCode">{{invite.code}}</view>
+        <view class="copy-tip">点击邀请码复制</view>
+        <view class="usage-grid"><view class="usage-item"><text>有效期至</text><view>{{invite.expireTimeText}}</view></view><view class="usage-item"><text>已使用 / 可用</text><view>{{invite.usedCount}} / {{invite.maxUses}}</view></view><view class="usage-item"><text>剩余次数</text><view>{{invite.remainingUses}}</view></view></view>
+      </view>
+
+      <view class="section-card setting-card">
+        <view class="card-title">邀请设置</view>
+        <view class="setting-row"><text>有效期</text><picker range="{{validOptions}}" range-key="label" value="{{validIndex}}" bindchange="changeValid"><view class="setting-value">{{validOptions[validIndex].label}} <text>›</text></view></picker></view>
+        <view class="setting-row"><text>可用次数</text><input class="number-input" type="number" maxlength="5" value="{{maxUses}}" bindinput="changeMaxUses" /></view>
+        <view class="setting-note">员工提交加入申请时扣减一次，驳回后不退还。</view>
+      </view>
+    </view>
+  </scroll-view>
+  <view class="fixed-action"><view class="primary-button" bindtap="generate">{{generating ? '生成中...' : (invite.code ? '重新生成邀请码' : '生成邀请码')}}</view></view>
+</view>

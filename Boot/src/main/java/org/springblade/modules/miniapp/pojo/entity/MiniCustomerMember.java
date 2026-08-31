@@ -22,6 +22,8 @@ public class MiniCustomerMember extends TenantEntity {
 	private Long memberId;
 	private Long userId;
 	private Long customerId;
+	/** 企业主体ID，多企业关系主维度。 */
+	private Long enterpriseSubjectId;
 	private Long parkId;
 	private String roleCode;
 	private String mobile;

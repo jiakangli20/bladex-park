@@ -1,0 +1,93 @@
+<view class="sub-page auth-page">
+  <scroll-view class="sub-scroll" scroll-y show-scrollbar="false">
+    <view class="sub-content has-action">
+      <view class="blue-header auth-header">
+        <view class="nav-row">
+          <view class="nav-action" catchtap="goBack">‹</view>
+          <view class="nav-title">企业认证</view>
+          <view class="nav-action"></view>
+        </view>
+        <view class="privacy-tip">正在守护您的隐私，请放心填写</view>
+      </view>
+
+      <view class="section-card form-section first-section">
+        <view class="card-title section-heading">基本信息</view>
+        <view class="form-row type-row">
+          <view class="form-label required">认证类型</view>
+          <view class="type-switch">
+            <view class="type-option {{form.subjectType === 'ENTERPRISE' ? 'active' : ''}}" data-value="ENTERPRISE" bindtap="changeSubjectType">企业</view>
+            <view class="type-option {{form.subjectType === 'PERSONAL' ? 'active' : ''}}" data-value="PERSONAL" bindtap="changeSubjectType">个人</view>
+          </view>
+        </view>
+        <view class="form-row">
+          <view class="form-label required">企业名称</view>
+          <input class="form-input" maxlength="200" cursor-spacing="24" placeholder="请输入企业名称" value="{{form.enterpriseName}}" data-key="enterpriseName" bindinput="handleInput" />
+        </view>
+        <view class="form-row">
+          <view class="form-label required">联系人姓名</view>
+          <input class="form-input" maxlength="64" cursor-spacing="24" placeholder="请输入姓名" value="{{form.contactName}}" data-key="contactName" bindinput="handleInput" />
+        </view>
+        <view class="form-row">
+          <view class="form-label required">联系人手机号</view>
+          <input class="form-input" type="number" maxlength="11" cursor-spacing="24" placeholder="请输入手机号" value="{{form.contactPhone}}" data-key="contactPhone" bindinput="handleInput" />
+        </view>
+        <view class="form-row">
+          <view class="form-label required">联系邮箱</view>
+          <input class="form-input" maxlength="128" cursor-spacing="24" placeholder="请输入邮箱地址" value="{{form.contactEmail}}" data-key="contactEmail" bindinput="handleInput" />
+        </view>
+      </view>
+
+      <view class="section-card form-section" wx:if="{{form.subjectType === 'ENTERPRISE'}}">
+        <view class="card-title section-heading">工商信息</view>
+        <view class="form-row">
+          <view class="form-label required">统一社会信用代码</view>
+          <input class="form-input" maxlength="32" cursor-spacing="24" placeholder="请输入信用代码" value="{{form.creditCode}}" data-key="creditCode" bindinput="handleInput" />
+        </view>
+        <view class="form-row">
+          <view class="form-label required">法定代表人</view>
+          <input class="form-input" maxlength="100" cursor-spacing="24" placeholder="请输入法定代表人" value="{{form.legalRepresentative}}" data-key="legalRepresentative" bindinput="handleInput" />
+        </view>
+        <view class="form-row">
+          <view class="form-label required">注册资本（万）</view>
+          <input class="form-input" type="digit" maxlength="16" cursor-spacing="24" placeholder="请输入注册资本" value="{{form.registeredCapital}}" data-key="registeredCapital" bindinput="handleInput" />
+        </view>
+      </view>
+
+      <view class="section-card form-section park-section">
+        <view class="card-title section-heading">认证园区</view>
+        <view class="form-row park-row" bindtap="openParkPicker">
+          <view class="form-label required">选择园区</view>
+          <view class="form-value-area">
+            <text class="form-placeholder {{selectedParks.length ? 'has-value' : ''}}">{{selectedParkText}}</text>
+            <text class="row-arrow">›</text>
+          </view>
+        </view>
+        <view wx:if="{{parkPickerVisible}}" class="park-picker">
+          <view class="park-picker-title">选择园区（可多选）</view>
+          <view class="park-options">
+            <block wx:for="{{parks}}" wx:key="id">
+              <view class="park-option {{selectedParks.indexOf(''+item.id) >= 0 ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="togglePark">
+                <text>{{item.name}}</text>
+                <text wx:if="{{selectedParks.indexOf(''+item.id) >= 0}}" class="check-mark">✓</text>
+              </view>
+            </block>
+          </view>
+          <view class="park-picker-done" bindtap="closeParkPicker">完成</view>
+        </view>
+      </view>
+
+      <view class="section-card record-section" wx:if="{{records.length}}">
+        <view class="card-title section-heading">申请记录</view>
+        <block wx:for="{{records}}" wx:key="id">
+          <view class="record-row">
+            <text>{{item.enterpriseName}}</text>
+            <text class="status {{item.status}}">{{item.statusText}}</text>
+          </view>
+        </block>
+      </view>
+    </view>
+  </scroll-view>
+  <view class="fixed-action auth-action">
+    <view class="primary-button {{submitting ? 'disabled' : ''}}" bindtap="submit">{{submitting ? '提交中…' : '发起认证'}}</view>
+  </view>
+</view>

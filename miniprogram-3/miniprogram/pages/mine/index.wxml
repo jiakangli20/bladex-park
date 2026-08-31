@@ -1,5 +1,7 @@
 <view class="page-shell mine-page">
-  <view class="mine-header" bindtap="login">
+  <scroll-view class="mine-scroll" scroll-y type="list" show-scrollbar="false">
+    <view class="mine-scroll-content">
+    <view class="mine-header" bindtap="switchEnterprise">
     <view class="company-avatar">
       <view class="company-building"></view>
     </view>
@@ -14,7 +16,7 @@
     <view class="menu-row" bindtap="login"><text class="menu-label">微信登录后使用完整服务</text><text class="menu-arrow">›</text></view>
   </view>
 
-  <view class="menu-card">
+  <view wx:if="{{businessMenus.length}}" class="menu-card">
     <block wx:for="{{businessMenus}}" wx:key="key">
       <view class="menu-row" data-key="{{item.key}}" bindtap="openMenu">
         <view class="menu-icon menu-{{item.tone}}">
@@ -34,6 +36,7 @@
           <view class="menu-mask menu-mask-{{item.key}}"></view>
         </view>
         <text class="menu-label">{{item.label}}</text>
+        <text wx:if="{{item.badge}}" class="menu-badge">{{item.badge}}</text>
         <text class="menu-arrow">›</text>
       </view>
     </block>
@@ -43,5 +46,7 @@
     <text>退出登录</text>
   </view>
 
+    </view>
+  </scroll-view>
   <app-tab-bar active="mine"></app-tab-bar>
 </view>

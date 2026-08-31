@@ -45,6 +45,7 @@ public class MiniAppProperties {
 	private Long defaultParkId = 0L;
 	private String oauthClientId = "saber";
 	private String oauthClientSecret = "saber_secret";
+	private Boolean mockLoginEnabled = false;
 	private Boolean mockEnabled = false;
 	private Integer bindTicketMinutes = 5;
 	private Integer rateLimitPerMinute = 30;

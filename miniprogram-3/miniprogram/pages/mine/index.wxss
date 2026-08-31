@@ -1,5 +1,17 @@
 .mine-page {
+  height: 100vh;
+  overflow: hidden;
+  padding-bottom: 0;
   background: #f3f6fb;
+}
+
+.mine-scroll {
+  height: 100vh;
+}
+
+.mine-scroll-content {
+  min-height: 100%;
+  padding-bottom: calc(150rpx + env(safe-area-inset-bottom));
 }
 
 .mine-header {
@@ -135,6 +147,11 @@
   color: #18c8c8;
 }
 
+.menu-orange {
+  background: #fff3df;
+  color: #ff7a00;
+}
+
 .menu-gray {
   background: #f0f2f5;
   color: #5f6b7c;
@@ -172,6 +189,19 @@
 .menu-mask-contact {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M12 3a7 7 0 0 0-7 7v4a3 3 0 0 0 3 3h1v-6H7v-1a5 5 0 0 1 10 0v1h-2v6h1a3 3 0 0 0 3-3v-4a7 7 0 0 0-7-7m-1 16h3v2h-3z'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M12 3a7 7 0 0 0-7 7v4a3 3 0 0 0 3 3h1v-6H7v-1a5 5 0 0 1 10 0v1h-2v6h1a3 3 0 0 0 3-3v-4a7 7 0 0 0-7-7m-1 16h3v2h-3z'/%3E%3C/svg%3E");
+}
+
+.menu-mask-enterprise-certification,
+.menu-mask-enterprise-join-review,
+.menu-mask-enterprise-park-application {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M5 3h14v18H5zm3 4v2h8V7zm0 4v2h8v-2zm0 4v2h5v-2z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M5 3h14v18H5zm3 4v2h8V7zm0 4v2h8v-2zm0 4v2h5v-2z'/%3E%3C/svg%3E");
+}
+
+.menu-mask-enterprise-join,
+.menu-mask-enterprise-invite {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8m-7 10c0-4 3-7 7-7 1.7 0 3.2.5 4.4 1.5A5 5 0 0 0 13 17c0 1.6.8 3.1 2 4zm16-8h2v3h3v2h-3v3h-2v-3h-3v-2h3z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8m-7 10c0-4 3-7 7-7 1.7 0 3.2.5 4.4 1.5A5 5 0 0 0 13 17c0 1.6.8 3.1 2 4zm16-8h2v3h3v2h-3v3h-2v-3h-3v-2h3z'/%3E%3C/svg%3E");
 }
 
 .menu-label {

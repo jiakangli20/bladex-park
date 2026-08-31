@@ -7,11 +7,25 @@ export const authApi = {
   wechatLogin: (code: string, nickname = '') => request<MiniSession>('/blade-miniapp/auth/wechat-login', {
     method: 'POST', auth: false, data: { code, nickname },
   }),
+  mockLogin: (data: JsonMap) => request<MiniSession>('/blade-miniapp/auth/mock-login', { method: 'POST', auth: false, data, real: true }),
   bind: (bindTicket: string, phoneCode: string, nickname = '') => request<MiniSession>('/blade-miniapp/auth/bind', {
     method: 'POST', auth: false, data: { bindTicket, phoneCode, nickname },
   }),
   session: () => request<MiniSession>('/blade-miniapp/me/session'),
   logout: () => request<void>('/blade-miniapp/auth/logout', { method: 'POST' }),
+  enterpriseContext: () => request<JsonMap>('/blade-miniapp/enterprise/context'),
+  switchEnterprise: (data: JsonMap) => request<void>('/blade-miniapp/enterprise/switch', { method: 'POST', data }),
+  submitCertification: (data: JsonMap) => postOnce<JsonMap>('/blade-miniapp/enterprise/certifications', data),
+  certifications: () => request<JsonMap[]>('/blade-miniapp/enterprise/certifications'),
+  submitParkApplication: (data: JsonMap) => postOnce<JsonMap>('/blade-miniapp/enterprise/park-applications', data),
+  submitJoin: (data: JsonMap) => postOnce<JsonMap>('/blade-miniapp/enterprise/joins', data),
+  joins: () => request<JsonMap[]>('/blade-miniapp/enterprise/joins'),
+  createInvite: (data: JsonMap) => postOnce<JsonMap>('/blade-miniapp/enterprise/invites', data),
+  currentInvite: () => request<JsonMap>('/blade-miniapp/enterprise/invites/current'),
+  resolveInvite: (code: string) => request<JsonMap>(`/blade-miniapp/enterprise/invites/resolve?code=${encodeURIComponent(code)}`),
+  ownerJoins: (status = 'PENDING') => request<JsonMap[]>(`/blade-miniapp/enterprise/owner-joins?status=${encodeURIComponent(status)}`),
+  pendingJoins: () => request<JsonMap[]>('/blade-miniapp/enterprise/pending-joins'),
+  reviewJoin: (id: string, data: JsonMap) => request<void>(`/blade-miniapp/enterprise/joins/${id}/review`, { method: 'POST', data }),
 }
 
 export const publicApi = {

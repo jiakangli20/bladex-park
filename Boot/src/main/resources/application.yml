@@ -21,6 +21,9 @@ miniapp:
   default-park-id: ${MINIAPP_DEFAULT_PARK_ID:0}
   oauth-client-id: ${MINIAPP_OAUTH_CLIENT_ID:saber}
   oauth-client-secret: ${MINIAPP_OAUTH_CLIENT_SECRET:saber_secret}
+  # 仅开放开发测试游客登录，不改变正常微信登录流程。
+  mock-login-enabled: ${MINIAPP_MOCK_LOGIN_ENABLED:false}
+  # 微信 code/手机号接口的全链路模拟开关，通常保持关闭。
   mock-enabled: ${MINIAPP_MOCK_ENABLED:false}
   bind-ticket-minutes: 5
   rate-limit-per-minute: 30

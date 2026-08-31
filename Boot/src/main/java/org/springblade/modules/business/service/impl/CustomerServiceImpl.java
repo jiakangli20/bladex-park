@@ -134,12 +134,22 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public Customer insertCustomer(Customer customer) {
+		return insertCustomer(customer, true);
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public Customer insertCertifiedCustomer(Customer customer) {
+		return insertCustomer(customer, false);
+	}
+
+	private Customer insertCustomer(Customer customer, boolean requireIdentity) {
 		if (Func.isEmpty(customer)) {
 			throw new ServiceException("客户信息不能为空");
 		}
 		parkPermissionService.requirePark(customer.getParkId());
 		normalizeCustomer(customer);
-		validateCustomer(customer, null);
+		validateCustomer(customer, null, requireIdentity, requireIdentity);
 		customer.setCreateBy(currentUserName());
 		customer.setCreateTime(DateUtil.now());
 		customer.setUpdateBy(currentUserName());
@@ -530,10 +540,14 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 	}
 
 	private void validateCustomer(Customer customer, Long excludeCustomerId) {
-		validateCustomer(customer, excludeCustomerId, true);
+		validateCustomer(customer, excludeCustomerId, true, true);
 	}
 
 	private void validateCustomer(Customer customer, Long excludeCustomerId, boolean requireIdentityBack) {
+		validateCustomer(customer, excludeCustomerId, true, requireIdentityBack);
+	}
+
+	private void validateCustomer(Customer customer, Long excludeCustomerId, boolean requireIdentityFront, boolean requireIdentityBack) {
 		if (StringUtil.isBlank(customer.getEnterpriseName())) {
 			throw new ServiceException("企业名称不能为空");
 		}
@@ -549,7 +563,7 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 		if (StringUtil.isBlank(customer.getContactEmail()) || !EMAIL_PATTERN.matcher(customer.getContactEmail()).matches()) {
 			throw new ServiceException("电子邮箱必须为合法邮箱地址");
 		}
-		if (StringUtil.isBlank(customer.getIdentityFrontUrl())) {
+		if (requireIdentityFront && StringUtil.isBlank(customer.getIdentityFrontUrl())) {
 			throw new ServiceException("身份证正面不能为空");
 		}
 		if (requireIdentityBack && StringUtil.isBlank(customer.getIdentityBackUrl())) {

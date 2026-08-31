@@ -20,6 +20,7 @@ import lombok.Data;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 小程序登录及会话视图。
@@ -42,4 +43,9 @@ public class MiniLoginVO {
 	private List<String> capabilities = Collections.emptyList();
 	private List<String> subscribeTemplateIds = Collections.emptyList();
 	private MiniProfileVO profile;
+	@JsonSerialize(using = ToStringSerializer.class)
+	private Long currentEnterpriseSubjectId;
+	@JsonSerialize(using = ToStringSerializer.class)
+	private Long currentParkId;
+	private List<Map<String, Object>> enterprises = Collections.emptyList();
 }

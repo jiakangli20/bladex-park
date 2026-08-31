@@ -1,0 +1,18 @@
+<view class="sub-page review-page">
+  <view class="blue-header plain-header"><view class="nav-row"><view class="nav-action" catchtap="goBack">‹</view><view class="nav-title">加入申请审核</view><view class="nav-action"></view></view></view>
+  <view class="status-tabs"><block wx:for="{{tabs}}" wx:key="value"><view class="status-tab {{activeStatus === item.value ? 'active' : ''}}" data-status="{{item.value}}" bindtap="switchStatus">{{item.label}}</view></block></view>
+  <scroll-view class="review-scroll" scroll-y show-scrollbar="false">
+    <view wx:if="{{!loading && !rows.length}}" class="empty-state">暂无相关申请</view>
+    <view class="review-list">
+      <block wx:for="{{rows}}" wx:key="id">
+        <view class="review-card">
+          <view class="review-head"><view><view class="applicant-name">{{item.name}}</view><view class="company-line">{{item.enterpriseName}} · {{item.parkName}}</view></view><text class="status-pill {{item.status === 'APPROVED' ? 'status-green' : item.status === 'REJECTED' ? 'status-red' : 'status-blue'}}">{{item.statusText}}</text></view>
+          <view class="detail-grid"><view><text>手机号</text><view>{{item.mobile}}</view></view><view><text>邮箱</text><view>{{item.email}}</view></view><view><text>证件类型</text><view>{{item.idType}}</view></view><view><text>证件号码</text><view>{{item.idNo}}</view></view><view><text>出生日期</text><view>{{item.birthDate}}</view></view><view><text>性别</text><view>{{item.gender}}</view></view></view>
+          <view class="apply-time">申请时间：{{item.createTimeText}}</view>
+          <view wx:if="{{item.reviewRemark}}" class="review-remark">审核说明：{{item.reviewRemark}}</view>
+          <view wx:if="{{activeStatus === 'PENDING'}}" class="review-actions"><view class="reject-button" data-id="{{item.id}}" bindtap="reject">驳回</view><view class="approve-button" data-id="{{item.id}}" bindtap="approve">通过</view></view>
+        </view>
+      </block>
+    </view>
+  </scroll-view>
+</view>

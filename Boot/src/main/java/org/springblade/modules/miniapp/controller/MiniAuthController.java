@@ -21,6 +21,7 @@ import org.springblade.core.tool.api.R;
 import org.springblade.modules.miniapp.pojo.dto.MiniBindDTO;
 import org.springblade.modules.miniapp.pojo.dto.MiniRefreshDTO;
 import org.springblade.modules.miniapp.pojo.dto.MiniWechatLoginDTO;
+import org.springblade.modules.miniapp.pojo.dto.MiniMockLoginDTO;
 import org.springblade.modules.miniapp.pojo.vo.MiniLoginVO;
 import org.springblade.modules.miniapp.service.IMiniAuthService;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,6 +48,14 @@ public class MiniAuthController extends BladeController {
 	@Operation(summary = "微信登录")
 	public R<MiniLoginVO> wechatLogin(@Valid @RequestBody MiniWechatLoginDTO request) {
 		return R.data(authService.wechatLogin(request));
+	}
+
+	@PermitAll
+	@PostMapping("/mock-login")
+	@ApiOperationSupport(order = 1)
+	@Operation(summary = "开发环境 mock 游客登录")
+	public R<MiniLoginVO> mockLogin(@Valid @RequestBody MiniMockLoginDTO request) {
+		return R.data(authService.mockLogin(request));
 	}
 
 	@PermitAll

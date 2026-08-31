@@ -48,6 +48,7 @@ import org.springblade.modules.miniapp.mapper.MiniMemberMapper;
 import org.springblade.modules.miniapp.pojo.dto.MiniBindDTO;
 import org.springblade.modules.miniapp.pojo.dto.MiniRefreshDTO;
 import org.springblade.modules.miniapp.pojo.dto.MiniWechatLoginDTO;
+import org.springblade.modules.miniapp.pojo.dto.MiniMockLoginDTO;
 import org.springblade.modules.miniapp.pojo.entity.MiniCustomerMember;
 import org.springblade.modules.miniapp.pojo.entity.MiniMember;
 import org.springblade.modules.miniapp.pojo.vo.MiniLoginVO;
@@ -74,6 +75,9 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -122,6 +126,43 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 				.eq(MiniCustomerMember::getMemberId, member.getId()));
 			memberMapper.deleteById(member.getId());
 			return pendingBindLogin(wechatSession.openId(), wechatSession.unionId(), request.getNickname());
+		}
+		assertMemberEnabled(member);
+		synchronizeIdentity(member);
+		member.setLastLoginTime(new Date());
+		memberMapper.updateById(member);
+		return buildLogin(member, tokenIssuer.issue(member.getTenantId(), member.getUserId()));
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public MiniLoginVO mockLogin(MiniMockLoginDTO request) {
+		if (!Boolean.TRUE.equals(properties.getMockLoginEnabled())) {
+			throw new ServiceException("mock 登录未启用");
+		}
+		String mobile = request.getMobile().trim();
+		String openId = "mock-guest-" + org.springblade.core.tool.utils.DigestUtil.sha256Hex(mobile).substring(0, 24);
+		MiniMember member = memberMapper.selectOne(Wrappers.<MiniMember>lambdaQuery()
+			.eq(MiniMember::getTenantId, properties.getDefaultTenantId())
+			.eq(MiniMember::getAppId, effectiveAppId())
+			.eq(MiniMember::getOpenId, openId)
+			.eq(MiniMember::getIsDeleted, 0)
+			.last("limit 1"));
+		if (member == null) {
+			User user = createLightweightUser(properties.getDefaultTenantId(), mobile, request.getNickname());
+			member = new MiniMember();
+			member.setTenantId(properties.getDefaultTenantId());
+			member.setAppId(effectiveAppId());
+			member.setOpenId(openId);
+			member.setUserId(user.getId());
+			member.setParkId(effectiveDefaultParkId());
+			member.setMobile(mobile);
+			member.setRoleCode(MiniAppConstant.ROLE_USER);
+			member.setNickname(StringUtil.isNotBlank(request.getNickname()) ? request.getNickname().trim() : "测试游客");
+			member.setStatus(StatusType.ACTIVE.getType());
+			member.setIsDeleted(0);
+			member.setLastLoginTime(new Date());
+			memberMapper.insert(member);
 		}
 		assertMemberEnabled(member);
 		synchronizeIdentity(member);
@@ -370,6 +411,25 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 			profile.setEnterpriseName(customer == null ? null : customer.getEnterpriseName());
 		}
 		login.setProfile(profile);
+		List<MiniCustomerMember> relations = customerMemberMapper.selectList(Wrappers.<MiniCustomerMember>lambdaQuery()
+			.eq(MiniCustomerMember::getTenantId, member.getTenantId()).eq(MiniCustomerMember::getUserId, member.getUserId())
+			.eq(MiniCustomerMember::getStatus, StatusType.ACTIVE.getType()).eq(MiniCustomerMember::getIsDeleted, 0));
+		List<Map<String,Object>> enterprises = new ArrayList<>();
+		for (MiniCustomerMember relation : relations) {
+			Customer c = activeCustomer(relation.getCustomerId());
+			Map<String,Object> item = new LinkedHashMap<>();
+			item.put("enterpriseSubjectId", relation.getEnterpriseSubjectId() == null ? null : String.valueOf(relation.getEnterpriseSubjectId()));
+			item.put("customerId", relation.getCustomerId() == null ? null : String.valueOf(relation.getCustomerId()));
+			item.put("parkId", relation.getParkId() == null ? null : String.valueOf(relation.getParkId()));
+			item.put("enterpriseName", c == null ? null : c.getEnterpriseName());
+			Park park = relation.getParkId() == null ? null : parkService.getById(relation.getParkId());
+			item.put("parkName", park == null ? null : park.getName());
+			item.put("roleCode", relation.getRoleCode());
+			enterprises.add(item);
+		}
+		login.setEnterprises(enterprises);
+		login.setCurrentEnterpriseSubjectId(member.getCustomerId() == null ? null : relations.stream().filter(r -> Objects.equals(r.getCustomerId(), member.getCustomerId()) && Objects.equals(r.getParkId(), member.getParkId())).map(MiniCustomerMember::getEnterpriseSubjectId).findFirst().orElse(null));
+		login.setCurrentParkId(member.getParkId());
 		return login;
 	}
 
@@ -430,16 +490,19 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 	}
 
 	private MiniMember synchronizeIdentity(MiniMember member) {
-		MiniCustomerMember relation = customerMemberMapper.selectOne(Wrappers.<MiniCustomerMember>lambdaQuery()
+		var query = Wrappers.<MiniCustomerMember>lambdaQuery()
 			.eq(MiniCustomerMember::getTenantId, member.getTenantId())
 			.eq(MiniCustomerMember::getMemberId, member.getId())
 			.eq(MiniCustomerMember::getStatus, StatusType.ACTIVE.getType())
-			.eq(MiniCustomerMember::getIsDeleted, 0)
-			.last("limit 1"));
+			.eq(MiniCustomerMember::getIsDeleted, 0);
+		if (member.getCustomerId() != null && member.getParkId() != null) {
+			query.eq(MiniCustomerMember::getCustomerId, member.getCustomerId()).eq(MiniCustomerMember::getParkId, member.getParkId());
+		}
+		MiniCustomerMember relation = customerMemberMapper.selectOne(query.last("limit 1"));
 		Customer customer = relation == null ? null : activeCustomer(relation.getCustomerId());
 		Long customerId = customer == null ? null : relation.getCustomerId();
 		Long parkId = customer == null ? member.getParkId() : relation.getParkId();
-		String roleCode = customer == null ? MiniAppConstant.ROLE_USER : MiniAppConstant.ROLE_CUSTOMER_MEMBER;
+		String roleCode = customer == null ? MiniAppConstant.ROLE_USER : ("OWNER".equals(relation.getRoleCode()) ? MiniAppConstant.ROLE_CUSTOMER_ADMIN : MiniAppConstant.ROLE_CUSTOMER_MEMBER);
 		if (!Objects.equals(member.getCustomerId(), customerId)
 			|| !Objects.equals(member.getParkId(), parkId)
 			|| !Objects.equals(member.getRoleCode(), roleCode)) {

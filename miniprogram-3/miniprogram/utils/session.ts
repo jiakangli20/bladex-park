@@ -19,6 +19,9 @@ export type MiniSession = {
   capabilities: string[]
   subscribeTemplateIds?: string[]
   profile?: MiniProfile
+  currentEnterpriseSubjectId?: string
+  currentParkId?: string
+  enterprises?: Record<string, any>[]
 }
 
 const SESSION_KEY = 'park-miniapp-session'
@@ -41,7 +44,14 @@ export const getSession = (): MiniSession | null => {
 }
 
 export const saveSession = (session: MiniSession): void => {
-  currentSession = normalizeSession(session)
+	const stored = currentSession || wx.getStorageSync(SESSION_KEY) as MiniSession | undefined
+	currentSession = normalizeSession({
+		...stored,
+		...session,
+		accessToken: session.accessToken || stored?.accessToken,
+		refreshToken: session.refreshToken || stored?.refreshToken,
+		expiresIn: session.expiresIn || stored?.expiresIn,
+	})
   wx.setStorageSync(SESSION_KEY, currentSession)
   const app = getApp<IAppOption>()
   app.globalData.session = currentSession

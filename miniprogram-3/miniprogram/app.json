@@ -30,6 +30,11 @@
     "pages/customer-activity-detail/index",
     "pages/customer-activity-form/index",
     "pages/profile-section/index",
+    "pages/enterprise-certification/index",
+    "pages/enterprise-join/index",
+    "pages/enterprise-invite/index",
+    "pages/enterprise-join-review/index",
+    "pages/enterprise-park-application/index",
     "pages/notifications/index",
     "pages/admin-work-orders/index",
     "pages/mine/index"

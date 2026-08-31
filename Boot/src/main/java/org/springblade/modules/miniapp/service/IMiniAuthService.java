@@ -13,6 +13,7 @@ package org.springblade.modules.miniapp.service;
 import org.springblade.modules.miniapp.pojo.dto.MiniBindDTO;
 import org.springblade.modules.miniapp.pojo.dto.MiniRefreshDTO;
 import org.springblade.modules.miniapp.pojo.dto.MiniWechatLoginDTO;
+import org.springblade.modules.miniapp.pojo.dto.MiniMockLoginDTO;
 import org.springblade.modules.miniapp.pojo.entity.MiniMember;
 import org.springblade.modules.miniapp.pojo.vo.MiniLoginVO;
 
@@ -23,6 +24,7 @@ import org.springblade.modules.miniapp.pojo.vo.MiniLoginVO;
  */
 public interface IMiniAuthService {
 	MiniLoginVO wechatLogin(MiniWechatLoginDTO request);
+	MiniLoginVO mockLogin(MiniMockLoginDTO request);
 	MiniLoginVO bind(MiniBindDTO request);
 	MiniLoginVO refresh(MiniRefreshDTO request);
 	MiniLoginVO session();

@@ -1,5 +1,6 @@
 import { authApi } from '../../services/miniapp'
 import { MiniSession, saveSession } from '../../utils/session'
+import { env } from '../../config/env'
 
 const wechatCode = (): Promise<string> => new Promise((resolve, reject) => {
   wx.login({
@@ -13,6 +14,8 @@ Page({
     agreed: false,
     loading: false,
     redirect: '/pages/index/index',
+    mockLoginEnabled: env().mockLoginEnabled,
+    mockMobile: '13900000001',
   },
 
   onLoad(options: Record<string, string>) {
@@ -23,6 +26,31 @@ Page({
 
   toggleAgreement() {
     this.setData({ agreed: !this.data.agreed })
+  },
+
+  inputMockMobile(event: WechatMiniprogram.Input) {
+    this.setData({ mockMobile: event.detail.value })
+  },
+
+  async mockGuestLogin() {
+    if (this.data.loading) return
+    if (!this.data.agreed) {
+      wx.showToast({ title: '请先勾选并同意用户协议', icon: 'none' })
+      return
+    }
+    const mobile = this.data.mockMobile.trim()
+    if (!/^1\d{10}$/.test(mobile)) {
+      wx.showToast({ title: '请输入 11 位测试手机号', icon: 'none' })
+      return
+    }
+    this.setData({ loading: true })
+    try {
+      const session = await authApi.mockLogin({ mobile, nickname: `测试游客${mobile.slice(-4)}` })
+      saveSession(session)
+      await this.finish()
+    } finally {
+      this.setData({ loading: false })
+    }
   },
 
   async quickLogin(event: WechatMiniprogram.CustomEvent<{ code?: string; errMsg?: string }>) {

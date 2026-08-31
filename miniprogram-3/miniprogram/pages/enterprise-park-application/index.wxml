@@ -1,0 +1,15 @@
+<view class="sub-page park-page">
+  <scroll-view class="sub-scroll" scroll-y show-scrollbar="false">
+    <view class="sub-content has-action">
+      <view class="blue-header plain-header"><view class="nav-row"><view class="nav-action" catchtap="goBack">‹</view><view class="nav-title">申请新增园区</view><view class="nav-action"></view></view></view>
+      <view class="section-card company-card"><view class="context-label">当前企业</view><view class="context-name">{{contextName}}</view></view>
+      <view class="section-card park-card">
+        <view class="card-title">选择申请园区</view><view class="card-sub">可多选，所选园区将作为一个申请整体审核</view>
+        <view wx:if="{{parks.length}}" class="park-list"><block wx:for="{{parks}}" wx:key="id"><view class="park-option {{item.selected ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="togglePark"><text>{{item.name}}</text><view class="check-mark">{{item.selected ? '✓' : ''}}</view></view></block></view>
+        <view wx:else class="all-opened">当前企业已拥有全部可用园区权限</view>
+      </view>
+      <view wx:if="{{records.length}}" class="section-card record-card"><view class="card-title">申请记录</view><block wx:for="{{records}}" wx:key="id"><view class="record-row"><view><view class="record-parks">{{item.parkNamesText}}</view><view wx:if="{{item.reviewRemark}}" class="record-remark">审核说明：{{item.reviewRemark}}</view></view><text class="status-pill {{item.statusClass}}">{{item.statusText}}</text></view></block></view>
+    </view>
+  </scroll-view>
+  <view wx:if="{{parks.length}}" class="fixed-action"><view class="primary-button" bindtap="submit">{{submitting ? '提交中...' : '提交申请'}}</view></view>
+</view>
