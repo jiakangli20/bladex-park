@@ -34,18 +34,21 @@
           <section class="panel common-panel">
             <div class="panel-head">
               <div>
-                <h2>快捷入口</h2>
+                <h2>常用功能</h2>
                 <p>常用业务快速进入</p>
               </div>
+              <el-button text type="primary" class="shortcut-customize" @click="openShortcutEditor">
+                <el-icon><Grid /></el-icon>
+                自定义
+              </el-button>
             </div>
-            <div class="shortcut-grid">
+            <div v-if="shortcuts.length" class="shortcut-grid">
               <button
                 v-for="item in shortcuts"
-                :key="item.title"
+                :key="item.path"
                 type="button"
                 class="shortcut-item"
-                :class="{ disabled: item.disabled }"
-                @click="go(item.path, item.disabled)"
+                @click="go(item.path)"
               >
                 <span :class="`shortcut-icon shortcut-icon--${item.tone}`">
                   <el-icon><component :is="item.icon" /></el-icon>
@@ -56,6 +59,7 @@
                 </span>
               </button>
             </div>
+            <el-empty v-else description="暂无常用功能" :image-size="82" />
           </section>
 
         </main>
@@ -122,12 +126,86 @@
         </aside>
       </section>
     </div>
+
+    <el-dialog
+      v-model="shortcutEditorVisible"
+      title="编辑常用功能"
+      width="600px"
+      append-to-body
+      destroy-on-close
+      class="shortcut-editor-dialog"
+    >
+      <el-tabs v-model="shortcutEditorTab" class="shortcut-editor-tabs">
+        <el-tab-pane label="所有应用" name="all">
+          <el-input
+            v-model.trim="shortcutSearch"
+            clearable
+            placeholder="输入应用名称搜索"
+            class="shortcut-search"
+          >
+            <template #suffix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+          <div v-if="filteredShortcutOptions.length" class="shortcut-editor-list">
+            <div v-for="item in filteredShortcutOptions" :key="item.path" class="shortcut-editor-item">
+              <span :class="`shortcut-icon shortcut-icon--${item.tone}`">
+                <el-icon><component :is="item.icon" /></el-icon>
+              </span>
+              <span class="shortcut-editor-copy">
+                <strong>{{ item.title }}</strong>
+                <em>{{ item.desc }}</em>
+              </span>
+              <span v-if="isShortcutSelected(item.path)" class="shortcut-added">已添加</span>
+              <el-button v-else text type="primary" @click="addShortcut(item.path)">添加</el-button>
+            </div>
+          </div>
+          <el-empty v-else description="未找到匹配的应用" :image-size="82" />
+        </el-tab-pane>
+
+        <el-tab-pane label="常用应用" name="selected">
+          <div class="shortcut-sort-tip">拖拽左侧图标进行排序。</div>
+          <div v-if="editingShortcutItems.length" class="shortcut-editor-list shortcut-sort-list">
+            <div
+              v-for="item in editingShortcutItems"
+              :key="item.path"
+              class="shortcut-editor-item shortcut-sort-item"
+              :class="{ dragging: draggingShortcutPath === item.path }"
+              draggable="true"
+              @dragstart="startShortcutDrag(item.path, $event)"
+              @dragover.prevent
+              @drop="dropShortcut(item.path)"
+              @dragend="draggingShortcutPath = ''"
+            >
+              <span class="shortcut-drag-handle" title="拖拽排序">
+                <el-icon><Rank /></el-icon>
+              </span>
+              <span :class="`shortcut-icon shortcut-icon--${item.tone}`">
+                <el-icon><component :is="item.icon" /></el-icon>
+              </span>
+              <span class="shortcut-editor-copy">
+                <strong>{{ item.title }}</strong>
+                <em>{{ item.desc }}</em>
+              </span>
+              <el-button plain type="danger" size="small" @click="removeShortcut(item.path)">移除</el-button>
+            </div>
+          </div>
+          <el-empty v-else description="暂未添加常用应用" :image-size="82" />
+        </el-tab-pane>
+      </el-tabs>
+
+      <template #footer>
+        <el-button type="primary" @click="saveShortcutPreferences">确定</el-button>
+        <el-button @click="shortcutEditorVisible = false">取消</el-button>
+      </template>
+    </el-dialog>
   </basic-container>
 </template>
 
 <script>
 import { ElMessage } from 'element-plus';
 import { getWorkbench } from '@/api/home/home';
+import { getStore, setStore } from '@/utils/store';
 
 export default {
   name: 'DeskHome',
@@ -186,7 +264,7 @@ export default {
           tone: 'green',
         },
       ],
-      shortcuts: [
+      shortcutCandidates: [
         {
           title: '新增客户',
           desc: '录入企业客户档案',
@@ -207,13 +285,6 @@ export default {
           path: '/settlement/background-investigation',
           icon: 'Search',
           tone: 'green',
-        },
-        {
-          title: '入驻审核',
-          desc: '从商机发起入驻审批',
-          path: '/settlement/opportunity',
-          icon: 'Finished',
-          tone: 'purple',
         },
         {
           title: '租控管理',
@@ -270,13 +341,7 @@ export default {
           path: '/enterprise/property-workorder',
           icon: 'Tools',
           tone: 'green',
-        },
-        {
-          title: '物业服务',
-          desc: '服务事项配置',
-          path: '/enterprise/property-service',
-          icon: 'SetUp',
-          tone: 'blue',
+          group: 'enterprise',
         },
         {
           title: '商户管理',
@@ -284,13 +349,7 @@ export default {
           path: '/enterprise/merchant',
           icon: 'Shop',
           tone: 'cyan',
-        },
-        {
-          title: '智能硬件',
-          desc: '设备台账与接入',
-          path: '/park/smart-device',
-          icon: 'Monitor',
-          tone: 'purple',
+          group: 'enterprise',
         },
         {
           title: '我的审批',
@@ -298,8 +357,15 @@ export default {
           path: '/plugin/workflow/pages/process/my-done',
           icon: 'Checked',
           tone: 'indigo',
+          group: 'workflow',
         },
       ],
+      favoriteShortcutPaths: null,
+      shortcutEditorVisible: false,
+      shortcutEditorTab: 'all',
+      shortcutSearch: '',
+      editingShortcutPaths: [],
+      draggingShortcutPath: '',
       todos: [],
       calendarWeeks: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
       today: this.buildToday(),
@@ -307,6 +373,50 @@ export default {
     };
   },
   computed: {
+    availableShortcuts() {
+      const menuList = this.flattenMenus(this.$store.state.user.menuAll || []);
+      const menuByPath = new Map(menuList.filter(item => item.path).map(item => [item.path, item]));
+      const authorizedCandidates = this.shortcutCandidates.filter(item =>
+        menuByPath.has(item.path)
+      );
+      const commonEntries = authorizedCandidates.filter(item => !item.group);
+      const enterpriseEntries = authorizedCandidates.filter(item => item.group === 'enterprise');
+      const workflowEntries = authorizedCandidates.filter(item => item.group === 'workflow');
+      const enterpriseMenu = menuByPath.get('/enterprise');
+      const enterpriseSecondMenus = (enterpriseMenu?.children || [])
+        .filter(
+          item => item && item.path && (item.category === undefined || Number(item.category) === 1)
+        )
+        .map((item, index) => this.enterpriseShortcut(item, index));
+      const seenPaths = new Set();
+
+      return [
+        ...commonEntries,
+        ...enterpriseSecondMenus,
+        ...enterpriseEntries,
+        ...workflowEntries,
+      ].filter(item => {
+        if (!item.path || seenPaths.has(item.path)) return false;
+        seenPaths.add(item.path);
+        return true;
+      });
+    },
+    shortcuts() {
+      if (!Array.isArray(this.favoriteShortcutPaths)) return this.availableShortcuts;
+      const shortcutByPath = new Map(this.availableShortcuts.map(item => [item.path, item]));
+      return this.favoriteShortcutPaths.map(path => shortcutByPath.get(path)).filter(Boolean);
+    },
+    filteredShortcutOptions() {
+      const keyword = this.shortcutSearch.trim().toLowerCase();
+      if (!keyword) return this.availableShortcuts;
+      return this.availableShortcuts.filter(item =>
+        `${item.title} ${item.desc}`.toLowerCase().includes(keyword)
+      );
+    },
+    editingShortcutItems() {
+      const shortcutByPath = new Map(this.availableShortcuts.map(item => [item.path, item]));
+      return this.editingShortcutPaths.map(path => shortcutByPath.get(path)).filter(Boolean);
+    },
     heroStyle() {
       return {
         backgroundImage: `url(${this.banner.imageUrl || '/img/bg/bg1.jpg'})`,
@@ -353,9 +463,132 @@ export default {
     },
   },
   created() {
+    this.loadShortcutPreferences();
     this.loadWorkbench();
   },
   methods: {
+    shortcutPreferenceKey() {
+      const userState = this.$store.state.user || {};
+      const user = userState.userInfo || {};
+      const tenantId = userState.tenantId || user.tenantId || user.tenant_id || 'default';
+      const userId = user.userId || user.user_id || user.account || 'anonymous';
+      return `home-common-functions-${tenantId}-${userId}`;
+    },
+    loadShortcutPreferences() {
+      const storedPaths = getStore({ name: this.shortcutPreferenceKey() });
+      this.favoriteShortcutPaths = Array.isArray(storedPaths)
+        ? storedPaths.filter(path => typeof path === 'string')
+        : null;
+    },
+    openShortcutEditor() {
+      this.shortcutEditorTab = 'all';
+      this.shortcutSearch = '';
+      this.draggingShortcutPath = '';
+      this.editingShortcutPaths = Array.isArray(this.favoriteShortcutPaths)
+        ? [...this.favoriteShortcutPaths]
+        : this.availableShortcuts.map(item => item.path);
+      this.shortcutEditorVisible = true;
+    },
+    isShortcutSelected(path) {
+      return this.editingShortcutPaths.includes(path);
+    },
+    addShortcut(path) {
+      if (!path || this.isShortcutSelected(path)) return;
+      this.editingShortcutPaths.push(path);
+    },
+    removeShortcut(path) {
+      this.editingShortcutPaths = this.editingShortcutPaths.filter(item => item !== path);
+    },
+    startShortcutDrag(path, event) {
+      this.draggingShortcutPath = path;
+      if (!event.dataTransfer) return;
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', path);
+    },
+    dropShortcut(targetPath) {
+      const sourcePath = this.draggingShortcutPath;
+      const sourceIndex = this.editingShortcutPaths.indexOf(sourcePath);
+      const targetIndex = this.editingShortcutPaths.indexOf(targetPath);
+      if (sourceIndex === -1 || targetIndex === -1 || sourceIndex === targetIndex) return;
+      const reorderedPaths = [...this.editingShortcutPaths];
+      const [movedPath] = reorderedPaths.splice(sourceIndex, 1);
+      reorderedPaths.splice(targetIndex, 0, movedPath);
+      this.editingShortcutPaths = reorderedPaths;
+    },
+    saveShortcutPreferences() {
+      const authorizedPaths = new Set(this.availableShortcuts.map(item => item.path));
+      this.favoriteShortcutPaths = this.editingShortcutPaths.filter(path => authorizedPaths.has(path));
+      setStore({ name: this.shortcutPreferenceKey(), content: this.favoriteShortcutPaths });
+      this.shortcutEditorVisible = false;
+      ElMessage.success('常用功能已更新');
+    },
+    flattenMenus(menuList = []) {
+      return menuList.reduce((result, item) => {
+        if (!item) return result;
+        result.push(item);
+        return result.concat(this.flattenMenus(item.children || []));
+      }, []);
+    },
+    enterpriseShortcut(menuItem, index) {
+      const presets = {
+        '/enterprise/property-service': {
+          desc: '服务配置与工单处理',
+          icon: 'SetUp',
+          tone: 'blue',
+        },
+        '/enterprise/merchant-service': {
+          desc: '商户档案与增值服务',
+          icon: 'Shop',
+          tone: 'cyan',
+        },
+        '/enterprise/merchant-ad': {
+          desc: '园区广告审核管理',
+          icon: 'Document',
+          tone: 'orange',
+        },
+        '/enterprise/policy-service': {
+          desc: '政策发布与维护',
+          icon: 'Postcard',
+          tone: 'green',
+        },
+        '/enterprise/enterprise-data': {
+          desc: '企业运营数据看板',
+          icon: 'OfficeBuilding',
+          tone: 'purple',
+        },
+        '/enterprise/settlement-todo': {
+          desc: '入驻意向跟进处理',
+          icon: 'Tickets',
+          tone: 'indigo',
+        },
+        '/enterprise/notice': {
+          desc: '园区通知发布管理',
+          icon: 'Bell',
+          tone: 'orange',
+        },
+        '/enterprise/park-activity': {
+          desc: '园区活动审核发布',
+          icon: 'Calendar',
+          tone: 'cyan',
+        },
+        '/enterprise/enterprise-auth': {
+          desc: '企业认证申请审核',
+          icon: 'Finished',
+          tone: 'green',
+        },
+      };
+      const tones = ['blue', 'cyan', 'orange', 'green', 'purple', 'indigo'];
+      const preset = presets[menuItem.path] || {
+        desc: `进入${menuItem.name || '企业服务'}`,
+        icon: 'Grid',
+        tone: tones[index % tones.length],
+      };
+      return {
+        title: menuItem.name || '企业服务',
+        path: menuItem.path,
+        ...preset,
+      };
+    },
     loadWorkbench() {
       this.loading = true;
       getWorkbench()
@@ -417,11 +650,8 @@ export default {
         monthName: monthNames[now.getMonth()],
       };
     },
-    go(path, disabled = false) {
-      if (disabled || !path) {
-        ElMessage.info('该入口将在后续模块接入后开放');
-        return;
-      }
+    go(path) {
+      if (!path) return;
       const queryIndex = path.indexOf('?');
       const routePath = queryIndex === -1 ? path : path.slice(0, queryIndex);
       const queryString = queryIndex === -1 ? '' : path.slice(queryIndex + 1);
@@ -715,6 +945,16 @@ export default {
   font-size: 12px;
 }
 
+.shortcut-customize {
+  min-height: 32px;
+  padding: 0 2px;
+  font-size: 13px;
+}
+
+.shortcut-customize .el-icon {
+  margin-right: 4px;
+}
+
 .shortcut-item strong,
 .todo-item strong {
   display: block;
@@ -797,9 +1037,153 @@ export default {
   white-space: nowrap;
 }
 
-.shortcut-item.disabled {
-  cursor: not-allowed;
-  opacity: 0.56;
+.common-panel > :deep(.el-empty) {
+  flex: 1;
+  padding: 12px 0;
+}
+
+:global(.shortcut-editor-dialog) {
+  max-width: calc(100vw - 32px);
+  border-radius: 4px;
+}
+
+:global(.shortcut-editor-dialog .el-dialog__header) {
+  margin-right: 0;
+  padding: 22px 20px 16px;
+  border-bottom: 1px solid #dfe4ec;
+}
+
+:global(.shortcut-editor-dialog .el-dialog__title) {
+  color: #172033;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+:global(.shortcut-editor-dialog .el-dialog__body) {
+  padding: 0 20px;
+}
+
+:global(.shortcut-editor-dialog .el-dialog__footer) {
+  padding: 16px 20px;
+  border-top: 1px solid #dfe4ec;
+}
+
+.shortcut-editor-tabs :deep(.el-tabs__header) {
+  margin-bottom: 16px;
+}
+
+.shortcut-editor-tabs :deep(.el-tabs__nav-wrap::after) {
+  height: 1px;
+  background: #edf0f5;
+}
+
+.shortcut-editor-tabs :deep(.el-tabs__item) {
+  height: 52px;
+  padding: 0 24px;
+  font-size: 14px;
+}
+
+.shortcut-editor-tabs :deep(.el-tabs__item:first-child) {
+  padding-left: 0;
+}
+
+.shortcut-search {
+  margin-bottom: 8px;
+}
+
+.shortcut-sort-tip {
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  border: 1px solid #91caff;
+  border-radius: 6px;
+  background: #e6f4ff;
+  color: #344054;
+  font-size: 13px;
+}
+
+.shortcut-editor-list {
+  min-height: 300px;
+  max-height: 430px;
+  overflow-y: auto;
+  padding: 4px 4px 12px;
+}
+
+.shortcut-editor-item {
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  padding: 6px 4px;
+  border-bottom: 1px solid transparent;
+}
+
+.shortcut-editor-copy {
+  min-width: 0;
+  margin-left: 10px;
+}
+
+.shortcut-editor-copy strong,
+.shortcut-editor-copy em {
+  display: block;
+}
+
+.shortcut-editor-copy strong {
+  overflow: hidden;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shortcut-editor-copy em {
+  overflow: hidden;
+  margin-top: 4px;
+  color: #8b98aa;
+  font-size: 12px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shortcut-editor-item > .shortcut-editor-copy {
+  flex: 1;
+}
+
+.shortcut-added {
+  flex-shrink: 0;
+  color: #606266;
+  font-size: 13px;
+}
+
+.shortcut-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  margin-right: 6px;
+  color: #606266;
+  cursor: grab;
+  font-size: 18px;
+}
+
+.shortcut-sort-item {
+  cursor: grab;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.shortcut-sort-item:hover {
+  background: #f7f9fc;
+}
+
+.shortcut-sort-item.dragging {
+  background: #ecf5ff;
+  opacity: 0.55;
+}
+
+.shortcut-sort-item > .el-button,
+.shortcut-editor-item > .el-button {
+  flex-shrink: 0;
 }
 
 .calendar-panel {
@@ -967,6 +1351,17 @@ export default {
 
   .metric-card {
     min-height: 78px;
+  }
+
+  :global(.shortcut-editor-dialog .el-dialog__header),
+  :global(.shortcut-editor-dialog .el-dialog__body),
+  :global(.shortcut-editor-dialog .el-dialog__footer) {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .shortcut-editor-list {
+    max-height: 54vh;
   }
 }
 </style>

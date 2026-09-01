@@ -6,7 +6,10 @@
     :rotate="-18"
     style="height: 100%"
   >
-    <div class="avue-contail" :class="{ 'avue--collapse': isCollapse }">
+    <div
+      class="avue-contail"
+      :class="{ 'avue--collapse': isCollapse, 'avue--no-sidebar': !validSidebar }"
+    >
       <div class="avue-layout" :class="{ 'avue-layout--horizontal': isHorizontal }">
         <!-- 顶部一级菜单 -->
         <top ref="top" />
@@ -79,6 +82,7 @@ export default {
       'userInfo',
     ]),
     validSidebar() {
+      if (this.$route.path === this.tagWel.path) return false;
       return !(
         (this.$route.meta || {}).menu === false || (this.$route.query || {}).menu === 'false'
       );
@@ -242,3 +246,9 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.avue--no-sidebar .avue-main {
+  margin-left: 0;
+}
+</style>
