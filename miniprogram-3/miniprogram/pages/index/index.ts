@@ -1,4 +1,6 @@
 import { adminApi, publicApi } from '../../services/miniapp'
+import { env } from '../../config/env'
+import { resolveAdImage } from '../../utils/media'
 import { hasCapability, requireLogin } from '../../utils/session'
 
 const baseActions = [
@@ -8,9 +10,9 @@ const baseActions = [
   { key: 'value', label: '增值服务', tone: 'orange' },
   { key: 'orders', label: '我的工单', tone: 'red' },
   { key: 'settle', label: '入驻申请', tone: 'sky' },
-  { key: 'parking-pay', label: '停车缴费', tone: 'amber' },
+  { key: 'parking', label: '车位申请', tone: 'amber', icon: 'parking-pay' },
   { key: 'service-desk', label: '园区商场', tone: 'cyan', icon: 'mall' },
-	{ key: 'ads', label: '广告资讯', tone: 'cyan' },
+	{ key: 'ads', label: '广告资讯', tone: 'cyan', icon: 'ad-push' },
 ]
 
 const complaintAction = { key: 'complaint', label: '投诉建议', tone: 'purple', icon: 'complaint' }
@@ -29,6 +31,19 @@ const serviceCards = [
   { key: 'ad-service', title: '广告服务', desc: '企业广告申请', tone: 'cyan' },
   { key: 'activity', title: '园区活动', desc: '活动发布申请', tone: 'pink' },
 ]
+
+const formatActivityTime = (value: unknown) => {
+  const text = String(value || '').trim()
+  return text ? text.replace(/:00$/, '') : '待定'
+}
+
+const activityImage = (value: unknown, index: number) => {
+  const url = String(value || '').trim()
+  if (!url) return `/assets/images/activity-${index % 3 + 1}.png`
+  return /^https?:\/\//.test(url) || url.startsWith('wxfile://') || url.startsWith('/assets/')
+    ? url
+    : `${env().baseUrl}${url.startsWith('/') ? '' : '/'}${url}`
+}
 
 const ensureCustomerServiceAccess = () => {
   if (hasCapability('customer.profile.view')) return true
@@ -57,8 +72,18 @@ Page({
     this.setData({ quickActions, quickActionRows: splitActionRows(quickActions) })
     publicApi.home().then(data => this.setData({
       homePolicies: data.policies || [],
-      homeActivities: (data.activities || []).slice(0, 2),
-      homeBanners: data.banners || [],
+      homeActivities: (data.activities || []).slice(0, 2).map((item: Record<string, any>, index: number) => ({
+        ...item,
+        image: activityImage(item.image, index),
+        fallbackImage: `/assets/images/activity-${index % 3 + 1}.png`,
+        startTimeText: formatActivityTime(item.startTime),
+        endTimeText: formatActivityTime(item.endTime),
+        priceText: item.price || '免费',
+      })),
+      homeBanners: (data.banners || []).map((item: Record<string, any>) => ({
+        ...item,
+        ...resolveAdImage(item),
+      })),
       homeNotices: data.notices || [],
       noticeTitle: data.notices?.[0]?.title || '暂无最新公告',
     })).catch(() => undefined)
@@ -103,9 +128,9 @@ Page({
       wx.navigateTo({ url: '/pages/house-intent/index?mode=settlement&public=1' })
       return
     }
-    if (key === 'parking-pay') {
-      if (!requireLogin('/pages/property-form/index?type=parking-pay')) return
-      wx.navigateTo({ url: '/pages/property-form/index?type=parking-pay' })
+    if (key === 'parking') {
+      if (!ensureCustomerServiceAccess()) return
+      wx.navigateTo({ url: '/pages/property-form/index?type=parking' })
       return
     }
     if (key === 'service-desk') {
@@ -158,9 +183,16 @@ Page({
 		wx.navigateTo({ url: '/pages/customer-activities/index?mode=public' })
 	},
 
-	openActivity(event: WechatMiniprogram.TouchEvent) {
+  openActivity(event: WechatMiniprogram.TouchEvent) {
 		wx.navigateTo({ url: `/pages/customer-activity-detail/index?id=${event.currentTarget.dataset.id}&mode=public` })
 	},
+
+  handleActivityImageError(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.id)
+    const index = this.data.homeActivities.findIndex(item => String(item.id) === id)
+    if (index < 0) return
+    this.setData({ [`homeActivities[${index}].image`]: this.data.homeActivities[index].fallbackImage })
+  },
 
   showAdminNotifications() {
     if (hasCapability('admin.notification.view')) wx.navigateTo({ url: '/pages/notifications/index' })
@@ -200,5 +232,11 @@ Page({
     if (!link) return
     if (link.startsWith('/pages/')) wx.navigateTo({ url: link })
     else wx.showToast({ title: '该广告暂未配置小程序跳转页面', icon: 'none' })
+  },
+
+  handleBannerImageError(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.id)
+    const index = this.data.homeBanners.findIndex(item => String(item.id) === id)
+    if (index >= 0) this.setData({ [`homeBanners[${index}].image`]: this.data.homeBanners[index].fallbackImage })
   },
 })

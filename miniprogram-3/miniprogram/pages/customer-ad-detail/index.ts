@@ -1,6 +1,7 @@
 import { customerApi } from '../../services/miniapp'
 import { navigateBackOr } from '../../utils/navigation'
 import { hasCapability, requireLogin } from '../../utils/session'
+import { DEFAULT_AD_IMAGE, resolveAdImage } from '../../utils/media'
 
 const statusMap: Record<string, { text: string; tone: string }> = {
   DRAFT: { text: '草稿', tone: 'gray' }, PENDING: { text: '待审核', tone: 'blue' },
@@ -32,7 +33,7 @@ Page({
       const logs = (raw.logs || []).map((item: Record<string, any>) => ({ ...item, actionText: actionMap[String(item.action)] || item.action || '状态更新' }))
       const editable = ['DRAFT', 'REJECTED'].includes(String(raw.auditStatus))
       this.setData({
-        ad: { ...raw, auditStatusText: meta.text, tone: meta.tone, onlineText: String(raw.onlineStatus) === '0' ? '已上架' : '未上架' }, logs,
+        ad: { ...raw, ...resolveAdImage(raw), auditStatusText: meta.text, tone: meta.tone, onlineText: String(raw.onlineStatus) === '0' ? '已上架' : '未上架' }, logs,
         canEdit: this.data.canManage && editable, canSubmit: this.data.canManage && editable,
         canWithdraw: this.data.canManage && String(raw.auditStatus) === 'PENDING',
       })
@@ -61,6 +62,7 @@ Page({
   },
 
   previewCover() { if (this.data.ad.image) wx.previewImage({ current: this.data.ad.image, urls: [this.data.ad.image] }) },
+  handleImageError() { this.setData({ 'ad.image': this.data.ad.fallbackImage || DEFAULT_AD_IMAGE }) },
   retry() { this.loadAd() },
   goBack() { navigateBackOr('/pages/customer-ads/index') },
 })

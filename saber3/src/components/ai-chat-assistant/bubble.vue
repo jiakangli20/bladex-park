@@ -1,21 +1,19 @@
 <template>
-  <el-tooltip content="房源智能问答，按住可拖动" placement="left">
-    <button
-      ref="trigger"
-      class="ai-chat-trigger"
-      type="button"
-      aria-label="打开房源智能问答"
-      :style="positionStyle"
-      @pointerdown="startDrag"
-      @pointermove="moveDrag"
-      @pointerup="endDrag"
-      @pointercancel="endDrag"
-      @click="open"
-    >
-      <el-icon><ChatDotRound /></el-icon>
-      <span>AI</span>
-    </button>
-  </el-tooltip>
+  <button
+    ref="trigger"
+    class="ai-chat-trigger"
+    type="button"
+    aria-label="打开房源智能问答"
+    :style="positionStyle"
+    @pointerdown="startDrag"
+    @pointermove="moveDrag"
+    @pointerup="endDrag"
+    @pointercancel="endDrag"
+    @click="open"
+  >
+    <el-icon><ChatDotRound /></el-icon>
+    <span>AI</span>
+  </button>
 </template>
 
 <script>

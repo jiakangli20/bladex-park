@@ -645,6 +645,7 @@ CREATE TABLE `blade_notice`  (
   `category` int NULL DEFAULT NULL COMMENT '类型',
   `release_time` datetime NULL DEFAULT NULL COMMENT '发布时间',
   `content` varchar(2000) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '内容',
+  `home_flag` tinyint NOT NULL DEFAULT 0 COMMENT '小程序首页展示：1是，0否',
   `create_user` bigint NULL DEFAULT NULL COMMENT '创建人',
   `create_dept` bigint NULL DEFAULT NULL COMMENT '创建部门',
   `create_time` datetime NULL DEFAULT NULL COMMENT '创建时间',

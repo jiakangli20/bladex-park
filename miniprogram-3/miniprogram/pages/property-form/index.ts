@@ -31,7 +31,7 @@ Page({
         id: String(selected.id),
         title: selected.title || '物业服务申请',
         desc: selected.desc || '提交需求后由园区管理员受理。',
-        submitText: options.type === 'parking-pay' ? '提交停车服务申请' : '提交物业申请',
+        submitText: (options.type || selected.type) === 'parking' ? '提交车位申请' : '提交物业申请',
       },
     })
   },

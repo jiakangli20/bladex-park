@@ -14,6 +14,21 @@ import {
   valueServices,
   workOrders,
 } from '../utils/mock'
+import { ZHOUDAOHUA_AD_IMAGE } from '../utils/media'
+
+const DEFAULT_AD_IMAGE = '/assets/images/service-business.jpg'
+
+const publicAds = [{
+  id: '2',
+  title: '苏周到',
+  image: ZHOUDAOHUA_AD_IMAGE,
+  linkType: 'none',
+  linkUrl: '',
+  merchantName: '',
+  remark: '周到花，人人有奖',
+  startTime: '2026-08-31 00:00:00',
+  endTime: '2026-09-11 00:00:00',
+}]
 
 const session = {
   needBind: false,
@@ -42,7 +57,7 @@ const nowText = (): string => {
 let customerAds: Record<string, any>[] = [{
   id: 'ad-1',
   title: '企业服务月宣传',
-  image: '/assets/images/service-business.jpg',
+  image: DEFAULT_AD_IMAGE,
   linkType: 'none',
   linkUrl: '',
   startTime: '2026-08-01 00:00:00',
@@ -71,7 +86,7 @@ const mockCustomerAds = (path: string, options: MockRequestOptions): unknown => 
       const created = {
         id,
         title: input.adTitle || '未命名广告',
-        image: input.coverUrl || '/assets/images/service-business.jpg',
+        image: input.coverUrl || DEFAULT_AD_IMAGE,
         linkType: input.linkType || 'none',
         linkUrl: input.linkUrl || '',
         startTime: input.startTime || '',
@@ -129,7 +144,9 @@ export const mockRequest = async <T>(path: string, options: MockRequestOptions =
   await new Promise(resolve => setTimeout(resolve, 120))
   let data: unknown = null
   if (path.includes('/auth/') || path.endsWith('/me/session')) data = session
-  else if (path.endsWith('/public/home')) data = { policies: homePolicies, activities: homeActivities, banners: [] }
+  else if (path.endsWith('/public/home')) data = { policies: homePolicies, activities: homeActivities, banners: publicAds }
+  else if (path.includes('/public/ads/')) data = publicAds.find(item => String(item.id) === path.split('/').pop()) || publicAds[0]
+  else if (path.endsWith('/public/ads')) data = publicAds
   else if (path.includes('/public/activities/')) data = homeActivities.find(item => String(item.id) === path.split('/').pop()) || homeActivities[0]
   else if (path.endsWith('/public/activities')) data = homeActivities
   else if (path.includes('/public/houses/')) data = houses.find(item => String(item.id) === path.split('/').pop()) || houses[0]

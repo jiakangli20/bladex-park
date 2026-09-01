@@ -26,6 +26,7 @@
 package org.springblade.modules.desk.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springblade.core.mp.base.BaseServiceImpl;
 import org.springblade.core.secure.utils.AuthUtil;
 import org.springblade.modules.desk.pojo.entity.Notice;
@@ -33,6 +34,7 @@ import org.springblade.modules.desk.mapper.NoticeMapper;
 import org.springblade.modules.desk.service.INoticeService;
 import org.springblade.modules.desk.pojo.vo.NoticeVO;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 服务实现类
@@ -41,6 +43,39 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class NoticeServiceImpl extends BaseServiceImpl<NoticeMapper, Notice> implements INoticeService {
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public boolean saveOrUpdate(Notice notice) {
+		prepareHomeFlag(notice);
+		return super.saveOrUpdate(notice);
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public boolean save(Notice notice) {
+		prepareHomeFlag(notice);
+		return super.save(notice);
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public boolean updateById(Notice notice) {
+		prepareHomeFlag(notice);
+		return super.updateById(notice);
+	}
+
+	private void prepareHomeFlag(Notice notice) {
+		if (notice == null || !Integer.valueOf(1).equals(notice.getHomeFlag())) return;
+		String tenantId = notice.getTenantId();
+		if (tenantId == null || tenantId.isBlank()) tenantId = AuthUtil.getTenantId();
+		if (tenantId == null || tenantId.isBlank()) return;
+		String finalTenantId = tenantId;
+		baseMapper.update(null, Wrappers.<Notice>lambdaUpdate()
+			.eq(Notice::getTenantId, finalTenantId)
+			.eq(Notice::getHomeFlag, 1)
+			.set(Notice::getHomeFlag, 0));
+	}
 
 	@Override
 	public IPage<NoticeVO> selectNoticePage(IPage<NoticeVO> page, NoticeVO notice) {

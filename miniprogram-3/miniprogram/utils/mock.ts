@@ -139,7 +139,7 @@ export const quickActions: QuickAction[] = [
   { key: 'value', label: '增值服务', tone: 'orange' },
   { key: 'orders', label: '我的工单', tone: 'red' },
   { key: 'settle', label: '入驻申请', tone: 'sky' },
-  { key: 'parking-pay', label: '停车缴费', tone: 'amber' },
+  { key: 'parking', label: '车位申请', tone: 'amber' },
   { key: 'overview', label: '园区概览', tone: 'blue' },
   { key: 'more', label: '更多', tone: 'gray' },
 ]

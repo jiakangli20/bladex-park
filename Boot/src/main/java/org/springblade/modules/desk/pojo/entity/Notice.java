@@ -86,5 +86,9 @@ public class Notice extends TenantEntity {
 	@Schema(description = "内容")
 	private String content;
 
+	/** 是否展示在小程序首页（1是，0否）。 */
+	@Schema(description = "首页展示标识")
+	private Integer homeFlag;
+
 
 }

@@ -24,7 +24,7 @@
           <view class="form-label">房间</view>
           <input class="form-input" placeholder="请输入房间信息" data-field="room" value="{{form.room}}" bindinput="handleInput" />
         </view>
-        <view wx:if="{{serviceKey === 'parking' || serviceKey === 'parking-pay'}}" class="form-row">
+        <view wx:if="{{serviceKey === 'parking'}}" class="form-row">
           <view class="form-label">车牌号</view>
           <input class="form-input" placeholder="请输入车牌号" data-field="carNo" value="{{form.carNo}}" bindinput="handleInput" />
         </view>
@@ -32,7 +32,7 @@
           <view class="form-label">使用时间</view>
           <input class="form-input" placeholder="例如 2026-07-25 14:00" data-field="useTime" value="{{form.useTime}}" bindinput="handleInput" />
         </view>
-        <view wx:if="{{serviceKey === 'utility' || serviceKey === 'parking-pay'}}" class="form-row">
+        <view wx:if="{{serviceKey === 'utility'}}" class="form-row">
           <view class="form-label">缴费金额</view>
           <input class="form-input" type="digit" placeholder="请输入金额" data-field="amount" value="{{form.amount}}" bindinput="handleInput" />
         </view>

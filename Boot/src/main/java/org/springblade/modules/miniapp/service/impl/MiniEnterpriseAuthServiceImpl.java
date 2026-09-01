@@ -825,8 +825,9 @@ public class MiniEnterpriseAuthServiceImpl implements IMiniEnterpriseAuthService
             throw new ServiceException("至少选择一个园区");
         }
         for (Long id : ids) {
-            if (parkService.getById(id) == null) {
-                throw new ServiceException("园区不存在");
+            Park park = parkService.getById(id);
+            if (park == null || !"0".equals(park.getStatus())) {
+                throw new ServiceException("园区不存在或已停用");
             }
         }
     }

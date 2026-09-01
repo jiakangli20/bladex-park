@@ -483,7 +483,7 @@ public class MiniAuthServiceImpl implements IMiniAuthService {
 
 	private List<String> capabilities(String roleCode) {
 		return switch (roleCode) {
-			case MiniAppConstant.ROLE_CUSTOMER_ADMIN -> MiniAppConstant.CUSTOMER_CAPABILITIES;
+			case MiniAppConstant.ROLE_CUSTOMER_ADMIN -> MiniAppConstant.CUSTOMER_ADMIN_CAPABILITIES;
 			case MiniAppConstant.ROLE_CUSTOMER_MEMBER -> MiniAppConstant.CUSTOMER_CAPABILITIES;
 			default -> Collections.emptyList();
 		};

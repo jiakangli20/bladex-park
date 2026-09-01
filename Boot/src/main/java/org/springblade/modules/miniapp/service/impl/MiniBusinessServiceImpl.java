@@ -106,7 +106,7 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 		List<Long> parkIds = publicParkIds();
 		if (parkIds.isEmpty()) {
 			return Kv.create().set("banners", List.of()).set("policies", List.of()).set("activities", List.of())
-				.set("notices", publicNotices()).set("quickEntries", List.of("house", "property", "value", "orders", "settlement"));
+				.set("notices", publicHomeNotices()).set("quickEntries", List.of("house", "property", "value", "orders", "settlement"));
 		}
 		List<Map<String, Object>> banners = parkIds.stream()
 			.flatMap(parkId -> merchantAdService.selectPublicAdList(parkId, "miniapp_home").stream())
@@ -125,7 +125,7 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 			.eq(ParkActivity::getIsDeleted, 0).orderByAsc(ParkActivity::getSortOrder).orderByDesc(ParkActivity::getStartTime))
 			.stream().map(this::activityMap).toList();
 		return Kv.create().set("banners", banners).set("policies", policies).set("activities", activities)
-			.set("notices", publicNotices())
+			.set("notices", publicHomeNotices())
 			.set("quickEntries", List.of("house", "property", "value", "orders", "settlement"));
 	}
 
@@ -138,6 +138,17 @@ public class MiniBusinessServiceImpl implements IMiniBusinessService {
 			.eq(Notice::getIsDeleted, 0)
 			.and(wrapper -> wrapper.isNull(Notice::getReleaseTime).or().le(Notice::getReleaseTime, new Date()))
 			.orderByDesc(Notice::getReleaseTime).orderByDesc(Notice::getCreateTime).last("limit 20"))
+			.stream().map(item -> noticeMap(item, false)).toList();
+	}
+
+	private List<Map<String, Object>> publicHomeNotices() {
+		return noticeService.list(Wrappers.<Notice>lambdaQuery()
+			.eq(Notice::getTenantId, properties.getDefaultTenantId())
+			.eq(Notice::getHomeFlag, 1)
+			.eq(Notice::getStatus, StatusType.ACTIVE.getType())
+			.eq(Notice::getIsDeleted, 0)
+			.and(wrapper -> wrapper.isNull(Notice::getReleaseTime).or().le(Notice::getReleaseTime, new Date()))
+			.orderByDesc(Notice::getReleaseTime).orderByDesc(Notice::getCreateTime).last("limit 1"))
 			.stream().map(item -> noticeMap(item, false)).toList();
 	}
 

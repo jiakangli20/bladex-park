@@ -1,6 +1,7 @@
 import { customerApi } from '../../services/miniapp'
 import { navigateBackOr } from '../../utils/navigation'
 import { hasCapability, requireLogin } from '../../utils/session'
+import { DEFAULT_AD_IMAGE, resolveAdImage } from '../../utils/media'
 
 const auditMeta: Record<string, { text: string; tone: string }> = {
   DRAFT: { text: '草稿', tone: 'gray' },
@@ -33,6 +34,7 @@ Page({
         const status = auditMeta[String(item.auditStatus)] || { text: item.auditStatus || '-', tone: 'gray' }
         return {
           ...item,
+          ...resolveAdImage(item),
           auditStatusText: status.text,
           tone: status.tone,
           onlineText: String(item.onlineStatus) === '0' ? '已上架' : '未上架',
@@ -49,6 +51,12 @@ Page({
 
   openDetail(event: WechatMiniprogram.TouchEvent) {
     wx.navigateTo({ url: `/pages/customer-ad-detail/index?id=${event.currentTarget.dataset.id}` })
+  },
+
+  handleImageError(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.id)
+    const index = this.data.ads.findIndex(item => String(item.id) === id)
+    if (index >= 0) this.setData({ [`ads[${index}].image`]: this.data.ads[index].fallbackImage || DEFAULT_AD_IMAGE })
   },
 
   createAd() { wx.navigateTo({ url: '/pages/customer-ad-form/index' }) },

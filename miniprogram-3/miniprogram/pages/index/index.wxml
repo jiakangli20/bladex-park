@@ -3,7 +3,6 @@
     <view class="home-scroll-content">
       <view class="hero-panel">
         <view class="hero-top">
-          <view class="service-center">服务中心⌄</view>
           <view class="hero-notice" bindtap="showAdminNotifications">
             <view class="hero-bell"></view>
             <view wx:if="{{noticeCount}}" class="hero-badge">{{noticeCount}}</view>
@@ -25,7 +24,7 @@
 
       <swiper wx:if="{{homeBanners.length}}" class="home-banner" indicator-dots="{{homeBanners.length > 1}}" autoplay circular interval="4500">
         <block wx:for="{{homeBanners}}" wx:key="id">
-          <swiper-item><image class="home-banner-image" src="{{item.image}}" mode="aspectFill" data-id="{{item.id}}" bindtap="openBanner"></image></swiper-item>
+          <swiper-item><image class="home-banner-image" src="{{item.image}}" mode="aspectFill" data-id="{{item.id}}" bindtap="openBanner" binderror="handleBannerImageError"></image></swiper-item>
         </block>
       </swiper>
 
@@ -84,13 +83,18 @@
         </view>
         <block wx:for="{{homeActivities}}" wx:key="id">
           <view class="activity-item" data-id="{{item.id}}" bindtap="openActivity">
-            <image class="activity-image" src="{{item.image}}" mode="aspectFill"></image>
+            <image class="activity-image" src="{{item.image}}" mode="aspectFill" data-id="{{item.id}}" binderror="handleActivityImageError"></image>
             <view class="activity-copy">
               <view class="activity-title">{{item.title}}</view>
-              <view class="activity-meta">活动开始时间： {{item.startTime}}</view>
-              <view class="activity-meta">报名截止时间： {{item.endTime}}</view>
-              <view wx:if="{{item.address}}" class="activity-address">{{item.address}}</view>
-              <view class="activity-price {{item.price === '免费' ? 'is-free' : 'is-paid'}}">{{item.price}}</view>
+              <view class="activity-details">
+                <view class="activity-meta"><text class="activity-meta-label">开始</text><text>{{item.startTimeText}}</text></view>
+                <view class="activity-meta"><text class="activity-meta-label">结束</text><text>{{item.endTimeText}}</text></view>
+                <view class="activity-meta"><text class="activity-meta-label">地点</text><text class="activity-meta-value">{{item.address || '待定'}}</text></view>
+              </view>
+              <view class="activity-foot">
+                <text class="activity-price {{item.priceText === '免费' ? 'is-free' : 'is-paid'}}">{{item.priceText}}</text>
+                <text class="activity-more">查看详情 〉</text>
+              </view>
             </view>
           </view>
         </block>

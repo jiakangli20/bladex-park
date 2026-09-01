@@ -51,7 +51,7 @@ Page({
       ...item,
       key: item.type || String(item.id),
       tone: tones[index % tones.length],
-      badge: item.type?.includes('停车') ? '提交停车申请' : '立即办理',
+      badge: item.type === 'parking' ? '提交车位申请' : '立即办理',
       eta: '待受理',
     }))
     const valueCards: Record<string, any>[] = values.map(item => ({

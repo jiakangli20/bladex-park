@@ -15,7 +15,7 @@
       <view wx:else class="ad-list">
         <block wx:for="{{ads}}" wx:key="id">
           <view class="ad-card" data-id="{{item.id}}" bindtap="openDetail">
-            <image class="ad-cover" src="{{item.image}}" mode="aspectFill"></image>
+            <image class="ad-cover" src="{{item.image}}" mode="aspectFill" data-id="{{item.id}}" binderror="handleImageError"></image>
             <view class="ad-body">
               <view class="ad-head"><view class="ad-title">{{item.title}}</view><view class="status-pill status-{{item.tone}}">{{item.auditStatusText}}</view></view>
               <view class="ad-time">展示期：{{item.rangeText}}</view>

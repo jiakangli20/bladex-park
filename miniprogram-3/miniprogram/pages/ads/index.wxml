@@ -10,7 +10,7 @@
       <view wx:elif="{{!ads.length}}" class="state-card">暂无已发布广告</view>
       <view wx:else class="ad-public-list">
         <view wx:for="{{ads}}" wx:key="id" class="section-card ad-public-item" data-id="{{item.id}}" bindtap="openAd">
-          <image class="ad-public-cover" src="{{item.image}}" mode="aspectFill"></image>
+          <image class="ad-public-cover" src="{{item.image}}" mode="aspectFill" data-id="{{item.id}}" binderror="handleImageError"></image>
           <view class="ad-public-body"><view class="card-title">{{item.title}}</view><view class="ad-public-merchant">{{item.merchantName || '园区发布'}}</view><view class="ad-public-more">查看详情 〉</view></view>
         </view>
       </view>
