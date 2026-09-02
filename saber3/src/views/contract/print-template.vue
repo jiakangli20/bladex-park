@@ -335,48 +335,34 @@ export default {
 .print-template-page {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .template-search {
-  padding: 16px 18px;
+  padding: 16px 18px 0;
   border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  border-radius: 10px;
   background: #fff;
-}
-
-.template-search :deep(.el-form-item) {
-  margin: 0 22px 12px 0;
-}
-
-.template-search :deep(.el-form-item__label) {
-  height: 36px;
-  line-height: 36px;
-  color: #303133;
 }
 
 .template-search :deep(.el-input),
 .template-search :deep(.el-select) {
-  width: 188px;
-}
-
-.template-search :deep(.el-input__wrapper),
-.template-search :deep(.el-select__wrapper) {
-  min-height: 36px;
+  width: 190px;
 }
 
 .template-workspace {
   display: grid;
   grid-template-columns: 420px minmax(0, 1fr);
-  gap: 14px;
+  gap: 16px;
   min-height: 620px;
 }
 
 .template-list,
 .template-preview {
   min-width: 0;
+  overflow: hidden;
   border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  border-radius: 10px;
   background: #fff;
 }
 
@@ -441,7 +427,7 @@ export default {
   width: 100%;
   height: 96px;
   padding: 18px;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .upload-text {
@@ -466,9 +452,11 @@ export default {
   justify-content: space-between;
   gap: 14px;
   width: 100%;
+  box-sizing: border-box;
   padding: 14px;
+  overflow: hidden;
   border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #fff;
   text-align: left;
   cursor: pointer;
@@ -481,6 +469,7 @@ export default {
 
 .template-item__main {
   min-width: 0;
+  flex: 1;
 }
 
 .template-item__main strong {
@@ -504,6 +493,7 @@ export default {
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
+  margin-right: 8px;
 }
 
 .template-item__meta em {
@@ -520,17 +510,20 @@ export default {
 
 .preview-body {
   height: calc(100% - 58px);
+  min-width: 0;
   padding: 18px;
   overflow: auto;
   background: #f7f8fa;
 }
 
 .document-preview {
+  display: block;
   width: 100%;
   height: 100%;
   min-height: 720px;
+  box-sizing: border-box;
   border: 1px solid #dfe4ec;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #fff;
 }
 
@@ -542,7 +535,7 @@ export default {
   justify-content: center;
   gap: 8px;
   border: 1px dashed #dcdfe6;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #fff;
   color: #606266;
 }

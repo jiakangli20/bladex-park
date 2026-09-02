@@ -9,6 +9,7 @@ public class MiniEnterpriseCertificationPark {
     private Long id; private String tenantId;
     private Long certificationId;
     private Long parkId;
+    private Long customerId;
     @com.baomidou.mybatisplus.annotation.TableField("status") private String processStatus;
     private Integer isDeleted;
 }

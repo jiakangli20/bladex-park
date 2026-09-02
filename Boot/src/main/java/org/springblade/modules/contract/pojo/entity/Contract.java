@@ -115,9 +115,11 @@ public class Contract implements Serializable {
 	private String rentFreePeriod;
 
 	@Schema(description = "2026年租金")
+	@TableField("annual_rent_2026")
 	private BigDecimal annualRent2026;
 
 	@Schema(description = "2026年物业费")
+	@TableField("annual_property_fee_2026")
 	private BigDecimal annualPropertyFee2026;
 
 	@Schema(description = "押金")

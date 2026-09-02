@@ -193,6 +193,9 @@
             <if test="payment.parkId != null">
                 AND p.park_id = #{payment.parkId}
             </if>
+            <if test="payment.customerId != null">
+                AND c.customer_id = #{payment.customerId}
+            </if>
         </where>
         ORDER BY p.pay_deadline ASC, p.payment_id DESC
     </select>

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>企业综合信息报告</title>
+<style>
+/* ================= Design Tokens (Mobile-First) ================= */
+:root {
+  /* 品牌：靛蓝，比工程蓝更有温度 */
+  --brand: #4f46e5;
+  --brand-600: #4338ca;
+  --brand-50: #eef2ff;
+  --brand-100: #e0e7ff;
+  --brand-200: #c7d2fe;
+  /* 中性色：偏暖灰，不冷 */
+  --gray-50: #fafaf9;
+  --gray-100: #f5f5f4;
+  --gray-200: #e7e5e4;
+  --gray-300: #d6d3d1;
+  --gray-400: #a8a29e;
+  --gray-500: #78716c;
+  --gray-600: #57534e;
+  --gray-700: #44403c;
+  --gray-800: #292524;
+  --gray-900: #1c1917;
+  /* 语义色：柔和版 */
+  --emerald-50: #ecfdf5; --emerald-500: #10b981; --emerald-600: #059669;
+  --amber-50: #fffbeb;  --amber-500: #f59e0b;  --amber-600: #d97706;
+  --rose-50: #fff1f2;   --rose-500: #f43f5e;   --rose-600: #e11d48;
+  /* 半径 */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-full: 999px;
+  /* 阴影：柔和弥散 */
+  --shadow-sm: 0 1px 2px rgba(28,25,23,.04);
+  --shadow-md: 0 4px 6px -1px rgba(28,25,23,.05), 0 2px 4px -2px rgba(28,25,23,.04);
+  --shadow-lg: 0 10px 15px -3px rgba(28,25,23,.06), 0 4px 6px -4px rgba(28,25,23,.04);
+  --shadow-xl: 0 20px 25px -5px rgba(28,25,23,.08), 0 8px 10px -6px rgba(28,25,23,.04);
+}
+
+* {margin: 0; padding: 0; box-sizing: border-box;}
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--gray-100);
+  color: var(--gray-800);
+  -webkit-font-smoothing: antialiased;
+  padding: 16px 12px;
+}
+
+/* ===== 纸张容器 ===== */
+.paper {
+  max-width: 520px;
+  margin: 0 auto;
+  background: var(--gray-50);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+}
+
+/* ===== 报头：品牌渐变 + 大留白 ===== */
+.report-header {
+  position: relative;
+  background: linear-gradient(135deg, var(--brand-600) 0%, var(--brand) 100%);
+  color: #fff;
+  padding: 36px 24px 28px;
+  text-align: center;
+}
+.report-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 40px;
+  background: linear-gradient(to bottom, transparent, rgba(0,0,0,.08));
+  pointer-events: none;
+}
+.doc-eyebrow {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  opacity: .8;
+  margin-bottom: 10px;
+}
+.company {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: .01em;
+  line-height: 1.35;
+}
+.doc-en {
+  font-size: 10px;
+  opacity: .6;
+  letter-spacing: .15em;
+  margin-top: 6px;
+}
+.hd-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 16px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,.2);
+  font-size: 11.5px;
+  opacity: .85;
+}
+.hd-meta b { font-weight: 600; opacity: 1; font-variant-numeric: tabular-nums; }
+
+/* ===== 内容区块：卡片式 ===== */
+.card {
+  padding: 24px;
+  background: #fff;
+  border-radius: var(--r-md);
+  margin: 12px;
+  box-shadow: var(--shadow-sm);
+}
+.card:first-of-type { margin-top: 16px; }
+.card:last-of-type { margin-bottom: 16px; }
+
+/* ===== 章节标题 ===== */
+.sec {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.sec-icon {
+  flex: none;
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  border-radius: var(--r-sm);
+  background: var(--brand-50);
+  color: var(--brand);
+  font-size: 14px;
+  font-weight: 700;
+}
+.sec-title { font-size: 16px; font-weight: 700; color: var(--gray-900); letter-spacing: .01em; }
+.sec-en {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--gray-400);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+
+/* ===== 小节标题 ===== */
+.sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 12px;
+}
+.sub:first-of-type { margin-top: 0; }
+.sub::before {
+  content: '';
+  flex: none;
+  width: 3px; height: 14px;
+  border-radius: 2px;
+  background: var(--brand);
+}
+.sub h3 { font-size: 13px; font-weight: 700; color: var(--gray-700); letter-spacing: .04em; }
+.sub .sub-note {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gray-400);
+  background: var(--gray-100);
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+}
+
+/* ===== KV 网格 ===== */
+.kv-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 20px;
+}
+.kv-item { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.kv-item dt { font-size: 11.5px; font-weight: 500; color: var(--gray-400); letter-spacing: .02em; }
+.kv-item dd {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-800);
+  line-height: 1.55;
+  word-break: break-word;
+  font-variant-numeric: tabular-nums;
+}
+.kv-item.full { grid-column: 1 / -1; }
+
+/* ===== 状态徽章 ===== */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 5px 12px;
+  border-radius: var(--r-full);
+}
+.status::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.status-ok     { color: var(--emerald-600); background: var(--emerald-50); }
+.status-warn   { color: var(--amber-600);   background: var(--amber-50); }
+.status-danger { color: var(--rose-600);     background: var(--rose-50); }
+
+/* ===== AI 洞察：现代面板 ===== */
+.insight {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-md);
+  padding: 16px 18px;
+  font-size: 14px;
+  color: var(--gray-600);
+  line-height: 1.85;
+  text-align: justify;
+  position: relative;
+  overflow: hidden;
+}
+.insight::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, var(--brand), var(--brand-200));
+}
+.insight + .insight { margin-top: 12px; }
+
+/* ===== 风险核验：现代列表 ===== */
+.risk { list-style: none; margin-top: 4px; }
+.risk li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-sm);
+  margin-bottom: 8px;
+  transition: box-shadow .2s ease, transform .15s ease;
+}
+.risk li:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.r-label { font-size: 13.5px; font-weight: 600; color: var(--gray-700); }
+.r-label small { display: block; font-size: 10.5px; font-weight: 400; color: var(--gray-400); margin-top: 2px; }
+.r-value {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: var(--r-full);
+}
+.r-value.ok     { color: var(--emerald-600); background: var(--emerald-50); }
+.r-value.warn   { color: var(--amber-600);   background: var(--amber-50); }
+.r-value.danger { color: var(--rose-600);     background: var(--rose-50); }
+.r-value::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* ===== 页脚 ===== */
+.paper-foot {
+  padding: 20px 24px 24px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--gray-400);
+  line-height: 1.8;
+}
+
+/* ===== 打印 ===== */
+@media print {
+  body { background: #fff; padding: 0; }
+  .paper { max-width: none; box-shadow: none; border-radius: 0; background: #fff; }
+  .card { box-shadow: none; margin: 0; border-radius: 0; border-bottom: 1px solid var(--gray-200); }
+  .report-header { border-radius: 0; }
+  .risk li { box-shadow: none; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* ===== 桌面端 ===== */
+@media (min-width: 768px) {
+  body { padding: 40px 24px; }
+  .paper { max-width: 800px; }
+  .card { padding: 32px; margin: 16px; }
+  .report-header { padding: 48px 32px 36px; }
+  .company { font-size: 28px; }
+  .sec-icon { width: 36px; height: 36px; font-size: 15px; }
+  .sec-title { font-size: 18px; }
+  .sub h3 { font-size: 14px; }
+  .kv-grid { gap: 18px 32px; }
+  .kv-item dd { font-size: 15px; }
+  .insight { font-size: 15px; line-height: 1.95; padding: 20px 24px; }
+  .risk li { padding: 14px 18px; }
+  .paper-foot { padding: 24px 32px 32px; }
+}
+</style>
+</head>
+<body>
+<main class="paper">
+
+<!-- 报头 -->
+<header class="report-header">
+  <p class="doc-eyebrow">企业综合信息报告</p>
+  <h1 class="company">xxxx 科技有限公司</h1>
+  <p class="doc-en">Enterprise Comprehensive Information Report</p>
+  <div class="hd-meta">
+    <span>编号 <b>QY-20260902-0001</b></span>
+    <span>时间 <b>2026-09-02 15:24</b></span>
+    <span>来源 <b>工商登记</b></span>
+  </div>
+</header>
+
+<!-- 01 基本信息 -->
+<section class="card" aria-labelledby="sec-basic">
+  <header class="sec">
+    <span class="sec-icon" aria-hidden="true">01</span>
+    <h2 class="sec-title" id="sec-basic">基本信息</h2>
+    <span class="sec-en" aria-hidden="true">Basic Info</span>
+  </header>
+
+  <div class="sub"><h3>身份信息</h3></div>
+  <dl class="kv-grid">
+    <div class="kv-item"><dt>企业名称</dt><dd>苏州测试企业有限公司</dd></div>
+    <div class="kv-item"><dt>机构代码</dt><dd>91XXX58355587XXXXT</dd></div>
+    <div class="kv-item full"><dt>注册地址</dt><dd>江苏省苏州市吴中区吴中大道XX号</dd></div>
+    <div class="kv-item"><dt>法定代表人</dt><dd>张**</dd></div>
+    <div class="kv-item"><dt>注册资本</dt><dd>4000万美元</dd></div>
+    <div class="kv-item full"><dt>公司类型</dt><dd>有限责任公司(台港澳法人独资)</dd></div>
+    <div class="kv-item"><dt>联系电话</dt><dd>13812345626</dd></div>
+    <div class="kv-item"><dt>成立时间</dt><dd>2010-06-11</dd></div>
+    <div class="kv-item"><dt>营业期限</dt><dd>2010-06-11 至 2040-06-10</dd></div>
+    <div class="kv-item"><dt>行业分类</dt><dd>纺织业</dd></div>
+    <div class="kv-item"><dt>经营状态</dt><dd><span class="status status-ok">在业</span></dd></div>
+    <div class="kv-item full"><dt>经营范围</dt><dd>生产和销售：针纺织品，服装面料及辅料。（依法须经批准的项目，经相关部门批准后方可开展经营活动）</dd></div>
+  </dl>
+</section>
+
+<!-- 02 AI 分析 -->
+<section class="card" aria-labelledby="sec-ai">
+  <header class="sec">
+    <span class="sec-icon" aria-hidden="true">02</span>
+    <h2 class="sec-title" id="sec-ai">AI 分析</h2>
+    <span class="sec-en" aria-hidden="true">AI Insights</span>
+  </header>
+
+  <div class="sub"><h3>企业基本情况</h3><span class="sub-note">自动生成</span></div>
+  <p class="insight">苏州测试企业有限公司成立于2010年6月11日，所属行业为纺织业，注册资本4000万美元，企业当前登记状态为在业。企业经营范围主要涉及针纺织品、服装面料及辅料的生产和销售，整体登记信息较为完整。</p>
+
+  <div class="sub"><h3>重点风险核验</h3><span class="sub-note">4 项</span></div>
+  <p class="insight">通过综合核验企业涉诉案件、被执行记录、行政处罚及安全生产挂牌督办信息，可重点识别企业在法律履约、行政合规和生产安全方面的潜在风险。建议持续关注案件状态、执行标的、处罚结果与安全隐患整改进度，及时识别风险变化。</p>
+  <ul class="risk">
+    <li><span class="r-label">涉诉案件<small>Legal Cases</small></span><span class="r-value ok">未发现</span></li>
+    <li><span class="r-label">被执行记录<small>Enforcement Records</small></span><span class="r-value ok">未发现</span></li>
+    <li><span class="r-label">行政处罚<small>Administrative Penalties</small></span><span class="r-value ok">未发现</span></li>
+    <li><span class="r-label">安全生产挂牌督办<small>Safety Supervision</small></span><span class="r-value ok">未发现</span></li>
+  </ul>
+</section>
+
+<!-- 页脚 -->
+<footer class="paper-foot">
+  <p>本报告由系统根据公开登记信息自动生成，仅供内部招商评估参考，不构成任何法律意见或决策依据。</p>
+</footer>
+
+</main>
+</body>
+</html>

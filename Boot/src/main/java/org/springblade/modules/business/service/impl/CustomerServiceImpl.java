@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -139,8 +140,98 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
-	public Customer insertCertifiedCustomer(Customer customer) {
-		return insertCustomer(customer, false);
+	public Customer prepareCertificationCustomer(Customer customer) {
+		if (Func.isEmpty(customer)) {
+			throw new ServiceException("客户信息不能为空");
+		}
+		normalizeCustomer(customer);
+		Long nameMatchedId = baseMapper.selectCustomerIdByEnterpriseAndPark(
+			customer.getEnterpriseName(), customer.getParkId(), null);
+		validateCustomer(customer, nameMatchedId, false, false);
+		Customer existing = resolveCertificationCustomer(customer, nameMatchedId);
+		if (Func.isNotEmpty(existing)) {
+			return existing;
+		}
+		customer.setSettlementStatus(0);
+		customer.setStatus(STATUS_NORMAL);
+		customer.setDelFlag(DEL_FLAG_NORMAL);
+		customer.setCreateBy(currentUserName());
+		customer.setCreateTime(DateUtil.now());
+		customer.setUpdateBy(currentUserName());
+		customer.setUpdateTime(DateUtil.now());
+		applyLocalCheck(customer);
+		try {
+			baseMapper.insertCustomer(customer);
+		} catch (DuplicateKeyException exception) {
+			Long concurrentId = baseMapper.selectCustomerIdByEnterpriseAndPark(
+				customer.getEnterpriseName(), customer.getParkId(), null);
+			Customer concurrent = resolveCertificationCustomer(customer, concurrentId);
+			if (Func.isEmpty(concurrent)) {
+				throw new ServiceException("同一园区下企业名称不可重复");
+			}
+			return concurrent;
+		}
+		return baseMapper.selectCustomerById(customer.getCustomerId());
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public Customer approveCertificationCustomer(Long customerId) {
+		Customer customer = baseMapper.selectCustomerById(customerId);
+		if (Func.isEmpty(customer)) {
+			throw new ServiceException("认证申请关联的客户不存在");
+		}
+		parkPermissionService.requirePark(customer.getParkId());
+		requireActiveCertificationCustomer(customer);
+		if (!Objects.equals(customer.getSettlementStatus(), 3)) {
+			Customer update = new Customer();
+			update.setCustomerId(customerId);
+			update.setSettlementStatus(3);
+			update.setUpdateBy(currentUserName());
+			if (baseMapper.updateCustomer(update) <= 0) {
+				throw new ServiceException("客户入驻状态同步失败");
+			}
+			customer.setSettlementStatus(3);
+		}
+		return customer;
+	}
+
+	private Customer resolveCertificationCustomer(Customer request, Long nameMatchedId) {
+		boolean hasCreditCode = StringUtil.isNotBlank(request.getCreditCode());
+		Long creditMatchedId = hasCreditCode
+			? baseMapper.selectCustomerIdByCreditCode(request.getCreditCode(), request.getParkId()) : null;
+		if (Func.isEmpty(nameMatchedId) && Func.isEmpty(creditMatchedId)) {
+			return null;
+		}
+		if (hasCreditCode && !Objects.equals(nameMatchedId, creditMatchedId)) {
+			throw new ServiceException("企业名称或统一社会信用代码与已有客户不一致");
+		}
+		Long existingId = hasCreditCode ? creditMatchedId : nameMatchedId;
+		Customer existing = baseMapper.selectCustomerById(existingId);
+		if (Func.isEmpty(existing)
+			|| !Objects.equals(existing.getParkId(), request.getParkId())
+			|| !sameCertificationIdentity(existing, request)) {
+			throw new ServiceException("企业名称或统一社会信用代码与已有客户不一致");
+		}
+		requireActiveCertificationCustomer(existing);
+		return existing;
+	}
+
+	private boolean sameCertificationIdentity(Customer first, Customer second) {
+		return Objects.equals(trimToNull(first.getEnterpriseName()), trimToNull(second.getEnterpriseName()))
+			&& Objects.equals(normalizeCreditCode(first.getCreditCode()), normalizeCreditCode(second.getCreditCode()));
+	}
+
+	private String normalizeCreditCode(String creditCode) {
+		String normalized = trimToNull(creditCode);
+		return normalized == null ? null : normalized.toUpperCase(Locale.ROOT);
+	}
+
+	private void requireActiveCertificationCustomer(Customer customer) {
+		if (!Objects.equals(customer.getStatus(), STATUS_NORMAL)
+			|| !Objects.equals(customer.getDelFlag(), DEL_FLAG_NORMAL)) {
+			throw new ServiceException("客户已停用、归档或删除，不能关联认证申请");
+		}
 	}
 
 	private Customer insertCustomer(Customer customer, boolean requireIdentity) {

@@ -62,13 +62,118 @@ SET @sql := IF(@col_exists = 0, 'ALTER TABLE biz_mini_enterprise_certification A
 
 CREATE TABLE IF NOT EXISTS `biz_mini_enterprise_certification_park` (
   `id` bigint NOT NULL, `certification_id` bigint NOT NULL, `tenant_id` varchar(12) NOT NULL DEFAULT '000000',
-  `park_id` bigint NOT NULL, `status` varchar(32) NOT NULL DEFAULT 'PENDING',
+  `park_id` bigint NOT NULL, `customer_id` bigint DEFAULT NULL COMMENT '认证发起后生成或关联的客户ID',
+  `status` varchar(32) NOT NULL DEFAULT 'PENDING',
   `is_deleted` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`), UNIQUE KEY `uk_cert_park` (`certification_id`,`park_id`), KEY `idx_cert_park_status` (`park_id`,`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='认证申请园区';
 
 SET @col_exists := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='biz_mini_enterprise_certification_park' AND column_name='is_deleted');
 SET @sql := IF(@col_exists = 0, 'ALTER TABLE biz_mini_enterprise_certification_park ADD COLUMN is_deleted int NOT NULL DEFAULT 0 COMMENT ''删除标记'' AFTER status', 'SELECT 1'); PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='biz_mini_enterprise_certification_park' AND column_name='customer_id');
+SET @sql := IF(@col_exists = 0, 'ALTER TABLE biz_mini_enterprise_certification_park ADD COLUMN customer_id bigint NULL COMMENT ''认证发起后生成或关联的客户ID'' AFTER park_id', 'SELECT 1'); PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- 同园区内名称或信用代码发生冲突时禁止自动关联，避免把认证权限授予错误客户。
+SELECT COUNT(*) INTO @cert_customer_identity_conflict_count
+FROM `biz_mini_enterprise_certification` c
+JOIN `biz_mini_enterprise_certification_park` cp
+  ON cp.`certification_id` = c.`id` AND cp.`is_deleted` = 0
+JOIN `biz_customer` bc
+  ON bc.`park_id` = cp.`park_id` AND bc.`del_flag` = '0'
+ AND (
+   TRIM(bc.`enterprise_name`) = TRIM(c.`enterprise_name`)
+   OR (
+     NULLIF(TRIM(c.`credit_code`), '') IS NOT NULL
+     AND UPPER(TRIM(bc.`credit_code`)) = UPPER(TRIM(c.`credit_code`))
+   )
+ )
+WHERE c.`is_deleted` = 0
+  AND NOT (
+    bc.`status` = '0'
+    AND TRIM(bc.`enterprise_name`) = TRIM(c.`enterprise_name`)
+    AND (
+      (NULLIF(TRIM(c.`credit_code`), '') IS NULL AND NULLIF(TRIM(bc.`credit_code`), '') IS NULL)
+      OR UPPER(TRIM(bc.`credit_code`)) = UPPER(TRIM(c.`credit_code`))
+    )
+  );
+
+SELECT @cert_customer_identity_conflict_count AS `cert_customer_identity_conflict_count_expected_0`;
+SET @sql := IF(
+  @cert_customer_identity_conflict_count = 0,
+  'SELECT 1',
+  'SELECT * FROM `migration_66_fix_customer_identity_conflicts_before_retry`'
+);
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- 历史认证申请补入客户管理；待审/驳回保持未入驻，已通过同步为已入驻。
+INSERT INTO `biz_customer` (
+  `enterprise_name`, `credit_code`, `legal_representative`, `registered_capital`, `enterprise_type`,
+  `contact_name`, `contact_phone`, `contact_email`, `park_id`, `settlement_status`, `status`, `del_flag`,
+  `create_by`, `create_time`, `update_by`, `update_time`
+)
+SELECT c.`enterprise_name`, c.`credit_code`, c.`legal_representative`, c.`registered_capital`, c.`subject_type`,
+       c.`contact_name`, c.`contact_phone`, c.`contact_email`, cp.`park_id`,
+       IF(c.`status` = 'APPROVED', 3, 0), '0', '0',
+       'miniapp-certification', COALESCE(c.`create_time`, NOW()), 'miniapp-certification', NOW()
+FROM `biz_mini_enterprise_certification` c
+JOIN `biz_mini_enterprise_certification_park` cp
+  ON cp.`certification_id` = c.`id` AND cp.`is_deleted` = 0
+WHERE c.`is_deleted` = 0
+  AND c.`id` = (
+    SELECT MAX(c2.`id`)
+    FROM `biz_mini_enterprise_certification` c2
+    JOIN `biz_mini_enterprise_certification_park` cp2
+      ON cp2.`certification_id` = c2.`id` AND cp2.`is_deleted` = 0
+    WHERE c2.`is_deleted` = 0
+      AND c2.`enterprise_name` = c.`enterprise_name`
+      AND cp2.`park_id` = cp.`park_id`
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM `biz_customer` bc
+    WHERE bc.`park_id` = cp.`park_id`
+      AND TRIM(bc.`enterprise_name`) = TRIM(c.`enterprise_name`)
+      AND bc.`status` = '0'
+      AND bc.`del_flag` = '0'
+      AND (
+        (NULLIF(TRIM(c.`credit_code`), '') IS NULL AND NULLIF(TRIM(bc.`credit_code`), '') IS NULL)
+        OR UPPER(TRIM(bc.`credit_code`)) = UPPER(TRIM(c.`credit_code`))
+      )
+  );
+
+UPDATE `biz_mini_enterprise_certification_park` cp
+JOIN `biz_mini_enterprise_certification` c
+  ON c.`id` = cp.`certification_id` AND c.`is_deleted` = 0
+SET cp.`customer_id` = (
+  SELECT MIN(bc.`customer_id`)
+  FROM `biz_customer` bc
+  WHERE bc.`park_id` = cp.`park_id`
+    AND TRIM(bc.`enterprise_name`) = TRIM(c.`enterprise_name`)
+    AND bc.`status` = '0'
+    AND bc.`del_flag` = '0'
+    AND (
+      (NULLIF(TRIM(c.`credit_code`), '') IS NULL AND NULLIF(TRIM(bc.`credit_code`), '') IS NULL)
+      OR UPPER(TRIM(bc.`credit_code`)) = UPPER(TRIM(c.`credit_code`))
+    )
+)
+WHERE cp.`is_deleted` = 0 AND cp.`customer_id` IS NULL;
+
+UPDATE `biz_customer` bc
+JOIN `biz_mini_enterprise_certification_park` cp
+  ON cp.`customer_id` = bc.`customer_id` AND cp.`is_deleted` = 0
+JOIN `biz_mini_enterprise_certification` c
+  ON c.`id` = cp.`certification_id` AND c.`is_deleted` = 0
+SET bc.`settlement_status` = 3,
+    bc.`update_by` = 'miniapp-certification',
+    bc.`update_time` = NOW()
+WHERE c.`status` = 'APPROVED'
+  AND bc.`park_id` = cp.`park_id`
+  AND bc.`status` = '0'
+  AND bc.`del_flag` = '0'
+  AND TRIM(bc.`enterprise_name`) = TRIM(c.`enterprise_name`)
+  AND (
+    (NULLIF(TRIM(c.`credit_code`), '') IS NULL AND NULLIF(TRIM(bc.`credit_code`), '') IS NULL)
+    OR UPPER(TRIM(bc.`credit_code`)) = UPPER(TRIM(c.`credit_code`))
+  );
 
 CREATE TABLE IF NOT EXISTS `biz_mini_enterprise_invite` (
   `id` bigint NOT NULL, `tenant_id` varchar(12) NOT NULL DEFAULT '000000', `enterprise_subject_id` bigint NOT NULL,

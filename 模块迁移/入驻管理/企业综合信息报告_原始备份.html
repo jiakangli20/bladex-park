@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>企业综合信息报告</title>
+<style>
+/* ================= 金融国企：庄重、规范、去装饰 ================= */
+:root {
+  --paper: #ffffff;
+  --page: #f5f5f5;
+  --ink: #1a1a1a;
+  --ink-secondary: #333333;
+  --ink-muted: #666666;
+  --line: #d9d9d9;
+  --line-strong: #b3b3b3;
+  --accent: #8b0000;          /* 深红：国企公文红 */
+  /* 语义色：极度收敛 */
+  --ok: #1a5c1a;
+  --warn: #8c6b1f;
+  --danger: #8b0000;
+}
+
+* {margin: 0; padding: 0; box-sizing: border-box;}
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: "SimSun", "Songti SC", "Noto Serif SC", serif;
+  background: var(--page);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  padding: 24px 16px;
+}
+
+/* ===== 纸张：标准公文版式，无圆角无阴影 ===== */
+.paper {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+/* ===== 报头：红头文件风格 ===== */
+.report-header {
+  padding: 36px 40px 28px;
+  border-top: 4px solid var(--accent);
+  border-bottom: 2px solid var(--line-strong);
+  text-align: center;
+}
+.doc-eyebrow {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: .3em;
+  margin-bottom: 20px;
+}
+.company {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: .05em;
+  line-height: 1.5;
+}
+.doc-en {
+  font-size: 11px;
+  color: var(--ink-muted);
+  letter-spacing: .15em;
+  margin-top: 8px;
+}
+
+/* ===== 密级/编号行 ===== */
+.doc-classify {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.doc-classify span { font-weight: 600; color: var(--ink-secondary); }
+
+/* ===== 内容区块 ===== */
+.card {
+  padding: 28px 40px;
+}
+.card + .card {
+  border-top: 1px solid var(--line);
+}
+
+/* ===== 章节标题：一、二、三 中文编号 ===== */
+.sec {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.sec-no {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.sec-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: .02em;
+}
+
+/* ===== 小节标题：（一）（二） 中文编号 ===== */
+.sub {
+  margin: 20px 0 12px;
+}
+.sub:first-of-type { margin-top: 0; }
+.sub h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-secondary);
+}
+
+/* ===== KV 网格 ===== */
+.kv-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 32px;
+}
+.kv-item { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.kv-item dt {
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+.kv-item dd {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.6;
+  word-break: break-word;
+  font-variant-numeric: tabular-nums;
+}
+.kv-item.full { grid-column: 1 / -1; }
+
+/* ===== 状态：方括号 ===== */
+.status {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ok);
+}
+.status::before { content: '【'; }
+.status::after { content: '】'; }
+
+/* ===== AI 分析：公文正文段落 ===== */
+.insight {
+  font-size: 14px;
+  color: var(--ink-secondary);
+  line-height: 2;
+  text-align: justify;
+  text-indent: 2em;
+}
+.insight + .insight { margin-top: 12px; }
+
+/* ===== 风险核验：规范表格 ===== */
+.risk-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 13px;
+}
+.risk-table th,
+.risk-table td {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  text-align: left;
+}
+.risk-table th {
+  background: #f9f9f9;
+  font-weight: 600;
+  color: var(--ink-secondary);
+}
+.risk-table td { color: var(--ink); }
+.risk-table .r-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.risk-table .r-value.ok { color: var(--ok); }
+.risk-table .r-value.warn { color: var(--warn); }
+.risk-table .r-value.danger { color: var(--danger); }
+
+/* ===== 页脚：落款 + 说明 ===== */
+.paper-foot {
+  padding: 24px 40px 32px;
+  border-top: 2px solid var(--line-strong);
+}
+.foot-sign {
+  display: flex;
+  justify-content: flex-end;
+  gap: 40px;
+  font-size: 13px;
+  color: var(--ink-secondary);
+}
+.foot-sign span { display: inline-block; min-width: 120px; }
+.foot-note {
+  margin-top: 20px;
+  font-size: 11px;
+  color: var(--ink-muted);
+  line-height: 1.8;
+  text-align: center;
+}
+
+/* ===== 打印 ===== */
+@media print {
+  body { background: #fff; padding: 0; }
+  .paper { max-width: none; border: none; }
+  .card { break-inside: avoid; }
+}
+
+/* ===== 桌面端 ===== */
+@media (min-width: 768px) {
+  body { padding: 40px 24px; }
+  .paper { max-width: 800px; }
+  .report-header { padding: 44px 48px 32px; }
+  .company { font-size: 26px; }
+  .card { padding: 32px 48px; }
+  .kv-grid { gap: 14px 40px; }
+  .kv-item dd { font-size: 15px; }
+  .insight { font-size: 15px; }
+}
+</style>
+</head>
+<body>
+<main class="paper">
+
+<!-- 报头 -->
+<header class="report-header">
+  <p class="doc-eyebrow">企业综合信息报告</p>
+  <h1 class="company">xxxx 科技有限公司 AI报告</h1>
+  <p class="doc-en">Enterprise Comprehensive Information Report</p>
+  <div class="doc-classify">
+    <span>密级：内部资料</span>
+    <span>编号：QY-20260902-0001</span>
+  </div>
+</header>
+
+<!-- 一、基本信息 -->
+<section class="card" aria-labelledby="sec-basic">
+  <header class="sec">
+    <span class="sec-no" aria-hidden="true">一、</span>
+    <h2 class="sec-title" id="sec-basic">基本信息</h2>
+  </header>
+
+  <div class="sub"><h3>（一）身份信息</h3></div>
+  <dl class="kv-grid">
+    <div class="kv-item"><dt>企业名称</dt><dd>苏州测试企业有限公司</dd></div>
+    <div class="kv-item"><dt>机构代码</dt><dd>91XXX58355587XXXXT</dd></div>
+    <div class="kv-item full"><dt>注册地址</dt><dd>江苏省苏州市吴中区吴中大道XX号</dd></div>
+    <div class="kv-item"><dt>法定代表人</dt><dd>张**</dd></div>
+    <div class="kv-item"><dt>注册资本</dt><dd>4000万美元</dd></div>
+    <div class="kv-item full"><dt>公司类型</dt><dd>有限责任公司(台港澳法人独资)</dd></div>
+    <div class="kv-item"><dt>联系电话</dt><dd>13812345626</dd></div>
+    <div class="kv-item"><dt>成立时间</dt><dd>2010-06-11</dd></div>
+    <div class="kv-item"><dt>营业期限</dt><dd>2010-06-11 至 2040-06-10</dd></div>
+    <div class="kv-item"><dt>行业分类</dt><dd>纺织业</dd></div>
+    <div class="kv-item"><dt>经营状态</dt><dd><span class="status">在业</span></dd></div>
+    <div class="kv-item full"><dt>经营范围</dt><dd>生产和销售：针纺织品，服装面料及辅料。（依法须经批准的项目，经相关部门批准后方可开展经营活动）</dd></div>
+  </dl>
+</section>
+
+<!-- 二、AI 分析 -->
+<section class="card" aria-labelledby="sec-ai">
+  <header class="sec">
+    <span class="sec-no" aria-hidden="true">二、</span>
+    <h2 class="sec-title" id="sec-ai">AI 分析</h2>
+  </header>
+
+  <div class="sub"><h3>（一）企业基本情况</h3></div>
+  <p class="insight">苏州测试企业有限公司成立于2010年6月11日，所属行业为纺织业，注册资本4000万美元，企业当前登记状态为在业。企业经营范围主要涉及针纺织品、服装面料及辅料的生产和销售，整体登记信息较为完整。</p>
+
+  <div class="sub"><h3>（二）重点风险核验</h3></div>
+  <p class="insight">通过综合核验企业涉诉案件、被执行记录、行政处罚及安全生产挂牌督办信息，可重点识别企业在法律履约、行政合规和生产安全方面的潜在风险。建议持续关注案件状态、执行标的、处罚结果与安全隐患整改进度，及时识别风险变化。</p>
+  <table class="risk-table">
+    <thead>
+      <tr><th>核验项目</th><th>核验结果</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>涉诉案件</td><td class="r-value ok">未发现</td></tr>
+      <tr><td>被执行记录</td><td class="r-value ok">未发现</td></tr>
+      <tr><td>行政处罚</td><td class="r-value ok">未发现</td></tr>
+      <tr><td>安全生产挂牌督办</td><td class="r-value ok">未发现</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 页脚 -->
+<footer class="paper-foot">
+  <div class="foot-sign">
+    <span>编制单位：__________</span>
+    <span>编制日期：__________</span>
+  </div>
+  <p class="foot-note">本报告由系统根据公开登记信息自动生成，仅供内部招商评估参考，不构成任何法律意见或决策依据。如有异议，请以登记机关出具的文件为准。</p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -35,7 +35,15 @@ public interface ICustomerService extends IService<Customer> {
 
 	Customer insertCustomer(Customer customer);
 
-	Customer insertCertifiedCustomer(Customer customer);
+	/**
+	 * Create or reuse the customer archive produced by a mini-program certification request.
+	 */
+	Customer prepareCertificationCustomer(Customer customer);
+
+	/**
+	 * Synchronize an approved mini-program certification to the settled customer state.
+	 */
+	Customer approveCertificationCustomer(Long customerId);
 
 	boolean updateCustomer(Customer customer);
 

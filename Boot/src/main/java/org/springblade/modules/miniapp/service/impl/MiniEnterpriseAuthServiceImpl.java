@@ -173,6 +173,7 @@ public class MiniEnterpriseAuthServiceImpl implements IMiniEnterpriseAuthService
             relation.setTenantId(tenant());
             relation.setCertificationId(certification.getId());
             relation.setParkId(parkId);
+            relation.setCustomerId(prepareCertificationCustomer(certification, parkId).getCustomerId());
             relation.setProcessStatus(PENDING);
             relation.setIsDeleted(0);
             certificationParkMapper.insert(relation);
@@ -256,6 +257,7 @@ public class MiniEnterpriseAuthServiceImpl implements IMiniEnterpriseAuthService
             relation.setTenantId(tenant());
             relation.setCertificationId(certification.getId());
             relation.setParkId(parkId);
+            relation.setCustomerId(prepareCertificationCustomer(certification, parkId).getCustomerId());
             relation.setProcessStatus(PENDING);
             relation.setIsDeleted(0);
             certificationParkMapper.insert(relation);
@@ -590,19 +592,14 @@ public class MiniEnterpriseAuthServiceImpl implements IMiniEnterpriseAuthService
             if (exists) {
                 throw new ServiceException("企业已拥有所申请园区权限");
             }
-            Customer customer = new Customer();
-            customer.setEnterpriseName(certification.getEnterpriseName());
-            customer.setCreditCode(certification.getCreditCode());
-            customer.setLegalRepresentative(certification.getLegalRepresentative());
-            customer.setRegisteredCapital(certification.getRegisteredCapital());
-            customer.setEnterpriseType(certification.getSubjectType());
-            customer.setContactName(certification.getContactName());
-            customer.setContactPhone(certification.getContactPhone());
-            customer.setContactEmail(certification.getContactEmail());
-            customer.setParkId(park.getParkId());
-            customer.setStatus("0");
-            customer.setDelFlag("0");
-            Customer saved = customerService.insertCertifiedCustomer(customer);
+            Long customerId = park.getCustomerId();
+            if (customerId == null) {
+                Customer prepared = prepareCertificationCustomer(certification, park.getParkId());
+                customerId = prepared.getCustomerId();
+                park.setCustomerId(customerId);
+                certificationParkMapper.updateById(park);
+            }
+            Customer saved = customerService.approveCertificationCustomer(customerId);
 
             MiniCustomerMember relation = new MiniCustomerMember();
             relation.setId(IdWorker.getId());
@@ -634,6 +631,20 @@ public class MiniEnterpriseAuthServiceImpl implements IMiniEnterpriseAuthService
         }
         markParkEnterprise(certification.getApplicantUserId());
     }
+
+	private Customer prepareCertificationCustomer(MiniEnterpriseCertification certification, Long parkId) {
+		Customer customer = new Customer();
+		customer.setEnterpriseName(certification.getEnterpriseName());
+		customer.setCreditCode(certification.getCreditCode());
+		customer.setLegalRepresentative(certification.getLegalRepresentative());
+		customer.setRegisteredCapital(certification.getRegisteredCapital());
+		customer.setEnterpriseType(certification.getSubjectType());
+		customer.setContactName(certification.getContactName());
+		customer.setContactPhone(certification.getContactPhone());
+		customer.setContactEmail(certification.getContactEmail());
+		customer.setParkId(parkId);
+		return customerService.prepareCertificationCustomer(customer);
+	}
 
     private List<MiniCustomerMember> activeRelations(Long uid) {
         return memberRelationMapper.selectList(Wrappers.<MiniCustomerMember>lambdaQuery()
