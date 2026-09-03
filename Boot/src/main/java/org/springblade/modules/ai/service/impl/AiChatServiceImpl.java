@@ -35,10 +35,12 @@ public class AiChatServiceImpl implements IAiChatService {
 	private final List<AiDomainHandler> domainHandlers;
 
 	@Override
-	public List<AiConversation> conversations() {
+	public List<AiConversation> conversations(String requestedDomain) {
+		String domain = normalizeDomain(requestedDomain);
 		return conversationMapper.selectList(Wrappers.<AiConversation>lambdaQuery()
 			.eq(AiConversation::getTenantId, currentTenantId())
 			.eq(AiConversation::getUserId, currentUserId())
+			.eq(AiConversation::getDomain, domain)
 			.orderByDesc(AiConversation::getLastMessageTime)
 			.orderByDesc(AiConversation::getId));
 	}
@@ -75,22 +77,23 @@ public class AiChatServiceImpl implements IAiChatService {
 			throw new ServiceException("请输入问题");
 		}
 		AiAccessContext context = normalizeContext(accessContext);
+		String domain = normalizeDomain(request.getDomain());
 		AiConversation conversation = request.getConversationId() == null
-			? createConversation(content, context.userId(), context.tenantId())
+			? createConversation(content, domain, context.userId(), context.tenantId())
 			: requireConversation(request.getConversationId(), context.userId(), context.tenantId());
+		requireConversationDomain(conversation, domain);
 		List<AiMessage> history = messageMapper.selectList(Wrappers.<AiMessage>lambdaQuery()
 			.eq(AiMessage::getConversationId, conversation.getId())
 			.eq(AiMessage::getTenantId, context.tenantId())
 			.eq(AiMessage::getUserId, context.userId())
 			.orderByAsc(AiMessage::getId));
-		AiDomainHandler domainHandler = domainHandlers.stream()
-			.filter(handler -> handler.supports(content, history))
-			.findFirst().orElse(null);
-		boolean inScope = domainHandler != null;
-		String domain = inScope ? domainHandler.domain() : "property";
-		AiMessage userMessage = saveMessage(conversation.getId(), "user", content, domain, inScope, context.userId(), context.tenantId());
-		String answer = inScope ? domainHandler.answer(content, recentHistory(history), context) : outOfScopeReply();
-		AiMessage assistantMessage = saveMessage(conversation.getId(), "assistant", answer, domain, inScope, context.userId(), context.tenantId());
+		AiDomainHandler domainHandler = requireDomainHandler(domain);
+		boolean inScope = domainHandler.supports(content, history);
+		AiMessage userMessage = saveMessage(conversation.getId(), "user", content, domain, inScope, null, context.userId(), context.tenantId());
+		AiDomainHandler.DomainAnswer answer = inScope
+			? domainHandler.answer(content, recentHistory(history), context)
+			: AiDomainHandler.DomainAnswer.text(domainHandler.outOfScopeReply());
+		AiMessage assistantMessage = saveMessage(conversation.getId(), "assistant", answer.content(), domain, inScope, answer.reportId(), context.userId(), context.tenantId());
 		Date now = new Date();
 		conversation.setDomain(domain);
 		conversation.setLastMessageTime(now);
@@ -108,35 +111,37 @@ public class AiChatServiceImpl implements IAiChatService {
 		String content = request.getContent() == null ? "" : request.getContent().trim();
 		if (StringUtil.isBlank(content)) throw new ServiceException("请输入问题");
 		AiAccessContext context = normalizeContext(accessContext);
+		String domain = normalizeDomain(request.getDomain());
 		AiConversation conversation = request.getConversationId() == null
-			? createConversation(content, context.userId(), context.tenantId())
+			? createConversation(content, domain, context.userId(), context.tenantId())
 			: requireConversation(request.getConversationId(), context.userId(), context.tenantId());
+		requireConversationDomain(conversation, domain);
 		List<AiMessage> history = messageMapper.selectList(Wrappers.<AiMessage>lambdaQuery()
 			.eq(AiMessage::getConversationId, conversation.getId())
 			.eq(AiMessage::getTenantId, context.tenantId())
 			.eq(AiMessage::getUserId, context.userId())
 			.orderByAsc(AiMessage::getId));
-		AiDomainHandler domainHandler = domainHandlers.stream()
-			.filter(handler -> handler.supports(content, history)).findFirst().orElse(null);
-		boolean inScope = domainHandler != null;
-		String domain = inScope ? domainHandler.domain() : "property";
-		AiMessage userMessage = saveMessage(conversation.getId(), "user", content, domain, inScope, context.userId(), context.tenantId());
+		AiDomainHandler domainHandler = requireDomainHandler(domain);
+		boolean inScope = domainHandler.supports(content, history);
+		AiMessage userMessage = saveMessage(conversation.getId(), "user", content, domain, inScope, null, context.userId(), context.tenantId());
 		Map<String, Object> meta = new LinkedHashMap<>();
 		meta.put("conversationId", conversation.getId());
 		meta.put("userMessage", toVO(userMessage));
 		eventConsumer.accept(new IAiChatService.AiStreamEvent("meta", meta));
 		StringBuilder answer = new StringBuilder();
+		Long reportId = null;
 		if (inScope) {
-			domainHandler.streamAnswer(content, recentHistory(history), context, chunk -> {
+			AiDomainHandler.DomainAnswer domainAnswer = domainHandler.streamAnswer(content, recentHistory(history), context, chunk -> {
 				answer.append(chunk);
 				eventConsumer.accept(new IAiChatService.AiStreamEvent("delta", Map.of("content", chunk)));
 			});
+			reportId = domainAnswer.reportId();
 		} else {
-			String outOfScope = outOfScopeReply();
+			String outOfScope = domainHandler.outOfScopeReply();
 			answer.append(outOfScope);
 			eventConsumer.accept(new IAiChatService.AiStreamEvent("delta", Map.of("content", outOfScope)));
 		}
-		AiMessage assistantMessage = saveMessage(conversation.getId(), "assistant", answer.toString(), domain, inScope, context.userId(), context.tenantId());
+		AiMessage assistantMessage = saveMessage(conversation.getId(), "assistant", answer.toString(), domain, inScope, reportId, context.userId(), context.tenantId());
 		Date now = new Date();
 		conversation.setDomain(domain);
 		conversation.setLastMessageTime(now);
@@ -145,16 +150,12 @@ public class AiChatServiceImpl implements IAiChatService {
 		eventConsumer.accept(new IAiChatService.AiStreamEvent("done", Map.of("assistantMessage", toVO(assistantMessage))));
 	}
 
-	private AiConversation createConversation(String firstQuestion) {
-		return createConversation(firstQuestion, currentUserId(), currentTenantId());
-	}
-
-	private AiConversation createConversation(String firstQuestion, Long userId, String tenantId) {
+	private AiConversation createConversation(String firstQuestion, String domain, Long userId, String tenantId) {
 		Date now = new Date();
 		AiConversation conversation = new AiConversation();
 		conversation.setTenantId(tenantId);
 		conversation.setUserId(userId);
-		conversation.setDomain("property");
+		conversation.setDomain(domain);
 		conversation.setTitle(firstQuestion.length() > 28 ? firstQuestion.substring(0, 28) + "..." : firstQuestion);
 		conversation.setLastMessageTime(now);
 		conversation.setCreateTime(now);
@@ -181,11 +182,8 @@ public class AiChatServiceImpl implements IAiChatService {
 		return conversation;
 	}
 
-	private AiMessage saveMessage(Long conversationId, String role, String content, String domain, boolean inScope) {
-		return saveMessage(conversationId, role, content, domain, inScope, currentUserId(), currentTenantId());
-	}
-
-	private AiMessage saveMessage(Long conversationId, String role, String content, String domain, boolean inScope, Long userId, String tenantId) {
+	private AiMessage saveMessage(Long conversationId, String role, String content, String domain, boolean inScope,
+		Long reportId, Long userId, String tenantId) {
 		AiMessage message = new AiMessage();
 		message.setConversationId(conversationId);
 		message.setTenantId(tenantId);
@@ -194,6 +192,7 @@ public class AiChatServiceImpl implements IAiChatService {
 		message.setContent(content);
 		message.setDomain(domain);
 		message.setInScope(inScope);
+		message.setReportId(reportId);
 		message.setCreateTime(new Date());
 		messageMapper.insert(message);
 		return message;
@@ -212,12 +211,23 @@ public class AiChatServiceImpl implements IAiChatService {
 		return new AiAccessContext(accessContext.userId(), tenantId, accessContext.authorizedParkIds());
 	}
 
-	private String outOfScopeReply() {
-		return domainHandlers.stream()
-			.filter(AiPropertyDomainHandler.class::isInstance)
-			.map(handler -> ((AiPropertyDomainHandler) handler).outOfScopeReply())
-			.findFirst()
-			.orElse("目前仅支持房源相关问答，请询问房源、出租率或空置房间。");
+	private AiDomainHandler requireDomainHandler(String domain) {
+		return domainHandlers.stream().filter(handler -> domain.equals(handler.domain())).findFirst()
+			.orElseThrow(() -> new ServiceException("AI领域暂不可用"));
+	}
+
+	private String normalizeDomain(String requestedDomain) {
+		String domain = StringUtil.isBlank(requestedDomain) ? "property" : requestedDomain.trim().toLowerCase();
+		if (!"property".equals(domain) && !"enterprise".equals(domain)) {
+			throw new ServiceException("不支持的AI领域");
+		}
+		return domain;
+	}
+
+	private void requireConversationDomain(AiConversation conversation, String domain) {
+		if (!domain.equals(conversation.getDomain())) {
+			throw new ServiceException("会话领域不匹配，请新建对话");
+		}
 	}
 
 	private AiChatMessageVO toVO(AiMessage message) {
@@ -227,6 +237,7 @@ public class AiChatServiceImpl implements IAiChatService {
 		vo.setContent(message.getContent());
 		vo.setDomain(message.getDomain());
 		vo.setInScope(message.getInScope());
+		vo.setReportId(message.getReportId());
 		vo.setCreateTime(message.getCreateTime());
 		return vo;
 	}

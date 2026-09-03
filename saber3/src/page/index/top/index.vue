@@ -32,9 +32,6 @@
       <div v-if="setting.lock" class="top-bar__item">
         <top-lock></top-lock>
       </div>
-      <div class="top-bar__item">
-        <top-lang></top-lang>
-      </div>
       <div class="top-bar__item" v-if="setting.fullscreen">
         <top-full></top-full>
       </div>
@@ -134,7 +131,6 @@ import topSearch from './top-search.vue';
 import topTheme from './top-theme.vue';
 import topLogs from './top-logs.vue';
 import topColor from './top-color.vue';
-import topLang from './top-lang.vue';
 import topFull from './top-full.vue';
 import topSetting from '../setting.vue';
 import { getUserInfo as getUerDetailInfo } from '@/api/system/user';
@@ -151,7 +147,6 @@ export default {
     topTheme,
     topLogs,
     topColor,
-    topLang,
     topFull,
     topSetting,
   },

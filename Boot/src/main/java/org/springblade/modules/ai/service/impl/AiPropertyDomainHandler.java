@@ -62,14 +62,14 @@ public class AiPropertyDomainHandler implements AiDomainHandler {
 	}
 
 	@Override
-	public String answer(String question, List<AiMessage> recentMessages, AiAccessContext accessContext) {
+	public DomainAnswer answer(String question, List<AiMessage> recentMessages, AiAccessContext accessContext) {
 		Map<String, Object> snapshot = buildSnapshot(accessContext.authorizedParkIds());
 		String prompt = buildAnswerPrompt(snapshot);
-		return deepSeekChatClient.complete(prompt, recentMessages, question).orElseGet(() -> fallbackAnswer(question, snapshot));
+		return DomainAnswer.text(deepSeekChatClient.complete(prompt, recentMessages, question).orElseGet(() -> fallbackAnswer(question, snapshot)));
 	}
 
 	@Override
-	public void streamAnswer(String question, List<AiMessage> recentMessages, AiAccessContext accessContext, Consumer<String> chunkConsumer) {
+	public DomainAnswer streamAnswer(String question, List<AiMessage> recentMessages, AiAccessContext accessContext, Consumer<String> chunkConsumer) {
 		Map<String, Object> snapshot = buildSnapshot(accessContext.authorizedParkIds());
 		DeepSeekChatClient.StreamResult result = deepSeekChatClient.stream(
 			buildAnswerPrompt(snapshot), recentMessages, question, chunkConsumer
@@ -79,8 +79,10 @@ public class AiPropertyDomainHandler implements AiDomainHandler {
 		} else if (!result.completed()) {
 			throw new ServiceException("AI流式回答中断，请重试");
 		}
+		return new DomainAnswer(null, null);
 	}
 
+	@Override
 	public String outOfScopeReply() {
 		return OUT_OF_SCOPE_REPLY;
 	}

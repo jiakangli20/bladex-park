@@ -101,6 +101,58 @@ public class DeepSeekChatClient {
 		return Optional.empty();
 	}
 
+	/** 企业报告请求只允许围绕选定企业的经营、资质、入驻和风险信息展开。 */
+	public Optional<Boolean> classifyEnterpriseReportRequest(String requestContent) {
+		String prompt = "你是园区运营平台的企业报告请求分类器。请判断用户要求是否属于企业综合分析报告。"
+			+ "允许范围包括：企业工商信息、经营情况、行业、规模、招商入驻、租赁意向、资质核验、合规和风险分析。"
+			+ "天气、闲聊、系统操作、房源统计、写代码以及与企业分析无关的内容不属于范围。"
+			+ "只输出 JSON，不要 Markdown，不要额外解释，格式：{\"inScope\":true,\"reason\":\"简短原因\"}";
+		Optional<String> result = complete(prompt, List.of(), requestContent);
+		if (result.isEmpty()) {
+			return Optional.empty();
+		}
+		try {
+			String content = result.get().trim().replaceAll("^```json\\s*|\\s*```$", "");
+			JsonNode node = objectMapper.readTree(content);
+			if (node.has("inScope") && node.get("inScope").isBoolean()) {
+				return Optional.of(node.get("inScope").asBoolean());
+			}
+		} catch (Exception exception) {
+			log.warn("DeepSeek enterprise report classification response is not valid JSON");
+		}
+		return Optional.empty();
+	}
+
+	/** 判断是否属于客户档案支持的企业问答或报告请求。 */
+	public Optional<Boolean> classifyEnterpriseQuestion(List<AiMessage> history, String question) {
+		String prompt = "你是园区运营平台的企业助手路由器。判断最新问题是否可由客户管理档案回答。"
+			+ "允许范围包括企业基本信息、工商信息、经营状态、行业、规模、联系人、招商入驻、租赁意向、资质核验、合规风险，以及生成上述企业报告。"
+			+ "房源统计、财务、工单、系统操作、天气、闲聊不属于范围。历史仅用于理解省略指代，不得扩大范围。"
+			+ "只输出 JSON，不要 Markdown，格式：{\"inScope\":true,\"reason\":\"简短原因\"}";
+		return parseBooleanDecision(complete(prompt, history, question), "enterprise question");
+	}
+
+	/** 只有用户明确要求形成、制作、导出或下载报告时才返回 true。 */
+	public Optional<Boolean> classifyEnterpriseReportIntent(String question) {
+		String prompt = "判断用户是否明确要求生成一个可查看或下载的企业报告成品。普通企业信息问答必须返回 false。"
+			+ "只输出 JSON，不要 Markdown，格式：{\"inScope\":true,\"reason\":\"简短原因\"}";
+		return parseBooleanDecision(complete(prompt, List.of(), question), "enterprise report intent");
+	}
+
+	private Optional<Boolean> parseBooleanDecision(Optional<String> result, String decisionName) {
+		if (result.isEmpty()) return Optional.empty();
+		try {
+			String content = result.get().trim().replaceAll("^```json\\s*|\\s*```$", "");
+			JsonNode node = objectMapper.readTree(content);
+			if (node.has("inScope") && node.get("inScope").isBoolean()) {
+				return Optional.of(node.get("inScope").asBoolean());
+			}
+		} catch (Exception exception) {
+			log.warn("DeepSeek {} classification response is not valid JSON", decisionName);
+		}
+		return Optional.empty();
+	}
+
 	/** 读取 DeepSeek SSE 增量，仅转发文本 delta。 */
 	public StreamResult stream(String systemPrompt, List<AiMessage> history, String question, Consumer<String> chunkConsumer) {
 		if (!properties.isEnabled() || properties.getApiKey() == null || properties.getApiKey().isBlank()) {

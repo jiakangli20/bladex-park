@@ -34,18 +34,19 @@ import java.util.Map;
 @NonDS
 @RestController
 @RequiredArgsConstructor
-@PreAuth(menu = "rent_control")
+@PreAuth("hasMenu('rent_control') || hasMenu('settlement_customer')")
 @RequestMapping("/blade-ai/chat")
-@Tag(name = "AI 房源问答", description = "房源领域智能问答接口")
+@Tag(name = "园区 AI 助手", description = "房源问答与企业助手接口")
 public class AiChatController extends BladeController {
 
 	private final IAiChatService chatService;
 	private final IParkPermissionService parkPermissionService;
 
 	@GetMapping("/conversations")
+	@PreAuth("(#domain == null || #domain == '' || #domain == 'property') && hasMenu('rent_control') || #domain == 'enterprise' && hasMenu('settlement_customer')")
 	@Operation(summary = "当前用户会话列表")
-	public R<List<AiConversation>> conversations() {
-		return R.data(chatService.conversations());
+	public R<List<AiConversation>> conversations(@RequestParam(defaultValue = "property") String domain) {
+		return R.data(chatService.conversations(domain));
 	}
 
 	@GetMapping("/messages")
@@ -62,13 +63,15 @@ public class AiChatController extends BladeController {
 	}
 
 	@PostMapping("/send")
-	@Operation(summary = "发送房源问答消息")
+	@PreAuth("#request.domain == 'enterprise' && hasMenu('settlement_customer') || (#request.domain == null || #request.domain == '' || #request.domain == 'property') && hasMenu('rent_control')")
+	@Operation(summary = "发送 AI 助手消息")
 	public R<AiChatResponseVO> send(@Valid @RequestBody AiChatRequest request) {
 		return R.data(chatService.send(request, captureAccessContext()));
 	}
 
 	@PostMapping(value = "/send/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-	@Operation(summary = "流式发送房源问答消息")
+	@PreAuth("#request.domain == 'enterprise' && hasMenu('settlement_customer') || (#request.domain == null || #request.domain == '' || #request.domain == 'property') && hasMenu('rent_control')")
+	@Operation(summary = "流式发送 AI 助手消息")
 	public SseEmitter sendStream(@Valid @RequestBody AiChatRequest request, HttpServletResponse response) {
 		response.setHeader("Cache-Control", "no-cache");
 		response.setHeader("X-Accel-Buffering", "no");

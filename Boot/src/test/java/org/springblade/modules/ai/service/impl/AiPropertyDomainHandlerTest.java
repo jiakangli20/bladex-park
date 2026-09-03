@@ -45,7 +45,7 @@ class AiPropertyDomainHandlerTest {
 			rentControlService, roomService, deepSeekChatClient, new ObjectMapper());
 
 		String answer = handler.answer("我现在租了哪些房源？", List.of(),
-			new AiAccessContext(100L, "000000", authorizedParkIds));
+			new AiAccessContext(100L, "000000", authorizedParkIds)).content();
 
 		assertTrue(answer.contains("当前在租房源共 1 间"));
 		assertTrue(answer.contains("产业园 / A座 / 1901室"));

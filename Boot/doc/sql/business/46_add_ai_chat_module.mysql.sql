@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS `biz_ai_message` (
   `content` text NOT NULL COMMENT '消息内容',
   `domain` varchar(32) NOT NULL DEFAULT 'property' COMMENT '问答领域',
   `in_scope` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否在当前领域范围内',
+  `report_id` bigint DEFAULT NULL COMMENT '关联企业报告ID',
   `create_time` datetime NOT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`),
   KEY `idx_ai_message_conversation` (`conversation_id`, `tenant_id`, `user_id`, `id`)

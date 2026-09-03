@@ -12,7 +12,7 @@ import java.util.function.Consumer;
 public interface IAiChatService {
 	record AiStreamEvent(String type, Object data) {}
 
-	List<AiConversation> conversations();
+	List<AiConversation> conversations(String domain);
 	List<AiChatMessageVO> messages(Long conversationId);
 	void removeConversation(Long conversationId);
 	AiChatResponseVO send(AiChatRequest request, AiAccessContext accessContext);

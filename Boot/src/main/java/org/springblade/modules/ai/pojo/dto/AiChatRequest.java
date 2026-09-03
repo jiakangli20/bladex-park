@@ -8,6 +8,7 @@ import lombok.Data;
 public class AiChatRequest {
 
 	private Long conversationId;
+	private String domain = "property";
 
 	@NotBlank(message = "请输入问题")
 	@Size(max = 500, message = "问题不能超过500个字符")

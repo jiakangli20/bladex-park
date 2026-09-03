@@ -21,5 +21,6 @@ public class AiMessage {
 	private String content;
 	private String domain;
 	private Boolean inScope;
+	private Long reportId;
 	private Date createTime;
 }

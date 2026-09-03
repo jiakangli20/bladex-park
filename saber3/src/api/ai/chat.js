@@ -4,10 +4,11 @@ import website from '@/config/website';
 import { baseUrl } from '@/config/env';
 import { getToken } from '@/utils/auth';
 
-export const listConversations = () =>
+export const listConversations = domain =>
   request({
     url: '/blade-ai/chat/conversations',
     method: 'get',
+    params: { domain },
   });
 
 export const listMessages = conversationId =>
